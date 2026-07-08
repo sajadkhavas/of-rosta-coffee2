@@ -11,26 +11,38 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { Navbar } from "../components/Navbar";
+import { Footer } from "../components/Footer";
 
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
-        </p>
-        <div className="mt-6">
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Go home
-          </Link>
+    <>
+      <Navbar />
+      <main className="flex min-h-[60vh] items-center justify-center px-4">
+        <div className="max-w-md text-center">
+          <h1 className="text-7xl font-bold text-[color:var(--rosta-primary)]">۴۰۴</h1>
+          <h2 className="mt-4 text-xl font-semibold">صفحه پیدا نشد</h2>
+          <p className="mt-2 text-sm text-[color:var(--rosta-secondary-text)]">
+            صفحه‌ای که به دنبال آن هستید وجود ندارد یا جابه‌جا شده است.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            <Link
+              to="/"
+              className="rounded-lg bg-[color:var(--rosta-primary)] px-4 py-2 text-sm font-medium text-[color:var(--rosta-bg)] hover:bg-[color:var(--rosta-accent)]"
+            >
+              بازگشت به خانه
+            </Link>
+            <Link
+              to="/products"
+              className="rounded-lg border border-[color:var(--rosta-border)] bg-[color:var(--rosta-card)] px-4 py-2 text-sm font-medium hover:border-[color:var(--rosta-accent)]"
+            >
+              مشاهده محصولات
+            </Link>
+          </div>
         </div>
-      </div>
-    </div>
+      </main>
+      <Footer />
+    </>
   );
 }
 
@@ -42,29 +54,21 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   }, [error]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-screen items-center justify-center px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+        <h1 className="text-xl font-semibold">این صفحه بارگذاری نشد</h1>
+        <p className="mt-2 text-sm text-[color:var(--rosta-secondary-text)]">
+          مشکلی پیش آمد. می‌توانید دوباره تلاش کنید یا به خانه برگردید.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
-            onClick={() => {
-              router.invalidate();
-              reset();
-            }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            onClick={() => { router.invalidate(); reset(); }}
+            className="rounded-lg bg-[color:var(--rosta-primary)] px-4 py-2 text-sm font-medium text-[color:var(--rosta-bg)]"
           >
-            Try again
+            تلاش مجدد
           </button>
-          <a
-            href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-          >
-            Go home
+          <a href="/" className="rounded-lg border border-[color:var(--rosta-border)] px-4 py-2 text-sm font-medium">
+            بازگشت به خانه
           </a>
         </div>
       </div>
@@ -77,21 +81,28 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { name: "theme-color", content: "#3D1A00" },
+      { title: "رستا | خرید قهوه تازه مستقیم از روستری" },
+      {
+        name: "description",
+        content:
+          "رستا مارکت‌پلیس قهوه ایران — قهوه تازه‌رست از بهترین روستری‌های ایران را مقایسه و سفارش دهید. بدون واسطه، با انتخاب آسیاب.",
+      },
+      { name: "author", content: "رستا" },
+      { property: "og:site_name", content: "رستا" },
       { property: "og:type", content: "website" },
+      { property: "og:locale", content: "fa_IR" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
+      { rel: "stylesheet", href: appCss },
+      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: appCss,
+        href: "https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap",
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
     ],
   }),
   shellComponent: RootShell,
@@ -102,7 +113,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="fa" dir="rtl">
       <head>
         <HeadContent />
       </head>
@@ -116,10 +127,8 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
     </QueryClientProvider>
   );

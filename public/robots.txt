@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://rosta.coffee/sitemap.xml
