@@ -9,38 +9,166 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as RoasteriesRouteImport } from './routes/roasteries'
+import { Route as ProductsRouteImport } from './routes/products'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RoasteriesIndexRouteImport } from './routes/roasteries.index'
+import { Route as ProductsIndexRouteImport } from './routes/products.index'
+import { Route as RoasteriesSlugRouteImport } from './routes/roasteries.$slug'
+import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
 
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RoasteriesRoute = RoasteriesRouteImport.update({
+  id: '/roasteries',
+  path: '/roasteries',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductsRoute = ProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RoasteriesIndexRoute = RoasteriesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RoasteriesRoute,
+} as any)
+const ProductsIndexRoute = ProductsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProductsRoute,
+} as any)
+const RoasteriesSlugRoute = RoasteriesSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => RoasteriesRoute,
+} as any)
+const ProductsSlugRoute = ProductsSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => ProductsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/products': typeof ProductsRouteWithChildren
+  '/roasteries': typeof RoasteriesRouteWithChildren
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/products/$slug': typeof ProductsSlugRoute
+  '/roasteries/$slug': typeof RoasteriesSlugRoute
+  '/products/': typeof ProductsIndexRoute
+  '/roasteries/': typeof RoasteriesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/products/$slug': typeof ProductsSlugRoute
+  '/roasteries/$slug': typeof RoasteriesSlugRoute
+  '/products': typeof ProductsIndexRoute
+  '/roasteries': typeof RoasteriesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
+  '/products': typeof ProductsRouteWithChildren
+  '/roasteries': typeof RoasteriesRouteWithChildren
+  '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/products/$slug': typeof ProductsSlugRoute
+  '/roasteries/$slug': typeof RoasteriesSlugRoute
+  '/products/': typeof ProductsIndexRoute
+  '/roasteries/': typeof RoasteriesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/products'
+    | '/roasteries'
+    | '/sitemap.xml'
+    | '/products/$slug'
+    | '/roasteries/$slug'
+    | '/products/'
+    | '/roasteries/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/about'
+    | '/sitemap.xml'
+    | '/products/$slug'
+    | '/roasteries/$slug'
+    | '/products'
+    | '/roasteries'
+  id:
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/products'
+    | '/roasteries'
+    | '/sitemap.xml'
+    | '/products/$slug'
+    | '/roasteries/$slug'
+    | '/products/'
+    | '/roasteries/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
+  ProductsRoute: typeof ProductsRouteWithChildren
+  RoasteriesRoute: typeof RoasteriesRouteWithChildren
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/roasteries': {
+      id: '/roasteries'
+      path: '/roasteries'
+      fullPath: '/roasteries'
+      preLoaderRoute: typeof RoasteriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/products': {
+      id: '/products'
+      path: '/products'
+      fullPath: '/products'
+      preLoaderRoute: typeof ProductsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +176,71 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/roasteries/': {
+      id: '/roasteries/'
+      path: '/'
+      fullPath: '/roasteries/'
+      preLoaderRoute: typeof RoasteriesIndexRouteImport
+      parentRoute: typeof RoasteriesRoute
+    }
+    '/products/': {
+      id: '/products/'
+      path: '/'
+      fullPath: '/products/'
+      preLoaderRoute: typeof ProductsIndexRouteImport
+      parentRoute: typeof ProductsRoute
+    }
+    '/roasteries/$slug': {
+      id: '/roasteries/$slug'
+      path: '/$slug'
+      fullPath: '/roasteries/$slug'
+      preLoaderRoute: typeof RoasteriesSlugRouteImport
+      parentRoute: typeof RoasteriesRoute
+    }
+    '/products/$slug': {
+      id: '/products/$slug'
+      path: '/$slug'
+      fullPath: '/products/$slug'
+      preLoaderRoute: typeof ProductsSlugRouteImport
+      parentRoute: typeof ProductsRoute
+    }
   }
 }
 
+interface ProductsRouteChildren {
+  ProductsSlugRoute: typeof ProductsSlugRoute
+  ProductsIndexRoute: typeof ProductsIndexRoute
+}
+
+const ProductsRouteChildren: ProductsRouteChildren = {
+  ProductsSlugRoute: ProductsSlugRoute,
+  ProductsIndexRoute: ProductsIndexRoute,
+}
+
+const ProductsRouteWithChildren = ProductsRoute._addFileChildren(
+  ProductsRouteChildren,
+)
+
+interface RoasteriesRouteChildren {
+  RoasteriesSlugRoute: typeof RoasteriesSlugRoute
+  RoasteriesIndexRoute: typeof RoasteriesIndexRoute
+}
+
+const RoasteriesRouteChildren: RoasteriesRouteChildren = {
+  RoasteriesSlugRoute: RoasteriesSlugRoute,
+  RoasteriesIndexRoute: RoasteriesIndexRoute,
+}
+
+const RoasteriesRouteWithChildren = RoasteriesRoute._addFileChildren(
+  RoasteriesRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
+  ProductsRoute: ProductsRouteWithChildren,
+  RoasteriesRoute: RoasteriesRouteWithChildren,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
