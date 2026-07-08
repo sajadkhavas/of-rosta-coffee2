@@ -111,7 +111,7 @@ function RoasteryPage() {
                 <span>{toFa(products.length)} محصول</span>
               </div>
               <ul className="mt-3 flex flex-wrap gap-1.5">
-                {roastery.specialty.map((s) => (
+                {roastery.specialty.map((s: string) => (
                   <li key={s} className="rounded-full bg-white/15 px-2.5 py-0.5 text-xs">
                     {s}
                   </li>
@@ -128,7 +128,7 @@ function RoasteryPage() {
         <section className="mt-10">
           <h2 className="text-2xl font-bold">محصولات {roastery.name}</h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {products.map((p) => (
+            {products.map((p: typeof products[number]) => (
               <ProductCard key={p.slug} product={p} />
             ))}
           </div>

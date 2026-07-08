@@ -154,7 +154,7 @@ function ProductPage() {
             <section className="mt-6">
               <h2 className="text-xs font-bold text-[color:var(--rosta-secondary-text)]">نت‌های چشایی</h2>
               <ul className="mt-2 flex flex-wrap gap-1.5">
-                {product.tastingNotes.map((n) => (
+                {product.tastingNotes.map((n: string) => (
                   <li key={n} className="rounded-full border border-[color:var(--rosta-accent)] bg-[color:var(--rosta-bg)] px-3 py-1 text-xs text-[color:var(--rosta-accent)]">
                     {n}
                   </li>
@@ -219,7 +219,7 @@ function ProductPage() {
           <section className="mt-12">
             <h2 className="text-xl font-bold">قهوه‌های دیگر از {roastery.name}</h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {related.map((p) => (
+              {related.map((p: typeof related[number]) => (
                 <ProductCard key={p.slug} product={p} />
               ))}
             </div>
