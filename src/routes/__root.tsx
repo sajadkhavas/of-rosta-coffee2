@@ -15,6 +15,7 @@ import { Navbar } from "../components/Navbar";
 import { Footer } from "../components/Footer";
 import { MobileBottomNav } from "../components/MobileBottomNav";
 import { useRouterState } from "@tanstack/react-router";
+import { CartProvider } from "../lib/cart-context";
 
 function NotFoundComponent() {
   return (
