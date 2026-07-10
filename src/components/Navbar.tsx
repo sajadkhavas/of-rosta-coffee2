@@ -58,6 +58,30 @@ export function Navbar() {
             </Link>
           </li>
         </ul>
+        <div className="hidden items-center gap-2 md:flex">
+          <Link
+            to="/search"
+            aria-label="جستجو"
+            className="grid h-9 w-9 place-items-center rounded-full text-[color:var(--light)] transition hover:bg-[color:var(--dark)] hover:text-[color:var(--roast)]"
+          >
+            <Search size={18} />
+          </Link>
+          <Link
+            to="/cart"
+            aria-label="سبد خرید"
+            className="grid h-9 w-9 place-items-center rounded-full text-[color:var(--light)] transition hover:bg-[color:var(--dark)] hover:text-[color:var(--roast)]"
+          >
+            <ShoppingBag size={18} />
+          </Link>
+          <Link
+            to="/profile"
+            aria-label="حساب من"
+            className="grid h-9 w-9 place-items-center rounded-full text-[color:var(--light)] transition hover:bg-[color:var(--dark)] hover:text-[color:var(--roast)]"
+          >
+            <User size={18} />
+          </Link>
+        </div>
+
       </nav>
     </header>
   );
