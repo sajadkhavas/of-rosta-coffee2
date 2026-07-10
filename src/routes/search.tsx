@@ -18,22 +18,20 @@ const RECENT_KEY = "rosta_recent_searches";
 
 export const Route = createFileRoute("/search")({
   validateSearch: zodValidator(searchSchema),
-  head: ({ search }) => {
-    const hasQ = !!search.q;
-    return {
-      meta: [
-        { title: hasQ ? `جستجو: ${search.q} | رستا` : "جستجو در رستا | قهوه و روستری" },
-        {
-          name: "description",
-          content: "جستجوی قهوه، روستری، خاستگاه و نوع رست در مارکت‌پلیس رستا.",
-        },
-        { name: "robots", content: hasQ ? "noindex,follow" : "index,follow" },
-      ],
-      links: [{ rel: "canonical", href: "/search" }],
-    };
-  },
+  head: () => ({
+    meta: [
+      { title: "جستجو در رستا | قهوه و روستری" },
+      {
+        name: "description",
+        content: "جستجوی قهوه، روستری، خاستگاه و نوع رست در مارکت‌پلیس رستا.",
+      },
+      { name: "robots", content: "noindex,follow" },
+    ],
+    links: [{ rel: "canonical", href: "/search" }],
+  }),
   component: SearchPage,
 });
+
 
 function score(text: string, q: string): number {
   const t = text.toLowerCase();
