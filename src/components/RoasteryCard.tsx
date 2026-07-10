@@ -1,12 +1,27 @@
 import { Link } from "@tanstack/react-router";
+import { memo } from "react";
 import type { Roastery } from "@/data/seed";
 import { productsByRoastery } from "@/data/seed";
 import { toFa } from "@/lib/persian";
+import { roasteryImage } from "@/lib/product-images";
 
-export function RoasteryCard({ roastery }: { roastery: Roastery }) {
+function RoasteryCardImpl({ roastery }: { roastery: Roastery }) {
   const count = productsByRoastery(roastery.slug).length;
   return (
-    <article className="card-dark card-dark-hover flex h-full flex-col rounded-2xl p-6">
+    <article className="card-dark card-dark-hover flex h-full flex-col overflow-hidden rounded-2xl">
+      <div className="relative aspect-[16/9] overflow-hidden bg-[color:var(--dark)]">
+        <img
+          src={roasteryImage(roastery.slug, 500)}
+          alt={`فضای ${roastery.name} در ${roastery.city}`}
+          loading="lazy"
+          width={500}
+          height={281}
+          className="h-full w-full object-cover opacity-80"
+        />
+        <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-[color:var(--night)] via-[color:var(--night)]/60 to-transparent" />
+      </div>
+      <div className="flex flex-1 flex-col p-6">
+
       <div className="flex items-start gap-4">
         <div
           aria-hidden
