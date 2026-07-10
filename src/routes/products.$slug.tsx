@@ -307,9 +307,10 @@ function ProductPage() {
 
             <button
               type="button"
+              onClick={handleAdd}
               className="mt-6 w-full rounded-lg bg-[color:var(--roast)] py-3 text-sm font-bold text-[color:var(--night)] transition hover:opacity-90"
             >
-              افزودن به سبد خرید
+              {added ? "افزوده شد ✓" : "افزودن به سبد خرید"}
             </button>
 
             <div className="mt-6 space-y-2">
