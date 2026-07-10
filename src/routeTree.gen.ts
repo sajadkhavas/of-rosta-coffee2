@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as RoasteriesRouteImport } from './routes/roasteries'
+import { Route as QuizRouteImport } from './routes/quiz'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as BlogRouteImport } from './routes/blog'
 import { Route as AboutRouteImport } from './routes/about'
@@ -30,6 +31,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const RoasteriesRoute = RoasteriesRouteImport.update({
   id: '/roasteries',
   path: '/roasteries',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QuizRoute = QuizRouteImport.update({
+  id: '/quiz',
+  path: '/quiz',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProductsRoute = ProductsRouteImport.update({
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/blog': typeof BlogRouteWithChildren
   '/products': typeof ProductsRouteWithChildren
+  '/quiz': typeof QuizRoute
   '/roasteries': typeof RoasteriesRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/blog/$slug': typeof BlogSlugRoute
@@ -100,6 +107,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/quiz': typeof QuizRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/products/$slug': typeof ProductsSlugRoute
@@ -114,6 +122,7 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/blog': typeof BlogRouteWithChildren
   '/products': typeof ProductsRouteWithChildren
+  '/quiz': typeof QuizRoute
   '/roasteries': typeof RoasteriesRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/blog/$slug': typeof BlogSlugRoute
@@ -130,6 +139,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/blog'
     | '/products'
+    | '/quiz'
     | '/roasteries'
     | '/sitemap.xml'
     | '/blog/$slug'
@@ -142,6 +152,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/quiz'
     | '/sitemap.xml'
     | '/blog/$slug'
     | '/products/$slug'
@@ -155,6 +166,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/blog'
     | '/products'
+    | '/quiz'
     | '/roasteries'
     | '/sitemap.xml'
     | '/blog/$slug'
@@ -170,6 +182,7 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   BlogRoute: typeof BlogRouteWithChildren
   ProductsRoute: typeof ProductsRouteWithChildren
+  QuizRoute: typeof QuizRoute
   RoasteriesRoute: typeof RoasteriesRouteWithChildren
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
 }
@@ -188,6 +201,13 @@ declare module '@tanstack/react-router' {
       path: '/roasteries'
       fullPath: '/roasteries'
       preLoaderRoute: typeof RoasteriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/quiz': {
+      id: '/quiz'
+      path: '/quiz'
+      fullPath: '/quiz'
+      preLoaderRoute: typeof QuizRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/products': {
@@ -308,6 +328,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   BlogRoute: BlogRouteWithChildren,
   ProductsRoute: ProductsRouteWithChildren,
+  QuizRoute: QuizRoute,
   RoasteriesRoute: RoasteriesRouteWithChildren,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
 }

@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
 import { products, roasteries } from "@/data/seed";
+import { blogPosts } from "@/data/blog-posts";
+import { HIGH_VALUE_ORIGINS, HIGH_VALUE_ROASTS } from "@/data/origins";
 
 const BASE_URL = "https://rosta.coffee";
 
@@ -8,15 +10,31 @@ export const Route = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
       GET: async () => {
-        const staticPaths = ["/", "/roasteries", "/products", "/about"];
-        const roasteryPaths = roasteries.map((r) => `/roasteries/${r.slug}`);
-        const productPaths = products.map((p) => `/products/${p.slug}`);
-        const paths = [...staticPaths, ...roasteryPaths, ...productPaths];
+        type Entry = { path: string; priority: string };
+        const entries: Entry[] = [
+          { path: "/", priority: "1.0" },
+          { path: "/roasteries", priority: "0.8" },
+          { path: "/products", priority: "0.9" },
+          { path: "/blog", priority: "0.8" },
+          { path: "/quiz", priority: "0.7" },
+          { path: "/about", priority: "0.5" },
+          ...roasteries.map((r) => ({ path: `/roasteries/${r.slug}`, priority: "0.7" })),
+          ...products.map((p) => ({ path: `/products/${p.slug}`, priority: "0.8" })),
+          ...blogPosts.map((p) => ({ path: `/blog/${p.slug}`, priority: "0.7" })),
+          ...HIGH_VALUE_ORIGINS.map((o) => ({
+            path: `/products?origin=${o}`,
+            priority: "0.6",
+          })),
+          ...HIGH_VALUE_ROASTS.map((r) => ({
+            path: `/products?roast=${encodeURIComponent(r)}`,
+            priority: "0.6",
+          })),
+        ];
 
-        const urls = paths
+        const urls = entries
           .map(
-            (p) =>
-              `  <url><loc>${BASE_URL}${p}</loc><changefreq>weekly</changefreq><priority>${p === "/" ? "1.0" : "0.7"}</priority></url>`,
+            (e) =>
+              `  <url><loc>${BASE_URL}${e.path}</loc><changefreq>weekly</changefreq><priority>${e.priority}</priority></url>`,
           )
           .join("\n");
 
