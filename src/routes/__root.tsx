@@ -101,7 +101,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&family=Playfair+Display:wght@500;700;900&family=DM+Mono:wght@400;500&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Mono:wght@400;500&display=swap",
       },
     ],
   }),
@@ -127,6 +127,28 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useEffect(() => {
+    let cleanup: (() => void) | undefined;
+    (async () => {
+      const a = await import("../lib/animations");
+      a.initLenis();
+      a.initCursor();
+      const run = () => {
+        a.splitTextReveal("[data-split-text]");
+        a.fadeUpStagger("[data-fade-up]", 0.08);
+        a.fadeUpStagger(".r-card", 0.1);
+        document.querySelectorAll<HTMLElement>("[data-counter]").forEach((el) => {
+          const target = parseInt(el.getAttribute("data-counter") || "0", 10);
+          const suffix = el.getAttribute("data-suffix") || "";
+          a.animateCounter(el, target, suffix);
+        });
+        a.magneticEffect("[data-magnetic]");
+      };
+      const t = window.setTimeout(run, 60);
+      cleanup = () => window.clearTimeout(t);
+    })();
+    return () => cleanup?.();
+  }, []);
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
