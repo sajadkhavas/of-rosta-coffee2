@@ -156,10 +156,12 @@ function RootComponent() {
   }, []);
   return (
     <QueryClientProvider client={queryClient}>
-      <div className={hideMobileNav ? "" : "pb-16 md:pb-0"}>
-        <Outlet />
-      </div>
-      {!hideMobileNav && <MobileBottomNav />}
+      <CartProvider>
+        <div className={hideMobileNav ? "" : "pb-16 md:pb-0"}>
+          <Outlet />
+        </div>
+        {!hideMobileNav && <MobileBottomNav />}
+      </CartProvider>
     </QueryClientProvider>
   );
 }
