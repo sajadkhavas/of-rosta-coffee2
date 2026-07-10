@@ -182,6 +182,13 @@ function ProductPage() {
   const price = useMemo(() => product.prices[weight], [product, weight]);
   const faq = buildFaq(product);
   const inStock = true;
+  const { addItem } = useCart();
+  const [added, setAdded] = useState(false);
+  const handleAdd = () => {
+    addItem(product.slug, weight, grind, 1);
+    setAdded(true);
+    window.setTimeout(() => setAdded(false), 1500);
+  };
 
   return (
     <>
