@@ -83,52 +83,62 @@ function HomePage() {
       <Navbar />
       <main>
         {/* HERO */}
-        <section className="relative overflow-hidden border-b border-[color:var(--mid)]">
+        <section
+          id="hero-section"
+          className="relative overflow-hidden border-b border-[color:var(--mid)] min-h-screen"
+        >
           <div
             aria-hidden
             className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(200,150,90,0.18),transparent_60%)]"
           />
-          <Particles count={36} />
-          <div className="relative mx-auto grid max-w-6xl gap-10 px-4 py-20 md:grid-cols-2 md:py-28">
+          <div className="relative mx-auto grid max-w-6xl gap-10 px-4 py-20 md:grid-cols-2 md:py-28 md:min-h-screen md:items-center">
             <div className="text-center md:text-right">
-              <span className="eyebrow">مارکت‌پلیس قهوه ایران</span>
-              <h1 className="mt-4 font-display text-4xl font-black leading-[1.1] text-[color:var(--steam)] md:text-6xl">
-                قهوه تازه‌رست،
-                <br />
-                <span className="text-[color:var(--roast)]">مستقیم از روستری</span>
+              <span className="hero-tag" data-fade-up>
+                <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--roast)]" />
+                تازه از مزرعه ☕
+              </span>
+              <h1
+                data-split-text
+                className="mt-6 font-display text-5xl font-black leading-[1.05] text-[color:var(--steam)] md:text-7xl"
+              >
+                قهوه‌ای که زنده است
               </h1>
-              <p className="mx-auto mt-6 max-w-lg text-base leading-8 text-[color:var(--light)] md:mx-0 md:text-lg">
-                مقایسه و خرید مستقیم قهوه تخصصی از بهترین روستری‌های ایران. با انتخاب وزن، نوع آسیاب و مشاهده تاریخ دقیق برشته‌کاری.
+              <p
+                data-fade-up
+                className="mx-auto mt-6 max-w-lg text-base leading-8 text-[color:var(--light)] md:mx-0 md:text-lg"
+              >
+                مستقیم از روستری به دست تو — با تاریخ دقیق برشته‌کاری، انتخاب وزن و نوع آسیاب.
               </p>
 
-              <div className="mx-auto mt-8 flex max-w-xl flex-col items-stretch gap-3 sm:flex-row md:mx-0">
-                <label htmlFor="hero-search" className="sr-only">جستجوی قهوه</label>
-                <input
-                  id="hero-search"
-                  type="search"
-                  placeholder="جستجوی قهوه، خاستگاه یا روستری…"
-                  className="flex-1 rounded-lg border border-[color:var(--mid)] bg-[color:var(--dark)] px-4 py-3 text-sm text-[color:var(--steam)] outline-none placeholder:text-[color:var(--muted-gold)] focus:border-[color:var(--roast)]"
-                />
-                <Link
-                  to="/roasteries"
-                  className="rounded-lg bg-[color:var(--roast)] px-6 py-3 text-sm font-bold text-[color:var(--night)] transition hover:brightness-110"
-                >
+              <div
+                data-fade-up
+                className="mx-auto mt-10 flex flex-wrap items-center justify-center gap-6 md:mx-0 md:justify-start"
+              >
+                <Link to="/roasteries" data-magnetic className="btn-primary">
                   کشف روستری‌ها
+                  <span aria-hidden>←</span>
+                </Link>
+                <Link to="/products" className="btn-ghost">
+                  قهوه‌ات رو پیدا کن
+                  <span aria-hidden>←</span>
                 </Link>
               </div>
 
-              {/* Stats */}
-              <dl className="mt-10 grid grid-cols-3 gap-4 border-t border-[color:var(--mid)] pt-8">
+              <dl className="mt-14 grid grid-cols-3 gap-4 border-t border-[color:var(--mid)] pt-8">
                 {[
-                  { n: roasteries.length, l: "روستری" },
-                  { n: products.length, l: "قهوه تخصصی" },
-                  { n: 24, l: "ساعت ارسال" },
+                  { n: roasteries.length, l: "روستری فعال", suffix: "+" },
+                  { n: products.length, l: "محصول تازه", suffix: "+" },
+                  { n: 24, l: "رست تا ارسال", suffix: "h" },
                 ].map((s) => (
                   <div key={s.l} className="text-center md:text-right">
-                    <dt className="font-mono-num text-3xl font-bold text-[color:var(--roast)] md:text-4xl">
-                      {toFa(s.n)}
+                    <dt
+                      className="font-mono-num text-3xl font-bold text-[color:var(--roast)] md:text-5xl"
+                      data-counter={s.n}
+                      data-suffix={s.suffix}
+                    >
+                      {toFa(0)}
                     </dt>
-                    <dd className="mt-1 text-[11px] tracking-[0.2em] text-[color:var(--muted-gold)]">
+                    <dd className="mt-2 text-[11px] tracking-[0.2em] text-[color:var(--muted-gold)]">
                       {s.l}
                     </dd>
                   </div>
@@ -136,13 +146,23 @@ function HomePage() {
               </dl>
             </div>
 
-            <div className="relative flex items-center justify-center">
+            <div className="relative flex items-center justify-center min-h-[340px] md:min-h-[520px]">
               <div
                 aria-hidden
-                className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(200,150,90,0.2),transparent_60%)]"
+                className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(200,150,90,0.25),transparent_60%)]"
               />
-              <CoffeeBean3D />
+              <HeroBean />
             </div>
+          </div>
+
+          <div
+            aria-hidden
+            className="pointer-events-none absolute bottom-6 left-1/2 hidden -translate-x-1/2 flex-col items-center gap-3 md:flex"
+          >
+            <span className="text-[10px] tracking-[0.4em] text-[color:var(--muted-gold)]">
+              اسکرول کن
+            </span>
+            <span className="scroll-line" />
           </div>
         </section>
 
