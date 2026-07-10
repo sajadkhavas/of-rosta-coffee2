@@ -1,4 +1,7 @@
 import { Link } from "@tanstack/react-router";
+import { Search, ShoppingBag, User } from "lucide-react";
+
+
 
 export function Navbar() {
   return (
