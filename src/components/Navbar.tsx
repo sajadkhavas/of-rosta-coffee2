@@ -1,9 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { Search, ShoppingBag, User } from "lucide-react";
+import { useCart } from "@/lib/cart-context";
+import { toFa } from "@/lib/persian";
 
 
 
 export function Navbar() {
+  const { itemCount } = useCart();
   return (
     <header className="sticky top-0 z-40 border-b border-[color:var(--mid)]/60 bg-[color:var(--night)]/70 backdrop-blur-xl">
       <nav
