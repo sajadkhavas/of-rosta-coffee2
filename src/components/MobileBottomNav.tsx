@@ -36,7 +36,7 @@ export function MobileBottomNav() {
       <Item to="/" active={isActive("/", true)} label="خانه">
         <Home size={22} strokeWidth={1.5} />
       </Item>
-      <Item to="/products" active={isActive("/products")} label="جستجو">
+      <Item to="/search" active={isActive("/search")} label="جستجو">
         <Search size={22} strokeWidth={1.5} />
       </Item>
       {/* Quiz — raised action */}
