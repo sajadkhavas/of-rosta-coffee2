@@ -72,9 +72,14 @@ export function Navbar() {
           <Link
             to="/cart"
             aria-label="سبد خرید"
-            className="grid h-9 w-9 place-items-center rounded-full text-[color:var(--light)] transition hover:bg-[color:var(--dark)] hover:text-[color:var(--roast)]"
+            className="relative grid h-9 w-9 place-items-center rounded-full text-[color:var(--light)] transition hover:bg-[color:var(--dark)] hover:text-[color:var(--roast)]"
           >
             <ShoppingBag size={18} />
+            {itemCount > 0 && (
+              <span className="absolute -right-1 -top-1 grid min-w-[18px] place-items-center rounded-full bg-[color:var(--roast)] px-1 font-mono-num text-[10px] font-bold text-[color:var(--night)]">
+                {toFa(itemCount)}
+              </span>
+            )}
           </Link>
           <Link
             to="/profile"
