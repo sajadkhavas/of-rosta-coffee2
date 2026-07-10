@@ -64,6 +64,11 @@ export function MobileBottomNav() {
       <Item to="/cart" active={isActive("/cart")} label="سبد خرید">
         <span className="relative">
           <ShoppingBag size={22} strokeWidth={1.5} />
+          {itemCount > 0 && (
+            <span className="absolute -right-2 -top-2 grid min-w-[16px] place-items-center rounded-full bg-[color:var(--roast)] px-1 font-mono-num text-[10px] font-bold text-[color:var(--night)]">
+              {toFa(itemCount)}
+            </span>
+          )}
         </span>
       </Item>
       <Item to="/profile" active={isActive("/profile")} label="حساب من">
