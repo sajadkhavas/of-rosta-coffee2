@@ -2,43 +2,45 @@ import { Link } from "@tanstack/react-router";
 
 export function Navbar() {
   return (
-    <header className="sticky top-0 z-40 border-b border-[color:var(--rosta-border)] bg-[color:var(--rosta-bg)]/90 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-[color:var(--mid)]/60 bg-[color:var(--night)]/70 backdrop-blur-xl">
       <nav
         aria-label="ناوبری اصلی"
         className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4"
       >
-        <Link to="/" className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-3">
           <span
             aria-hidden
-            className="grid h-9 w-9 place-items-center rounded-full bg-[color:var(--rosta-primary)] text-[color:var(--rosta-bg)] font-bold"
+            className="grid h-10 w-10 place-items-center rounded-full border border-[color:var(--roast)]/40 bg-gradient-to-br from-[color:var(--roast)] to-[color:var(--muted-gold)] text-[color:var(--night)] font-bold shadow-[0_0_20px_-4px_rgba(200,150,90,0.6)]"
           >
             ر
           </span>
           <div className="leading-tight">
-            <div className="text-lg font-bold text-[color:var(--rosta-primary)]">رستا</div>
-            <div className="text-[11px] text-[color:var(--rosta-secondary-text)]">
-              قهوه تازه، بدون واسطه
+            <div className="font-display text-xl font-bold tracking-wide text-[color:var(--steam)]">
+              ROSTA
+            </div>
+            <div className="text-[10px] tracking-[0.3em] text-[color:var(--roast)]">
+              رستا · قهوه تازه
             </div>
           </div>
         </Link>
-        <ul className="hidden items-center gap-6 text-sm font-medium text-[color:var(--rosta-primary)] md:flex">
+        <ul className="hidden items-center gap-8 text-sm font-medium text-[color:var(--light)] md:flex">
           <li>
-            <Link to="/" activeOptions={{ exact: true }} className="hover:text-[color:var(--rosta-accent)]">
+            <Link to="/" activeOptions={{ exact: true }} className="transition hover:text-[color:var(--roast)]">
               خانه
             </Link>
           </li>
           <li>
-            <Link to="/roasteries" className="hover:text-[color:var(--rosta-accent)]">
+            <Link to="/roasteries" className="transition hover:text-[color:var(--roast)]">
               روستری‌ها
             </Link>
           </li>
           <li>
-            <Link to="/products" className="hover:text-[color:var(--rosta-accent)]">
+            <Link to="/products" className="transition hover:text-[color:var(--roast)]">
               محصولات
             </Link>
           </li>
           <li>
-            <Link to="/about" className="hover:text-[color:var(--rosta-accent)]">
+            <Link to="/about" className="transition hover:text-[color:var(--roast)]">
               درباره ما
             </Link>
           </li>
