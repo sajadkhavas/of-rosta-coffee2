@@ -7,11 +7,19 @@ import { RoastLevelBadge } from "./RoastLevelBadge";
 import { WeightSelector } from "./WeightSelector";
 import { roastDateLabel } from "@/lib/persian";
 import { productImage } from "@/lib/product-images";
+import { useCart } from "@/lib/cart-context";
 
 function ProductCardImpl({ product }: { product: Product }) {
 
   const [weight, setWeight] = useState<Weight>(250);
   const roastery = getRoastery(product.roasterySlug);
+  const { addItem } = useCart();
+  const [added, setAdded] = useState(false);
+  const handleAdd = () => {
+    addItem(product.slug, weight, "دانه", 1);
+    setAdded(true);
+    window.setTimeout(() => setAdded(false), 1500);
+  };
 
   return (
     <article className="card-dark card-dark-hover group flex h-full flex-col overflow-hidden rounded-2xl">
@@ -83,9 +91,10 @@ function ProductCardImpl({ product }: { product: Product }) {
           </div>
           <button
             type="button"
+            onClick={handleAdd}
             className="mt-3 w-full rounded-lg border border-[color:var(--roast)] bg-[color:var(--roast)] py-2 text-sm font-bold text-[color:var(--night)] transition hover:bg-transparent hover:text-[color:var(--roast)]"
           >
-            افزودن به سبد
+            {added ? "افزوده شد ✓" : "افزودن به سبد"}
           </button>
         </div>
       </div>

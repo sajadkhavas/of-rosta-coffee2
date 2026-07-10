@@ -1,16 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { X } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Breadcrumb } from "@/components/Breadcrumb";
-import { products, getRoastery } from "@/data/seed";
+import { getProduct, getRoastery } from "@/data/seed";
 import { productImage } from "@/lib/product-images";
 import { formatToman, toFa } from "@/lib/persian";
-
-// TODO: replace with real cart state when backend/store is ready.
-const mockCart = [
-  { productSlug: "emkan-yirgacheffe", weight: 250 as const, grind: "دانه", qty: 1 },
-  { productSlug: "moa-kenya-aa", weight: 500 as const, grind: "اسپرسو", qty: 2 },
-];
+import { useCart, type CartItem } from "@/lib/cart-context";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -25,12 +21,14 @@ export const Route = createFileRoute("/cart")({
 });
 
 function CartPage() {
-  const items = mockCart
+  const { items: raw, updateQty, removeItem, subtotal } = useCart();
+
+  const items = raw
     .map((i) => {
-      const product = products.find((p) => p.slug === i.productSlug);
+      const product = getProduct(i.productSlug);
       return product ? { ...i, product } : null;
     })
-    .filter((x): x is NonNullable<typeof x> => x !== null);
+    .filter((x): x is NonNullable<typeof x> & { product: NonNullable<ReturnType<typeof getProduct>> } => x !== null);
 
   const grouped = new Map<string, typeof items>();
   for (const it of items) {
@@ -39,12 +37,7 @@ function CartPage() {
     grouped.get(key)!.push(it);
   }
 
-  const subtotal = items.reduce(
-    (sum, it) => sum + it.product.prices[it.weight] * it.qty,
-    0,
-  );
-
-  if (items.length === 0) {
+  if (raw.length === 0) {
     return (
       <>
         <Navbar />
@@ -95,8 +88,8 @@ function CartPage() {
                     )}
                   </header>
                   <ul className="space-y-3">
-                    {list.map((it, idx) => (
-                      <li key={idx} className="flex gap-3">
+                    {list.map((it: CartItem & { product: NonNullable<ReturnType<typeof getProduct>> }) => (
+                      <li key={`${it.productSlug}-${it.weight}-${it.grind}`} className="flex gap-3">
                         <img
                           src={productImage(it.product.slug, 200)}
                           alt={it.product.name}
@@ -106,21 +99,45 @@ function CartPage() {
                           className="h-20 w-20 rounded-lg object-cover"
                         />
                         <div className="flex-1">
-                          <Link
-                            to="/products/$slug"
-                            params={{ slug: it.product.slug }}
-                            className="text-sm font-bold text-[color:var(--steam)] hover:text-[color:var(--roast)]"
-                          >
-                            {it.product.name}
-                          </Link>
+                          <div className="flex items-start justify-between gap-2">
+                            <Link
+                              to="/products/$slug"
+                              params={{ slug: it.product.slug }}
+                              className="text-sm font-bold text-[color:var(--steam)] hover:text-[color:var(--roast)]"
+                            >
+                              {it.product.name}
+                            </Link>
+                            <button
+                              type="button"
+                              aria-label="حذف از سبد"
+                              onClick={() => removeItem(it.productSlug, it.weight, it.grind)}
+                              className="text-[color:var(--light)] transition hover:text-red-400"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
                           <div className="mt-1 text-xs text-[color:var(--light)]">
                             {toFa(it.weight)} گرم · {it.grind}
                           </div>
                           <div className="mt-2 flex items-center justify-between">
                             <div className="inline-flex items-center gap-2 rounded-lg border border-[color:var(--mid)]">
-                              <button className="px-2 py-1 text-[color:var(--roast)]">−</button>
+                              <button
+                                type="button"
+                                aria-label="کاهش تعداد"
+                                onClick={() => updateQty(it.productSlug, it.weight, it.grind, it.qty - 1)}
+                                className="px-2 py-1 text-[color:var(--roast)]"
+                              >
+                                −
+                              </button>
                               <span className="font-mono-num text-sm">{toFa(it.qty)}</span>
-                              <button className="px-2 py-1 text-[color:var(--roast)]">+</button>
+                              <button
+                                type="button"
+                                aria-label="افزایش تعداد"
+                                onClick={() => updateQty(it.productSlug, it.weight, it.grind, it.qty + 1)}
+                                className="px-2 py-1 text-[color:var(--roast)]"
+                              >
+                                +
+                              </button>
                             </div>
                             <span className="font-mono-num text-sm font-bold text-[color:var(--roast)]">
                               {formatToman(it.product.prices[it.weight] * it.qty)}
@@ -153,12 +170,12 @@ function CartPage() {
                 </dd>
               </div>
             </dl>
-            <button
-              type="button"
-              className="mt-4 w-full rounded-lg bg-[color:var(--roast)] py-3 text-sm font-bold text-[color:var(--night)]"
+            <Link
+              to="/checkout"
+              className="mt-4 block w-full rounded-lg bg-[color:var(--roast)] py-3 text-center text-sm font-bold text-[color:var(--night)]"
             >
               تسویه‌حساب
-            </button>
+            </Link>
             <Link
               to="/products"
               className="mt-2 block w-full rounded-lg border border-[color:var(--mid)] py-3 text-center text-sm text-[color:var(--light)]"

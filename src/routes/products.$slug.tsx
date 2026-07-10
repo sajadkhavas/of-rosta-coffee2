@@ -19,6 +19,7 @@ import {
 } from "@/data/seed";
 import { formatToman, toFa } from "@/lib/persian";
 import { productImage, productThumbnails } from "@/lib/product-images";
+import { useCart } from "@/lib/cart-context";
 
 const BASE = "https://rosta.coffee";
 
@@ -181,6 +182,13 @@ function ProductPage() {
   const price = useMemo(() => product.prices[weight], [product, weight]);
   const faq = buildFaq(product);
   const inStock = true;
+  const { addItem } = useCart();
+  const [added, setAdded] = useState(false);
+  const handleAdd = () => {
+    addItem(product.slug, weight, grind, 1);
+    setAdded(true);
+    window.setTimeout(() => setAdded(false), 1500);
+  };
 
   return (
     <>
@@ -299,9 +307,10 @@ function ProductPage() {
 
             <button
               type="button"
+              onClick={handleAdd}
               className="mt-6 w-full rounded-lg bg-[color:var(--roast)] py-3 text-sm font-bold text-[color:var(--night)] transition hover:opacity-90"
             >
-              افزودن به سبد خرید
+              {added ? "افزوده شد ✓" : "افزودن به سبد خرید"}
             </button>
 
             <div className="mt-6 space-y-2">

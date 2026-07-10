@@ -1,9 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { Search, ShoppingBag, User } from "lucide-react";
+import { useCart } from "@/lib/cart-context";
+import { toFa } from "@/lib/persian";
 
 
 
 export function Navbar() {
+  const { itemCount } = useCart();
   return (
     <header className="sticky top-0 z-40 border-b border-[color:var(--mid)]/60 bg-[color:var(--night)]/70 backdrop-blur-xl">
       <nav
@@ -69,9 +72,14 @@ export function Navbar() {
           <Link
             to="/cart"
             aria-label="سبد خرید"
-            className="grid h-9 w-9 place-items-center rounded-full text-[color:var(--light)] transition hover:bg-[color:var(--dark)] hover:text-[color:var(--roast)]"
+            className="relative grid h-9 w-9 place-items-center rounded-full text-[color:var(--light)] transition hover:bg-[color:var(--dark)] hover:text-[color:var(--roast)]"
           >
             <ShoppingBag size={18} />
+            {itemCount > 0 && (
+              <span className="absolute -right-1 -top-1 grid min-w-[18px] place-items-center rounded-full bg-[color:var(--roast)] px-1 font-mono-num text-[10px] font-bold text-[color:var(--night)]">
+                {toFa(itemCount)}
+              </span>
+            )}
           </Link>
           <Link
             to="/profile"

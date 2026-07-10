@@ -15,6 +15,7 @@ import { Navbar } from "../components/Navbar";
 import { Footer } from "../components/Footer";
 import { MobileBottomNav } from "../components/MobileBottomNav";
 import { useRouterState } from "@tanstack/react-router";
+import { CartProvider } from "../lib/cart-context";
 
 function NotFoundComponent() {
   return (
@@ -155,10 +156,12 @@ function RootComponent() {
   }, []);
   return (
     <QueryClientProvider client={queryClient}>
-      <div className={hideMobileNav ? "" : "pb-16 md:pb-0"}>
-        <Outlet />
-      </div>
-      {!hideMobileNav && <MobileBottomNav />}
+      <CartProvider>
+        <div className={hideMobileNav ? "" : "pb-16 md:pb-0"}>
+          <Outlet />
+        </div>
+        {!hideMobileNav && <MobileBottomNav />}
+      </CartProvider>
     </QueryClientProvider>
   );
 }
