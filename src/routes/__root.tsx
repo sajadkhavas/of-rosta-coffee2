@@ -13,6 +13,8 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Navbar } from "../components/Navbar";
 import { Footer } from "../components/Footer";
+import { MobileBottomNav } from "../components/MobileBottomNav";
+import { useRouterState } from "@tanstack/react-router";
 
 function NotFoundComponent() {
   return (
@@ -127,6 +129,8 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const hideMobileNav = pathname === "/quiz";
   useEffect(() => {
     let cleanup: (() => void) | undefined;
     (async () => {
@@ -151,7 +155,10 @@ function RootComponent() {
   }, []);
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <div className={hideMobileNav ? "" : "pb-16 md:pb-0"}>
+        <Outlet />
+      </div>
+      {!hideMobileNav && <MobileBottomNav />}
     </QueryClientProvider>
   );
 }

@@ -40,6 +40,16 @@ export function Navbar() {
             </Link>
           </li>
           <li>
+            <Link to="/blog" className="transition hover:text-[color:var(--roast)]">
+              مجله
+            </Link>
+          </li>
+          <li>
+            <Link to="/quiz" className="transition hover:text-[color:var(--roast)]">
+              کوییز
+            </Link>
+          </li>
+          <li>
             <Link to="/about" className="transition hover:text-[color:var(--roast)]">
               درباره ما
             </Link>
