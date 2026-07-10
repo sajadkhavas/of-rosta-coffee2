@@ -16,17 +16,18 @@ function ProductCardImpl({ product }: { product: Product }) {
   return (
     <article className="card-dark card-dark-hover group flex h-full flex-col overflow-hidden rounded-2xl">
       {/* Image area */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-[#1f0e02] via-[#160800] to-[#0a0400]">
+      <div className="relative aspect-[4/3] overflow-hidden bg-[color:var(--dark)]">
+        <img
+          src={productImage(product.slug, 500)}
+          alt={`${product.name} از ${roastery?.name ?? "روستری"} — قهوه ${product.origin}`}
+          loading="lazy"
+          width={500}
+          height={375}
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+        />
         <div
           aria-hidden
-          className="absolute inset-0 grid place-items-center text-6xl opacity-30 transition-transform duration-500 group-hover:scale-110"
-          style={{ filter: "drop-shadow(0 10px 20px rgba(200,150,90,0.3))" }}
-        >
-          ☕
-        </div>
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(200,150,90,0.15),transparent_60%)]"
+          className="absolute inset-0 bg-gradient-to-t from-[color:var(--night)]/70 via-transparent to-transparent"
         />
         <span
           className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-[color:var(--roast)] px-3 py-1 text-[11px] font-bold text-[color:var(--night)] shadow-lg"
@@ -36,6 +37,7 @@ function ProductCardImpl({ product }: { product: Product }) {
           {roastDateLabel(product.roastDaysAgo)}
         </span>
       </div>
+
 
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-center justify-between text-xs">
