@@ -19,6 +19,7 @@ import {
 } from "@/data/seed";
 import { formatToman, toFa } from "@/lib/persian";
 import { productImage, productThumbnails } from "@/lib/product-images";
+import { useCart } from "@/lib/cart-context";
 
 const BASE = "https://rosta.coffee";
 
