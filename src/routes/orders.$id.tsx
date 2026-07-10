@@ -12,12 +12,15 @@ import {
 } from "@/data/mock-orders";
 import { formatToman, toFa } from "@/lib/persian";
 
+import type { MockOrder, MockOrderItem } from "@/data/mock-orders";
+
 export const Route = createFileRoute("/orders/$id")({
-  loader: ({ params }) => {
+  loader: ({ params }): { order: MockOrder } => {
     const order = mockOrders.find((o) => o.id === params.id);
     if (!order) throw notFound();
     return { order };
   },
+
   head: ({ params, loaderData }) => ({
     meta: [
       {

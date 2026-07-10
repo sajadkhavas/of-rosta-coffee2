@@ -61,7 +61,7 @@ function SearchPage() {
   // Debounce URL update
   useEffect(() => {
     const t = setTimeout(() => {
-      navigate({ search: (prev) => ({ ...prev, q: local }), replace: true });
+      navigate({ search: (prev: { q: string; type: string }) => ({ ...prev, q: local }), replace: true });
     }, 200);
     return () => clearTimeout(t);
   }, [local, navigate]);
@@ -147,7 +147,7 @@ function SearchPage() {
                 <button
                   key={c.k}
                   onClick={() =>
-                    navigate({ search: (prev) => ({ ...prev, type: c.k }), replace: true })
+                    navigate({ search: (prev: { q: string; type: string }) => ({ ...prev, type: c.k }), replace: true })
                   }
                   className={`whitespace-nowrap rounded-full border px-4 py-1.5 text-xs transition ${
                     active
