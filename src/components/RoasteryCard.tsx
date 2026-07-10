@@ -6,48 +6,61 @@ import { toFa } from "@/lib/persian";
 export function RoasteryCard({ roastery }: { roastery: Roastery }) {
   const count = productsByRoastery(roastery.slug).length;
   return (
-    <article className="flex h-full flex-col rounded-xl border border-[color:var(--rosta-border)] bg-[color:var(--rosta-card)] p-5 transition hover:-translate-y-0.5 hover:shadow-lg">
-      <div className="flex items-start gap-3">
+    <article className="card-dark card-dark-hover flex h-full flex-col rounded-2xl p-6">
+      <div className="flex items-start gap-4">
         <div
           aria-hidden
-          className="grid h-14 w-14 shrink-0 place-items-center rounded-full text-lg font-bold text-white"
-          style={{ backgroundColor: roastery.color }}
+          className="grid h-14 w-14 shrink-0 place-items-center rounded-full font-display text-lg font-bold text-[color:var(--night)] shadow-[0_0_24px_-6px_rgba(200,150,90,0.5)]"
+          style={{
+            background: `linear-gradient(135deg, ${roastery.color}, var(--roast))`,
+          }}
         >
           {roastery.initials}
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-base font-bold text-[color:var(--rosta-primary)]">
-            <Link to="/roasteries/$slug" params={{ slug: roastery.slug }} className="hover:text-[color:var(--rosta-accent)]">
+          <h3 className="truncate font-display text-lg font-bold text-[color:var(--steam)]">
+            <Link
+              to="/roasteries/$slug"
+              params={{ slug: roastery.slug }}
+              className="transition hover:text-[color:var(--roast)]"
+            >
               {roastery.name}
             </Link>
           </h3>
-          <div className="mt-1 flex items-center gap-2 text-xs text-[color:var(--rosta-secondary-text)]">
-            <span className="rounded-full bg-[color:var(--rosta-bg)] px-2 py-0.5">📍 {roastery.city}</span>
-            <span className="text-[color:var(--rosta-accent)]">★ {toFa(roastery.rating.toFixed(1))}</span>
+          <div className="mt-1 flex items-center gap-2 text-xs text-[color:var(--light)]">
+            <span className="rounded-full border border-[color:var(--mid)] bg-[color:var(--night)] px-2 py-0.5">
+              📍 {roastery.city}
+            </span>
+            <span className="font-mono-num text-[color:var(--roast)]">
+              ★ {toFa(roastery.rating.toFixed(1))}
+            </span>
           </div>
         </div>
       </div>
 
-      <ul className="mt-3 flex flex-wrap gap-1.5">
+      <ul className="mt-4 flex flex-wrap gap-1.5">
         {roastery.specialty.map((s) => (
-          <li key={s} className="rounded-full bg-[color:var(--rosta-bg)] px-2 py-0.5 text-[11px] text-[color:var(--rosta-secondary-text)]">
+          <li
+            key={s}
+            className="rounded-full border border-[color:var(--mid)] bg-[color:var(--night)] px-2.5 py-0.5 text-[11px] text-[color:var(--light)]"
+          >
             {s}
           </li>
         ))}
       </ul>
 
-      <p className="mt-3 flex-1 text-sm text-[color:var(--rosta-secondary-text)]">
+      <p className="mt-4 flex-1 text-sm leading-6 text-[color:var(--light)]">
         {roastery.description}
       </p>
 
-      <div className="mt-4 flex items-center justify-between">
-        <span className="text-xs text-[color:var(--rosta-secondary-text)]">
+      <div className="mt-5 flex items-center justify-between border-t border-[color:var(--mid)] pt-4">
+        <span className="font-mono-num text-xs text-[color:var(--muted-gold)]">
           {toFa(count)} محصول
         </span>
         <Link
           to="/roasteries/$slug"
           params={{ slug: roastery.slug }}
-          className="rounded-lg bg-[color:var(--rosta-primary)] px-3 py-1.5 text-xs font-medium text-[color:var(--rosta-bg)] transition hover:bg-[color:var(--rosta-accent)]"
+          className="rounded-lg border border-[color:var(--roast)] px-3 py-1.5 text-xs font-bold text-[color:var(--roast)] transition hover:bg-[color:var(--roast)] hover:text-[color:var(--night)]"
         >
           مشاهده محصولات
         </Link>
