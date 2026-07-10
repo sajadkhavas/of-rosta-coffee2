@@ -83,47 +83,75 @@ function HomePage() {
       <Navbar />
       <main>
         {/* HERO */}
-        <section className="relative overflow-hidden">
-          <div className="mx-auto max-w-6xl px-4 py-16 md:py-24 text-center">
-            <span className="inline-block rounded-full bg-[color:var(--rosta-card)] px-3 py-1 text-xs font-medium text-[color:var(--rosta-accent)]">
-              مارکت‌پلیس قهوه ایران
-            </span>
-            <h1 className="mt-4 text-3xl font-bold leading-tight text-[color:var(--rosta-primary)] md:text-5xl">
-              قهوه تازه‌رست، مستقیم از روستری به دست تو
-            </h1>
-            <p className="mx-auto mt-4 max-w-2xl text-base text-[color:var(--rosta-secondary-text)] md:text-lg">
-              مقایسه و خرید مستقیم قهوه تخصصی از بهترین روستری‌های ایران. با انتخاب وزن، نوع آسیاب و مشاهده تاریخ دقیق برشته‌کاری.
-            </p>
+        <section className="relative overflow-hidden border-b border-[color:var(--mid)]">
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(200,150,90,0.18),transparent_60%)]"
+          />
+          <Particles count={36} />
+          <div className="relative mx-auto grid max-w-6xl gap-10 px-4 py-20 md:grid-cols-2 md:py-28">
+            <div className="text-center md:text-right">
+              <span className="eyebrow">مارکت‌پلیس قهوه ایران</span>
+              <h1 className="mt-4 font-display text-4xl font-black leading-[1.1] text-[color:var(--steam)] md:text-6xl">
+                قهوه تازه‌رست،
+                <br />
+                <span className="text-[color:var(--roast)]">مستقیم از روستری</span>
+              </h1>
+              <p className="mx-auto mt-6 max-w-lg text-base leading-8 text-[color:var(--light)] md:mx-0 md:text-lg">
+                مقایسه و خرید مستقیم قهوه تخصصی از بهترین روستری‌های ایران. با انتخاب وزن، نوع آسیاب و مشاهده تاریخ دقیق برشته‌کاری.
+              </p>
 
-            <div className="mx-auto mt-6 flex max-w-xl flex-col items-stretch gap-2 sm:flex-row">
-              <label htmlFor="hero-search" className="sr-only">جستجوی قهوه</label>
-              <input
-                id="hero-search"
-                type="search"
-                placeholder="جستجوی قهوه، خاستگاه یا روستری…"
-                className="flex-1 rounded-lg border border-[color:var(--rosta-border)] bg-[color:var(--rosta-card)] px-4 py-3 text-sm outline-none focus:border-[color:var(--rosta-accent)]"
+              <div className="mx-auto mt-8 flex max-w-xl flex-col items-stretch gap-3 sm:flex-row md:mx-0">
+                <label htmlFor="hero-search" className="sr-only">جستجوی قهوه</label>
+                <input
+                  id="hero-search"
+                  type="search"
+                  placeholder="جستجوی قهوه، خاستگاه یا روستری…"
+                  className="flex-1 rounded-lg border border-[color:var(--mid)] bg-[color:var(--dark)] px-4 py-3 text-sm text-[color:var(--steam)] outline-none placeholder:text-[color:var(--muted-gold)] focus:border-[color:var(--roast)]"
+                />
+                <Link
+                  to="/roasteries"
+                  className="rounded-lg bg-[color:var(--roast)] px-6 py-3 text-sm font-bold text-[color:var(--night)] transition hover:brightness-110"
+                >
+                  کشف روستری‌ها
+                </Link>
+              </div>
+
+              {/* Stats */}
+              <dl className="mt-10 grid grid-cols-3 gap-4 border-t border-[color:var(--mid)] pt-8">
+                {[
+                  { n: roasteries.length, l: "روستری" },
+                  { n: products.length, l: "قهوه تخصصی" },
+                  { n: 24, l: "ساعت ارسال" },
+                ].map((s) => (
+                  <div key={s.l} className="text-center md:text-right">
+                    <dt className="font-mono-num text-3xl font-bold text-[color:var(--roast)] md:text-4xl">
+                      {toFa(s.n)}
+                    </dt>
+                    <dd className="mt-1 text-[11px] tracking-[0.2em] text-[color:var(--muted-gold)]">
+                      {s.l}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+
+            <div className="relative flex items-center justify-center">
+              <div
+                aria-hidden
+                className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(200,150,90,0.2),transparent_60%)]"
               />
-              <Link
-                to="/roasteries"
-                className="rounded-lg bg-[color:var(--rosta-primary)] px-6 py-3 text-sm font-medium text-[color:var(--rosta-bg)] transition hover:bg-[color:var(--rosta-accent)]"
-              >
-                کشف روستری‌ها
-              </Link>
+              <CoffeeBean3D />
             </div>
           </div>
         </section>
 
         {/* TRUST BAR */}
-        <section aria-label="مزایای رستا" className="border-y border-[color:var(--rosta-border)] bg-[color:var(--rosta-card)]">
+        <section aria-label="مزایای رستا" className="border-b border-[color:var(--mid)] bg-[color:var(--dark)]">
           <ul className="mx-auto grid max-w-6xl grid-cols-2 gap-3 px-4 py-6 text-sm md:grid-cols-4">
-            {[
-              "تازه‌رست",
-              "بدون واسطه",
-              "انتخاب آسیاب",
-              "ارسال سریع",
-            ].map((t) => (
-              <li key={t} className="flex items-center gap-2 text-[color:var(--rosta-primary)]">
-                <span className="grid h-6 w-6 place-items-center rounded-full bg-[color:var(--rosta-accent)] text-xs text-white">✓</span>
+            {["تازه‌رست", "بدون واسطه", "انتخاب آسیاب", "ارسال سریع"].map((t) => (
+              <li key={t} className="flex items-center gap-3 text-[color:var(--light)]">
+                <span className="grid h-7 w-7 place-items-center rounded-full border border-[color:var(--roast)] text-xs text-[color:var(--roast)]">✓</span>
                 {t}
               </li>
             ))}
@@ -131,16 +159,23 @@ function HomePage() {
         </section>
 
         {/* FEATURED ROASTERIES */}
-        <section className="mx-auto max-w-6xl px-4 py-12">
-          <div className="flex items-end justify-between">
-            <h2 className="text-2xl font-bold">روستری‌های منتخب</h2>
-            <Link to="/roasteries" className="text-sm text-[color:var(--rosta-accent)] hover:underline">
+        <section className="mx-auto max-w-6xl px-4 py-20">
+          <div className="mb-10 flex items-end justify-between gap-4">
+            <div>
+              <span className="eyebrow">انتخاب سردبیر</span>
+              <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-[color:var(--steam)] md:text-5xl">
+                روستری‌های
+                <br />
+                <span className="text-[color:var(--roast)]">منتخب ایران</span>
+              </h2>
+            </div>
+            <Link to="/roasteries" className="shrink-0 text-sm font-bold text-[color:var(--roast)] hover:underline">
               مشاهده همه ←
             </Link>
           </div>
-          <div className="mt-6 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 md:grid md:grid-cols-3 md:overflow-visible lg:grid-cols-5">
-            {featuredRoasteries.map((r) => (
-              <div key={r.slug} className="min-w-[260px] shrink-0 snap-start md:min-w-0">
+          <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4 md:grid md:grid-cols-3 md:overflow-visible lg:grid-cols-3">
+            {featuredRoasteries.slice(0, 3).map((r) => (
+              <div key={r.slug} className="min-w-[280px] shrink-0 snap-start md:min-w-0">
                 <RoasteryCard roastery={r} />
               </div>
             ))}
@@ -148,21 +183,31 @@ function HomePage() {
         </section>
 
         {/* HOW IT WORKS */}
-        <section className="bg-[color:var(--rosta-card)]">
-          <div className="mx-auto max-w-6xl px-4 py-12">
-            <h2 className="text-center text-2xl font-bold">چطور کار می‌کند؟</h2>
-            <ol className="mt-8 grid gap-6 md:grid-cols-3">
+        <section className="border-y border-[color:var(--mid)] bg-[color:var(--dark)]">
+          <div className="mx-auto max-w-6xl px-4 py-20">
+            <div className="text-center">
+              <span className="eyebrow">فرایند</span>
+              <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-[color:var(--steam)] md:text-5xl">
+                از دانه تا فنجان
+                <br />
+                <span className="text-[color:var(--roast)]">در سه گام</span>
+              </h2>
+            </div>
+            <ol className="mt-14 grid gap-6 md:grid-cols-3">
               {[
                 { icon: "🏪", title: "روستری را انتخاب کن", desc: "از بین بهترین روستری‌های ایران روستری موردعلاقه‌ات را انتخاب کن." },
                 { icon: "☕️", title: "قهوه، وزن و آسیاب را انتخاب کن", desc: "با توجه به دستگاه دم‌آوری، نوع آسیاب و وزن دلخواه را انتخاب کن." },
                 { icon: "🚚", title: "قهوه تازه به دستت می‌رسد", desc: "روستری پس از سفارش، قهوه را برشته و برایت ارسال می‌کند." },
               ].map((s, i) => (
-                <li key={i} className="rounded-xl border border-[color:var(--rosta-border)] bg-[color:var(--rosta-bg)] p-6 text-center">
-                  <div aria-hidden className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[color:var(--rosta-primary)] text-2xl text-[color:var(--rosta-bg)]">
+                <li key={i} className="card-dark card-dark-hover rounded-2xl p-8 text-center">
+                  <div className="font-mono-num text-xs tracking-[0.3em] text-[color:var(--roast)]">
+                    ۰{toFa(i + 1)}
+                  </div>
+                  <div aria-hidden className="mx-auto mt-4 grid h-16 w-16 place-items-center rounded-full border border-[color:var(--roast)] bg-[color:var(--night)] text-3xl">
                     {s.icon}
                   </div>
-                  <h3 className="mt-4 text-lg font-bold">{toFa(i + 1)}. {s.title}</h3>
-                  <p className="mt-2 text-sm text-[color:var(--rosta-secondary-text)]">{s.desc}</p>
+                  <h3 className="mt-5 font-display text-xl font-bold text-[color:var(--steam)]">{s.title}</h3>
+                  <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">{s.desc}</p>
                 </li>
               ))}
             </ol>
@@ -170,31 +215,71 @@ function HomePage() {
         </section>
 
         {/* FEATURED PRODUCTS */}
-        <section className="mx-auto max-w-6xl px-4 py-12">
-          <div className="flex items-end justify-between">
-            <h2 className="text-2xl font-bold">قهوه‌های منتخب</h2>
-            <Link to="/products" className="text-sm text-[color:var(--rosta-accent)] hover:underline">
+        <section className="mx-auto max-w-6xl px-4 py-20">
+          <div className="mb-10 flex items-end justify-between gap-4">
+            <div>
+              <span className="eyebrow">تازه‌ترین‌ها</span>
+              <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-[color:var(--steam)] md:text-5xl">
+                قهوه‌های
+                <br />
+                <span className="text-[color:var(--roast)]">منتخب هفته</span>
+              </h2>
+            </div>
+            <Link to="/products" className="shrink-0 text-sm font-bold text-[color:var(--roast)] hover:underline">
               همه محصولات ←
             </Link>
           </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {featuredProducts.map((p) => (
               <ProductCard key={p.slug} product={p} />
             ))}
           </div>
         </section>
 
+        {/* QUIZ BANNER */}
+        <section className="mx-auto max-w-6xl px-4 pb-20">
+          <div className="relative overflow-hidden rounded-3xl border border-[color:var(--mid)] bg-gradient-to-br from-[#1a0a00] via-[#2a1405] to-[#0a0400] px-8 py-16 text-center">
+            <div aria-hidden className="pointer-events-none absolute -top-8 -right-6 select-none text-[10rem] leading-none opacity-[0.06]">☕</div>
+            <div aria-hidden className="pointer-events-none absolute -bottom-16 -left-8 select-none text-[14rem] leading-none opacity-[0.05]">☕</div>
+            <span className="eyebrow relative">راهنمای انتخاب</span>
+            <h2 className="relative mt-4 font-display text-3xl font-bold leading-tight text-[color:var(--steam)] md:text-5xl">
+              نمی‌دانی کدام قهوه
+              <br />
+              <span className="text-[color:var(--roast)]">مناسب توست؟</span>
+            </h2>
+            <p className="relative mx-auto mt-5 max-w-xl text-sm leading-7 text-[color:var(--light)] md:text-base">
+              با پاسخ به چند سؤال ساده، ذائقه‌ات را می‌شناسیم و بهترین قهوه را پیشنهاد می‌دهیم.
+            </p>
+            <Link
+              to="/products"
+              className="relative mt-8 inline-block rounded-lg bg-[color:var(--roast)] px-8 py-3 text-sm font-bold text-[color:var(--night)] transition hover:brightness-110"
+            >
+              شروع کوییز ذائقه
+            </Link>
+          </div>
+        </section>
+
         {/* FAQ */}
-        <section className="bg-[color:var(--rosta-card)]">
-          <div className="mx-auto max-w-3xl px-4 py-12">
-            <h2 className="text-center text-2xl font-bold">پرسش‌های پرتکرار</h2>
-            <div className="mt-6 space-y-3">
+        <section className="border-t border-[color:var(--mid)] bg-[color:var(--dark)]">
+          <div className="mx-auto max-w-3xl px-4 py-20">
+            <div className="text-center">
+              <span className="eyebrow">پرسش‌ها</span>
+              <h2 className="mt-3 font-display text-3xl font-bold leading-tight text-[color:var(--steam)] md:text-5xl">
+                پرسش‌های
+                <br />
+                <span className="text-[color:var(--roast)]">پرتکرار</span>
+              </h2>
+            </div>
+            <div className="mt-10 space-y-3">
               {faqs.map((f, i) => (
-                <details key={i} className="group rounded-xl border border-[color:var(--rosta-border)] bg-[color:var(--rosta-bg)] p-4">
-                  <summary className="cursor-pointer list-none text-base font-medium text-[color:var(--rosta-primary)]">
+                <details
+                  key={i}
+                  className="group rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] p-5 transition hover:border-[color:var(--roast)]"
+                >
+                  <summary className="cursor-pointer list-none text-base font-medium text-[color:var(--steam)]">
                     {f.q}
                   </summary>
-                  <p className="mt-3 text-sm leading-7 text-[color:var(--rosta-secondary-text)]">{f.a}</p>
+                  <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">{f.a}</p>
                 </details>
               ))}
             </div>
@@ -205,3 +290,4 @@ function HomePage() {
     </>
   );
 }
+
