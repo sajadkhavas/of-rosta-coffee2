@@ -1,13 +1,15 @@
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { memo, useState } from "react";
 import type { Product, Weight } from "@/data/seed";
 import { getRoastery } from "@/data/seed";
 import { formatToman, toFa } from "@/lib/persian";
 import { RoastLevelBadge } from "./RoastLevelBadge";
 import { WeightSelector } from "./WeightSelector";
 import { roastDateLabel } from "@/lib/persian";
+import { productImage } from "@/lib/product-images";
 
-export function ProductCard({ product }: { product: Product }) {
+function ProductCardImpl({ product }: { product: Product }) {
+
   const [weight, setWeight] = useState<Weight>(250);
   const roastery = getRoastery(product.roasterySlug);
 
