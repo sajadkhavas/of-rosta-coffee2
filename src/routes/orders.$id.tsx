@@ -92,7 +92,7 @@ function OrderDetailPage() {
     } catch {}
   }
 
-  const subtotal = order.items.reduce((s, i) => s + i.price * i.qty, 0);
+  const subtotal = order.items.reduce((s: number, i: MockOrderItem) => s + i.price * i.qty, 0);
 
   return (
     <>
@@ -146,7 +146,7 @@ function OrderDetailPage() {
         <section className="mt-6 rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5">
           <h2 className="mb-3 text-sm font-bold text-[color:var(--steam)]">اقلام</h2>
           <ul className="divide-y divide-[color:var(--mid)]">
-            {order.items.map((it, idx) => (
+            {order.items.map((it: MockOrderItem, idx: number) => (
               <li key={idx} className="flex items-center justify-between py-3">
                 <div>
                   <div className="text-sm font-bold text-[color:var(--steam)]">
