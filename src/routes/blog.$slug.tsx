@@ -132,7 +132,7 @@ function BlogPostPage() {
               محصولات مرتبط
             </h2>
             <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {related.map((p) => (
+              {related.map((p: import("@/data/seed").Product) => (
                 <ProductCard key={p.slug} product={p} />
               ))}
             </div>
@@ -142,7 +142,7 @@ function BlogPostPage() {
         <section className="mt-16 border-t border-[color:var(--mid)] pt-10">
           <h2 className="font-display text-2xl font-bold text-[color:var(--steam)]">مقالات مرتبط</h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            {more.map((p) => (
+            {more.map((p: import("@/data/blog-posts").BlogPost) => (
               <Link
                 key={p.slug}
                 to="/blog/$slug"
