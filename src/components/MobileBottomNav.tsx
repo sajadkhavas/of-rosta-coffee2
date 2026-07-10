@@ -58,12 +58,12 @@ export function MobileBottomNav() {
           کوییز
         </span>
       </Link>
-      <Item to="/products" active={false} label="سبد خرید">
+      <Item to="/cart" active={isActive("/cart")} label="سبد خرید">
         <span className="relative">
           <ShoppingBag size={22} strokeWidth={1.5} />
         </span>
       </Item>
-      <Item to="/about" active={isActive("/about")} label="حساب من">
+      <Item to="/profile" active={isActive("/profile")} label="حساب من">
         <User size={22} strokeWidth={1.5} />
       </Item>
     </nav>
