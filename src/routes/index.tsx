@@ -3,7 +3,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { ProductCard } from "@/components/ProductCard";
 import { RoasteryCard } from "@/components/RoasteryCard";
-import { CoffeeBean3D, Particles } from "@/components/HeroFx";
+import HeroBean from "@/components/HeroBean";
 import { roasteries, products, faqs } from "@/data/seed";
 import { toFa } from "@/lib/persian";
 
