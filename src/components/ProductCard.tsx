@@ -92,3 +92,6 @@ function ProductCardImpl({ product }: { product: Product }) {
     </article>
   );
 }
+
+
+export const ProductCard = memo(ProductCardImpl);
