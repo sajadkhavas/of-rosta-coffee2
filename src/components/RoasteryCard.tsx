@@ -80,6 +80,10 @@ function RoasteryCardImpl({ roastery }: { roastery: Roastery }) {
           مشاهده محصولات
         </Link>
       </div>
+      </div>
     </article>
   );
 }
+
+export const RoasteryCard = memo(RoasteryCardImpl);
+
