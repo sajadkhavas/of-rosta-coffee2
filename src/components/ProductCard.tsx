@@ -91,9 +91,10 @@ function ProductCardImpl({ product }: { product: Product }) {
           </div>
           <button
             type="button"
+            onClick={handleAdd}
             className="mt-3 w-full rounded-lg border border-[color:var(--roast)] bg-[color:var(--roast)] py-2 text-sm font-bold text-[color:var(--night)] transition hover:bg-transparent hover:text-[color:var(--roast)]"
           >
-            افزودن به سبد
+            {added ? "افزوده شد ✓" : "افزودن به سبد"}
           </button>
         </div>
       </div>
