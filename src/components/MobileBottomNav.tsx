@@ -1,7 +1,10 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Home, Search, Sparkles, ShoppingBag, User } from "lucide-react";
+import { useCart } from "@/lib/cart-context";
+import { toFa } from "@/lib/persian";
 
 export function MobileBottomNav() {
+  const { itemCount } = useCart();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isActive = (p: string, exact = false) =>
     exact ? pathname === p : pathname === p || pathname.startsWith(p + "/");
