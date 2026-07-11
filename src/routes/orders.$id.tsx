@@ -153,7 +153,7 @@ function OrderDetailPage() {
                     {it.productName}
                   </div>
                   <div className="mt-0.5 text-xs text-[color:var(--light)]">
-                    {toFa(it.weight)} گرم · {it.grind} · {toFa(it.qty)} عدد
+                    {toFa(it.weight)} گرم · دانه کامل · {toFa(it.qty)} عدد
                   </div>
                 </div>
                 <span className="font-mono-num text-sm text-[color:var(--roast)]">
