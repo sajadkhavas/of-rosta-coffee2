@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Breadcrumb } from "@/components/Breadcrumb";
-import { loadProfile, type TasteProfile } from "@/lib/quiz-storage";
+import { loadProfile, type TasteProfile } from "@/lib/quiz-logic";
 
 // TODO: replace with real API call when backend ready.
 const mockUser = {
