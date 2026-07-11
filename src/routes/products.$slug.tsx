@@ -282,11 +282,10 @@ function ProductPage() {
             <section className="mt-5">
               <h2 className="mb-2 text-xs font-bold text-[color:var(--light)]">وزن</h2>
               <WeightSelector value={weight} onChange={setWeight} />
-            </section>
-
-            <section className="mt-4">
-              <h2 className="mb-2 text-xs font-bold text-[color:var(--light)]">آسیاب</h2>
-              <GrindSelector value={grind} onChange={setGrind} />
+              <p className="mt-3 rounded-lg border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2 text-[11px] leading-6 text-[color:var(--light)]">
+                <span aria-hidden className="ml-1 text-[color:var(--roast)]">ⓘ</span>
+                قهوه رستا همیشه به‌صورت دانه کامل ارسال می‌شود — چون آسیاب کردن، تازگی قهوه را در عرض چند روز از بین می‌برد. با آسیاب در لحظه مصرف، بیشترین رایحه و طعم را تجربه می‌کنید.
+              </p>
             </section>
 
             <section className="mt-5">
