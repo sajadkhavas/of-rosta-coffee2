@@ -16,7 +16,7 @@ function ProductCardImpl({ product }: { product: Product }) {
   const { addItem } = useCart();
   const [added, setAdded] = useState(false);
   const handleAdd = () => {
-    addItem(product.slug, weight, "دانه", 1);
+    addItem(product.slug, weight, 1);
     setAdded(true);
     window.setTimeout(() => setAdded(false), 1500);
   };

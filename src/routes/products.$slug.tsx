@@ -8,13 +8,11 @@ import { ProductCard } from "@/components/ProductCard";
 import { RoastDateBadge } from "@/components/RoastDateBadge";
 import { RoastLevelBadge } from "@/components/RoastLevelBadge";
 import { WeightSelector } from "@/components/WeightSelector";
-import { GrindSelector } from "@/components/GrindSelector";
 import {
   getProduct,
   getRoastery,
   products,
   productsByRoastery,
-  type Grind,
   type Weight,
 } from "@/data/seed";
 import { formatToman, toFa } from "@/lib/persian";
@@ -130,8 +128,8 @@ function buildFaq(product: {
 }) {
   return [
     {
-      q: "این قهوه برای چه دستگاهی مناسب است؟",
-      a: `این قهوه برای اسپرسو، موکاپات و فرنچ‌پرس آسیاب می‌شود و می‌توانید هنگام سفارش نوع آسیاب دلخواه‌تان را انتخاب کنید.`,
+      q: "این قهوه به چه شکل ارسال می‌شود؟",
+      a: `این قهوه به‌صورت دانه کامل ارسال می‌شود. برای بهترین طعم، توصیه می‌کنیم قهوه را نزدیک به زمان مصرف آسیاب کنید تا رایحه و طعم آن حفظ شود.`,
     },
     {
       q: "چرا قیمت این قهوه با محصولات دیگر فرق دارد؟",
@@ -176,7 +174,7 @@ function Accordion({
 function ProductPage() {
   const { product, roastery, related, similarByOrigin } = Route.useLoaderData();
   const [weight, setWeight] = useState<Weight>(250);
-  const [grind, setGrind] = useState<Grind>("دانه");
+  
   const [mainImg, setMainImg] = useState(productImage(product.slug, 1200));
   const thumbs = productThumbnails(product.slug, 200);
   const price = useMemo(() => product.prices[weight], [product, weight]);
@@ -185,7 +183,7 @@ function ProductPage() {
   const { addItem } = useCart();
   const [added, setAdded] = useState(false);
   const handleAdd = () => {
-    addItem(product.slug, weight, grind, 1);
+    addItem(product.slug, weight, 1);
     setAdded(true);
     window.setTimeout(() => setAdded(false), 1500);
   };
@@ -284,11 +282,10 @@ function ProductPage() {
             <section className="mt-5">
               <h2 className="mb-2 text-xs font-bold text-[color:var(--light)]">وزن</h2>
               <WeightSelector value={weight} onChange={setWeight} />
-            </section>
-
-            <section className="mt-4">
-              <h2 className="mb-2 text-xs font-bold text-[color:var(--light)]">آسیاب</h2>
-              <GrindSelector value={grind} onChange={setGrind} />
+              <p className="mt-3 rounded-lg border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2 text-[11px] leading-6 text-[color:var(--light)]">
+                <span aria-hidden className="ml-1 text-[color:var(--roast)]">ⓘ</span>
+                قهوه رستا همیشه به‌صورت دانه کامل ارسال می‌شود — چون آسیاب کردن، تازگی قهوه را در عرض چند روز از بین می‌برد. با آسیاب در لحظه مصرف، بیشترین رایحه و طعم را تجربه می‌کنید.
+              </p>
             </section>
 
             <section className="mt-5">

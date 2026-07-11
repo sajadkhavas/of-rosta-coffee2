@@ -18,7 +18,7 @@ export function Footer() {
             </div>
           </div>
           <p className="mt-4 max-w-sm text-sm leading-7 text-[color:var(--light)]">
-            قهوه تازه، بدون واسطه. هر محصول با تاریخ رست دقیق و انتخاب آسیاب مستقیم از روستری.
+            قهوه تازه، بدون واسطه. دانه کامل با تاریخ رست دقیق، مستقیم از روستری.
           </p>
         </div>
 
@@ -46,7 +46,7 @@ export function Footer() {
           <ul className="mt-4 space-y-3 text-sm text-[color:var(--light)]">
             <li>تازه‌رست از روستری</li>
             <li>بدون واسطه</li>
-            <li>انتخاب آسیاب</li>
+            <li>دانه کامل و تازه</li>
             <li>ارسال سریع</li>
           </ul>
         </div>

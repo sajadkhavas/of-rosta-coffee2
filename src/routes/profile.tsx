@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Breadcrumb } from "@/components/Breadcrumb";
-import { loadProfile, type TasteProfile } from "@/lib/quiz-storage";
+import { loadProfile, type TasteProfile } from "@/lib/quiz-logic";
 
 // TODO: replace with real API call when backend ready.
 const mockUser = {
@@ -61,9 +61,10 @@ function ProfilePage() {
             {profile ? (
               <>
                 <ul className="mt-3 space-y-1 text-sm text-[color:var(--light)]">
-                  {profile.roastLevel && <li>سطح رست: {profile.roastLevel}</li>}
-                  {profile.method && <li>روش دم‌آوری: {profile.method}</li>}
-                  {profile.flavor && <li>طعم دلخواه: {profile.flavor}</li>}
+                  {profile.roast && <li>سطح رست: {profile.roast}</li>}
+                  {profile.brewMethod && <li>روش دم‌آوری: {profile.brewMethod}</li>}
+                  {profile.flavors.length > 0 && <li>طعم‌های دلخواه: {profile.flavors.join("، ")}</li>}
+                  {profile.experience && <li>سطح تجربه: {profile.experience === "beginner" ? "تازه‌کار" : profile.experience === "some" ? "متوسط" : "حرفه‌ای"}</li>}
                 </ul>
                 <Link
                   to="/quiz"

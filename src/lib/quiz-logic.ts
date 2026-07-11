@@ -11,11 +11,9 @@ export type BrewMethod =
 export type RoastPref = "روشن" | "متوسط" | "تیره" | "پیشنهاد بده";
 export type Adventure = "safe" | "balanced" | "adventurous";
 export type Experience = "beginner" | "some" | "pro";
-export type BeanForm = "whole" | "ground" | "any";
 
 export interface TasteProfile {
   brewMethod: BrewMethod | null;
-  beanForm: BeanForm | null;
   roast: RoastPref | null;
   adventure: Adventure | null;
   flavors: string[];
@@ -25,7 +23,6 @@ export interface TasteProfile {
 
 export const EMPTY_PROFILE: TasteProfile = {
   brewMethod: null,
-  beanForm: null,
   roast: null,
   adventure: null,
   flavors: [],

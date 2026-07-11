@@ -6,7 +6,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Breadcrumb, breadcrumbJsonLd } from "@/components/Breadcrumb";
 import { ProductCard } from "@/components/ProductCard";
-import { products, roasteries, GRINDS, type RoastLevel, type Grind } from "@/data/seed";
+import { products, roasteries, type RoastLevel } from "@/data/seed";
 import { toFa } from "@/lib/persian";
 
 const ORIGINS = Array.from(new Set(products.map((p) => p.origin)));
@@ -15,7 +15,6 @@ const ROAST_LEVELS: RoastLevel[] = ["روشن", "متوسط", "تیره"];
 const productsSearchSchema = z.object({
   origin: fallback(z.string(), "").default(""),
   roast: fallback(z.string(), "").default(""),
-  grind: fallback(z.string(), "").default(""),
   roastery: fallback(z.string(), "").default(""),
 });
 
@@ -25,7 +24,6 @@ function buildCanonical(search: ProductsSearch): string {
   const params = new URLSearchParams();
   if (search.origin) params.set("origin", search.origin);
   if (search.roast) params.set("roast", search.roast);
-  if (search.grind) params.set("grind", search.grind);
   if (search.roastery) params.set("roastery", search.roastery);
   const qs = params.toString();
   return "/products" + (qs ? `?${qs}` : "");
@@ -36,20 +34,17 @@ export const Route = createFileRoute("/products/")({
   head: (ctx) => {
     const search = (ctx as { search?: ProductsSearch }).search;
 
-    const s = (search ?? { origin: "", roast: "", grind: "", roastery: "" }) as ProductsSearch;
+    const s = (search ?? { origin: "", roast: "", roastery: "" }) as ProductsSearch;
     let title = "خرید دانه قهوه و قهوه اسپشیالیتی | رستا";
     let description =
-      "خرید دانه قهوه تک‌خاستگاه از اتیوپی، کلمبیا، برزیل و کنیا. رست تازه از روستری‌های ایران با انتخاب آسیاب و ارسال سریع.";
+      "خرید دانه قهوه تک‌خاستگاه از اتیوپی، کلمبیا، برزیل و کنیا. رست تازه از روستری‌های ایران با ارسال سریع. همه محصولات به‌صورت دانه کامل برای حفظ تازگی.";
 
     if (s.origin) {
       title = `قهوه تک خاستگاه ${s.origin} | خرید آنلاین | رستا`;
-      description = `خرید قهوه تک‌خاستگاه ${s.origin} از بهترین روستری‌های ایران. رست تازه، ارسال سریع.`;
+      description = `خرید دانه قهوه تک‌خاستگاه ${s.origin} از بهترین روستری‌های ایران. رست تازه، ارسال سریع.`;
     } else if (s.roast) {
       title = `قهوه رست ${s.roast} | خرید آنلاین | رستا`;
-      description = `خرید قهوه با رست ${s.roast} از روستری‌های منتخب رستا.`;
-    } else if (s.grind) {
-      title = `قهوه آسیاب ${s.grind} | خرید آنلاین | رستا`;
-      description = `خرید قهوه آماده برای ${s.grind} با آسیاب دقیق و تازه.`;
+      description = `خرید دانه قهوه با رست ${s.roast} از روستری‌های منتخب رستا.`;
     }
 
     const canonical = buildCanonical(s);
@@ -92,7 +87,7 @@ function ProductsPage() {
   };
 
   const clearAll = () =>
-    navigate({ search: { origin: "", roast: "", grind: "", roastery: "" }, replace: true });
+    navigate({ search: { origin: "", roast: "", roastery: "" }, replace: true });
 
   const filtered = useMemo(
     () =>
@@ -109,8 +104,6 @@ function ProductsPage() {
     ? `قهوه تک خاستگاه ${search.origin}`
     : search.roast
     ? `قهوه رست ${search.roast}`
-    : search.grind
-    ? `قهوه برای آسیاب ${search.grind}`
     : "همه محصولات";
 
   const Chip = ({
@@ -174,17 +167,6 @@ function ProductsPage() {
               {ROAST_LEVELS.map((l) => (
                 <Chip key={l} active={search.roast === l} onClick={() => setParam("roast", l)}>
                   {l}
-                </Chip>
-              ))}
-            </div>
-          </div>
-          <div>
-            <h2 className="mb-2 text-xs font-bold text-[color:var(--light)]">آسیاب</h2>
-            <div className="flex flex-wrap gap-1.5">
-              <Chip active={!search.grind} onClick={() => setParam("grind", "")}>همه</Chip>
-              {GRINDS.map((g: Grind) => (
-                <Chip key={g} active={search.grind === g} onClick={() => setParam("grind", g)}>
-                  {g}
                 </Chip>
               ))}
             </div>

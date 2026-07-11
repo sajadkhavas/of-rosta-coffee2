@@ -89,7 +89,7 @@ function CartPage() {
                   </header>
                   <ul className="space-y-3">
                     {list.map((it: CartItem & { product: NonNullable<ReturnType<typeof getProduct>> }) => (
-                      <li key={`${it.productSlug}-${it.weight}-${it.grind}`} className="flex gap-3">
+                      <li key={`${it.productSlug}-${it.weight}`} className="flex gap-3">
                         <img
                           src={productImage(it.product.slug, 200)}
                           alt={it.product.name}
@@ -110,21 +110,21 @@ function CartPage() {
                             <button
                               type="button"
                               aria-label="حذف از سبد"
-                              onClick={() => removeItem(it.productSlug, it.weight, it.grind)}
+                              onClick={() => removeItem(it.productSlug, it.weight)}
                               className="text-[color:var(--light)] transition hover:text-red-400"
                             >
                               <X size={16} />
                             </button>
                           </div>
                           <div className="mt-1 text-xs text-[color:var(--light)]">
-                            {toFa(it.weight)} گرم · {it.grind}
+                            {toFa(it.weight)} گرم · دانه کامل
                           </div>
                           <div className="mt-2 flex items-center justify-between">
                             <div className="inline-flex items-center gap-2 rounded-lg border border-[color:var(--mid)]">
                               <button
                                 type="button"
                                 aria-label="کاهش تعداد"
-                                onClick={() => updateQty(it.productSlug, it.weight, it.grind, it.qty - 1)}
+                                onClick={() => updateQty(it.productSlug, it.weight, it.qty - 1)}
                                 className="px-2 py-1 text-[color:var(--roast)]"
                               >
                                 −
@@ -133,7 +133,7 @@ function CartPage() {
                               <button
                                 type="button"
                                 aria-label="افزایش تعداد"
-                                onClick={() => updateQty(it.productSlug, it.weight, it.grind, it.qty + 1)}
+                                onClick={() => updateQty(it.productSlug, it.weight, it.qty + 1)}
                                 className="px-2 py-1 text-[color:var(--roast)]"
                               >
                                 +

@@ -16,13 +16,13 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "رستا مارکت‌پلیس قهوه ایران — قهوه تازه‌رست از بهترین روستری‌های ایران را مقایسه و سفارش دهید. بدون واسطه، با انتخاب آسیاب.",
+          "رستا مارکت‌پلیس قهوه ایران — دانه قهوه تازه‌رست از بهترین روستری‌های ایران را مقایسه و سفارش دهید. بدون واسطه، همیشه دانه کامل برای حفظ تازگی.",
       },
       { property: "og:title", content: "رستا | خرید قهوه تازه مستقیم از روستری" },
       {
         property: "og:description",
         content:
-          "قهوه تازه‌رست از بهترین روستری‌های ایران. بدون واسطه، با انتخاب آسیاب.",
+          "دانه قهوه تازه‌رست از بهترین روستری‌های ایران. بدون واسطه، دانه کامل برای حفظ تازگی.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "/" },
@@ -107,7 +107,7 @@ function HomePage() {
                 data-fade-up
                 className="mx-auto mt-6 max-w-lg text-base leading-8 text-[color:var(--light)] md:mx-0 md:text-lg"
               >
-                مستقیم از روستری به دست تو — با تاریخ دقیق برشته‌کاری، انتخاب وزن و نوع آسیاب.
+                مستقیم از روستری به دست تو — دانه کامل، با تاریخ دقیق برشته‌کاری و ارسال سریع.
               </p>
 
               <div
@@ -169,7 +169,7 @@ function HomePage() {
         {/* TRUST BAR */}
         <section aria-label="مزایای رستا" className="border-b border-[color:var(--mid)] bg-[color:var(--dark)]">
           <ul className="mx-auto grid max-w-6xl grid-cols-2 gap-3 px-4 py-6 text-sm md:grid-cols-4">
-            {["تازه‌رست", "بدون واسطه", "انتخاب آسیاب", "ارسال سریع"].map((t) => (
+            {["تازه‌رست", "بدون واسطه", "دانه کامل", "ارسال سریع"].map((t) => (
               <li key={t} className="flex items-center gap-3 text-[color:var(--light)]">
                 <span className="grid h-7 w-7 place-items-center rounded-full border border-[color:var(--roast)] text-xs text-[color:var(--roast)]">✓</span>
                 {t}
@@ -216,7 +216,7 @@ function HomePage() {
             <ol className="mt-14 grid gap-6 md:grid-cols-3">
               {[
                 { icon: "🏪", title: "روستری را انتخاب کن", desc: "از بین بهترین روستری‌های ایران روستری موردعلاقه‌ات را انتخاب کن." },
-                { icon: "☕️", title: "قهوه، وزن و آسیاب را انتخاب کن", desc: "با توجه به دستگاه دم‌آوری، نوع آسیاب و وزن دلخواه را انتخاب کن." },
+                { icon: "☕️", title: "قهوه و وزن دلخواه‌ت را انتخاب کن", desc: "همه محصولات به‌صورت دانه کامل ارسال می‌شوند تا بیشترین تازگی و عطر حفظ شود." },
                 { icon: "🚚", title: "قهوه تازه به دستت می‌رسد", desc: "روستری پس از سفارش، قهوه را برشته و برایت ارسال می‌کند." },
               ].map((s, i) => (
                 <li key={i} className="card-dark card-dark-hover rounded-2xl p-8 text-center">

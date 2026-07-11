@@ -7,7 +7,6 @@ import {
   matchProducts,
   saveProfile,
   type Adventure,
-  type BeanForm,
   type BrewMethod,
   type Experience,
   type RoastPref,
@@ -46,7 +45,7 @@ export const Route = createFileRoute("/quiz")({
               acceptedAnswer: {
                 "@type": "Answer",
                 text:
-                  "با پاسخ به هفت سؤال کوتاه درباره روش دم‌آوری، سطح رست، طعم‌های مورد علاقه و میزان ماجراجویی، سیستم رستا محصولاتی را که بیشترین انطباق با ذائقه شما دارند پیشنهاد می‌دهد.",
+                  "با پاسخ به شش سؤال کوتاه درباره روش دم‌آوری، سطح رست، طعم‌های مورد علاقه و میزان ماجراجویی، سیستم رستا محصولاتی را که بیشترین انطباق با ذائقه شما دارند پیشنهاد می‌دهد.",
               },
             },
             {
@@ -96,7 +95,6 @@ function QuizPage() {
 
   const steps: StepBase[] = [
     { title: "روش دم‌آوری", isAnswered: (p) => !!p.brewMethod },
-    { title: "دانه یا آسیاب", isAnswered: (p) => !!p.beanForm },
     { title: "سطح رست", isAnswered: (p) => !!p.roast },
     { title: "ماجراجویی", isAnswered: (p) => !!p.adventure },
     { title: "طعم‌ها", isAnswered: (p) => p.flavors.length > 0 },
@@ -203,8 +201,14 @@ function QuizPage() {
         className="h-screen overflow-y-scroll"
         style={{ scrollSnapType: "y mandatory" }}
       >
-        {/* Q1 — Brew method */}
-        <Section index={0} title="با چه دستگاهی قهوه درست می‌کنی؟" step={1} total={totalQuestions}>
+        {/* Q1 — Brew method (informs roast bias — no grind, we ship whole beans only) */}
+        <Section
+          index={0}
+          title="با چه دستگاهی قهوه درست می‌کنی؟"
+          step={1}
+          total={totalQuestions}
+          hint="بر اساس دستگاهت، سطح رست مناسب رو پیشنهاد می‌دیم"
+        >
           <div className="grid grid-cols-2 gap-3">
             {BREW_METHODS.map((m) => (
               <ChoiceCard
@@ -218,29 +222,8 @@ function QuizPage() {
           </div>
         </Section>
 
-        {/* Q2 — Bean form */}
-        <Section index={1} title="دانه می‌خری یا آسیاب‌شده؟" step={2} total={totalQuestions}>
-          <div className="grid gap-3">
-            {(
-              [
-                { v: "whole", label: "دانه کامل — خودم آسیاب می‌کنم" },
-                { v: "ground", label: "آسیاب‌شده — متناسب با دستگاهم" },
-                { v: "any", label: "فرقی نداره" },
-              ] as { v: BeanForm; label: string }[]
-            ).map((o) => (
-              <ChoiceCard
-                key={o.v}
-                active={profile.beanForm === o.v}
-                onClick={() => setProfile((p) => ({ ...p, beanForm: o.v }))}
-              >
-                {o.label}
-              </ChoiceCard>
-            ))}
-          </div>
-        </Section>
-
-        {/* Q3 — Roast */}
-        <Section index={2} title="چه سطح رستی رو ترجیح می‌دی؟" step={3} total={totalQuestions}>
+        {/* Q2 — Roast */}
+        <Section index={1} title="چه سطح رستی رو ترجیح می‌دی؟" step={2} total={totalQuestions}>
           <div className="grid gap-3">
             {(
               [
@@ -271,8 +254,8 @@ function QuizPage() {
           </div>
         </Section>
 
-        {/* Q4 — Adventure */}
-        <Section index={3} title="چقدر اهل امتحان طعم‌های جدید هستی؟" step={4} total={totalQuestions}>
+        {/* Q3 — Adventure */}
+        <Section index={2} title="چقدر اهل امتحان طعم‌های جدید هستی؟" step={3} total={totalQuestions}>
           <div className="grid gap-3">
             {(
               [
@@ -293,11 +276,11 @@ function QuizPage() {
           </div>
         </Section>
 
-        {/* Q5 — Flavors */}
+        {/* Q4 — Flavors */}
         <Section
-          index={4}
+          index={3}
           title="کدوم طعم‌ها بیشتر جذبت می‌کنن؟"
-          step={5}
+          step={4}
           total={totalQuestions}
           hint="حداکثر ۳ مورد"
         >
@@ -323,8 +306,8 @@ function QuizPage() {
           </div>
         </Section>
 
-        {/* Q6 — Caffeine */}
-        <Section index={5} title="کافئین معمولی می‌خوای یا کم‌کافئین؟" step={6} total={totalQuestions}>
+        {/* Q5 — Caffeine */}
+        <Section index={4} title="کافئین معمولی می‌خوای یا کم‌کافئین؟" step={5} total={totalQuestions}>
           <div className="grid gap-3">
             {(
               [
@@ -343,8 +326,8 @@ function QuizPage() {
           </div>
         </Section>
 
-        {/* Q7 — Experience */}
-        <Section index={6} title="با قهوه اسپشیالیتی چقدر آشنایی؟" step={7} total={totalQuestions}>
+        {/* Q6 — Experience */}
+        <Section index={5} title="با قهوه اسپشیالیتی چقدر آشنایی؟" step={6} total={totalQuestions}>
           <div className="grid gap-3">
             {(
               [
@@ -376,6 +359,7 @@ function QuizPage() {
             ))}
           </div>
         </Section>
+
 
         {/* Results */}
         <ResultsSection index={totalQuestions} profile={profile} onReset={reset} />

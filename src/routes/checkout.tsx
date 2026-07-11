@@ -311,7 +311,7 @@ function CheckoutPage() {
                     </div>
                     <ul className="mt-2 space-y-2">
                       {list.map((it) => (
-                        <li key={`${it.productSlug}-${it.weight}-${it.grind}`} className="flex gap-2">
+                        <li key={`${it.productSlug}-${it.weight}`} className="flex gap-2">
                           <img
                             src={productImage(it.product.slug, 96)}
                             alt=""
@@ -325,7 +325,7 @@ function CheckoutPage() {
                               {it.product.name}
                             </div>
                             <div className="text-[color:var(--light)]">
-                              {toFa(it.weight)}گ · {it.grind} · ×{toFa(it.qty)}
+                              {toFa(it.weight)}گ · دانه کامل · ×{toFa(it.qty)}
                             </div>
                           </div>
                           <div className="font-mono-num text-xs font-bold text-[color:var(--roast)]">
