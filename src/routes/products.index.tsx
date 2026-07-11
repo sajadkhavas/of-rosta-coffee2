@@ -87,7 +87,7 @@ function ProductsPage() {
   };
 
   const clearAll = () =>
-    navigate({ search: { origin: "", roast: "", grind: "", roastery: "" }, replace: true });
+    navigate({ search: { origin: "", roast: "", roastery: "" }, replace: true });
 
   const filtered = useMemo(
     () =>
