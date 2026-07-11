@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 export function Footer() {
   return (
     <footer className="mt-24 border-t border-[color:var(--mid)] bg-[color:var(--dark)]">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 md:grid-cols-4">
+      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 md:grid-cols-5">
         <div className="md:col-span-2">
           <div className="flex items-center gap-3">
             <span
@@ -32,6 +32,15 @@ export function Footer() {
           </ul>
         </nav>
 
+        <nav aria-label="راهنما">
+          <h2 className="eyebrow">راهنما</h2>
+          <ul className="mt-4 space-y-3 text-sm text-[color:var(--light)]">
+            <li><Link to="/contact" className="transition hover:text-[color:var(--roast)]">تماس با ما</Link></li>
+            <li><Link to="/terms" className="transition hover:text-[color:var(--roast)]">قوانین و مقررات</Link></li>
+            <li><Link to="/privacy" className="transition hover:text-[color:var(--roast)]">حریم خصوصی</Link></li>
+          </ul>
+        </nav>
+
         <div>
           <h2 className="eyebrow">اعتماد</h2>
           <ul className="mt-4 space-y-3 text-sm text-[color:var(--light)]">
@@ -42,6 +51,7 @@ export function Footer() {
           </ul>
         </div>
       </div>
+
       <div className="border-t border-[color:var(--mid)] py-5 text-center text-xs tracking-widest text-[color:var(--muted-gold)]">
         © ۱۴۰۴ رستا — همه حقوق محفوظ است
       </div>
