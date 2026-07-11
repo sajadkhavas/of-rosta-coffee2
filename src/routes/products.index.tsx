@@ -33,7 +33,9 @@ function buildCanonical(search: ProductsSearch): string {
 
 export const Route = createFileRoute("/products/")({
   validateSearch: zodValidator(productsSearchSchema),
-  head: ({ search }) => {
+  head: (ctx) => {
+    const search = (ctx as { search?: ProductsSearch }).search;
+
     const s = (search ?? { origin: "", roast: "", grind: "", roastery: "" }) as ProductsSearch;
     let title = "خرید دانه قهوه و قهوه اسپشیالیتی | رستا";
     let description =
@@ -83,9 +85,10 @@ function ProductsPage() {
 
   const setParam = (key: keyof ProductsSearch, value: string) => {
     navigate({
-      search: (prev) => ({ ...(prev as ProductsSearch), [key]: value }),
+      search: (prev: ProductsSearch) => ({ ...prev, [key]: value }),
       replace: true,
     });
+
   };
 
   const clearAll = () =>

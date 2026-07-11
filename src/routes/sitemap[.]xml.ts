@@ -24,14 +24,15 @@ export const Route = createFileRoute("/sitemap.xml")({
           ...roasteries.map((r) => ({ path: `/roasteries/${r.slug}`, priority: "0.7" })),
           ...products.map((p) => ({ path: `/products/${p.slug}`, priority: "0.8" })),
           ...blogPosts.map((p) => ({ path: `/blog/${p.slug}`, priority: "0.7" })),
-          ...HIGH_VALUE_ORIGINS.map((o) => ({
-            path: `/products?origin=${o}`,
+          ...FILTER_ORIGINS_FA.map((o) => ({
+            path: `/products?origin=${encodeURIComponent(o)}`,
             priority: "0.6",
           })),
-          ...HIGH_VALUE_ROASTS.map((r) => ({
+          ...FILTER_ROASTS_FA.map((r) => ({
             path: `/products?roast=${encodeURIComponent(r)}`,
             priority: "0.6",
           })),
+
         ];
 
         const urls = entries
