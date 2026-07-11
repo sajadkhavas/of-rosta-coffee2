@@ -89,7 +89,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "رستا مارکت‌پلیس قهوه ایران — قهوه تازه‌رست از بهترین روستری‌های ایران را مقایسه و سفارش دهید. بدون واسطه، با انتخاب آسیاب.",
+          "رستا مارکت‌پلیس قهوه ایران — دانه قهوه تازه‌رست از بهترین روستری‌های ایران را مقایسه و سفارش دهید. بدون واسطه، همیشه دانه کامل برای حفظ تازگی.",
       },
       { name: "author", content: "رستا" },
       { property: "og:site_name", content: "رستا" },
