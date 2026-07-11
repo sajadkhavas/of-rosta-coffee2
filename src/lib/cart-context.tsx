@@ -7,21 +7,20 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { getProduct, type Grind, type Weight } from "@/data/seed";
+import { getProduct, type Weight } from "@/data/seed";
 
 export interface CartItem {
   productSlug: string;
   weight: Weight;
-  grind: Grind;
   qty: number;
   addedAt: number;
 }
 
 interface CartContextValue {
   items: CartItem[];
-  addItem: (productSlug: string, weight: Weight, grind: Grind, qty?: number) => void;
-  removeItem: (productSlug: string, weight: Weight, grind: Grind) => void;
-  updateQty: (productSlug: string, weight: Weight, grind: Grind, qty: number) => void;
+  addItem: (productSlug: string, weight: Weight, qty?: number) => void;
+  removeItem: (productSlug: string, weight: Weight) => void;
+  updateQty: (productSlug: string, weight: Weight, qty: number) => void;
   clear: () => void;
   itemCount: number;
   subtotal: number;
@@ -30,8 +29,31 @@ interface CartContextValue {
 const CartContext = createContext<CartContextValue | null>(null);
 const STORAGE_KEY = "rosta_cart";
 
-function sameLine(a: CartItem, slug: string, w: Weight, g: Grind) {
-  return a.productSlug === slug && a.weight === w && a.grind === g;
+function sameLine(a: CartItem, slug: string, w: Weight) {
+  return a.productSlug === slug && a.weight === w;
+}
+
+// Migrate legacy cart data that may contain a stale `grind` field. Merge lines
+// that become duplicates after stripping grind.
+function sanitize(raw: unknown): CartItem[] {
+  if (!Array.isArray(raw)) return [];
+  const out: CartItem[] = [];
+  for (const entry of raw) {
+    if (!entry || typeof entry !== "object") continue;
+    const e = entry as Record<string, unknown>;
+    const productSlug = typeof e.productSlug === "string" ? e.productSlug : null;
+    const weight = typeof e.weight === "number" ? (e.weight as Weight) : null;
+    const qty = typeof e.qty === "number" ? e.qty : 1;
+    const addedAt = typeof e.addedAt === "number" ? e.addedAt : Date.now();
+    if (!productSlug || !weight) continue;
+    const idx = out.findIndex((i) => sameLine(i, productSlug, weight));
+    if (idx >= 0) {
+      out[idx] = { ...out[idx], qty: out[idx].qty + qty };
+    } else {
+      out.push({ productSlug, weight, qty, addedAt });
+    }
+  }
+  return out;
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
@@ -44,8 +66,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (typeof window === "undefined") return;
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const parsed = JSON.parse(raw) as CartItem[];
-        if (Array.isArray(parsed)) setItems(parsed);
+        setItems(sanitize(JSON.parse(raw)));
       }
     } catch {
       /* ignore */
@@ -66,33 +87,33 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items, hydrated]);
 
   const addItem = useCallback(
-    (productSlug: string, weight: Weight, grind: Grind, qty: number = 1) => {
+    (productSlug: string, weight: Weight, qty: number = 1) => {
       setItems((prev) => {
-        const idx = prev.findIndex((i) => sameLine(i, productSlug, weight, grind));
+        const idx = prev.findIndex((i) => sameLine(i, productSlug, weight));
         if (idx >= 0) {
           const next = prev.slice();
           next[idx] = { ...next[idx], qty: next[idx].qty + qty };
           return next;
         }
-        return [...prev, { productSlug, weight, grind, qty, addedAt: Date.now() }];
+        return [...prev, { productSlug, weight, qty, addedAt: Date.now() }];
       });
     },
     [],
   );
 
   const removeItem = useCallback(
-    (productSlug: string, weight: Weight, grind: Grind) => {
-      setItems((prev) => prev.filter((i) => !sameLine(i, productSlug, weight, grind)));
+    (productSlug: string, weight: Weight) => {
+      setItems((prev) => prev.filter((i) => !sameLine(i, productSlug, weight)));
     },
     [],
   );
 
   const updateQty = useCallback(
-    (productSlug: string, weight: Weight, grind: Grind, qty: number) => {
+    (productSlug: string, weight: Weight, qty: number) => {
       setItems((prev) => {
-        if (qty <= 0) return prev.filter((i) => !sameLine(i, productSlug, weight, grind));
+        if (qty <= 0) return prev.filter((i) => !sameLine(i, productSlug, weight));
         return prev.map((i) =>
-          sameLine(i, productSlug, weight, grind) ? { ...i, qty } : i,
+          sameLine(i, productSlug, weight) ? { ...i, qty } : i,
         );
       });
     },
