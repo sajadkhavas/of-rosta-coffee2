@@ -1,0 +1,18 @@
+{
+  "name": "رستا — مارکت‌پلیس قهوه",
+  "short_name": "رستا",
+  "description": "خرید قهوه تازه مستقیم از روستری، بدون واسطه",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0A0400",
+  "theme_color": "#C8965A",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "fa",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
