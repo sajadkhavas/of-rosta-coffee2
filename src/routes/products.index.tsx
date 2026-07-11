@@ -104,8 +104,6 @@ function ProductsPage() {
     ? `قهوه تک خاستگاه ${search.origin}`
     : search.roast
     ? `قهوه رست ${search.roast}`
-    : search.grind
-    ? `قهوه برای آسیاب ${search.grind}`
     : "همه محصولات";
 
   const Chip = ({
