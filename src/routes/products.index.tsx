@@ -172,17 +172,6 @@ function ProductsPage() {
             </div>
           </div>
           <div>
-            <h2 className="mb-2 text-xs font-bold text-[color:var(--light)]">آسیاب</h2>
-            <div className="flex flex-wrap gap-1.5">
-              <Chip active={!search.grind} onClick={() => setParam("grind", "")}>همه</Chip>
-              {GRINDS.map((g: Grind) => (
-                <Chip key={g} active={search.grind === g} onClick={() => setParam("grind", g)}>
-                  {g}
-                </Chip>
-              ))}
-            </div>
-          </div>
-          <div>
             <h2 className="mb-2 text-xs font-bold text-[color:var(--light)]">روستری</h2>
             <div className="flex flex-wrap gap-1.5">
               <Chip active={!search.roastery} onClick={() => setParam("roastery", "")}>همه</Chip>
