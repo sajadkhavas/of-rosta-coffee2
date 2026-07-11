@@ -7,7 +7,6 @@ import {
   matchProducts,
   saveProfile,
   type Adventure,
-  type BeanForm,
   type BrewMethod,
   type Experience,
   type RoastPref,
