@@ -174,7 +174,7 @@ function Accordion({
 function ProductPage() {
   const { product, roastery, related, similarByOrigin } = Route.useLoaderData();
   const [weight, setWeight] = useState<Weight>(250);
-  const [grind, setGrind] = useState<Grind>("دانه");
+  
   const [mainImg, setMainImg] = useState(productImage(product.slug, 1200));
   const thumbs = productThumbnails(product.slug, 200);
   const price = useMemo(() => product.prices[weight], [product, weight]);
