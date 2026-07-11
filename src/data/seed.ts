@@ -1,10 +1,8 @@
 export type RoastLevel = "روشن" | "متوسط" | "تیره";
 export type Processing = "طبیعی" | "شسته" | "عسل";
 export type Weight = 50 | 100 | 250 | 500 | 1000;
-export type Grind = "دانه" | "موکاپات" | "فرنچ‌پرس" | "اسپرسو" | "ترک";
 
 export const WEIGHTS: Weight[] = [50, 100, 250, 500, 1000];
-export const GRINDS: Grind[] = ["دانه", "موکاپات", "فرنچ‌پرس", "اسپرسو", "ترک"];
 
 export interface Roastery {
   slug: string;
