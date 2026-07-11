@@ -14,7 +14,6 @@ export const ORIGIN_FA_TO_SLUG: Record<string, string> = Object.fromEntries(
 
 export const HIGH_VALUE_ORIGINS = ["ethiopia", "colombia", "brazil", "kenya"] as const;
 export const HIGH_VALUE_ROASTS = ["روشن", "متوسط", "تیره"] as const;
-export const HIGH_VALUE_GRINDS = ["اسپرسو", "موکاپات", "فرنچ‌پرس"] as const;
 
 export function originFaFromSlug(slug?: string | null): string | null {
   if (!slug) return null;
