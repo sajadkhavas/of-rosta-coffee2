@@ -2,9 +2,12 @@ import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
 import { products, roasteries } from "@/data/seed";
 import { blogPosts } from "@/data/blog-posts";
-import { HIGH_VALUE_ORIGINS, HIGH_VALUE_ROASTS } from "@/data/origins";
 
 const BASE_URL = "https://rosta.coffee";
+
+const FILTER_ORIGINS_FA = ["اتیوپی", "کلمبیا", "برزیل", "کنیا"];
+const FILTER_ROASTS_FA = ["روشن", "متوسط", "تیره"];
+
 
 export const Route = createFileRoute("/sitemap.xml")({
   server: {
