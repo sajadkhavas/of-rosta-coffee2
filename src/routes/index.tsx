@@ -107,7 +107,7 @@ function HomePage() {
                 data-fade-up
                 className="mx-auto mt-6 max-w-lg text-base leading-8 text-[color:var(--light)] md:mx-0 md:text-lg"
               >
-                مستقیم از روستری به دست تو — با تاریخ دقیق برشته‌کاری، انتخاب وزن و نوع آسیاب.
+                مستقیم از روستری به دست تو — دانه کامل، با تاریخ دقیق برشته‌کاری و ارسال سریع.
               </p>
 
               <div
