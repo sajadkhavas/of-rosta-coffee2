@@ -46,7 +46,7 @@ export function Footer() {
           <ul className="mt-4 space-y-3 text-sm text-[color:var(--light)]">
             <li>تازه‌رست از روستری</li>
             <li>بدون واسطه</li>
-            <li>انتخاب آسیاب</li>
+            <li>دانه کامل و تازه</li>
             <li>ارسال سریع</li>
           </ul>
         </div>
