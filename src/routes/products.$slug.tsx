@@ -8,13 +8,11 @@ import { ProductCard } from "@/components/ProductCard";
 import { RoastDateBadge } from "@/components/RoastDateBadge";
 import { RoastLevelBadge } from "@/components/RoastLevelBadge";
 import { WeightSelector } from "@/components/WeightSelector";
-import { GrindSelector } from "@/components/GrindSelector";
 import {
   getProduct,
   getRoastery,
   products,
   productsByRoastery,
-  type Grind,
   type Weight,
 } from "@/data/seed";
 import { formatToman, toFa } from "@/lib/persian";
