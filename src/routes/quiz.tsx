@@ -95,7 +95,6 @@ function QuizPage() {
 
   const steps: StepBase[] = [
     { title: "روش دم‌آوری", isAnswered: (p) => !!p.brewMethod },
-    { title: "دانه یا آسیاب", isAnswered: (p) => !!p.beanForm },
     { title: "سطح رست", isAnswered: (p) => !!p.roast },
     { title: "ماجراجویی", isAnswered: (p) => !!p.adventure },
     { title: "طعم‌ها", isAnswered: (p) => p.flavors.length > 0 },
