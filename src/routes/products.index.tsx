@@ -6,7 +6,7 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Breadcrumb, breadcrumbJsonLd } from "@/components/Breadcrumb";
 import { ProductCard } from "@/components/ProductCard";
-import { products, roasteries, GRINDS, type RoastLevel, type Grind } from "@/data/seed";
+import { products, roasteries, type RoastLevel } from "@/data/seed";
 import { toFa } from "@/lib/persian";
 
 const ORIGINS = Array.from(new Set(products.map((p) => p.origin)));
