@@ -153,3 +153,5 @@ jobs:
           git diff --cached --check
           git commit -m "fix: resolve browser accessibility and hydration audit"
           git push origin HEAD:agent/migrate-phases-1-4
+
+# retrigger: 2026-07-20
