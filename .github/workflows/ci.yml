@@ -7,49 +7,48 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Checkout
+      - name: Checkout source branch
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.2.22
       - name: Install dependencies and refresh lockfile
         run: bun install
-      - name: Upload generated lockfile
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: generated-bun-lock
-          path: bun.lock
-          if-no-files-found: error
-          retention-days: 7
       - name: Build and generate route tree
         env:
           VITE_SITE_URL: https://rosta.shop
           VITE_API_URL: http://127.0.0.1:8000/api/v1
           VITE_ALLOW_INDEXING: "false"
         run: bun run build 2>&1 | tee build.log
+      - name: Commit generated files on migration branch
+        if: github.event_name == 'pull_request' && github.head_ref == 'agent/migrate-phases-1-4'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bun.lock src/routeTree.gen.ts
+          if git diff --cached --quiet; then
+            echo "Generated files are already current."
+            exit 0
+          fi
+          git commit -m "chore(generated): refresh lockfile and route tree"
+          git push origin HEAD:agent/migrate-phases-1-4
       - name: Upload build report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: build-report
           path: build.log
-          if-no-files-found: ignore
-          retention-days: 7
-      - name: Upload generated route tree
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: generated-route-tree
-          path: src/routeTree.gen.ts
           if-no-files-found: ignore
           retention-days: 7
       - name: Bundle budget
