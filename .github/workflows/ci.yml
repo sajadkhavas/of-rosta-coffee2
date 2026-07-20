@@ -12,7 +12,7 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,6 +22,40 @@ jobs:
           bun-version: 1.2.22
       - name: Install dependencies
         run: bun install --no-save
+      - name: Build and generate route tree
+        env:
+          VITE_SITE_URL: https://rosta.shop
+          VITE_API_URL: http://127.0.0.1:8000/api/v1
+          VITE_ALLOW_INDEXING: "false"
+        run: bun run build 2>&1 | tee build.log
+      - name: Upload build report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-report
+          path: build.log
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Upload generated route tree
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-route-tree
+          path: src/routeTree.gen.ts
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Bundle budget
+        run: bun run bundle:check 2>&1 | tee bundle.log
+      - name: Upload bundle report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-report
+          path: |
+            bundle.log
+            bundle-report.json
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Typecheck
         run: bun run typecheck 2>&1 | tee typecheck.log
       - name: Upload typecheck report
@@ -40,19 +74,5 @@ jobs:
         with:
           name: lint-report
           path: lint.log
-          if-no-files-found: ignore
-          retention-days: 7
-      - name: Build
-        env:
-          VITE_SITE_URL: https://rosta.shop
-          VITE_API_URL: http://127.0.0.1:8000/api/v1
-          VITE_ALLOW_INDEXING: "false"
-        run: bun run build 2>&1 | tee build.log
-      - name: Upload build report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-report
-          path: build.log
           if-no-files-found: ignore
           retention-days: 7
