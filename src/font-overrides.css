@@ -1,0 +1,16 @@
+html,
+body {
+  font-family: "Vazirmatn Variable", Tahoma, Arial, ui-sans-serif, system-ui, sans-serif;
+}
+
+.font-sans {
+  font-family: "Vazirmatn Variable", Tahoma, Arial, ui-sans-serif, system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: "Playfair Display Variable", "Vazirmatn Variable", Georgia, serif;
+}
+
+.font-mono {
+  font-family: "DM Mono", "Vazirmatn Variable", ui-monospace, SFMono-Regular, monospace;
+}
