@@ -1,0 +1,28 @@
+name: Sync Rosta PR branch
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/sync-rosta-pr-branch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout migration branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/migrate-phases-1-4
+          fetch-depth: 0
+      - name: Merge current main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-edit origin/main
+          git push origin HEAD:agent/migrate-phases-1-4
