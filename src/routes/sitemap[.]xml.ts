@@ -1,45 +1,94 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
-import { products, roasteries } from "@/data/seed";
 import { blogPosts } from "@/data/blog-posts";
+import { listProducts, listRoasteries } from "@/lib/api/catalog";
+import { absoluteUrl } from "@/config/site";
 
-const BASE_URL = "https://rosta.coffee";
+interface SitemapEntry {
+  path: string;
+  priority: string;
+  changefreq: "daily" | "weekly" | "monthly";
+  lastmod?: string | null;
+}
 
-const FILTER_ORIGINS_FA = ["اتیوپی", "کلمبیا", "برزیل", "کنیا"];
-const FILTER_ROASTS_FA = ["روشن", "متوسط", "تیره"];
+function xmlEscape(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
 
+async function catalogEntries(): Promise<SitemapEntry[]> {
+  const [productsResult, roasteriesResult] = await Promise.allSettled([
+    listProducts({ page: 1, perPage: 100, sort: "newest" }),
+    listRoasteries({ page: 1, perPage: 100 }),
+  ]);
+
+  const products =
+    productsResult.status === "fulfilled"
+      ? productsResult.value.items.filter((product) => product.status === "published")
+      : [];
+  const roasteries =
+    roasteriesResult.status === "fulfilled" ? roasteriesResult.value.items : [];
+
+  return [
+    ...products.map((product) => ({
+      path: `/products/${product.slug}`,
+      priority: "0.8",
+      changefreq: "weekly" as const,
+      lastmod: product.latestRoastBatch?.roastedAt ?? null,
+    })),
+    ...roasteries.map((roastery) => ({
+      path: `/roasteries/${roastery.slug}`,
+      priority: "0.7",
+      changefreq: "weekly" as const,
+    })),
+  ];
+}
 
 export const Route = createFileRoute("/sitemap.xml")({
   server: {
     handlers: {
       GET: async () => {
-        type Entry = { path: string; priority: string };
-        const entries: Entry[] = [
-          { path: "/", priority: "1.0" },
-          { path: "/roasteries", priority: "0.8" },
-          { path: "/products", priority: "0.9" },
-          { path: "/blog", priority: "0.8" },
-          { path: "/quiz", priority: "0.7" },
-          { path: "/about", priority: "0.5" },
-          ...roasteries.map((r) => ({ path: `/roasteries/${r.slug}`, priority: "0.7" })),
-          ...products.map((p) => ({ path: `/products/${p.slug}`, priority: "0.8" })),
-          ...blogPosts.map((p) => ({ path: `/blog/${p.slug}`, priority: "0.7" })),
-          ...FILTER_ORIGINS_FA.map((o) => ({
-            path: `/products?origin=${encodeURIComponent(o)}`,
-            priority: "0.6",
+        const staticEntries: SitemapEntry[] = [
+          { path: "/", priority: "1.0", changefreq: "weekly" },
+          { path: "/products", priority: "0.9", changefreq: "daily" },
+          { path: "/roasteries", priority: "0.8", changefreq: "weekly" },
+          { path: "/blog", priority: "0.8", changefreq: "weekly" },
+          { path: "/quiz", priority: "0.7", changefreq: "monthly" },
+          { path: "/about", priority: "0.5", changefreq: "monthly" },
+          { path: "/contact", priority: "0.4", changefreq: "monthly" },
+          { path: "/terms", priority: "0.3", changefreq: "monthly" },
+          { path: "/privacy", priority: "0.3", changefreq: "monthly" },
+          ...blogPosts.map((post) => ({
+            path: `/blog/${post.slug}`,
+            priority: "0.7",
+            changefreq: "monthly" as const,
           })),
-          ...FILTER_ROASTS_FA.map((r) => ({
-            path: `/products?roast=${encodeURIComponent(r)}`,
-            priority: "0.6",
-          })),
-
         ];
 
-        const urls = entries
-          .map(
-            (e) =>
-              `  <url><loc>${BASE_URL}${e.path}</loc><changefreq>weekly</changefreq><priority>${e.priority}</priority></url>`,
-          )
+        let dynamicEntries: SitemapEntry[] = [];
+        try {
+          dynamicEntries = await catalogEntries();
+        } catch {
+          // The sitemap remains valid with static routes when the Laravel API is temporarily unavailable.
+        }
+
+        const uniqueEntries = Array.from(
+          new Map(
+            [...staticEntries, ...dynamicEntries].map((entry) => [entry.path, entry]),
+          ).values(),
+        );
+
+        const urls = uniqueEntries
+          .map((entry) => {
+            const lastmod = entry.lastmod
+              ? `<lastmod>${xmlEscape(new Date(entry.lastmod).toISOString())}</lastmod>`
+              : "";
+            return `  <url><loc>${xmlEscape(absoluteUrl(entry.path))}</loc>${lastmod}<changefreq>${entry.changefreq}</changefreq><priority>${entry.priority}</priority></url>`;
+          })
           .join("\n");
 
         const xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -49,8 +98,8 @@ ${urls}
 
         return new Response(xml, {
           headers: {
-            "Content-Type": "application/xml",
-            "Cache-Control": "public, max-age=3600",
+            "Content-Type": "application/xml; charset=utf-8",
+            "Cache-Control": "public, max-age=900, stale-while-revalidate=3600",
           },
         });
       },
