@@ -1,29 +1,41 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState, type FormEvent } from "react";
-import { Info, LockKeyhole } from "lucide-react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { fallback, zodValidator } from "@tanstack/zod-adapter";
+import { useEffect, useState } from "react";
+import { CheckCircle2, Clock3, CreditCard, RefreshCw, ShieldCheck } from "lucide-react";
+import { z } from "zod";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Breadcrumb } from "@/components/Breadcrumb";
-import {
-  Alert,
-  Button,
-  FormSummary,
-  TextareaField,
-  TextField,
-} from "@/components/system";
-import { getProduct, getRoastery } from "@/data/seed";
-import { productImage } from "@/lib/product-images";
-import { formatToman, toFa } from "@/lib/persian";
-import { useCart } from "@/lib/cart-context";
+import { AccountGuard } from "@/components/account/AccountGuard";
+import { Alert, Button, TextareaField, TextField } from "@/components/system";
 import { absoluteUrl } from "@/config/site";
+import {
+  createCheckoutQuote,
+  createIdempotencyKey,
+  createOrder,
+  requestPayment,
+  verifyPayment,
+} from "@/lib/api/checkout";
+import { isApiError } from "@/lib/api/client";
+import { addressesQueryOptions } from "@/lib/api/identity";
+import { formatIrr, formatWeight } from "@/lib/catalog-format";
+import { useCart } from "@/lib/cart-context";
+
+const searchSchema = z.object({
+  payment_id: fallback(z.string(), "").default(""),
+  order_id: fallback(z.string(), "").default(""),
+  status: fallback(z.string(), "").default(""),
+});
 
 export const Route = createFileRoute("/checkout")({
+  validateSearch: zodValidator(searchSchema),
   head: () => ({
     meta: [
-      { title: "تسویه‌حساب آزمایشی | رستا" },
+      { title: "تسویه‌حساب امن | رستا" },
       {
         name: "description",
-        content: "پیش‌نمایش غیرعملیاتی تسویه‌حساب رستا تا اتصال سفارش، موجودی و درگاه پرداخت.",
+        content: "انتخاب آدرس، Quote معتبر، رزرو موجودی و پرداخت آنلاین سفارش رستا.",
       },
       { name: "robots", content: "noindex,nofollow" },
     ],
@@ -32,326 +44,320 @@ export const Route = createFileRoute("/checkout")({
   component: CheckoutPage,
 });
 
-const CHECKOUT_LIVE = false;
-const CITIES = ["تهران", "کرج", "اصفهان", "مشهد", "شیراز", "تبریز", "سایر"];
-
-interface FormState {
-  name: string;
-  phone: string;
-  city: string;
-  address: string;
-  postal: string;
-  notes: string;
+function getAttemptKey(quoteId: string, kind: "order" | "payment"): string {
+  const storageKey = `rosta_checkout_${kind}_${quoteId}`;
+  try {
+    const existing = window.sessionStorage.getItem(storageKey);
+    if (existing) return existing;
+    const created = createIdempotencyKey(kind);
+    window.sessionStorage.setItem(storageKey, created);
+    return created;
+  } catch {
+    return createIdempotencyKey(kind);
+  }
 }
 
 function CheckoutPage() {
-  const { items: raw, subtotal } = useCart();
-  const [submitted, setSubmitted] = useState(false);
-  const [form, setForm] = useState<FormState>({
-    name: "",
-    phone: "",
-    city: "",
-    address: "",
-    postal: "",
-    notes: "",
-  });
-
-  const items = useMemo(
-    () =>
-      raw
-        .map((item) => {
-          const product = getProduct(item.productSlug);
-          return product ? { ...item, product } : null;
-        })
-        .filter(
-          (
-            item,
-          ): item is NonNullable<typeof item> & {
-            product: NonNullable<ReturnType<typeof getProduct>>;
-          } => item !== null,
-        ),
-    [raw],
-  );
-
-  const grouped = useMemo(() => {
-    const groups = new Map<string, typeof items>();
-    for (const item of items) {
-      const slug = item.product.roasterySlug;
-      if (!groups.has(slug)) groups.set(slug, []);
-      groups.get(slug)!.push(item);
-    }
-    return groups;
-  }, [items]);
-
-  const errors = [
-    !form.name.trim()
-      ? { fieldId: "checkout-name", message: "نام و نام خانوادگی الزامی است." }
-      : null,
-    !/^09\d{9}$/.test(form.phone)
-      ? { fieldId: "checkout-phone", message: "شماره موبایل معتبر وارد کنید." }
-      : null,
-    !form.city ? { fieldId: "checkout-city", message: "شهر را انتخاب کنید." } : null,
-    form.address.trim().length < 10
-      ? { fieldId: "checkout-address", message: "آدرس کامل را وارد کنید." }
-      : null,
-  ].filter((error): error is NonNullable<typeof error> => error !== null);
-
-  const setField = <Key extends keyof FormState>(key: Key, value: FormState[Key]) =>
-    setForm((current) => ({ ...current, [key]: value }));
-
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setSubmitted(true);
-    if (!CHECKOUT_LIVE || errors.length > 0) return;
-  };
-
-  if (raw.length === 0) {
-    return (
-      <>
-        <Navbar />
-        <main className="mx-auto grid min-h-[60vh] max-w-xl place-items-center px-4 py-16 text-center">
-          <section>
-            <h1 className="text-2xl font-bold">سبد خرید خالی است</h1>
-            <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">
-              افزودن محصول تا اتصال Variant، Quote سمت سرور، رزرو موجودی و پرداخت در فاز ۵ غیرفعال است.
-            </p>
-            <Link
-              to="/products"
-              className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-[color:var(--roast)] px-6 text-sm font-bold text-[color:var(--night)]"
-            >
-              مشاهده کاتالوگ
-            </Link>
-          </section>
-        </main>
-        <Footer />
-      </>
-    );
-  }
-
-  const multipleRoasteries = grouped.size > 1;
-  const cardClassName =
-    "rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5";
-
   return (
     <>
       <Navbar />
       <main className="mx-auto max-w-6xl px-4 py-8">
-        <Breadcrumb
-          items={[
-            { label: "خانه", to: "/" },
-            { label: "سبد خرید", to: "/cart" },
-            { label: "تسویه‌حساب" },
-          ]}
-        />
-        <header className="mt-4">
-          <p className="text-xs font-bold tracking-[0.2em] text-[color:var(--roast)]">
-            DEVELOPMENT PREVIEW
-          </p>
-          <h1 className="mt-2 text-3xl font-bold">تسویه‌حساب</h1>
-          <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">
-            اطلاعات این صفحه فقط برای بررسی تجربه کاربری است و هیچ سفارش یا پرداختی ایجاد نمی‌کند.
-          </p>
-        </header>
-
-        <div className="mt-6 grid gap-3">
-          <Alert variant="warning" title="پرداخت و ثبت سفارش غیرفعال است">
-            <span className="inline-flex items-start gap-2">
-              <Info size={18} className="mt-1 shrink-0" />
-              فعال‌سازی فقط پس از اتصال Quote سمت سرور، بررسی موجودی، ایجاد Order واقعی، Split Payment و Payment Verify انجام می‌شود.
-            </span>
-          </Alert>
-          {multipleRoasteries ? (
-            <Alert variant="danger" title="سبد چندروستری قابل ثبت نیست">
-              طبق معماری رستا هر سفارش فقط می‌تواند متعلق به یک روستری باشد. در فاز ۵، افزودن محصول روستری دوم با تأیید پاک‌کردن سبد کنترل خواهد شد.
-            </Alert>
-          ) : null}
-        </div>
-
-        <form
-          onSubmit={handleSubmit}
-          className="mt-6 grid gap-6 lg:grid-cols-[1fr_360px]"
-          noValidate
-        >
-          <div className="space-y-5">
-            {submitted ? <FormSummary errors={errors} /> : null}
-
-            <section className={cardClassName} aria-labelledby="recipient-title">
-              <h2 id="recipient-title" className="mb-4 font-bold">
-                اطلاعات گیرنده
-              </h2>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <TextField
-                  id="checkout-name"
-                  label="نام و نام خانوادگی"
-                  autoComplete="name"
-                  value={form.name}
-                  onChange={(event) => setField("name", event.target.value)}
-                  error={
-                    submitted && !form.name.trim()
-                      ? "نام و نام خانوادگی الزامی است."
-                      : undefined
-                  }
-                />
-                <TextField
-                  id="checkout-phone"
-                  label="شماره موبایل"
-                  type="tel"
-                  dir="ltr"
-                  inputMode="numeric"
-                  autoComplete="tel"
-                  value={form.phone}
-                  onChange={(event) => setField("phone", event.target.value)}
-                  error={
-                    submitted && !/^09\d{9}$/.test(form.phone)
-                      ? "شماره موبایل معتبر نیست."
-                      : undefined
-                  }
-                />
-              </div>
-            </section>
-
-            <section className={cardClassName} aria-labelledby="address-title">
-              <h2 id="address-title" className="mb-4 font-bold">
-                آدرس تحویل
-              </h2>
-              <div className="grid gap-4">
-                <label
-                  htmlFor="checkout-city"
-                  className="grid gap-2 text-sm font-bold text-[color:var(--steam)]"
-                >
-                  شهر
-                  <select
-                    id="checkout-city"
-                    value={form.city}
-                    onChange={(event) => setField("city", event.target.value)}
-                    aria-invalid={submitted && !form.city}
-                    className="min-h-12 rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-4 text-sm font-normal outline-none focus:border-[color:var(--roast)]"
-                  >
-                    <option value="">انتخاب کنید</option>
-                    {CITIES.map((city) => (
-                      <option key={city} value={city}>
-                        {city}
-                      </option>
-                    ))}
-                  </select>
-                  {submitted && !form.city ? (
-                    <span role="alert" className="text-xs font-normal text-red-300">
-                      شهر را انتخاب کنید.
-                    </span>
-                  ) : null}
-                </label>
-                <TextareaField
-                  id="checkout-address"
-                  label="آدرس کامل"
-                  rows={3}
-                  value={form.address}
-                  onChange={(event) => setField("address", event.target.value)}
-                  error={
-                    submitted && form.address.trim().length < 10
-                      ? "آدرس کامل‌تر وارد کنید."
-                      : undefined
-                  }
-                />
-                <TextField
-                  id="checkout-postal"
-                  label="کد پستی"
-                  dir="ltr"
-                  inputMode="numeric"
-                  value={form.postal}
-                  onChange={(event) => setField("postal", event.target.value)}
-                />
-              </div>
-            </section>
-
-            <section className={cardClassName} aria-labelledby="payment-title">
-              <h2 id="payment-title" className="mb-4 font-bold">
-                روش پرداخت
-              </h2>
-              <div
-                aria-disabled="true"
-                className="rounded-xl border border-[color:var(--roast)]/45 bg-[color:var(--roast)]/10 p-4 opacity-80"
-              >
-                <div className="flex items-center gap-2 text-sm font-bold">
-                  <LockKeyhole size={17} className="text-[color:var(--roast)]" />
-                  پرداخت آنلاین تسهیمی
-                </div>
-                <p className="mt-2 text-xs leading-6 text-[color:var(--light)]">
-                  پس از اتصال درگاه دارای Split Payment و تأیید Callback فعال می‌شود.
-                </p>
-              </div>
-            </section>
-
-            <section className={cardClassName}>
-              <TextareaField
-                label="یادداشت سفارش"
-                rows={3}
-                value={form.notes}
-                onChange={(event) => setField("notes", event.target.value)}
-              />
-            </section>
-          </div>
-
-          <aside className="h-fit rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5 lg:sticky lg:top-20">
-            <h2 className="font-bold">خلاصه آزمایشی</h2>
-            <div className="mt-4 space-y-5">
-              {Array.from(grouped.entries()).map(([slug, list]) => (
-                <div key={slug}>
-                  <p className="text-xs font-bold text-[color:var(--light)]">
-                    {getRoastery(slug)?.name || slug}
-                  </p>
-                  <ul className="mt-2 space-y-3">
-                    {list.map((item) => (
-                      <li key={`${item.productSlug}-${item.weight}`} className="flex gap-3">
-                        <img
-                          src={productImage(item.product.slug, 96)}
-                          alt=""
-                          width={48}
-                          height={48}
-                          loading="lazy"
-                          className="size-12 shrink-0 rounded-xl object-cover"
-                        />
-                        <div className="min-w-0 flex-1 text-xs">
-                          <p className="font-bold">{item.product.name}</p>
-                          <p className="mt-1 text-[color:var(--light)]">
-                            {toFa(item.weight)} گرم · دانه کامل · ×{toFa(item.qty)}
-                          </p>
-                        </div>
-                        <span className="font-mono text-xs font-bold text-[color:var(--roast)]">
-                          {formatToman(item.product.prices[item.weight] * item.qty)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-            <dl className="mt-5 space-y-2 border-t border-[color:var(--mid)] pt-4 text-sm">
-              <div className="flex justify-between text-[color:var(--light)]">
-                <dt>جمع نمایشی</dt>
-                <dd className="font-mono">{formatToman(subtotal)}</dd>
-              </div>
-              <div className="flex justify-between text-[color:var(--light)]">
-                <dt>ارسال</dt>
-                <dd className="text-xs">در Quote واقعی محاسبه می‌شود</dd>
-              </div>
-            </dl>
-            <Button
-              type="submit"
-              disabled={!CHECKOUT_LIVE || multipleRoasteries}
-              className="mt-5 w-full"
-            >
-              ثبت سفارش هنوز فعال نیست
-            </Button>
-            <Link
-              to="/cart"
-              className="mt-3 block text-center text-xs text-[color:var(--roast)] underline"
-            >
-              بازگشت به سبد
-            </Link>
-          </aside>
-        </form>
+        <AccountGuard>{() => <CheckoutContent />}</AccountGuard>
       </main>
       <Footer />
     </>
+  );
+}
+
+function CheckoutContent() {
+  const search = Route.useSearch();
+  const { items, hydrated, apiItems, clear } = useCart();
+  const addressesQuery = useQuery(addressesQueryOptions());
+  const [selectedAddressId, setSelectedAddressId] = useState("");
+  const [couponInput, setCouponInput] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    if (selectedAddressId || !addressesQuery.data?.length) return;
+    const preferred = addressesQuery.data.find((address) => address.isDefault) ?? addressesQuery.data[0];
+    setSelectedAddressId(preferred.id);
+  }, [addressesQuery.data, selectedAddressId]);
+
+  const quoteQuery = useQuery({
+    queryKey: ["checkout", "quote", apiItems, selectedAddressId, couponCode],
+    queryFn: () =>
+      createCheckoutQuote({
+        items: apiItems,
+        addressId: selectedAddressId,
+        couponCode: couponCode || null,
+      }),
+    enabled: hydrated && apiItems.length > 0 && Boolean(selectedAddressId) && !search.payment_id,
+    staleTime: 0,
+    retry: false,
+  });
+
+  const verifyQuery = useQuery({
+    queryKey: ["payments", "verify", search.payment_id],
+    queryFn: () => verifyPayment(search.payment_id),
+    enabled: Boolean(search.payment_id),
+    staleTime: 0,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (verifyQuery.data?.status === "paid") clear();
+  }, [clear, verifyQuery.data?.status]);
+
+  const checkoutMutation = useMutation({
+    mutationFn: async () => {
+      const quote = quoteQuery.data;
+      if (!quote) throw new Error("Quote معتبر در دسترس نیست.");
+      const order = await createOrder({
+        quoteId: quote.id,
+        idempotencyKey: getAttemptKey(quote.id, "order"),
+        notes,
+      });
+      const payment = await requestPayment({
+        orderId: order.id,
+        idempotencyKey: getAttemptKey(quote.id, "payment"),
+      });
+      window.location.assign(payment.redirectUrl);
+      return { order, payment };
+    },
+    retry: false,
+  });
+
+  if (search.payment_id) {
+    return <PaymentVerification paymentId={search.payment_id} orderId={search.order_id} query={verifyQuery} />;
+  }
+
+  if (!hydrated) {
+    return (
+      <div className="grid min-h-[45vh] place-items-center" role="status">
+        <div className="text-center">
+          <div className="mx-auto size-9 animate-spin rounded-full border-2 border-[color:var(--roast)] border-t-transparent" />
+          <p className="mt-4 text-sm text-[color:var(--light)]">در حال آماده‌سازی Checkout…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <section className="mx-auto grid min-h-[55vh] max-w-xl place-items-center text-center">
+        <div>
+          <h1 className="text-2xl font-bold">سبد خرید خالی است</h1>
+          <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">برای ایجاد Quote و سفارش، ابتدا یک Variant موجود را به سبد اضافه کنید.</p>
+          <Link to="/products" className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-[color:var(--roast)] px-6 text-sm font-bold text-[color:var(--night)]">مشاهده محصولات</Link>
+        </div>
+      </section>
+    );
+  }
+
+  const quote = quoteQuery.data;
+  const addresses = addressesQuery.data ?? [];
+  const expiresAt = quote?.expiresAt
+    ? new Date(quote.expiresAt).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" })
+    : null;
+
+  return (
+    <>
+      <Breadcrumb items={[{ label: "خانه", to: "/" }, { label: "سبد خرید", to: "/cart" }, { label: "تسویه‌حساب" }]} />
+      <header className="mt-4">
+        <p className="text-xs font-bold tracking-[0.2em] text-[color:var(--roast)]">ATOMIC CHECKOUT</p>
+        <h1 className="mt-2 text-3xl font-bold">تسویه‌حساب</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-[color:var(--light)]">
+          Quote نهایی با آدرس انتخابی محاسبه می‌شود؛ سپس سفارش با کلید Idempotency ایجاد و موجودی به‌صورت اتمیک رزرو می‌شود.
+        </p>
+      </header>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-3">
+        {[
+          [ShieldCheck, "قیمت سمت سرور"],
+          [Clock3, "رزرو اتمیک موجودی"],
+          [CreditCard, "Verify پرداخت"],
+        ].map(([Icon, label]) => {
+          const StepIcon = Icon as typeof ShieldCheck;
+          return (
+            <div key={label as string} className="flex items-center gap-3 rounded-xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-3 text-xs text-[color:var(--light)]">
+              <StepIcon size={18} className="text-[color:var(--roast)]" />
+              {label as string}
+            </div>
+          );
+        })}
+      </div>
+
+      {checkoutMutation.isError ? (
+        <div className="mt-5">
+          <Alert variant="danger" title="ثبت سفارش یا اتصال به درگاه انجام نشد">
+            {isApiError(checkoutMutation.error)
+              ? checkoutMutation.error.message
+              : checkoutMutation.error instanceof Error
+                ? checkoutMutation.error.message
+                : "عملیات Checkout کامل نشد."}
+          </Alert>
+        </div>
+      ) : null}
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_370px]">
+        <div className="space-y-5">
+          <section className="rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5" aria-labelledby="address-heading">
+            <div className="flex items-center justify-between gap-4">
+              <h2 id="address-heading" className="font-bold">آدرس تحویل</h2>
+              <Link to="/profile" className="text-xs text-[color:var(--roast)] underline underline-offset-4">مدیریت آدرس‌ها</Link>
+            </div>
+
+            {addressesQuery.isPending ? (
+              <p className="mt-4 text-sm text-[color:var(--light)]">در حال دریافت آدرس‌ها…</p>
+            ) : addressesQuery.isError ? (
+              <div className="mt-4">
+                <Alert variant="danger" title="آدرس‌ها بارگذاری نشدند">
+                  {isApiError(addressesQuery.error) ? addressesQuery.error.message : "ارتباط با سرویس آدرس برقرار نشد."}
+                </Alert>
+                <Button type="button" className="mt-4" onClick={() => addressesQuery.refetch()}>تلاش مجدد</Button>
+              </div>
+            ) : addresses.length === 0 ? (
+              <div className="mt-4">
+                <Alert variant="warning" title="ابتدا یک آدرس ثبت کنید">Checkout فقط با `address_id` معتبر سمت سرور ادامه پیدا می‌کند.</Alert>
+                <Link to="/profile" className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-[color:var(--roast)] px-5 text-sm font-bold text-[color:var(--night)]">ثبت آدرس در پروفایل</Link>
+              </div>
+            ) : (
+              <div className="mt-4 grid gap-3">
+                {addresses.map((address) => (
+                  <label key={address.id} className={`flex cursor-pointer gap-3 rounded-xl border p-4 transition ${selectedAddressId === address.id ? "border-[color:var(--roast)] bg-[color:var(--roast)]/10" : "border-[color:var(--mid)] bg-[color:var(--night)]"}`}>
+                    <input type="radio" name="address" value={address.id} checked={selectedAddressId === address.id} onChange={() => setSelectedAddressId(address.id)} className="mt-1 size-4 accent-[color:var(--roast)]" />
+                    <span className="min-w-0 text-sm">
+                      <span className="flex flex-wrap items-center gap-2 font-bold">
+                        {address.title || "آدرس تحویل"}
+                        {address.isDefault ? <span className="rounded-full bg-[color:var(--roast)] px-2 py-0.5 text-[10px] text-[color:var(--night)]">پیش‌فرض</span> : null}
+                      </span>
+                      <span className="mt-2 block leading-7 text-[color:var(--light)]">{address.province}، {address.city}، {address.addressLine}</span>
+                      <span dir="ltr" className="mt-1 block text-xs text-[color:var(--light)]">{address.recipientMobile}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5">
+            <h2 className="font-bold">کد تخفیف</h2>
+            <div className="mt-4 flex gap-3">
+              <TextField label="کد تخفیف" value={couponInput} onChange={(event) => setCouponInput(event.target.value)} className="flex-1" />
+              <Button type="button" variant="secondary" className="self-end" onClick={() => setCouponCode(couponInput.trim())} disabled={!selectedAddressId || couponInput.trim() === couponCode}>اعمال</Button>
+            </div>
+            {couponCode ? <button type="button" onClick={() => { setCouponCode(""); setCouponInput(""); }} className="mt-3 text-xs text-[color:var(--roast)] underline">حذف کد «{couponCode}»</button> : null}
+          </section>
+
+          <section className="rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5">
+            <TextareaField label="یادداشت سفارش" rows={4} maxLength={1000} value={notes} onChange={(event) => setNotes(event.target.value)} />
+            <p className="mt-2 text-end text-[11px] text-[color:var(--light)]">{notes.length.toLocaleString("fa-IR")} / ۱۰۰۰</p>
+          </section>
+        </div>
+
+        <aside className="h-fit rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5 lg:sticky lg:top-20">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-bold">خلاصه سفارش</h2>
+            <button type="button" onClick={() => quoteQuery.refetch()} disabled={!selectedAddressId || quoteQuery.isFetching} aria-label="محاسبه دوباره Quote" className="grid size-10 place-items-center rounded-lg border border-[color:var(--mid)] disabled:opacity-40">
+              <RefreshCw size={16} className={quoteQuery.isFetching ? "animate-spin" : ""} />
+            </button>
+          </div>
+
+          <ul className="mt-4 space-y-3">
+            {items.map((item) => (
+              <li key={item.variantId} className="flex items-start justify-between gap-3 text-xs">
+                <div className="min-w-0">
+                  <p className="truncate font-bold">{item.productName}</p>
+                  <p className="mt-1 text-[color:var(--light)]">{formatWeight(item.weightGrams)} · ×{item.quantity.toLocaleString("fa-IR")}</p>
+                </div>
+                <span className="shrink-0 font-mono text-[color:var(--light)]">{formatIrr(item.unitPriceSnapshot * item.quantity)}</span>
+              </li>
+            ))}
+          </ul>
+
+          {quoteQuery.isPending && selectedAddressId ? (
+            <div className="mt-5 border-t border-[color:var(--mid)] pt-5 text-center" role="status">
+              <div className="mx-auto size-7 animate-spin rounded-full border-2 border-[color:var(--roast)] border-t-transparent" />
+              <p className="mt-3 text-xs text-[color:var(--light)]">محاسبه ارسال و مبلغ نهایی…</p>
+            </div>
+          ) : quoteQuery.isError ? (
+            <div className="mt-5 border-t border-[color:var(--mid)] pt-5">
+              <Alert variant="danger" title="Quote ایجاد نشد">{isApiError(quoteQuery.error) ? quoteQuery.error.message : "قیمت یا موجودی قابل تأیید نیست."}</Alert>
+            </div>
+          ) : quote ? (
+            <>
+              {quote.warnings.length ? (
+                <div className="mt-5 space-y-2">
+                  {quote.warnings.map((warning, index) => <Alert key={`${warning.code}-${index}`} variant="warning" title="پیام Checkout">{warning.message}</Alert>)}
+                </div>
+              ) : null}
+              <dl className="mt-5 space-y-3 border-t border-[color:var(--mid)] pt-4 text-sm">
+                <div className="flex justify-between text-[color:var(--light)]"><dt>جمع اقلام</dt><dd className="font-mono">{formatIrr(quote.subtotal)}</dd></div>
+                <div className="flex justify-between text-[color:var(--light)]"><dt>ارسال</dt><dd className="font-mono">{formatIrr(quote.shippingTotal)}</dd></div>
+                {quote.discountTotal > 0 ? <div className="flex justify-between text-emerald-300"><dt>تخفیف</dt><dd className="font-mono">− {formatIrr(quote.discountTotal)}</dd></div> : null}
+                <div className="flex justify-between border-t border-[color:var(--mid)] pt-3 font-bold"><dt>قابل پرداخت</dt><dd className="font-mono text-[color:var(--roast)]">{formatIrr(quote.grandTotal)}</dd></div>
+              </dl>
+              {expiresAt ? <p className="mt-3 text-[11px] text-[color:var(--light)]">Quote تا ساعت {expiresAt} معتبر است.</p> : null}
+            </>
+          ) : null}
+
+          <Button type="button" className="mt-5 w-full" disabled={!quote || checkoutMutation.isPending || addresses.length === 0} onClick={() => checkoutMutation.mutate()}>
+            {checkoutMutation.isPending ? "ایجاد سفارش و اتصال…" : "ثبت سفارش و پرداخت آنلاین"}
+          </Button>
+          <p className="mt-3 text-center text-[11px] leading-6 text-[color:var(--light)]">با زدن این دکمه، سرور Quote را دوباره کنترل و موجودی را رزرو می‌کند.</p>
+          <Link to="/cart" className="mt-3 block text-center text-xs text-[color:var(--roast)] underline underline-offset-4">بازگشت به سبد</Link>
+        </aside>
+      </div>
+    </>
+  );
+}
+
+function PaymentVerification({
+  paymentId,
+  orderId,
+  query,
+}: {
+  paymentId: string;
+  orderId: string;
+  query: ReturnType<typeof useQuery<{ status: "pending" | "paid" | "failed" | "cancelled" | "refunded"; orderId: string }>>;
+}) {
+  const result = query.data;
+  const resolvedOrderId = result?.orderId || orderId;
+
+  return (
+    <section className="mx-auto grid min-h-[55vh] max-w-xl place-items-center text-center">
+      <div className="w-full rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-7">
+        {query.isPending ? (
+          <div role="status">
+            <div className="mx-auto size-10 animate-spin rounded-full border-2 border-[color:var(--roast)] border-t-transparent" />
+            <h1 className="mt-5 text-2xl font-bold">در حال تأیید پرداخت</h1>
+            <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">وضعیت تراکنش {paymentId} مستقیماً از سرور پرداخت بررسی می‌شود.</p>
+          </div>
+        ) : query.isError ? (
+          <>
+            <h1 className="text-2xl font-bold">تأیید پرداخت انجام نشد</h1>
+            <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">{isApiError(query.error) ? query.error.message : "ارتباط با سرویس Verify برقرار نشد."}</p>
+            <Button type="button" className="mt-6" onClick={() => query.refetch()}>بررسی دوباره</Button>
+          </>
+        ) : result?.status === "paid" ? (
+          <>
+            <CheckCircle2 size={56} className="mx-auto text-emerald-300" />
+            <h1 className="mt-5 text-2xl font-bold">پرداخت با موفقیت تأیید شد</h1>
+            <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">سبد پاک شد و سفارش اکنون از صفحه سفارش‌ها قابل پیگیری است.</p>
+            {resolvedOrderId ? <Link to="/orders/$id" params={{ id: resolvedOrderId }} className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-[color:var(--roast)] px-6 text-sm font-bold text-[color:var(--night)]">مشاهده سفارش</Link> : <Link to="/orders" className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-[color:var(--roast)] px-6 text-sm font-bold text-[color:var(--night)]">مشاهده سفارش‌ها</Link>}
+          </>
+        ) : (
+          <>
+            <h1 className="text-2xl font-bold">پرداخت تأیید نشد</h1>
+            <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">وضعیت ثبت‌شده: {result?.status ?? "نامشخص"}. تا زمان دریافت وضعیت `paid` سبد پاک نمی‌شود.</p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <Button type="button" onClick={() => query.refetch()}>بررسی دوباره</Button>
+              <Link to="/orders" className="inline-flex min-h-11 items-center rounded-xl border border-[color:var(--mid)] px-5 text-sm">سفارش‌های من</Link>
+            </div>
+          </>
+        )}
+      </div>
+    </section>
   );
 }

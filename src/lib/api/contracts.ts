@@ -142,6 +142,7 @@ export interface CartShipmentGroup {
 export interface CartQuote {
   id: string;
   expiresAt: IsoDateTime;
+  roasteryId?: string | null;
   groups: CartShipmentGroup[];
   subtotal: number;
   shippingTotal: number;
@@ -149,6 +150,13 @@ export interface CartQuote {
   grandTotal: number;
   currency: CurrencyCode;
   warnings: Array<{ code: string; message: string; cartItemId?: string }>;
+}
+
+export type PaymentStatus = "pending" | "paid" | "failed" | "cancelled" | "refunded";
+
+export interface PaymentRequestResult {
+  paymentId: string;
+  redirectUrl: string;
 }
 
 export type OrderStatus =

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import { Breadcrumb, breadcrumbJsonLd } from "@/components/Breadcrumb";
+import { Alert } from "@/components/system";
 import { CatalogProductCard } from "@/components/catalog/CatalogProductCard";
 import {
   productQueryOptions,
@@ -20,6 +21,7 @@ import {
   roastLevelLabel,
 } from "@/lib/catalog-format";
 import { absoluteUrl } from "@/config/site";
+import { useCart } from "@/lib/cart-context";
 
 export const Route = createFileRoute("/products/$slug")({
   head: ({ params }) => ({
@@ -51,8 +53,7 @@ export const Route = createFileRoute("/products/$slug")({
 function productJsonLd(product: ProductDetail) {
   const image = product.gallery.map(bestMediaUrl).filter(Boolean);
   const available = product.variants.filter((variant) => variant.isAvailable);
-  const lowest = available.length ? Math.min(...available.map((variant) => variant.price)) : 0;
-  const highest = available.length ? Math.max(...available.map((variant) => variant.price)) : 0;
+  const prices = available.map((variant) => variant.price);
   return {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -65,16 +66,15 @@ function productJsonLd(product: ProductDetail) {
       { "@type": "PropertyValue", name: "خاستگاه", value: product.origin.name },
       { "@type": "PropertyValue", name: "سطح رست", value: roastLevelLabel(product.roastLevel) },
       { "@type": "PropertyValue", name: "فرآوری", value: processingLabel(product.processingMethod) },
-      { "@type": "PropertyValue", name: "درصد عربیکا", value: `${product.arabicaPercentage}%` },
       { "@type": "PropertyValue", name: "شکل محصول", value: "دانه کامل" },
     ],
-    offers: available.length
+    offers: prices.length
       ? {
           "@type": "AggregateOffer",
           priceCurrency: "IRR",
-          lowPrice: lowest,
-          highPrice: highest,
-          offerCount: available.length,
+          lowPrice: Math.min(...prices),
+          highPrice: Math.max(...prices),
+          offerCount: prices.length,
           availability: "https://schema.org/InStock",
           url: absoluteUrl(`/products/${product.slug}`),
         }
@@ -92,8 +92,11 @@ function ProductPage() {
   const productQuery = useQuery(productQueryOptions(slug));
   const relatedQuery = useQuery(relatedProductsQueryOptions(slug));
   const product = productQuery.data;
-  const [selectedVariantId, setSelectedVariantId] = useState<string>("");
-  const [selectedImage, setSelectedImage] = useState<string>("");
+  const [selectedVariantId, setSelectedVariantId] = useState("");
+  const [selectedImage, setSelectedImage] = useState("");
+  const [notice, setNotice] = useState("");
+  const [added, setAdded] = useState(false);
+  const { addItem, replaceWithItem } = useCart();
 
   useEffect(() => {
     if (!product) return;
@@ -107,6 +110,24 @@ function ProductPage() {
     () => product?.variants.find((variant) => variant.id === selectedVariantId),
     [product, selectedVariantId],
   );
+
+  const addSelectedVariant = () => {
+    if (!product || !selectedVariant?.isAvailable) return;
+    const input = { product, variant: selectedVariant };
+    const result = addItem(input);
+    if (result.status === "requires_reset") {
+      const confirmed = window.confirm(
+        `سبد شما شامل محصولات ${result.currentRoasteryName} است. برای افزودن محصول این روستری، سبد قبلی پاک شود؟`,
+      );
+      if (!confirmed) return;
+      replaceWithItem(input);
+      setNotice("سبد قبلی پاک شد و محصول این روستری جایگزین شد.");
+    } else {
+      setNotice("محصول اضافه شد؛ قیمت و موجودی در صفحه سبد توسط سرور تأیید می‌شود.");
+    }
+    setAdded(true);
+    window.setTimeout(() => setAdded(false), 1800);
+  };
 
   if (productQuery.isPending) {
     return (
@@ -138,17 +159,11 @@ function ProductPage() {
             </p>
             <div className="mt-6 flex justify-center gap-3">
               {!notFound ? (
-                <button
-                  type="button"
-                  onClick={() => productQuery.refetch()}
-                  className="rounded-xl bg-[color:var(--roast)] px-5 py-2.5 text-sm font-bold text-[color:var(--night)]"
-                >
+                <button type="button" onClick={() => productQuery.refetch()} className="rounded-xl bg-[color:var(--roast)] px-5 py-2.5 text-sm font-bold text-[color:var(--night)]">
                   تلاش مجدد
                 </button>
               ) : null}
-              <Link to="/products" className="rounded-xl border border-[color:var(--mid)] px-5 py-2.5 text-sm">
-                بازگشت به محصولات
-              </Link>
+              <Link to="/products" className="rounded-xl border border-[color:var(--mid)] px-5 py-2.5 text-sm">بازگشت به محصولات</Link>
             </div>
           </section>
         </main>
@@ -169,10 +184,8 @@ function ProductPage() {
       answer: "تمام محصولات رستا فقط به‌صورت دانه کامل ارسال می‌شوند و هیچ انتخاب آسیابی وجود ندارد.",
     },
     {
-      question: "این قهوه برای چه روشی مناسب است؟",
-      answer: product.brewingSuggestions.length
-        ? product.brewingSuggestions.join("، ")
-        : "پیشنهاد دم‌آوری پس از تکمیل اطلاعات روستری نمایش داده می‌شود.",
+      question: "قیمت و موجودی چه زمانی قطعی می‌شود؟",
+      answer: "پس از افزودن Variant به سبد، سرور رستا قیمت و موجودی را اعتبارسنجی می‌کند و در Checkout دوباره Quote می‌سازد.",
     },
   ];
 
@@ -180,10 +193,7 @@ function ProductPage() {
     <>
       <Navbar />
       <main className="mx-auto max-w-6xl px-4 py-8">
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd(product)) }}
-        />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd(product)) }} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -198,13 +208,7 @@ function ProductPage() {
             }),
           }}
         />
-        <Breadcrumb
-          items={[
-            { label: "خانه", to: "/" },
-            { label: "محصولات", to: "/products" },
-            { label: product.name },
-          ]}
-        />
+        <Breadcrumb items={[{ label: "خانه", to: "/" }, { label: "محصولات", to: "/products" }, { label: product.name }]} />
 
         <article className="mt-6 grid gap-8 md:grid-cols-2">
           <section aria-label="گالری محصول">
@@ -221,14 +225,7 @@ function ProductPage() {
                   const url = bestMediaUrl(asset);
                   if (!url) return null;
                   return (
-                    <button
-                      key={asset.id}
-                      type="button"
-                      onClick={() => setSelectedImage(url)}
-                      className={`aspect-square overflow-hidden rounded-xl border ${
-                        selectedImage === url ? "border-[color:var(--roast)]" : "border-[color:var(--mid)]"
-                      }`}
-                    >
+                    <button key={asset.id} type="button" onClick={() => setSelectedImage(url)} className={`aspect-square overflow-hidden rounded-xl border ${selectedImage === url ? "border-[color:var(--roast)]" : "border-[color:var(--mid)]"}`}>
                       <img src={url} alt={asset.alt || product.name} loading="lazy" className="h-full w-full object-cover" />
                     </button>
                   );
@@ -238,17 +235,11 @@ function ProductPage() {
           </section>
 
           <section>
-            <Link
-              to="/roasteries/$slug"
-              params={{ slug: product.roastery.slug }}
-              className="text-sm font-bold text-[color:var(--roast)] hover:underline"
-            >
+            <Link to="/roasteries/$slug" params={{ slug: product.roastery.slug }} className="text-sm font-bold text-[color:var(--roast)] hover:underline">
               {product.roastery.name}
             </Link>
             <h1 className="mt-2 text-3xl font-bold text-[color:var(--steam)] sm:text-4xl">{product.name}</h1>
-            <p className="mt-4 text-sm leading-8 text-[color:var(--light)]">
-              {product.shortDescription || product.description}
-            </p>
+            <p className="mt-4 text-sm leading-8 text-[color:var(--light)]">{product.shortDescription || product.description}</p>
 
             <div className="mt-5 flex flex-wrap gap-2 text-xs">
               <span className="rounded-full border border-[color:var(--mid)] px-3 py-1">{product.origin.name}</span>
@@ -267,42 +258,34 @@ function ProductPage() {
                     type="button"
                     disabled={!variant.isAvailable}
                     onClick={() => setSelectedVariantId(variant.id)}
-                    className={`rounded-xl border p-3 text-start transition disabled:cursor-not-allowed disabled:opacity-40 ${
-                      selectedVariantId === variant.id
-                        ? "border-[color:var(--roast)] bg-[color:var(--roast)]/10"
-                        : "border-[color:var(--mid)] bg-[color:var(--dark)]"
-                    }`}
+                    className={`rounded-xl border p-3 text-start transition disabled:cursor-not-allowed disabled:opacity-40 ${selectedVariantId === variant.id ? "border-[color:var(--roast)] bg-[color:var(--roast)]/10" : "border-[color:var(--mid)] bg-[color:var(--dark)]"}`}
                   >
                     <span className="block text-sm font-bold">{formatWeight(variant.weightGrams)}</span>
                     <span className="mt-1 block text-xs text-[color:var(--light)]">{formatIrr(variant.price)}</span>
-                    {typeof variant.availableQuantity === "number" ? (
-                      <span className="mt-1 block text-[10px] text-[color:var(--roast)]">
-                        {variant.availableQuantity.toLocaleString("fa-IR")} عدد موجود
-                      </span>
-                    ) : null}
+                    {typeof variant.availableQuantity === "number" ? <span className="mt-1 block text-[10px] text-[color:var(--roast)]">{variant.availableQuantity.toLocaleString("fa-IR")} عدد موجود</span> : null}
                   </button>
                 ))}
               </div>
             </section>
 
             <div className="mt-6 rounded-xl border border-[color:var(--roast)]/40 bg-[color:var(--night)] p-4 text-xs leading-7 text-[color:var(--light)]">
-              رستا فقط دانه کامل می‌فروشد. برای حفظ عطر و تازگی، دانه را نزدیک زمان مصرف آسیاب کنید.
+              رستا فقط دانه کامل می‌فروشد. قیمت نمایش‌داده‌شده Snapshot کاتالوگ است و مبلغ نهایی در سبد توسط سرور تأیید می‌شود.
             </div>
+
+            {notice ? <div className="mt-5"><Alert variant="success" title="سبد خرید">{notice}</Alert></div> : null}
 
             <div className="mt-6 flex items-center justify-between gap-4 border-t border-[color:var(--mid)] pt-5">
               <div>
                 <p className="text-xs text-[color:var(--light)]">قیمت انتخاب‌شده</p>
-                <p className="mt-1 text-xl font-bold text-[color:var(--roast)]">
-                  {selectedVariant ? formatIrr(selectedVariant.price) : "انتخاب وزن"}
-                </p>
+                <p className="mt-1 text-xl font-bold text-[color:var(--roast)]">{selectedVariant ? formatIrr(selectedVariant.price) : "انتخاب وزن"}</p>
               </div>
               <button
                 type="button"
-                disabled
-                title="اتصال Variant به سبد در فاز ۵ انجام می‌شود"
-                className="rounded-xl bg-[color:var(--roast)] px-6 py-3 text-sm font-bold text-[color:var(--night)] opacity-60"
+                disabled={!selectedVariant?.isAvailable}
+                onClick={addSelectedVariant}
+                className="min-h-12 rounded-xl bg-[color:var(--roast)] px-6 py-3 text-sm font-bold text-[color:var(--night)] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                افزودن به سبد — فاز ۵
+                {added ? "افزوده شد ✓" : "افزودن به سبد"}
               </button>
             </div>
           </section>
@@ -335,9 +318,7 @@ function ProductPage() {
           <section className="mt-14">
             <h2 className="text-2xl font-bold">محصولات مشابه</h2>
             <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {relatedQuery.data.slice(0, 4).map((item) => (
-                <CatalogProductCard key={item.id} product={item} />
-              ))}
+              {relatedQuery.data.slice(0, 4).map((item) => <CatalogProductCard key={item.id} product={item} />)}
             </div>
           </section>
         ) : null}
