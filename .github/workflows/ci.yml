@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.22
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Build production worker
+        env:
+          VITE_SITE_URL: https://rosta.shop
+          VITE_API_URL: http://127.0.0.1:8000/api/v1
+          VITE_ALLOW_INDEXING: "false"
+        run: bun run build 2>&1 | tee build.log
+      - name: Upload build report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-report
+          path: build.log
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Bundle budget
+        run: bun run bundle:check 2>&1 | tee bundle.log
+      - name: Upload bundle report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-report
+          path: |
+            bundle.log
+            bundle-report.json
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Typecheck
+        run: bun run typecheck 2>&1 | tee typecheck.log
+      - name: Upload typecheck report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: typecheck-report
+          path: typecheck.log
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Lint
+        run: bun run lint 2>&1 | tee lint.log
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report
+          path: lint.log
+          if-no-files-found: ignore
+          retention-days: 7
