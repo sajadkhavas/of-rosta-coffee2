@@ -1,0 +1,50 @@
+name: Migrate completed Rosta phases
+
+on:
+  push:
+    branches:
+      - agent/migrate-phases-1-4
+    paths:
+      - .github/workflows/migrate-completed-phases.yml
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    if: ${{ !startsWith(github.event.head_commit.message, 'chore(migration):') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout original Lovable repository
+        uses: actions/checkout@v4
+        with:
+          ref: agent/migrate-phases-1-4
+          fetch-depth: 0
+
+      - name: Clone completed source snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git clone --depth 1 --branch agent/phase-3-identity-account \
+            "https://x-access-token:${GH_TOKEN}@github.com/sajadkhavas/remix-of-of-rosta-coffee2.git" \
+            /tmp/rosta-completed
+
+      - name: Replace working tree with completed snapshot
+        run: |
+          rsync -a --delete \
+            --exclude='.git/' \
+            /tmp/rosta-completed/ ./
+          rm -f MIGRATION_TEST.md
+          rm -rf migration
+
+      - name: Commit migrated snapshot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No migration changes detected."
+            exit 0
+          fi
+          git commit -m "chore(migration): port completed phases 1-4 to original repo"
+          git push origin HEAD:agent/migrate-phases-1-4
