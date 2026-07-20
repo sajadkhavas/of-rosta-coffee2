@@ -1,0 +1,643 @@
+openapi: 3.1.0
+info:
+  title: Rosta API
+  version: 1.0.0-draft
+  description: |
+    قرارداد میان فرانت TanStack Start و بک‌اند Laravel 11.
+    قیمت‌ها ریال، زمان‌ها ISO 8601 و تمام محصولات فقط دانه کامل هستند.
+servers:
+  - url: https://api.rosta.shop/api/v1
+  - url: http://localhost:8000/api/v1
+
+tags:
+  - { name: Authentication }
+  - { name: Profile }
+  - { name: Catalog }
+  - { name: Roasteries }
+  - { name: Search }
+  - { name: Cart }
+  - { name: Checkout }
+  - { name: Orders }
+  - { name: Payments }
+
+paths:
+  /auth/otp/request:
+    post:
+      tags: [Authentication]
+      operationId: requestOtp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mobile, purpose]
+              properties:
+                mobile: { $ref: '#/components/schemas/IranMobile' }
+                purpose: { type: string, enum: [login, register, verify_mobile] }
+      responses:
+        '202':
+          description: OTP queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    required: [request_id, expires_in, retry_after]
+                    properties:
+                      request_id: { type: string, format: uuid }
+                      expires_in: { type: integer }
+                      retry_after: { type: integer }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /auth/otp/verify:
+    post:
+      tags: [Authentication]
+      operationId: verifyOtp
+      summary: تأیید کد و ایجاد Session Cookie
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [request_id, code]
+              properties:
+                request_id: { type: string, format: uuid }
+                code: { type: string, pattern: '^\d{6}$' }
+      responses:
+        '200': { $ref: '#/components/responses/AuthUser' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      operationId: logout
+      security: [{ sanctumCookie: [] }]
+      responses:
+        '204': { description: Logged out }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
+  /me:
+    get:
+      tags: [Profile]
+      operationId: getMe
+      security: [{ sanctumCookie: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/AuthUser' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+    patch:
+      tags: [Profile]
+      operationId: updateMe
+      security: [{ sanctumCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: [string, 'null'], maxLength: 120 }
+                email: { type: [string, 'null'], format: email }
+      responses:
+        '200': { $ref: '#/components/responses/AuthUser' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /me/addresses:
+    get:
+      tags: [Profile]
+      operationId: listAddresses
+      security: [{ sanctumCookie: [] }]
+      responses:
+        '200':
+          description: Address list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Address' } }
+    post:
+      tags: [Profile]
+      operationId: createAddress
+      security: [{ sanctumCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddressInput' }
+      responses:
+        '201': { $ref: '#/components/responses/AddressResource' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /me/addresses/{addressId}:
+    parameters:
+      - { name: addressId, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [Profile]
+      operationId: updateAddress
+      security: [{ sanctumCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddressInput' }
+      responses:
+        '200': { $ref: '#/components/responses/AddressResource' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Profile]
+      operationId: deleteAddress
+      security: [{ sanctumCookie: [] }]
+      responses:
+        '204': { description: Address deleted }
+
+  /products:
+    get:
+      tags: [Catalog]
+      operationId: listProducts
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PerPage' }
+        - { name: q, in: query, schema: { type: string } }
+        - { name: 'origin[]', in: query, schema: { type: array, items: { type: string } } }
+        - { name: 'roast_level[]', in: query, schema: { type: array, items: { $ref: '#/components/schemas/RoastLevel' } } }
+        - { name: 'processing_method[]', in: query, schema: { type: array, items: { $ref: '#/components/schemas/ProcessingMethod' } } }
+        - { name: 'roastery[]', in: query, schema: { type: array, items: { type: string } } }
+        - { name: 'weight[]', in: query, schema: { type: array, items: { $ref: '#/components/schemas/WeightGrams' } } }
+        - { name: min_price, in: query, schema: { type: integer, minimum: 0 } }
+        - { name: max_price, in: query, schema: { type: integer, minimum: 0 } }
+        - { name: available, in: query, schema: { type: boolean } }
+        - { name: sort, in: query, schema: { type: string, enum: [recommended, newest, price_asc, price_desc] } }
+      responses:
+        '200':
+          description: Product collection
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/ProductSummary' } }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+                  links: { $ref: '#/components/schemas/PaginationLinks' }
+
+  /products/{slug}:
+    get:
+      tags: [Catalog]
+      operationId: getProduct
+      parameters: [{ $ref: '#/components/parameters/Slug' }]
+      responses:
+        '200':
+          description: Product detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/ProductDetail' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /products/{slug}/related:
+    get:
+      tags: [Catalog]
+      operationId: getRelatedProducts
+      parameters: [{ $ref: '#/components/parameters/Slug' }]
+      responses:
+        '200':
+          description: Related products
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/ProductSummary' } }
+
+  /roasteries:
+    get:
+      tags: [Roasteries]
+      operationId: listRoasteries
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PerPage' }
+      responses:
+        '200':
+          description: Roastery collection
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/RoasterySummary' } }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+                  links: { $ref: '#/components/schemas/PaginationLinks' }
+
+  /roasteries/{slug}:
+    get:
+      tags: [Roasteries]
+      operationId: getRoastery
+      parameters: [{ $ref: '#/components/parameters/Slug' }]
+      responses:
+        '200':
+          description: Roastery detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/RoasteryDetail' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /search:
+    get:
+      tags: [Search]
+      operationId: searchCatalog
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string, minLength: 1 } }
+        - { name: type, in: query, schema: { type: string, enum: [all, products, roasteries, content], default: all } }
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      products: { type: array, items: { $ref: '#/components/schemas/ProductSummary' } }
+                      roasteries: { type: array, items: { $ref: '#/components/schemas/RoasterySummary' } }
+                      suggestions: { type: array, items: { type: string } }
+
+  /cart/validate:
+    post:
+      tags: [Cart]
+      operationId: validateCart
+      summary: اعتبارسنجی موجودی، قیمت و تک‌روستری‌بودن
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CartInput' }
+      responses:
+        '200': { $ref: '#/components/responses/QuoteResource' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /checkout/quote:
+    post:
+      tags: [Checkout]
+      operationId: createCheckoutQuote
+      security: [{ sanctumCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items, address_id]
+              properties:
+                items: { $ref: '#/components/schemas/CartItems' }
+                address_id: { type: string }
+                coupon_code: { type: [string, 'null'] }
+      responses:
+        '200': { $ref: '#/components/responses/QuoteResource' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /orders:
+    get:
+      tags: [Orders]
+      operationId: listOrders
+      security: [{ sanctumCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PerPage' }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/OrderStatus' } }
+      responses:
+        '200':
+          description: User orders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Order' } }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+                  links: { $ref: '#/components/schemas/PaginationLinks' }
+    post:
+      tags: [Orders]
+      operationId: createOrder
+      security: [{ sanctumCookie: [] }]
+      summary: ایجاد سفارش از Quote معتبر با رزرو اتمیک موجودی
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quote_id, idempotency_key]
+              properties:
+                quote_id: { type: string }
+                idempotency_key: { type: string, minLength: 16 }
+                notes: { type: [string, 'null'], maxLength: 1000 }
+      responses:
+        '201': { $ref: '#/components/responses/OrderResource' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /orders/{orderId}:
+    get:
+      tags: [Orders]
+      operationId: getOrder
+      security: [{ sanctumCookie: [] }]
+      parameters:
+        - { name: orderId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { $ref: '#/components/responses/OrderResource' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /payments/request:
+    post:
+      tags: [Payments]
+      operationId: requestPayment
+      security: [{ sanctumCookie: [] }]
+      summary: ایجاد تراکنش Split Payment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [order_id, idempotency_key]
+              properties:
+                order_id: { type: string }
+                idempotency_key: { type: string, minLength: 16 }
+      responses:
+        '201':
+          description: Payment created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      payment_id: { type: string }
+                      redirect_url: { type: string, format: uri }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /payments/callback:
+    post:
+      tags: [Payments]
+      operationId: paymentCallback
+      summary: Callback امضاشده و Idempotent درگاه
+      responses:
+        '200': { description: Callback accepted }
+        '400': { description: Invalid callback }
+
+  /payments/{paymentId}/verify:
+    post:
+      tags: [Payments]
+      operationId: verifyPayment
+      security: [{ sanctumCookie: [] }]
+      parameters:
+        - { name: paymentId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: Verified payment
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      status: { type: string, enum: [pending, paid, failed, cancelled, refunded] }
+                      order_id: { type: string }
+
+components:
+  securitySchemes:
+    sanctumCookie:
+      type: apiKey
+      in: cookie
+      name: laravel_session
+  parameters:
+    Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+    PerPage: { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 24 } }
+    Slug: { name: slug, in: path, required: true, schema: { type: string } }
+  responses:
+    AuthUser:
+      description: Current user
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data: { $ref: '#/components/schemas/AuthUser' }
+    AddressResource:
+      description: Address resource
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data: { $ref: '#/components/schemas/Address' }
+    QuoteResource:
+      description: Authoritative quote
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data: { $ref: '#/components/schemas/CartQuote' }
+    OrderResource:
+      description: Order resource
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data: { $ref: '#/components/schemas/Order' }
+    Unauthenticated: { description: Authentication required, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
+    NotFound: { description: Resource not found, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
+    ValidationError: { description: Invalid input, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
+    RateLimited: { description: Too many requests, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
+    Conflict: { description: Price, stock or idempotency conflict, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
+  schemas:
+    IranMobile: { type: string, pattern: '^09\d{9}$', example: '09123456789' }
+    RoastLevel: { type: string, enum: [light, medium, dark] }
+    ProcessingMethod: { type: string, enum: [washed, natural, honey, other] }
+    WeightGrams: { type: integer, enum: [50, 100, 250, 500, 1000] }
+    OrderStatus:
+      type: string
+      enum: [draft, awaiting_payment, paid, processing, partially_shipped, shipped, partially_delivered, delivered, partially_cancelled, cancelled, refunded]
+    ErrorEnvelope:
+      type: object
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            fields: { type: object, additionalProperties: true }
+            request_id: { type: string }
+    AuthUser:
+      type: object
+      required: [id, mobile, roles]
+      properties:
+        id: { type: string }
+        mobile: { $ref: '#/components/schemas/IranMobile' }
+        name: { type: [string, 'null'] }
+        email: { type: [string, 'null'], format: email }
+        roles: { type: array, items: { type: string } }
+    AddressInput:
+      type: object
+      required: [recipient_name, recipient_mobile, province, city, address_line, is_default]
+      properties:
+        title: { type: [string, 'null'] }
+        recipient_name: { type: string }
+        recipient_mobile: { $ref: '#/components/schemas/IranMobile' }
+        province: { type: string }
+        city: { type: string }
+        address_line: { type: string, minLength: 10 }
+        postal_code: { type: [string, 'null'], pattern: '^\d{10}$' }
+        is_default: { type: boolean }
+    Address:
+      allOf:
+        - { $ref: '#/components/schemas/AddressInput' }
+        - { type: object, required: [id], properties: { id: { type: string } } }
+    MediaAsset:
+      type: object
+      required: [id, alt, width, height, sources]
+      properties:
+        id: { type: string }
+        alt: { type: string }
+        width: { type: integer }
+        height: { type: integer }
+        blur_data_url: { type: [string, 'null'] }
+        sources:
+          type: array
+          items:
+            type: object
+            required: [url, width, format]
+            properties:
+              url: { type: string, format: uri }
+              width: { type: integer }
+              format: { type: string, enum: [avif, webp, jpeg, png] }
+    RoasterySummary:
+      type: object
+      required: [id, name, slug, is_verified]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        city: { type: [string, 'null'] }
+        is_verified: { type: boolean }
+        logo: { oneOf: [{ $ref: '#/components/schemas/MediaAsset' }, { type: 'null' }] }
+        cover: { oneOf: [{ $ref: '#/components/schemas/MediaAsset' }, { type: 'null' }] }
+        preparation_time:
+          type: [object, 'null']
+          properties: { min_hours: { type: integer }, max_hours: { type: integer } }
+        rating:
+          type: [object, 'null']
+          properties: { value: { type: number }, count: { type: integer } }
+    RoasteryDetail:
+      allOf:
+        - { $ref: '#/components/schemas/RoasterySummary' }
+        - { type: object, required: [description], properties: { description: { type: string }, shipping_policy: { type: [string, 'null'] } } }
+    ProductVariant:
+      description: Variant وزن؛ عمداً هیچ فیلد grind ندارد.
+      type: object
+      required: [id, sku, weight_grams, price, currency, is_available]
+      properties:
+        id: { type: string }
+        sku: { type: string }
+        weight_grams: { $ref: '#/components/schemas/WeightGrams' }
+        price: { type: integer, minimum: 0 }
+        compare_at_price: { type: [integer, 'null'], minimum: 0 }
+        currency: { type: string, const: IRR }
+        is_available: { type: boolean }
+        available_quantity: { type: [integer, 'null'], minimum: 0 }
+    ProductSummary:
+      type: object
+      required: [id, name, slug, origin, processing_method, roast_level, arabica_percentage, tasting_notes, roastery, variants, status]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        slug: { type: string }
+        short_description: { type: [string, 'null'] }
+        origin:
+          type: object
+          properties: { id: { type: string }, name: { type: string }, country_code: { type: [string, 'null'] } }
+        processing_method: { $ref: '#/components/schemas/ProcessingMethod' }
+        roast_level: { $ref: '#/components/schemas/RoastLevel' }
+        arabica_percentage: { type: integer, minimum: 0, maximum: 100 }
+        tasting_notes: { type: array, items: { type: string } }
+        primary_image: { oneOf: [{ $ref: '#/components/schemas/MediaAsset' }, { type: 'null' }] }
+        roastery: { $ref: '#/components/schemas/RoasterySummary' }
+        variants: { type: array, items: { $ref: '#/components/schemas/ProductVariant' } }
+        latest_roast_batch:
+          type: [object, 'null']
+          properties:
+            id: { type: string }
+            batch_code: { type: string }
+            roasted_at: { type: string, format: date-time }
+            available_from: { type: [string, 'null'], format: date-time }
+        status: { type: string, enum: [draft, review, published, archived] }
+    ProductDetail:
+      allOf:
+        - { $ref: '#/components/schemas/ProductSummary' }
+        - type: object
+          required: [description, gallery, brewing_suggestions, seo]
+          properties:
+            description: { type: string }
+            gallery: { type: array, items: { $ref: '#/components/schemas/MediaAsset' } }
+            brewing_suggestions: { type: array, items: { type: string } }
+            seo: { type: object, properties: { title: { type: [string, 'null'] }, description: { type: [string, 'null'] } } }
+    CartItemInput:
+      type: object
+      required: [variant_id, quantity]
+      properties:
+        variant_id: { type: string }
+        quantity: { type: integer, minimum: 1, maximum: 20 }
+    CartItems: { type: array, minItems: 1, items: { $ref: '#/components/schemas/CartItemInput' } }
+    CartInput: { type: object, required: [items], properties: { items: { $ref: '#/components/schemas/CartItems' } } }
+    CartQuote:
+      type: object
+      required: [id, expires_at, subtotal, shipping_total, discount_total, grand_total, currency, warnings]
+      properties:
+        id: { type: string }
+        expires_at: { type: string, format: date-time }
+        roastery_id: { type: string }
+        subtotal: { type: integer }
+        shipping_total: { type: integer }
+        discount_total: { type: integer }
+        grand_total: { type: integer }
+        currency: { type: string, const: IRR }
+        warnings: { type: array, items: { type: object, properties: { code: { type: string }, message: { type: string } } } }
+    Order:
+      type: object
+      required: [id, order_number, status, grand_total, currency, sub_orders]
+      properties:
+        id: { type: string }
+        order_number: { type: string }
+        status: { $ref: '#/components/schemas/OrderStatus' }
+        placed_at: { type: [string, 'null'], format: date-time }
+        subtotal: { type: integer }
+        shipping_total: { type: integer }
+        discount_total: { type: integer }
+        grand_total: { type: integer }
+        currency: { type: string, const: IRR }
+        address: { oneOf: [{ $ref: '#/components/schemas/Address' }, { type: 'null' }] }
+        sub_orders: { type: array, items: { type: object, additionalProperties: true } }
+    PaginationMeta:
+      type: object
+      properties: { current_page: { type: integer }, last_page: { type: integer }, per_page: { type: integer }, total: { type: integer } }
+    PaginationLinks:
+      type: object
+      properties: { first: { type: [string, 'null'] }, last: { type: [string, 'null'] }, prev: { type: [string, 'null'] }, next: { type: [string, 'null'] } }

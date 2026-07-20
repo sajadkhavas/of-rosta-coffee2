@@ -1,63 +1,101 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { fallback, zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
-import { zodValidator, fallback } from "@tanstack/zod-adapter";
-import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { Navbar } from "@/components/Navbar";
 import { Breadcrumb, breadcrumbJsonLd } from "@/components/Breadcrumb";
-import { ProductCard } from "@/components/ProductCard";
-import { products, roasteries, type RoastLevel } from "@/data/seed";
-import { toFa } from "@/lib/persian";
+import { CatalogProductCard } from "@/components/catalog/CatalogProductCard";
+import { productsQueryOptions } from "@/lib/api/catalog";
+import type {
+  ProcessingMethod,
+  ProductFilters,
+  RoastLevel,
+} from "@/lib/api/contracts";
+import { isApiError } from "@/lib/api/client";
+import { absoluteUrl } from "@/config/site";
 
-const ORIGINS = Array.from(new Set(products.map((p) => p.origin)));
-const ROAST_LEVELS: RoastLevel[] = ["روشن", "متوسط", "تیره"];
-
-const productsSearchSchema = z.object({
+const searchSchema = z.object({
+  q: fallback(z.string(), "").default(""),
   origin: fallback(z.string(), "").default(""),
-  roast: fallback(z.string(), "").default(""),
+  roast: fallback(z.enum(["", "light", "medium", "dark"]), "").default(""),
+  processing: fallback(
+    z.enum(["", "washed", "natural", "honey", "other"]),
+    "",
+  ).default(""),
   roastery: fallback(z.string(), "").default(""),
+  available: fallback(z.boolean(), false).default(false),
+  sort: fallback(
+    z.enum(["recommended", "newest", "price_asc", "price_desc"]),
+    "recommended",
+  ).default("recommended"),
+  page: fallback(z.coerce.number().int().min(1), 1).default(1),
 });
 
-type ProductsSearch = z.infer<typeof productsSearchSchema>;
+type ProductsSearch = z.infer<typeof searchSchema>;
 
-function buildCanonical(search: ProductsSearch): string {
+const roastLabels: Record<Exclude<ProductsSearch["roast"], "">, string> = {
+  light: "روشن",
+  medium: "متوسط",
+  dark: "تیره",
+};
+
+const processingLabels: Record<
+  Exclude<ProductsSearch["processing"], "">,
+  string
+> = {
+  washed: "شسته",
+  natural: "طبیعی",
+  honey: "هانی",
+  other: "سایر",
+};
+
+function filtersFromSearch(search: ProductsSearch): ProductFilters {
+  return {
+    query: search.q.trim() || undefined,
+    origin: search.origin ? [search.origin] : undefined,
+    roastLevel: search.roast ? [search.roast as RoastLevel] : undefined,
+    processingMethod: search.processing
+      ? [search.processing as ProcessingMethod]
+      : undefined,
+    roastery: search.roastery ? [search.roastery] : undefined,
+    available: search.available || undefined,
+    sort: search.sort,
+    page: search.page,
+    perPage: 24,
+  };
+}
+
+function canonicalFor(search: ProductsSearch): string {
   const params = new URLSearchParams();
   if (search.origin) params.set("origin", search.origin);
   if (search.roast) params.set("roast", search.roast);
+  if (search.processing) params.set("processing", search.processing);
   if (search.roastery) params.set("roastery", search.roastery);
-  const qs = params.toString();
-  return "/products" + (qs ? `?${qs}` : "");
+  const query = params.toString();
+  return absoluteUrl(`/products${query ? `?${query}` : ""}`);
 }
 
 export const Route = createFileRoute("/products/")({
-  validateSearch: zodValidator(productsSearchSchema),
-  head: (ctx) => {
-    const search = (ctx as { search?: ProductsSearch }).search;
-
-    const s = (search ?? { origin: "", roast: "", roastery: "" }) as ProductsSearch;
-    let title = "خرید دانه قهوه و قهوه اسپشیالیتی | رستا";
-    let description =
-      "خرید دانه قهوه تک‌خاستگاه از اتیوپی، کلمبیا، برزیل و کنیا. رست تازه از روستری‌های ایران با ارسال سریع. همه محصولات به‌صورت دانه کامل برای حفظ تازگی.";
-
-    if (s.origin) {
-      title = `قهوه تک خاستگاه ${s.origin} | خرید آنلاین | رستا`;
-      description = `خرید دانه قهوه تک‌خاستگاه ${s.origin} از بهترین روستری‌های ایران. رست تازه، ارسال سریع.`;
-    } else if (s.roast) {
-      title = `قهوه رست ${s.roast} | خرید آنلاین | رستا`;
-      description = `خرید دانه قهوه با رست ${s.roast} از روستری‌های منتخب رستا.`;
-    }
-
-    const canonical = buildCanonical(s);
+  validateSearch: zodValidator(searchSchema),
+  head: ({ search }) => {
+    const resolved = searchSchema.parse(search ?? {});
+    const title = resolved.origin
+      ? `خرید قهوه ${resolved.origin} | رستا`
+      : resolved.roast
+        ? `خرید قهوه رست ${roastLabels[resolved.roast]} | رستا`
+        : "خرید دانه قهوه تازه و اسپشیالیتی | رستا";
+    const description =
+      "مقایسه و خرید دانه کامل قهوه تازه‌رست از روستری‌های منتخب ایران؛ با فیلتر خاستگاه، سطح رست، فرآوری، وزن و موجودی.";
     return {
       meta: [
         { title },
         { name: "description", content: description },
         { property: "og:title", content: title },
         { property: "og:description", content: description },
-        { property: "og:url", content: canonical },
         { property: "og:type", content: "website" },
       ],
-      links: [{ rel: "canonical", href: canonical }],
+      links: [{ rel: "canonical", href: canonicalFor(resolved) }],
       scripts: [
         {
           type: "application/ld+json",
@@ -77,137 +115,275 @@ export const Route = createFileRoute("/products/")({
 function ProductsPage() {
   const search = Route.useSearch();
   const navigate = useNavigate({ from: "/products/" });
+  const query = useQuery(productsQueryOptions(filtersFromSearch(search)));
+  const products = query.data?.items ?? [];
+  const currentPage = query.data?.meta?.current_page ?? search.page;
+  const lastPage = query.data?.meta?.last_page ?? currentPage;
+  const total = query.data?.meta?.total;
 
-  const setParam = (key: keyof ProductsSearch, value: string) => {
+  const updateSearch = (patch: Partial<ProductsSearch>, resetPage = true) => {
     navigate({
-      search: (prev: ProductsSearch) => ({ ...prev, [key]: value }),
+      search: (previous: ProductsSearch) => ({
+        ...previous,
+        ...patch,
+        page: resetPage ? 1 : (patch.page ?? previous.page),
+      }),
       replace: true,
     });
-
   };
 
-  const clearAll = () =>
-    navigate({ search: { origin: "", roast: "", roastery: "" }, replace: true });
-
-  const filtered = useMemo(
-    () =>
-      products.filter(
-        (p) =>
-          (!search.origin || p.origin === search.origin) &&
-          (!search.roast || p.roastLevel === search.roast) &&
-          (!search.roastery || p.roasterySlug === search.roastery),
-      ),
-    [search.origin, search.roast, search.roastery],
-  );
-
-  const h1 = search.origin
-    ? `قهوه تک خاستگاه ${search.origin}`
-    : search.roast
-    ? `قهوه رست ${search.roast}`
-    : "همه محصولات";
-
-  const Chip = ({
-    active,
-    onClick,
-    children,
-  }: {
-    active: boolean;
-    onClick: () => void;
-    children: React.ReactNode;
-  }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`whitespace-nowrap rounded-full border px-3 py-1 text-xs transition ${
-        active
-          ? "border-[color:var(--roast)] bg-[color:var(--roast)] text-[color:var(--night)]"
-          : "border-[color:var(--mid)] bg-[color:var(--dark)] text-[color:var(--light)] hover:border-[color:var(--roast)]"
-      }`}
-    >
-      {children}
-    </button>
-  );
+  const clearFilters = () => {
+    navigate({
+      search: searchSchema.parse({}),
+      replace: true,
+    });
+  };
 
   return (
     <>
       <Navbar />
-      <main className="mx-auto max-w-6xl px-4 py-8">
-        <Breadcrumb
-          items={[
-            { label: "خانه", to: "/" },
-            { label: "محصولات" },
-          ]}
-        />
-        <header>
-          <h1 className="text-3xl font-bold text-[color:var(--steam)]">{h1}</h1>
-          <p className="mt-2 text-sm text-[color:var(--light)]">
-            {toFa(filtered.length)} محصول تازه‌رست از {toFa(roasteries.length)} روستری ایرانی
-          </p>
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <Breadcrumb items={[{ label: "خانه", to: "/" }, { label: "محصولات" }]} />
+        <header className="mt-4 grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div>
+            <p className="text-xs font-bold tracking-[0.2em] text-[color:var(--roast)]">
+              CATALOG
+            </p>
+            <h1 className="mt-2 text-3xl font-bold sm:text-4xl">
+              {search.origin
+                ? `دانه قهوه ${search.origin}`
+                : search.roast
+                  ? `قهوه با رست ${roastLabels[search.roast]}`
+                  : "همه دانه‌های قهوه"}
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-[color:var(--light)]">
+              فقط دانه کامل؛ قیمت، وزن، موجودی و تاریخ رست مستقیماً از API روستری‌ها.
+            </p>
+          </div>
+          {typeof total === "number" ? (
+            <p className="text-sm text-[color:var(--light)]">
+              {total.toLocaleString("fa-IR")} محصول
+            </p>
+          ) : null}
         </header>
 
         <section
-          aria-label="فیلترها"
-          className="mt-6 space-y-3 rounded-xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-4"
+          aria-label="فیلتر کاتالوگ"
+          className="mt-8 grid gap-4 rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-4 md:grid-cols-2 lg:grid-cols-4"
         >
-          <div>
-            <h2 className="mb-2 text-xs font-bold text-[color:var(--light)]">خاستگاه</h2>
-            <div className="flex flex-wrap gap-1.5">
-              <Chip active={!search.origin} onClick={() => setParam("origin", "")}>همه</Chip>
-              {ORIGINS.map((o) => (
-                <Chip key={o} active={search.origin === o} onClick={() => setParam("origin", o)}>
-                  {o}
-                </Chip>
-              ))}
-            </div>
-          </div>
-          <div>
-            <h2 className="mb-2 text-xs font-bold text-[color:var(--light)]">سطح رست</h2>
-            <div className="flex flex-wrap gap-1.5">
-              <Chip active={!search.roast} onClick={() => setParam("roast", "")}>همه</Chip>
-              {ROAST_LEVELS.map((l) => (
-                <Chip key={l} active={search.roast === l} onClick={() => setParam("roast", l)}>
-                  {l}
-                </Chip>
-              ))}
-            </div>
-          </div>
-          <div>
-            <h2 className="mb-2 text-xs font-bold text-[color:var(--light)]">روستری</h2>
-            <div className="flex flex-wrap gap-1.5">
-              <Chip active={!search.roastery} onClick={() => setParam("roastery", "")}>همه</Chip>
-              {roasteries.map((r) => (
-                <Chip
-                  key={r.slug}
-                  active={search.roastery === r.slug}
-                  onClick={() => setParam("roastery", r.slug)}
-                >
-                  {r.name}
-                </Chip>
-              ))}
-            </div>
-          </div>
+          <label className="grid gap-2 text-xs font-bold text-[color:var(--light)] md:col-span-2">
+            جستجو
+            <input
+              value={search.q}
+              onChange={(event) => updateSearch({ q: event.target.value })}
+              placeholder="نام محصول، خاستگاه یا روستری"
+              className="min-h-11 rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 text-sm text-[color:var(--steam)] outline-none focus:border-[color:var(--roast)]"
+            />
+          </label>
+          <FilterSelect
+            label="سطح رست"
+            value={search.roast}
+            onChange={(value) =>
+              updateSearch({ roast: value as ProductsSearch["roast"] })
+            }
+            options={Object.entries(roastLabels)}
+          />
+          <FilterSelect
+            label="فرآوری"
+            value={search.processing}
+            onChange={(value) =>
+              updateSearch({ processing: value as ProductsSearch["processing"] })
+            }
+            options={Object.entries(processingLabels)}
+          />
+          <label className="grid gap-2 text-xs font-bold text-[color:var(--light)]">
+            خاستگاه
+            <input
+              value={search.origin}
+              onChange={(event) => updateSearch({ origin: event.target.value })}
+              placeholder="مثلاً اتیوپی"
+              className="min-h-11 rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 text-sm font-normal outline-none focus:border-[color:var(--roast)]"
+            />
+          </label>
+          <label className="grid gap-2 text-xs font-bold text-[color:var(--light)]">
+            روستری
+            <input
+              value={search.roastery}
+              onChange={(event) => updateSearch({ roastery: event.target.value })}
+              placeholder="شناسه روستری"
+              className="min-h-11 rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 text-sm font-normal outline-none focus:border-[color:var(--roast)]"
+            />
+          </label>
+          <FilterSelect
+            label="مرتب‌سازی"
+            value={search.sort}
+            onChange={(value) =>
+              updateSearch({ sort: value as ProductsSearch["sort"] })
+            }
+            includeAll={false}
+            options={[
+              ["recommended", "پیشنهادی"],
+              ["newest", "تازه‌ترین رست"],
+              ["price_asc", "کمترین قیمت"],
+              ["price_desc", "بیشترین قیمت"],
+            ]}
+          />
+          <label className="flex min-h-11 items-center gap-3 self-end rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 text-sm text-[color:var(--light)]">
+            <input
+              type="checkbox"
+              checked={search.available}
+              onChange={(event) => updateSearch({ available: event.target.checked })}
+              className="size-4 accent-[color:var(--roast)]"
+            />
+            فقط موجودها
+          </label>
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="min-h-11 self-end rounded-xl border border-[color:var(--roast)] px-4 text-sm font-bold text-[color:var(--roast)] transition hover:bg-[color:var(--roast)] hover:text-[color:var(--night)]"
+          >
+            پاک‌کردن فیلترها
+          </button>
         </section>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {filtered.map((p) => (
-            <ProductCard key={p.slug} product={p} />
-          ))}
-        </div>
-
-        {filtered.length === 0 && (
-          <div className="mt-12 text-center">
-            <p className="text-sm text-[color:var(--light)]">محصولی با این فیلتر یافت نشد.</p>
+        {query.isPending ? (
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" role="status">
+            {Array.from({ length: 8 }, (_, index) => (
+              <div
+                key={index}
+                className="h-[25rem] animate-pulse rounded-2xl bg-[color:var(--dark)]"
+              />
+            ))}
+          </div>
+        ) : query.isError ? (
+          <section className="mt-10 rounded-2xl border border-red-400/40 bg-red-950/20 p-6 text-center">
+            <h2 className="font-bold">کاتالوگ بارگذاری نشد</h2>
+            <p className="mt-2 text-sm text-[color:var(--light)]">
+              {isApiError(query.error)
+                ? query.error.message
+                : "ارتباط با API برقرار نشد."}
+            </p>
             <button
               type="button"
-              onClick={clearAll}
-              className="mt-4 rounded-lg border border-[color:var(--roast)] px-4 py-2 text-sm text-[color:var(--roast)] hover:bg-[color:var(--roast)] hover:text-[color:var(--night)]"
+              onClick={() => query.refetch()}
+              className="mt-5 min-h-11 rounded-xl bg-[color:var(--roast)] px-5 text-sm font-bold text-[color:var(--night)]"
             >
-              پاک کردن فیلترها
+              تلاش مجدد
             </button>
-          </div>
+          </section>
+        ) : products.length === 0 ? (
+          <section className="mt-10 rounded-2xl border border-dashed border-[color:var(--mid)] p-10 text-center">
+            <h2 className="font-bold">محصولی با این فیلتر پیدا نشد</h2>
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="mt-4 min-h-11 px-4 text-sm text-[color:var(--roast)]"
+            >
+              نمایش همه محصولات
+            </button>
+          </section>
+        ) : (
+          <>
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{
+                __html: JSON.stringify({
+                  "@context": "https://schema.org",
+                  "@type": "ItemList",
+                  itemListElement: products.map((product, index) => ({
+                    "@type": "ListItem",
+                    position: index + 1,
+                    url: absoluteUrl(`/products/${product.slug}`),
+                    name: product.name,
+                  })),
+                }),
+              }}
+            />
+            <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {products.map((product) => (
+                <CatalogProductCard key={product.id} product={product} />
+              ))}
+            </div>
+            {lastPage > 1 ? (
+              <nav
+                aria-label="صفحه‌بندی محصولات"
+                className="mt-10 flex items-center justify-center gap-3"
+              >
+                <PageButton
+                  disabled={currentPage <= 1}
+                  onClick={() => updateSearch({ page: currentPage - 1 }, false)}
+                >
+                  قبلی
+                </PageButton>
+                <span className="text-sm text-[color:var(--light)]">
+                  صفحه {currentPage.toLocaleString("fa-IR")} از{" "}
+                  {lastPage.toLocaleString("fa-IR")}
+                </span>
+                <PageButton
+                  disabled={currentPage >= lastPage}
+                  onClick={() => updateSearch({ page: currentPage + 1 }, false)}
+                >
+                  بعدی
+                </PageButton>
+              </nav>
+            ) : null}
+          </>
         )}
       </main>
       <Footer />
     </>
+  );
+}
+
+function FilterSelect({
+  label,
+  value,
+  options,
+  onChange,
+  includeAll = true,
+}: {
+  label: string;
+  value: string;
+  options: Array<[string, string]>;
+  onChange: (value: string) => void;
+  includeAll?: boolean;
+}) {
+  return (
+    <label className="grid gap-2 text-xs font-bold text-[color:var(--light)]">
+      {label}
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="min-h-11 rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 text-sm font-normal outline-none focus:border-[color:var(--roast)]"
+      >
+        {includeAll ? <option value="">همه</option> : null}
+        {options.map(([optionValue, optionLabel]) => (
+          <option key={optionValue} value={optionValue}>
+            {optionLabel}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function PageButton({
+  children,
+  disabled,
+  onClick,
+}: {
+  children: React.ReactNode;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="min-h-11 rounded-xl border border-[color:var(--mid)] px-4 text-sm disabled:opacity-40"
+    >
+      {children}
+    </button>
   );
 }

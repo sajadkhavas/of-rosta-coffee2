@@ -1,197 +1,203 @@
-import { createFileRoute, notFound, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { ChevronDown } from "lucide-react";
-import { Navbar } from "@/components/Navbar";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 import { Footer } from "@/components/Footer";
+import { Navbar } from "@/components/Navbar";
 import { Breadcrumb, breadcrumbJsonLd } from "@/components/Breadcrumb";
-import { ProductCard } from "@/components/ProductCard";
-import { RoastDateBadge } from "@/components/RoastDateBadge";
-import { RoastLevelBadge } from "@/components/RoastLevelBadge";
-import { WeightSelector } from "@/components/WeightSelector";
+import { CatalogProductCard } from "@/components/catalog/CatalogProductCard";
 import {
-  getProduct,
-  getRoastery,
-  products,
-  productsByRoastery,
-  type Weight,
-} from "@/data/seed";
-import { formatToman, toFa } from "@/lib/persian";
-import { productImage, productThumbnails } from "@/lib/product-images";
-import { useCart } from "@/lib/cart-context";
-
-const BASE = "https://rosta.coffee";
+  productQueryOptions,
+  relatedProductsQueryOptions,
+} from "@/lib/api/catalog";
+import { isApiError } from "@/lib/api/client";
+import type { MediaAsset, ProductDetail, ProductVariant } from "@/lib/api/contracts";
+import {
+  bestMediaUrl,
+  formatIrr,
+  formatRoastDate,
+  formatWeight,
+  processingLabel,
+  roastLevelLabel,
+} from "@/lib/catalog-format";
+import { absoluteUrl } from "@/config/site";
 
 export const Route = createFileRoute("/products/$slug")({
-  loader: ({ params }) => {
-    const product = getProduct(params.slug);
-    if (!product) throw notFound();
-    const roastery = getRoastery(product.roasterySlug)!;
-    const related = productsByRoastery(product.roasterySlug).filter(
-      (p) => p.slug !== product.slug,
-    );
-    const similarByOrigin = products
-      .filter(
-        (p) => p.origin === product.origin && p.roasterySlug !== product.roasterySlug,
-      )
-      .slice(0, 4);
-    return { product, roastery, related, similarByOrigin };
-  },
-  head: ({ params, loaderData }) => {
-    if (!loaderData) {
-      return {
-        meta: [
-          { title: "محصول پیدا نشد | رستا" },
-          { name: "robots", content: "noindex" },
-        ],
-      };
-    }
-    const { product, roastery } = loaderData;
-    const title = `${product.name} از ${roastery.name} — خرید آنلاین | رستا`;
-    const description = `خرید ${product.name}، تک‌خاستگاه ${product.origin}، فرآوری ${product.processing}. رست ${toFa(product.roastDaysAgo)} روز پیش توسط ${roastery.name}. ارسال سریع سراسر ایران.`;
-    const url = `/products/${params.slug}`;
-    const image = productImage(product.slug, 1200);
-    return {
-      meta: [
-        { title },
-        { name: "description", content: description },
-        { property: "og:title", content: title },
-        { property: "og:description", content: description },
-        { property: "og:url", content: url },
-        { property: "og:type", content: "product" },
-        { property: "og:image", content: image },
-        { name: "twitter:image", content: image },
-      ],
-      links: [{ rel: "canonical", href: url }],
-      scripts: [
-        {
-          type: "application/ld+json",
-          children: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "Product",
-            name: product.name,
-            description: product.description,
-            image: [image],
-            brand: { "@type": "Brand", name: roastery.name },
-            additionalProperty: [
-              { "@type": "PropertyValue", name: "خاستگاه", value: product.origin },
-              { "@type": "PropertyValue", name: "سطح رست", value: product.roastLevel },
-              { "@type": "PropertyValue", name: "درصد عربیکا", value: `${product.arabicaPct}%` },
-              { "@type": "PropertyValue", name: "فرآوری", value: product.processing },
-            ],
-            offers: {
-              "@type": "Offer",
-              price: product.prices[250],
-              priceCurrency: "IRR",
-              availability: "https://schema.org/InStock",
-              url: `${BASE}${url}`,
-            },
-            aggregateRating: {
-              "@type": "AggregateRating",
-              ratingValue: roastery.rating,
-              reviewCount: 24,
-            },
-            review: [],
-          }),
-        },
-        {
-          type: "application/ld+json",
-          children: JSON.stringify(
-            breadcrumbJsonLd([
-              { label: "خانه", to: "/" },
-              { label: "محصولات", to: "/products" },
-              { label: product.name, to: url },
-            ]),
-          ),
-        },
-        {
-          type: "application/ld+json",
-          children: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "FAQPage",
-            mainEntity: buildFaq(product).map((f) => ({
-              "@type": "Question",
-              name: f.q,
-              acceptedAnswer: { "@type": "Answer", text: f.a },
-            })),
-          }),
-        },
-      ],
-    };
-  },
+  head: ({ params }) => ({
+    meta: [
+      { title: `خرید دانه قهوه ${params.slug} | رستا` },
+      {
+        name: "description",
+        content: "مشخصات، وزن‌ها، موجودی و تاریخ رست دانه کامل قهوه از روستری‌های رستا.",
+      },
+      { property: "og:type", content: "product" },
+    ],
+    links: [{ rel: "canonical", href: absoluteUrl(`/products/${params.slug}`) }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify(
+          breadcrumbJsonLd([
+            { label: "خانه", to: "/" },
+            { label: "محصولات", to: "/products" },
+            { label: params.slug, to: `/products/${params.slug}` },
+          ]),
+        ),
+      },
+    ],
+  }),
   component: ProductPage,
 });
 
-function buildFaq(product: {
-  origin: string;
-  processing: string;
-  arabicaPct: number;
-}) {
-  return [
-    {
-      q: "این قهوه به چه شکل ارسال می‌شود؟",
-      a: `این قهوه به‌صورت دانه کامل ارسال می‌شود. برای بهترین طعم، توصیه می‌کنیم قهوه را نزدیک به زمان مصرف آسیاب کنید تا رایحه و طعم آن حفظ شود.`,
-    },
-    {
-      q: "چرا قیمت این قهوه با محصولات دیگر فرق دارد؟",
-      a: `این قهوه تک‌خاستگاه از ${product.origin} با فرآوری ${product.processing} و ${toFa(product.arabicaPct)}٪ عربیکاست که هزینه تولید بالاتری نسبت به قهوه‌های ترکیبی دارد.`,
-    },
-  ];
-}
-
-function Accordion({
-  title,
-  children,
-  defaultOpen = false,
-}: {
-  title: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div className="rounded-xl border border-[color:var(--mid)] bg-[color:var(--dark)]">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="flex w-full items-center justify-between px-4 py-3 text-sm font-bold text-[color:var(--steam)]"
-      >
-        {title}
-        <ChevronDown
-          size={16}
-          className={`transition-transform ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-      {open && (
-        <div className="border-t border-[color:var(--mid)] px-4 py-3 text-sm leading-7 text-[color:var(--light)]">
-          {children}
-        </div>
-      )}
-    </div>
-  );
+function productJsonLd(product: ProductDetail) {
+  const image = product.gallery.map(bestMediaUrl).filter(Boolean);
+  const available = product.variants.filter((variant) => variant.isAvailable);
+  const lowest = available.length ? Math.min(...available.map((variant) => variant.price)) : 0;
+  const highest = available.length ? Math.max(...available.map((variant) => variant.price)) : 0;
+  return {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.seo.description || product.shortDescription || product.description,
+    image,
+    brand: { "@type": "Brand", name: product.roastery.name },
+    category: "دانه کامل قهوه",
+    additionalProperty: [
+      { "@type": "PropertyValue", name: "خاستگاه", value: product.origin.name },
+      { "@type": "PropertyValue", name: "سطح رست", value: roastLevelLabel(product.roastLevel) },
+      { "@type": "PropertyValue", name: "فرآوری", value: processingLabel(product.processingMethod) },
+      { "@type": "PropertyValue", name: "درصد عربیکا", value: `${product.arabicaPercentage}%` },
+      { "@type": "PropertyValue", name: "شکل محصول", value: "دانه کامل" },
+    ],
+    offers: available.length
+      ? {
+          "@type": "AggregateOffer",
+          priceCurrency: "IRR",
+          lowPrice: lowest,
+          highPrice: highest,
+          offerCount: available.length,
+          availability: "https://schema.org/InStock",
+          url: absoluteUrl(`/products/${product.slug}`),
+        }
+      : {
+          "@type": "Offer",
+          priceCurrency: "IRR",
+          availability: "https://schema.org/OutOfStock",
+          url: absoluteUrl(`/products/${product.slug}`),
+        },
+  };
 }
 
 function ProductPage() {
-  const { product, roastery, related, similarByOrigin } = Route.useLoaderData();
-  const [weight, setWeight] = useState<Weight>(250);
-  
-  const [mainImg, setMainImg] = useState(productImage(product.slug, 1200));
-  const thumbs = productThumbnails(product.slug, 200);
-  const price = useMemo(() => product.prices[weight], [product, weight]);
-  const faq = buildFaq(product);
-  const inStock = true;
-  const { addItem } = useCart();
-  const [added, setAdded] = useState(false);
-  const handleAdd = () => {
-    addItem(product.slug, weight, 1);
-    setAdded(true);
-    window.setTimeout(() => setAdded(false), 1500);
-  };
+  const { slug } = Route.useParams();
+  const productQuery = useQuery(productQueryOptions(slug));
+  const relatedQuery = useQuery(relatedProductsQueryOptions(slug));
+  const product = productQuery.data;
+  const [selectedVariantId, setSelectedVariantId] = useState<string>("");
+  const [selectedImage, setSelectedImage] = useState<string>("");
+
+  useEffect(() => {
+    if (!product) return;
+    const firstAvailable = product.variants.find((variant) => variant.isAvailable);
+    setSelectedVariantId(firstAvailable?.id ?? product.variants[0]?.id ?? "");
+    setSelectedImage(bestMediaUrl(product.gallery[0] ?? product.primaryImage) ?? "");
+    document.title = product.seo.title || `${product.name} از ${product.roastery.name} | رستا`;
+  }, [product]);
+
+  const selectedVariant = useMemo<ProductVariant | undefined>(
+    () => product?.variants.find((variant) => variant.id === selectedVariantId),
+    [product, selectedVariantId],
+  );
+
+  if (productQuery.isPending) {
+    return (
+      <>
+        <Navbar />
+        <main className="mx-auto grid min-h-[60vh] max-w-6xl place-items-center px-4 py-12">
+          <div className="text-center" role="status">
+            <div className="mx-auto size-9 animate-spin rounded-full border-2 border-[color:var(--roast)] border-t-transparent" />
+            <p className="mt-4 text-sm text-[color:var(--light)]">در حال دریافت محصول…</p>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  if (productQuery.isError || !product) {
+    const notFound = isApiError(productQuery.error) && productQuery.error.status === 404;
+    return (
+      <>
+        <Navbar />
+        <main className="mx-auto grid min-h-[60vh] max-w-xl place-items-center px-4 py-12 text-center">
+          <section>
+            <h1 className="text-2xl font-bold">{notFound ? "محصول پیدا نشد" : "محصول بارگذاری نشد"}</h1>
+            <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">
+              {isApiError(productQuery.error)
+                ? productQuery.error.message
+                : "ارتباط با سرویس کاتالوگ برقرار نشد."}
+            </p>
+            <div className="mt-6 flex justify-center gap-3">
+              {!notFound ? (
+                <button
+                  type="button"
+                  onClick={() => productQuery.refetch()}
+                  className="rounded-xl bg-[color:var(--roast)] px-5 py-2.5 text-sm font-bold text-[color:var(--night)]"
+                >
+                  تلاش مجدد
+                </button>
+              ) : null}
+              <Link to="/products" className="rounded-xl border border-[color:var(--mid)] px-5 py-2.5 text-sm">
+                بازگشت به محصولات
+              </Link>
+            </div>
+          </section>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  const gallery: MediaAsset[] = product.gallery.length
+    ? product.gallery
+    : product.primaryImage
+      ? [product.primaryImage]
+      : [];
+  const roastDate = formatRoastDate(product.latestRoastBatch?.roastedAt);
+  const faq = [
+    {
+      question: "این قهوه به چه شکل ارسال می‌شود؟",
+      answer: "تمام محصولات رستا فقط به‌صورت دانه کامل ارسال می‌شوند و هیچ انتخاب آسیابی وجود ندارد.",
+    },
+    {
+      question: "این قهوه برای چه روشی مناسب است؟",
+      answer: product.brewingSuggestions.length
+        ? product.brewingSuggestions.join("، ")
+        : "پیشنهاد دم‌آوری پس از تکمیل اطلاعات روستری نمایش داده می‌شود.",
+    },
+  ];
 
   return (
     <>
       <Navbar />
       <main className="mx-auto max-w-6xl px-4 py-8">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd(product)) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              mainEntity: faq.map((item) => ({
+                "@type": "Question",
+                name: item.question,
+                acceptedAnswer: { "@type": "Answer", text: item.answer },
+              })),
+            }),
+          }}
+        />
         <Breadcrumb
           items={[
             { label: "خانه", to: "/" },
@@ -200,207 +206,141 @@ function ProductPage() {
           ]}
         />
 
-        <article className="grid gap-8 md:grid-cols-2">
-          {/* Gallery */}
-          <div>
-            <div className="overflow-hidden rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)]">
-              <img
-                src={mainImg}
-                alt={`${product.name} — قهوه ${product.origin} از ${roastery.name}`}
-                width={800}
-                height={800}
-                loading="eager"
-                fetchPriority="high"
-                className="h-full w-full object-cover"
-              />
+        <article className="mt-6 grid gap-8 md:grid-cols-2">
+          <section aria-label="گالری محصول">
+            <div className="aspect-square overflow-hidden rounded-2xl border border-[color:var(--mid)] bg-[color:var(--steam)]">
+              {selectedImage ? (
+                <img src={selectedImage} alt={product.name} className="h-full w-full object-cover" fetchPriority="high" />
+              ) : (
+                <div className="grid h-full place-items-center text-[color:var(--mid)]">تصویر محصول</div>
+              )}
             </div>
-            <div className="mt-3 grid grid-cols-3 gap-3">
-              {thumbs.map((src, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setMainImg(src.replace("w=200", "w=1200"))}
-                  className="overflow-hidden rounded-lg border border-[color:var(--mid)] transition hover:border-[color:var(--roast)]"
-                >
-                  <img
-                    src={src}
-                    alt={`${product.name} — نمای ${toFa(i + 1)}`}
-                    width={200}
-                    height={200}
-                    loading="lazy"
-                    className="aspect-square h-full w-full object-cover"
-                  />
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Info */}
-          <div>
-            <div className="flex items-center justify-between text-sm">
-              <Link
-                to="/roasteries/$slug"
-                params={{ slug: roastery.slug }}
-                className="text-[color:var(--roast)] hover:underline"
-              >
-                {roastery.name}
-              </Link>
-              <span className="font-mono-num text-[color:var(--roast)]">
-                ★ {toFa(roastery.rating.toFixed(1))}
-              </span>
-            </div>
-            <h1 className="mt-2 font-display text-3xl font-bold text-[color:var(--steam)]">
-              {product.name}
-            </h1>
-
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1 rounded-full border border-[color:var(--mid)] bg-[color:var(--dark)] px-2.5 py-0.5 text-xs text-[color:var(--light)]">
-                <span aria-hidden>{product.originFlag}</span> {product.origin}
-              </span>
-              <RoastLevelBadge level={product.roastLevel} />
-              <RoastDateBadge daysAgo={product.roastDaysAgo} />
-              <span className="rounded-full border border-[color:var(--mid)] bg-[color:var(--dark)] px-2.5 py-0.5 text-xs text-[color:var(--light)]">
-                {toFa(product.arabicaPct)}٪ عربیکا
-              </span>
-            </div>
-
-            <div className="mt-4 flex items-baseline justify-between">
-              <div className="font-mono-num text-3xl font-bold text-[color:var(--roast)]">
-                {formatToman(price)}
-              </div>
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-bold ${
-                  inStock
-                    ? "bg-emerald-900/30 text-emerald-400"
-                    : "bg-amber-900/30 text-amber-400"
-                }`}
-              >
-                {inStock ? "موجود" : "به‌زودی"}
-              </span>
-            </div>
-
-            <section className="mt-5">
-              <h2 className="mb-2 text-xs font-bold text-[color:var(--light)]">وزن</h2>
-              <WeightSelector value={weight} onChange={setWeight} />
-              <p className="mt-3 rounded-lg border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2 text-[11px] leading-6 text-[color:var(--light)]">
-                <span aria-hidden className="ml-1 text-[color:var(--roast)]">ⓘ</span>
-                قهوه رستا همیشه به‌صورت دانه کامل ارسال می‌شود — چون آسیاب کردن، تازگی قهوه را در عرض چند روز از بین می‌برد. با آسیاب در لحظه مصرف، بیشترین رایحه و طعم را تجربه می‌کنید.
-              </p>
-            </section>
-
-            <section className="mt-5">
-              <h2 className="mb-2 text-xs font-bold text-[color:var(--light)]">نت‌های چشایی</h2>
-              <ul className="flex flex-wrap gap-1.5">
-                {product.tastingNotes.map((n: string) => (
-                  <li
-                    key={n}
-                    className="rounded-full border border-[color:var(--roast)] bg-[color:var(--night)] px-3 py-1 text-xs text-[color:var(--roast)]"
-                  >
-                    {n}
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            <button
-              type="button"
-              onClick={handleAdd}
-              className="mt-6 w-full rounded-lg bg-[color:var(--roast)] py-3 text-sm font-bold text-[color:var(--night)] transition hover:opacity-90"
-            >
-              {added ? "افزوده شد ✓" : "افزودن به سبد خرید"}
-            </button>
-
-            <div className="mt-6 space-y-2">
-              <Accordion title="توضیحات محصول" defaultOpen>
-                {product.description}
-              </Accordion>
-              <Accordion title="روش فرآوری">
-                فرآوری {product.processing}: از روش‌های سنتی تولید قهوه است که مستقیماً بر
-                طعم و بدنه فنجان اثر می‌گذارد.
-              </Accordion>
-              <Accordion title="درباره روستری">
-                <div className="flex items-start gap-3">
-                  <div
-                    aria-hidden
-                    className="grid h-10 w-10 shrink-0 place-items-center rounded-full font-bold text-[color:var(--night)]"
-                    style={{ backgroundColor: roastery.color }}
-                  >
-                    {roastery.initials}
-                  </div>
-                  <div>
-                    <div className="font-bold text-[color:var(--steam)]">{roastery.name}</div>
-                    <div className="text-xs">📍 {roastery.city}</div>
-                    <p className="mt-1">{roastery.description}</p>
-                    <Link
-                      to="/roasteries/$slug"
-                      params={{ slug: roastery.slug }}
-                      className="mt-2 inline-block text-xs text-[color:var(--roast)] underline"
+            {gallery.length > 1 ? (
+              <div className="mt-3 grid grid-cols-4 gap-3">
+                {gallery.map((asset) => {
+                  const url = bestMediaUrl(asset);
+                  if (!url) return null;
+                  return (
+                    <button
+                      key={asset.id}
+                      type="button"
+                      onClick={() => setSelectedImage(url)}
+                      className={`aspect-square overflow-hidden rounded-xl border ${
+                        selectedImage === url ? "border-[color:var(--roast)]" : "border-[color:var(--mid)]"
+                      }`}
                     >
-                      مشاهده صفحه روستری
-                    </Link>
-                  </div>
-                </div>
-              </Accordion>
+                      <img src={url} alt={asset.alt || product.name} loading="lazy" className="h-full w-full object-cover" />
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+          </section>
+
+          <section>
+            <Link
+              to="/roasteries/$slug"
+              params={{ slug: product.roastery.slug }}
+              className="text-sm font-bold text-[color:var(--roast)] hover:underline"
+            >
+              {product.roastery.name}
+            </Link>
+            <h1 className="mt-2 text-3xl font-bold text-[color:var(--steam)] sm:text-4xl">{product.name}</h1>
+            <p className="mt-4 text-sm leading-8 text-[color:var(--light)]">
+              {product.shortDescription || product.description}
+            </p>
+
+            <div className="mt-5 flex flex-wrap gap-2 text-xs">
+              <span className="rounded-full border border-[color:var(--mid)] px-3 py-1">{product.origin.name}</span>
+              <span className="rounded-full border border-[color:var(--mid)] px-3 py-1">رست {roastLevelLabel(product.roastLevel)}</span>
+              <span className="rounded-full border border-[color:var(--mid)] px-3 py-1">فرآوری {processingLabel(product.processingMethod)}</span>
+              <span className="rounded-full border border-[color:var(--mid)] px-3 py-1">{product.arabicaPercentage.toLocaleString("fa-IR")}٪ عربیکا</span>
+              {roastDate ? <span className="rounded-full bg-[color:var(--roast)] px-3 py-1 font-bold text-[color:var(--night)]">رست {roastDate}</span> : null}
             </div>
-          </div>
+
+            <section className="mt-7">
+              <h2 className="text-sm font-bold">انتخاب وزن</h2>
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {product.variants.map((variant) => (
+                  <button
+                    key={variant.id}
+                    type="button"
+                    disabled={!variant.isAvailable}
+                    onClick={() => setSelectedVariantId(variant.id)}
+                    className={`rounded-xl border p-3 text-start transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                      selectedVariantId === variant.id
+                        ? "border-[color:var(--roast)] bg-[color:var(--roast)]/10"
+                        : "border-[color:var(--mid)] bg-[color:var(--dark)]"
+                    }`}
+                  >
+                    <span className="block text-sm font-bold">{formatWeight(variant.weightGrams)}</span>
+                    <span className="mt-1 block text-xs text-[color:var(--light)]">{formatIrr(variant.price)}</span>
+                    {typeof variant.availableQuantity === "number" ? (
+                      <span className="mt-1 block text-[10px] text-[color:var(--roast)]">
+                        {variant.availableQuantity.toLocaleString("fa-IR")} عدد موجود
+                      </span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <div className="mt-6 rounded-xl border border-[color:var(--roast)]/40 bg-[color:var(--night)] p-4 text-xs leading-7 text-[color:var(--light)]">
+              رستا فقط دانه کامل می‌فروشد. برای حفظ عطر و تازگی، دانه را نزدیک زمان مصرف آسیاب کنید.
+            </div>
+
+            <div className="mt-6 flex items-center justify-between gap-4 border-t border-[color:var(--mid)] pt-5">
+              <div>
+                <p className="text-xs text-[color:var(--light)]">قیمت انتخاب‌شده</p>
+                <p className="mt-1 text-xl font-bold text-[color:var(--roast)]">
+                  {selectedVariant ? formatIrr(selectedVariant.price) : "انتخاب وزن"}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled
+                title="اتصال Variant به سبد در فاز ۵ انجام می‌شود"
+                className="rounded-xl bg-[color:var(--roast)] px-6 py-3 text-sm font-bold text-[color:var(--night)] opacity-60"
+              >
+                افزودن به سبد — فاز ۵
+              </button>
+            </div>
+          </section>
         </article>
 
-        {/* FAQ */}
-        <section className="mt-12">
-          <h2 className="mb-4 text-xl font-bold text-[color:var(--steam)]">سوالات متداول</h2>
-          <div className="space-y-2">
-            {faq.map((f) => (
-              <Accordion key={f.q} title={f.q}>
-                {f.a}
-              </Accordion>
-            ))}
+        <section className="mt-12 grid gap-4 md:grid-cols-2">
+          <div className="rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5">
+            <h2 className="font-bold">جزئیات دانه</h2>
+            <dl className="mt-4 grid gap-3 text-sm text-[color:var(--light)]">
+              <div className="flex justify-between gap-4"><dt>خاستگاه</dt><dd>{product.origin.name}</dd></div>
+              <div className="flex justify-between gap-4"><dt>فرآوری</dt><dd>{processingLabel(product.processingMethod)}</dd></div>
+              <div className="flex justify-between gap-4"><dt>رست</dt><dd>{roastLevelLabel(product.roastLevel)}</dd></div>
+              <div className="flex justify-between gap-4"><dt>نت‌های چشایی</dt><dd>{product.tastingNotes.join("، ")}</dd></div>
+            </dl>
+          </div>
+          <div className="rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5">
+            <h2 className="font-bold">سوالات این محصول</h2>
+            <div className="mt-4 space-y-4">
+              {faq.map((item) => (
+                <details key={item.question} className="rounded-xl border border-[color:var(--mid)] p-4 first:open">
+                  <summary className="cursor-pointer text-sm font-bold">{item.question}</summary>
+                  <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">{item.answer}</p>
+                </details>
+              ))}
+            </div>
           </div>
         </section>
 
-        {/* Related from same roastery */}
-        {related.length > 0 && (
-          <section className="mt-12">
-            <h2 className="mb-4 text-xl font-bold text-[color:var(--steam)]">
-              قهوه‌های دیگر از {roastery.name}
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {related.map((p: typeof related[number]) => (
-                <ProductCard key={p.slug} product={p} />
+        {relatedQuery.data?.length ? (
+          <section className="mt-14">
+            <h2 className="text-2xl font-bold">محصولات مشابه</h2>
+            <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {relatedQuery.data.slice(0, 4).map((item) => (
+                <CatalogProductCard key={item.id} product={item} />
               ))}
             </div>
           </section>
-        )}
-
-        {/* Similar by origin from other roasteries */}
-        {similarByOrigin.length > 0 && (
-          <section className="mt-12">
-            <h2 className="mb-4 text-xl font-bold text-[color:var(--steam)]">
-              محصولات مشابه از سایر روستری‌ها
-            </h2>
-            <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 lg:grid-cols-4">
-              {similarByOrigin.map((p: typeof similarByOrigin[number]) => (
-                <div key={p.slug} className="w-72 shrink-0 snap-start md:w-auto">
-                  <ProductCard product={p} />
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Reviews placeholder */}
-        <section className="mt-12 rounded-2xl border border-dashed border-[color:var(--mid)] bg-[color:var(--dark)] p-8 text-center">
-          <h2 className="text-xl font-bold text-[color:var(--steam)]">نظرات مشتریان</h2>
-          <p className="mt-2 text-sm text-[color:var(--light)]">
-            هنوز نظری ثبت نشده — اولین نفر باش
-          </p>
-          <button
-            type="button"
-            disabled
-            className="mt-4 cursor-not-allowed rounded-lg border border-[color:var(--mid)] px-4 py-2 text-xs text-[color:var(--light)] opacity-60"
-          >
-            ثبت نظر (به‌زودی)
-          </button>
-        </section>
+        ) : null}
       </main>
       <Footer />
     </>
