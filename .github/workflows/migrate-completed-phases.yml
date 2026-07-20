@@ -6,13 +6,18 @@ on:
       - agent/migrate-phases-1-4
     paths:
       - .github/workflows/migrate-completed-phases.yml
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/migrate-completed-phases.yml
 
 permissions:
   contents: write
 
 jobs:
   migrate:
-    if: ${{ !startsWith(github.event.head_commit.message, 'chore(migration):') }}
+    if: ${{ !startsWith(github.event.head_commit.message || '', 'chore(migration):') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout original Lovable repository
