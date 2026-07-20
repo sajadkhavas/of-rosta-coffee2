@@ -1,9 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { X } from "lucide-react";
+import { Minus, Plus, X } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import { Alert } from "@/components/system";
 import { getProduct, getRoastery } from "@/data/seed";
+import { absoluteUrl } from "@/config/site";
 import { productImage } from "@/lib/product-images";
 import { formatToman, toFa } from "@/lib/persian";
 import { useCart, type CartItem } from "@/lib/cart-context";
@@ -11,62 +13,126 @@ import { useCart, type CartItem } from "@/lib/cart-context";
 export const Route = createFileRoute("/cart")({
   head: () => ({
     meta: [
-      { title: "سبد خرید | رستا" },
-      { name: "description", content: "سبد خرید شما در مارکت‌پلیس قهوه رستا." },
-      { name: "robots", content: "noindex,follow" },
+      { title: "سبد خرید آزمایشی | رستا" },
+      {
+        name: "description",
+        content: "وضعیت محلی سبد رستا تا پیش از اتصال Variant، قیمت و موجودی سمت سرور.",
+      },
+      { name: "robots", content: "noindex,nofollow" },
     ],
-    links: [{ rel: "canonical", href: "/cart" }],
+    links: [{ rel: "canonical", href: absoluteUrl("/cart") }],
   }),
   component: CartPage,
 });
+
+function IconAction({
+  label,
+  children,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="inline-grid size-9 place-items-center rounded-lg text-[color:var(--light)] transition hover:bg-white/5 hover:text-[color:var(--roast)] disabled:opacity-40"
+    >
+      {children}
+    </button>
+  );
+}
 
 function CartPage() {
   const { items: raw, updateQty, removeItem, subtotal } = useCart();
 
   const items = raw
-    .map((i) => {
-      const product = getProduct(i.productSlug);
-      return product ? { ...i, product } : null;
+    .map((item) => {
+      const product = getProduct(item.productSlug);
+      return product ? { ...item, product } : null;
     })
-    .filter((x): x is NonNullable<typeof x> & { product: NonNullable<ReturnType<typeof getProduct>> } => x !== null);
+    .filter(
+      (
+        item,
+      ): item is NonNullable<typeof item> & {
+        product: NonNullable<ReturnType<typeof getProduct>>;
+      } => item !== null,
+    );
 
   const grouped = new Map<string, typeof items>();
-  for (const it of items) {
-    const key = it.product.roasterySlug;
+  for (const item of items) {
+    const key = item.product.roasterySlug;
     if (!grouped.has(key)) grouped.set(key, []);
-    grouped.get(key)!.push(it);
+    grouped.get(key)!.push(item);
   }
 
   if (raw.length === 0) {
     return (
       <>
         <Navbar />
-        <main className="mx-auto max-w-3xl px-4 py-16 text-center">
-          <svg width="80" height="80" viewBox="0 0 24 24" fill="none" className="mx-auto text-[color:var(--roast)]">
-            <path d="M6 8h12l-1 12H7L6 8zM9 8V6a3 3 0 016 0v2" stroke="currentColor" strokeWidth="1.5" />
-          </svg>
-          <h1 className="mt-4 text-2xl font-bold text-[color:var(--steam)]">سبد خرید خالی است</h1>
-          <p className="mt-2 text-sm text-[color:var(--light)]">
-            هنوز چیزی اضافه نکرده‌اید. مجموعه قهوه‌های تازه‌رست را ببینید.
-          </p>
-          <Link
-            to="/products"
-            className="mt-6 inline-block rounded-lg bg-[color:var(--roast)] px-6 py-3 text-sm font-bold text-[color:var(--night)]"
-          >
-            مشاهده محصولات
-          </Link>
+        <main className="mx-auto grid min-h-[60vh] max-w-xl place-items-center px-4 py-16 text-center">
+          <section>
+            <svg
+              width="80"
+              height="80"
+              viewBox="0 0 24 24"
+              fill="none"
+              className="mx-auto text-[color:var(--roast)]"
+            >
+              <path
+                d="M6 8h12l-1 12H7L6 8zM9 8V6a3 3 0 016 0v2"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              />
+            </svg>
+            <h1 className="mt-4 text-2xl font-bold">سبد خرید خالی است</h1>
+            <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">
+              افزودن محصول تا اتصال Variant واقعی، Quote قیمت، موجودی و رزرو سمت سرور در فاز ۵ غیرفعال است.
+            </p>
+            <Link
+              to="/products"
+              className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-[color:var(--roast)] px-6 text-sm font-bold text-[color:var(--night)]"
+            >
+              مشاهده کاتالوگ
+            </Link>
+          </section>
         </main>
         <Footer />
       </>
     );
   }
 
+  const multipleRoasteries = grouped.size > 1;
+
   return (
     <>
       <Navbar />
       <main className="mx-auto max-w-6xl px-4 py-8">
         <Breadcrumb items={[{ label: "خانه", to: "/" }, { label: "سبد خرید" }]} />
-        <h1 className="text-2xl font-bold text-[color:var(--steam)]">سبد خرید</h1>
+        <header className="mt-4">
+          <p className="text-xs font-bold tracking-[0.2em] text-[color:var(--roast)]">
+            LOCAL CART PREVIEW
+          </p>
+          <h1 className="mt-2 text-3xl font-bold">سبد خرید</h1>
+          <p className="mt-2 text-sm text-[color:var(--light)]">
+            این سبد فعلاً فقط State محلی توسعه است و قیمت یا موجودی عملیاتی محسوب نمی‌شود.
+          </p>
+        </header>
+
+        {multipleRoasteries ? (
+          <div className="mt-5">
+            <Alert variant="danger" title="محصولات چند روستری در یک سفارش مجاز نیستند">
+              معماری نهایی رستا هر سفارش را به یک روستری محدود می‌کند. برای ادامه باید فقط محصولات یک روستری در سبد باقی بمانند.
+            </Alert>
+          </div>
+        ) : null}
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
           <div className="space-y-6">
@@ -78,74 +144,72 @@ function CartPage() {
                   className="rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-4"
                 >
                   <header className="mb-3 flex items-center justify-between border-b border-[color:var(--mid)] pb-3">
-                    <h2 className="text-sm font-bold text-[color:var(--steam)]">
-                      سفارش از {roastery?.name}
+                    <h2 className="text-sm font-bold">
+                      سبد محلی {roastery?.name || roasterySlug}
                     </h2>
-                    {grouped.size > 1 && (
-                      <span className="text-[11px] text-[color:var(--light)]">
-                        هر سفارش جداگانه پردازش می‌شود
-                      </span>
-                    )}
+                    <span className="text-[11px] text-[color:var(--light)]">دانه کامل</span>
                   </header>
                   <ul className="space-y-3">
-                    {list.map((it: CartItem & { product: NonNullable<ReturnType<typeof getProduct>> }) => (
-                      <li key={`${it.productSlug}-${it.weight}`} className="flex gap-3">
-                        <img
-                          src={productImage(it.product.slug, 200)}
-                          alt={it.product.name}
-                          width={80}
-                          height={80}
-                          loading="lazy"
-                          className="h-20 w-20 rounded-lg object-cover"
-                        />
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between gap-2">
-                            <Link
-                              to="/products/$slug"
-                              params={{ slug: it.product.slug }}
-                              className="text-sm font-bold text-[color:var(--steam)] hover:text-[color:var(--roast)]"
-                            >
-                              {it.product.name}
-                            </Link>
-                            <button
-                              type="button"
-                              aria-label="حذف از سبد"
-                              onClick={() => removeItem(it.productSlug, it.weight)}
-                              className="text-[color:var(--light)] transition hover:text-red-400"
-                            >
-                              <X size={16} />
-                            </button>
-                          </div>
-                          <div className="mt-1 text-xs text-[color:var(--light)]">
-                            {toFa(it.weight)} گرم · دانه کامل
-                          </div>
-                          <div className="mt-2 flex items-center justify-between">
-                            <div className="inline-flex items-center gap-2 rounded-lg border border-[color:var(--mid)]">
-                              <button
-                                type="button"
-                                aria-label="کاهش تعداد"
-                                onClick={() => updateQty(it.productSlug, it.weight, it.qty - 1)}
-                                className="px-2 py-1 text-[color:var(--roast)]"
+                    {list.map(
+                      (
+                        item: CartItem & {
+                          product: NonNullable<ReturnType<typeof getProduct>>;
+                        },
+                      ) => (
+                        <li key={`${item.productSlug}-${item.weight}`} className="flex gap-3">
+                          <img
+                            src={productImage(item.product.slug, 200)}
+                            alt={item.product.name}
+                            width={80}
+                            height={80}
+                            loading="lazy"
+                            className="size-20 rounded-xl object-cover"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <Link
+                                to="/products/$slug"
+                                params={{ slug: item.product.slug }}
+                                className="text-sm font-bold hover:text-[color:var(--roast)]"
                               >
-                                −
-                              </button>
-                              <span className="font-mono-num text-sm">{toFa(it.qty)}</span>
-                              <button
-                                type="button"
-                                aria-label="افزایش تعداد"
-                                onClick={() => updateQty(it.productSlug, it.weight, it.qty + 1)}
-                                className="px-2 py-1 text-[color:var(--roast)]"
+                                {item.product.name}
+                              </Link>
+                              <IconAction
+                                label="حذف از سبد"
+                                onClick={() => removeItem(item.productSlug, item.weight)}
                               >
-                                +
-                              </button>
+                                <X size={16} />
+                              </IconAction>
                             </div>
-                            <span className="font-mono-num text-sm font-bold text-[color:var(--roast)]">
-                              {formatToman(it.product.prices[it.weight] * it.qty)}
-                            </span>
+                            <p className="mt-1 text-xs text-[color:var(--light)]">
+                              {toFa(item.weight)} گرم · دانه کامل
+                            </p>
+                            <div className="mt-2 flex items-center justify-between gap-3">
+                              <div className="inline-flex items-center rounded-xl border border-[color:var(--mid)]">
+                                <IconAction
+                                  label="کاهش تعداد"
+                                  onClick={() => updateQty(item.productSlug, item.weight, item.qty - 1)}
+                                >
+                                  <Minus size={15} />
+                                </IconAction>
+                                <span className="min-w-7 text-center font-mono text-sm">
+                                  {toFa(item.qty)}
+                                </span>
+                                <IconAction
+                                  label="افزایش تعداد"
+                                  onClick={() => updateQty(item.productSlug, item.weight, item.qty + 1)}
+                                >
+                                  <Plus size={15} />
+                                </IconAction>
+                              </div>
+                              <span className="font-mono text-sm font-bold text-[color:var(--roast)]">
+                                {formatToman(item.product.prices[item.weight] * item.qty)}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      </li>
-                    ))}
+                        </li>
+                      ),
+                    )}
                   </ul>
                 </section>
               );
@@ -153,34 +217,42 @@ function CartPage() {
           </div>
 
           <aside className="h-fit rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5 lg:sticky lg:top-20">
-            <h2 className="text-sm font-bold text-[color:var(--steam)]">خلاصه سفارش</h2>
-            <dl className="mt-3 space-y-2 text-sm">
+            <h2 className="font-bold">خلاصه محلی</h2>
+            <dl className="mt-4 space-y-3 text-sm">
               <div className="flex justify-between text-[color:var(--light)]">
-                <dt>جمع اقلام</dt>
-                <dd className="font-mono-num">{formatToman(subtotal)}</dd>
+                <dt>جمع نمایشی اقلام</dt>
+                <dd className="font-mono">{formatToman(subtotal)}</dd>
               </div>
               <div className="flex justify-between text-[color:var(--light)]">
                 <dt>هزینه ارسال</dt>
-                <dd className="text-xs">محاسبه در مرحله بعد</dd>
+                <dd className="text-xs">در Quote واقعی محاسبه می‌شود</dd>
               </div>
-              <div className="flex justify-between border-t border-[color:var(--mid)] pt-2 text-base font-bold text-[color:var(--steam)]">
-                <dt>مجموع</dt>
-                <dd className="font-mono-num text-[color:var(--roast)]">
-                  {formatToman(subtotal)}
-                </dd>
+              <div className="flex justify-between border-t border-[color:var(--mid)] pt-3 font-bold">
+                <dt>مجموع نمایشی</dt>
+                <dd className="font-mono text-[color:var(--roast)]">{formatToman(subtotal)}</dd>
               </div>
             </dl>
-            <Link
-              to="/checkout"
-              className="mt-4 block w-full rounded-lg bg-[color:var(--roast)] py-3 text-center text-sm font-bold text-[color:var(--night)]"
-            >
-              تسویه‌حساب
-            </Link>
+            {multipleRoasteries ? (
+              <button
+                type="button"
+                disabled
+                className="mt-5 min-h-11 w-full rounded-xl bg-[color:var(--roast)] px-4 text-sm font-bold text-[color:var(--night)] opacity-50"
+              >
+                ابتدا سبد را تک‌روستری کنید
+              </button>
+            ) : (
+              <Link
+                to="/checkout"
+                className="mt-5 flex min-h-11 w-full items-center justify-center rounded-xl bg-[color:var(--roast)] px-4 text-sm font-bold text-[color:var(--night)]"
+              >
+                مشاهده پیش‌نمایش تسویه
+              </Link>
+            )}
             <Link
               to="/products"
-              className="mt-2 block w-full rounded-lg border border-[color:var(--mid)] py-3 text-center text-sm text-[color:var(--light)]"
+              className="mt-3 block w-full rounded-xl border border-[color:var(--mid)] py-3 text-center text-sm text-[color:var(--light)]"
             >
-              ادامه خرید
+              ادامه مشاهده کاتالوگ
             </Link>
           </aside>
         </div>

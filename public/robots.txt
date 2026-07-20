@@ -1,3 +1,10 @@
 User-agent: *
 Allow: /
-Sitemap: https://rosta.coffee/sitemap.xml
+Disallow: /auth
+Disallow: /cart
+Disallow: /checkout
+Disallow: /profile
+Disallow: /orders
+Disallow: /forbidden
+
+Sitemap: https://rosta.shop/sitemap.xml
