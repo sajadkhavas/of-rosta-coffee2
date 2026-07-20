@@ -16,6 +16,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { MobileBottomNav } from "../components/MobileBottomNav";
+import { ServiceWorkerRegistration } from "../components/ServiceWorkerRegistration";
 import { CartProvider } from "../lib/cart-context";
 import { ToastProvider } from "../components/system";
 import { absoluteUrl, siteConfig } from "../config/site";
@@ -189,6 +190,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <CartProvider>
+          <ServiceWorkerRegistration />
           <div className={hideMobileNav ? "" : "pb-16 md:pb-0"}>
             <Outlet />
           </div>
