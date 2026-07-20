@@ -1,0 +1,220 @@
+name: Apply Phase 5 integration patches
+
+on:
+  push:
+    branches: [agent/phase-5-checkout-payments]
+    paths:
+      - .github/workflows/phase5-finalize.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout phase branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/phase-5-checkout-payments
+          fetch-depth: 0
+      - name: Patch contracts product flow and browser audit
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new, count=1):
+              file = Path(path)
+              text = file.read_text()
+              if old not in text:
+                  raise SystemExit(f"Pattern not found in {path}: {old[:120]!r}")
+              file.write_text(text.replace(old, new, count))
+              print(f"patched {path}")
+
+          # Phase 5 contract additions.
+          replace(
+              "src/lib/api/contracts.ts",
+              "export interface CartQuote {\n  id: string;\n  expiresAt: IsoDateTime;\n  groups:",
+              "export interface CartQuote {\n  id: string;\n  expiresAt: IsoDateTime;\n  roasteryId?: string | null;\n  groups:",
+          )
+          replace(
+              "src/lib/api/contracts.ts",
+              "}\n\nexport type OrderStatus =",
+              "}\n\nexport type PaymentStatus = \"pending\" | \"paid\" | \"failed\" | \"cancelled\" | \"refunded\";\n\nexport interface PaymentRequestResult {\n  paymentId: string;\n  redirectUrl: string;\n}\n\nexport type OrderStatus =",
+          )
+
+          # Use an explicit React Query result type for the verification component.
+          replace(
+              "src/routes/checkout.tsx",
+              'import { useMutation, useQuery } from "@tanstack/react-query";',
+              'import { useMutation, useQuery, type UseQueryResult } from "@tanstack/react-query";',
+          )
+          replace(
+              "src/routes/checkout.tsx",
+              '  query: ReturnType<typeof useQuery<{ status: "pending" | "paid" | "failed" | "cancelled" | "refunded"; orderId: string }>>;',
+              '  query: UseQueryResult<{ status: "pending" | "paid" | "failed" | "cancelled" | "refunded"; orderId: string }, Error>;',
+          )
+
+          # Connect the API-backed product variant selector to the real cart.
+          replace(
+              "src/routes/products.$slug.tsx",
+              'import { Navbar } from "@/components/Navbar";',
+              'import { Navbar } from "@/components/Navbar";\nimport { Alert } from "@/components/system";',
+          )
+          replace(
+              "src/routes/products.$slug.tsx",
+              'import { absoluteUrl } from "@/config/site";',
+              'import { absoluteUrl } from "@/config/site";\nimport { useCart } from "@/lib/cart-context";',
+          )
+          replace(
+              "src/routes/products.$slug.tsx",
+              '  const [selectedVariantId, setSelectedVariantId] = useState<string>("");\n  const [selectedImage, setSelectedImage] = useState<string>("");',
+              '  const [selectedVariantId, setSelectedVariantId] = useState<string>("");\n  const [selectedImage, setSelectedImage] = useState<string>("");\n  const [addedToCart, setAddedToCart] = useState(false);\n  const [cartNotice, setCartNotice] = useState("");\n  const { addItem, replaceWithItem } = useCart();',
+          )
+          replace(
+              "src/routes/products.$slug.tsx",
+              '  const selectedVariant = useMemo<ProductVariant | undefined>(\n    () => product?.variants.find((variant) => variant.id === selectedVariantId),\n    [product, selectedVariantId],\n  );',
+              '''  const selectedVariant = useMemo<ProductVariant | undefined>(
+    () => product?.variants.find((variant) => variant.id === selectedVariantId),
+    [product, selectedVariantId],
+  );
+
+  const handleAddToCart = () => {
+    if (!product || !selectedVariant?.isAvailable) return;
+    const input = { product, variant: selectedVariant };
+    const result = addItem(input);
+    if (result.status === "requires_reset") {
+      const confirmed = window.confirm(
+        `سبد شما شامل محصولات ${result.currentRoasteryName} است. برای افزودن این محصول، سبد قبلی پاک شود؟`,
+      );
+      if (!confirmed) return;
+      replaceWithItem(input);
+      setCartNotice("سبد قبلی پاک شد و محصول این روستری جایگزین شد.");
+    } else {
+      setCartNotice("محصول به سبد اضافه شد؛ قیمت و موجودی در سبد توسط سرور تأیید می‌شود.");
+    }
+    setAddedToCart(true);
+    window.setTimeout(() => setAddedToCart(false), 1800);
+  };''',
+          )
+          replace(
+              "src/routes/products.$slug.tsx",
+              '''            <div className="mt-6 flex items-center justify-between gap-4 border-t border-[color:var(--mid)] pt-5">
+              <div>
+                <p className="text-xs text-[color:var(--light)]">قیمت انتخاب‌شده</p>
+                <p className="mt-1 text-xl font-bold text-[color:var(--roast)]">
+                  {selectedVariant ? formatIrr(selectedVariant.price) : "انتخاب وزن"}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled
+                title="اتصال Variant به سبد در فاز ۵ انجام می‌شود"
+                className="rounded-xl bg-[color:var(--roast)] px-6 py-3 text-sm font-bold text-[color:var(--night)] opacity-60"
+              >
+                افزودن به سبد — فاز ۵
+              </button>
+            </div>''',
+              '''            {cartNotice ? (
+              <div className="mt-5">
+                <Alert variant="success" title="سبد خرید">{cartNotice}</Alert>
+              </div>
+            ) : null}
+
+            <div className="mt-6 flex items-center justify-between gap-4 border-t border-[color:var(--mid)] pt-5">
+              <div>
+                <p className="text-xs text-[color:var(--light)]">قیمت انتخاب‌شده</p>
+                <p className="mt-1 text-xl font-bold text-[color:var(--roast)]">
+                  {selectedVariant ? formatIrr(selectedVariant.price) : "انتخاب وزن"}
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={!selectedVariant?.isAvailable}
+                onClick={handleAddToCart}
+                className="min-h-12 rounded-xl bg-[color:var(--roast)] px-6 py-3 text-sm font-bold text-[color:var(--night)] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {addedToCart ? "افزوده شد ✓" : "افزودن به سبد"}
+              </button>
+            </div>''',
+          )
+
+          # Add authoritative cart/checkout/payment mock responses.
+          replace(
+              "scripts/browser-audit.mjs",
+              '    if (path === "/me") {',
+              '''    if (path === "/cart/validate" || path === "/checkout/quote") {
+      return json(route, {
+        data: {
+          id: path === "/cart/validate" ? "cart-quote-1" : "checkout-quote-1",
+          expires_at: "2026-07-20T20:00:00+03:30",
+          roastery_id: roastery.id,
+          subtotal: 2450000,
+          shipping_total: 200000,
+          discount_total: 0,
+          grand_total: 2650000,
+          currency: "IRR",
+          warnings: [],
+        },
+      });
+    }
+    if (path === "/orders" && request.method() === "POST") {
+      return json(route, { data: { ...order, status: "awaiting_payment" } }, 201);
+    }
+    if (path === "/payments/request") {
+      return json(route, {
+        data: {
+          payment_id: "payment-1",
+          redirect_url: `${baseURL}/checkout?payment_id=payment-1&order_id=${order.id}`,
+        },
+      }, 201);
+    }
+    if (path === "/payments/payment-1/verify") {
+      return json(route, { data: { status: "paid", order_id: order.id } });
+    }
+    if (path === "/me") {''',
+          )
+
+          # Seed the v2 cart for cart and checkout route audits.
+          replace(
+              "scripts/browser-audit.mjs",
+              '''    let status = null;
+    let navigationError = null;
+    try {
+      const response = await page.goto(`${baseURL}${routePath}`, {''',
+              '''    let status = null;
+    let navigationError = null;
+    try {
+      if (routePath === "/cart" || routePath === "/checkout") {
+        await page.addInitScript((item) => {
+          window.localStorage.setItem("rosta_cart_v2", JSON.stringify([item]));
+        }, {
+          variantId: "variant-250",
+          productId: product.id,
+          productSlug: product.slug,
+          productName: product.name,
+          productImageUrl: product.primary_image.sources[0].url,
+          roasteryId: roastery.id,
+          roasteryName: roastery.name,
+          roasterySlug: roastery.slug,
+          weightGrams: 250,
+          unitPriceSnapshot: 2450000,
+          quantity: 1,
+          addedAt: 1721476800000,
+        });
+      }
+      const response = await page.goto(`${baseURL}${routePath}`, {''',
+          )
+
+          # Remove this one-time workflow after applying the patch.
+          Path(".github/workflows/phase5-finalize.yml").unlink()
+          PY
+      - name: Commit integration patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src scripts .github
+          git diff --cached --check
+          git commit -m "feat: complete phase 5 product cart checkout integration"
+          git push origin HEAD:agent/phase-5-checkout-payments
