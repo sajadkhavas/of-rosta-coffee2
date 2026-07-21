@@ -13,14 +13,16 @@ import { apiFetch, isForbiddenError, isUnauthenticatedError } from "./client";
 import { queryKeys } from "./query-keys";
 import {
   collectionSchema,
-  orderDetailWireSchema,
-  orderSummaryWireSchema,
   parseContract,
   parseOptionalMedia,
   resourceSchema,
   type OrderDetailWire,
   type OrderSummaryWire,
 } from "./schemas";
+import {
+  authoritativeOrderDetailWireSchema,
+  authoritativeOrderSummaryWireSchema,
+} from "./financial-contracts";
 
 export interface OrderListParams {
   page?: number;
@@ -133,7 +135,9 @@ export async function listOrders(params: OrderListParams = {}): Promise<OrderLis
 
   const raw = await apiFetch(`/orders${search.size ? `?${search.toString()}` : ""}`);
   const response = parseContract(
-    collectionSchema(orderSummaryWireSchema.or(orderDetailWireSchema)),
+    collectionSchema(
+      authoritativeOrderSummaryWireSchema.or(authoritativeOrderDetailWireSchema),
+    ),
     raw,
     "فهرست سفارش‌ها",
   );
@@ -146,7 +150,11 @@ export async function listOrders(params: OrderListParams = {}): Promise<OrderLis
 
 export async function getOrder(id: string): Promise<OrderDetail> {
   const raw = await apiFetch(`/orders/${encodeURIComponent(id)}`);
-  const response = parseContract(resourceSchema(orderDetailWireSchema), raw, "جزئیات سفارش");
+  const response = parseContract(
+    resourceSchema(authoritativeOrderDetailWireSchema),
+    raw,
+    "جزئیات سفارش",
+  );
   return mapOrderDetail(response.data);
 }
 
