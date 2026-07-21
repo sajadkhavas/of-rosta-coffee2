@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Support\ApiResponse;
@@ -35,8 +37,8 @@ final class HealthController
         }
 
         try {
-            $checks['redis'] = Redis::connection()->ping() === true
-                || Redis::connection()->ping() === 'PONG';
+            $ping = Redis::connection()->ping();
+            $checks['redis'] = $ping === true || strtoupper((string) $ping) === 'PONG';
         } catch (Throwable) {
             // Readiness response below remains intentionally generic.
         }
