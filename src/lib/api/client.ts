@@ -69,6 +69,7 @@ export interface ApiRequestOptions extends Omit<RequestInit, "body"> {
   body?: BodyInit | Record<string, unknown> | null;
   timeoutMs?: number;
   skipCsrfRecovery?: boolean;
+  suppressSessionExpiryEvent?: boolean;
 }
 
 export function isApiError(error: unknown): error is ApiError {
@@ -117,7 +118,11 @@ function readCookie(name: string): string | undefined {
     .map((part) => part.trim())
     .find((part) => part.startsWith(prefix));
   if (!item) return undefined;
-  return decodeURIComponent(item.slice(prefix.length));
+  try {
+    return decodeURIComponent(item.slice(prefix.length));
+  } catch {
+    return undefined;
+  }
 }
 
 async function readPayload(response: Response): Promise<unknown> {
@@ -188,15 +193,22 @@ async function performRequest(
   headers: Headers,
   body: BodyInit | null | undefined,
 ): Promise<Response> {
+  const {
+    body: _ignoredBody,
+    timeoutMs: requestedTimeout,
+    skipCsrfRecovery: _skipCsrfRecovery,
+    suppressSessionExpiryEvent: _suppressSessionExpiryEvent,
+    ...requestInit
+  } = options;
   const controller = new AbortController();
-  const externalSignal = options.signal;
+  const externalSignal = requestInit.signal;
   let timedOut = false;
 
   const onExternalAbort = () => controller.abort(externalSignal?.reason);
   if (externalSignal?.aborted) onExternalAbort();
   else externalSignal?.addEventListener("abort", onExternalAbort, { once: true });
 
-  const timeoutMs = Math.min(Math.max(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, 1_000), 120_000);
+  const timeoutMs = Math.min(Math.max(requestedTimeout ?? DEFAULT_TIMEOUT_MS, 1_000), 120_000);
   const timer = setTimeout(() => {
     timedOut = true;
     controller.abort(new DOMException("Request timed out", "TimeoutError"));
@@ -204,15 +216,13 @@ async function performRequest(
 
   try {
     return await fetch(requestUrl, {
-      ...options,
-      timeoutMs: undefined,
-      skipCsrfRecovery: undefined,
+      ...requestInit,
       method,
       headers,
       body,
       signal: controller.signal,
-      credentials: options.credentials ?? "include",
-    } as RequestInit);
+      credentials: requestInit.credentials ?? "include",
+    });
   } catch (cause) {
     if (timedOut) {
       throw new ApiError({
@@ -279,10 +289,21 @@ export async function apiFetch<T = unknown>(
     body = JSON.stringify(body);
   }
 
-  const response = await performRequest(requestUrl, options, method, headers, body as BodyInit | null | undefined);
+  const response = await performRequest(
+    requestUrl,
+    options,
+    method,
+    headers,
+    body as BodyInit | null | undefined,
+  );
   const payload = await readPayload(response);
 
-  if (response.status === 419 && !csrfRetry && !options.skipCsrfRecovery && !SAFE_METHODS.has(method)) {
+  if (
+    response.status === 419 &&
+    !csrfRetry &&
+    !options.skipCsrfRecovery &&
+    !SAFE_METHODS.has(method)
+  ) {
     await bootstrapCsrf();
     return apiFetch<T>(path, options, true);
   }
@@ -292,14 +313,21 @@ export async function apiFetch<T = unknown>(
     const errorPayload: ApiErrorPayload = parsedPayload.success ? parsedPayload.data : {};
     const code = errorPayload.error?.code ?? defaultCodeForStatus(response.status);
 
-    if (response.status === 401 || code === "auth.session_expired") emitSessionExpired();
+    if (
+      !options.suppressSessionExpiryEvent &&
+      (response.status === 401 || code === "auth.session_expired")
+    ) {
+      emitSessionExpired();
+    }
 
     throw new ApiError({
       status: response.status,
       code,
-      message: errorPayload.error?.message ?? errorPayload.message ?? "در ارتباط با سرور مشکلی پیش آمد.",
+      message:
+        errorPayload.error?.message ?? errorPayload.message ?? "در ارتباط با سرور مشکلی پیش آمد.",
       fields: errorPayload.error?.fields,
-      requestId: errorPayload.error?.request_id ?? response.headers.get("x-request-id") ?? undefined,
+      requestId:
+        errorPayload.error?.request_id ?? response.headers.get("x-request-id") ?? undefined,
       retryAfterSeconds: parseRetryAfter(response.headers.get("retry-after")),
       kind: "http",
     });
