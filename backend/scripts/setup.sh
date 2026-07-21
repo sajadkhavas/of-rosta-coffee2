@@ -4,12 +4,10 @@ set -Eeuo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-for command in php composer docker; do
-  if ! command -v "$command" >/dev/null 2>&1; then
-    echo "Missing required command: $command" >&2
-    exit 1
-  fi
-done
+if ! command -v docker >/dev/null 2>&1; then
+  echo "Docker is required." >&2
+  exit 1
+fi
 
 if ! docker compose version >/dev/null 2>&1; then
   echo "Docker Compose v2 is required." >&2
@@ -31,25 +29,19 @@ fi
 
 docker compose up -d mysql redis
 
-composer install --no-interaction --prefer-dist
-
-if ! grep -Eq '^APP_KEY=base64:.+' .env; then
-  php artisan key:generate --force
-fi
-
-php artisan storage:link >/dev/null 2>&1 || true
-
-echo "Waiting for MySQL and Redis health checks..."
+echo "Waiting for MySQL and Redis..."
 for attempt in {1..60}; do
-  mysql_state="$(docker inspect --format='{{.State.Health.Status}}' "$(docker compose ps -q mysql)" 2>/dev/null || true)"
-  redis_state="$(docker inspect --format='{{.State.Health.Status}}' "$(docker compose ps -q redis)" 2>/dev/null || true)"
+  mysql_id="$(docker compose ps -q mysql)"
+  redis_id="$(docker compose ps -q redis)"
+  mysql_state="$(docker inspect --format='{{.State.Health.Status}}' "$mysql_id" 2>/dev/null || true)"
+  redis_state="$(docker inspect --format='{{.State.Health.Status}}' "$redis_id" 2>/dev/null || true)"
 
   if [[ "$mysql_state" == "healthy" && "$redis_state" == "healthy" ]]; then
     break
   fi
 
   if [[ "$attempt" -eq 60 ]]; then
-    echo "Dependencies did not become healthy." >&2
+    echo "MySQL or Redis did not become healthy." >&2
     docker compose ps
     exit 1
   fi
@@ -57,12 +49,40 @@ for attempt in {1..60}; do
   sleep 2
 done
 
-php artisan migrate --seed --force
-composer check
+docker compose build api
+docker compose run --rm api composer install --no-interaction --prefer-dist --no-progress
+
+if ! grep -Eq '^APP_KEY=base64:.+' .env; then
+  docker compose run --rm api php artisan key:generate --force
+fi
+
+docker compose run --rm api php artisan storage:link >/dev/null 2>&1 || true
+docker compose run --rm api php artisan migrate --seed --force
+docker compose run --rm api composer check
+
+docker compose up -d api horizon scheduler
+
+echo "Waiting for the API health check..."
+for attempt in {1..40}; do
+  api_id="$(docker compose ps -q api)"
+  api_state="$(docker inspect --format='{{.State.Health.Status}}' "$api_id" 2>/dev/null || true)"
+
+  if [[ "$api_state" == "healthy" ]]; then
+    break
+  fi
+
+  if [[ "$attempt" -eq 40 ]]; then
+    echo "The API did not become healthy." >&2
+    docker compose logs --tail=100 api
+    exit 1
+  fi
+
+  sleep 2
+done
 
 echo
 echo "Rosta backend is ready."
-echo "API:      php artisan serve --host=127.0.0.1 --port=8000"
-echo "Queue:    php artisan horizon"
-echo "Health:   http://127.0.0.1:8000/api/v1/health/live"
-echo "Readiness:http://127.0.0.1:8000/api/v1/health/ready"
+echo "API:       http://127.0.0.1:8000"
+echo "Liveness:  http://127.0.0.1:8000/api/v1/health/live"
+echo "Readiness: http://127.0.0.1:8000/api/v1/health/ready"
+echo "Logs:      docker compose logs -f api horizon scheduler"
