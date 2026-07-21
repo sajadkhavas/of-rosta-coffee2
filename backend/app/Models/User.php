@@ -56,6 +56,21 @@ final class User extends Authenticatable
         return $this->hasMany(StockLedgerEntry::class, 'actor_id');
     }
 
+    public function checkoutQuotes(): HasMany
+    {
+        return $this->hasMany(CheckoutQuote::class);
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    public function orderIdempotencyKeys(): HasMany
+    {
+        return $this->hasMany(OrderIdempotencyKey::class);
+    }
+
     public function roleNames(): array
     {
         return $this->roleAssignments
