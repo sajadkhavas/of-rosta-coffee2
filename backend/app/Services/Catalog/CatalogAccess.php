@@ -6,6 +6,7 @@ use App\Enums\Role;
 use App\Models\Roastery;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 final class CatalogAccess
 {
@@ -37,7 +38,10 @@ final class CatalogAccess
             ->exists();
 
         if (! $allowed) {
-            throw new AuthorizationException;
+            throw (new ModelNotFoundException)->setModel(
+                Roastery::class,
+                [$roastery->id],
+            );
         }
     }
 
