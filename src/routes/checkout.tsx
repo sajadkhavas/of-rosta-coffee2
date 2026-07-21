@@ -20,6 +20,7 @@ import { isApiError } from "@/lib/api/client";
 import { addressesQueryOptions } from "@/lib/api/identity";
 import { formatIrr, formatWeight } from "@/lib/catalog-format";
 import { useCart } from "@/lib/cart-context";
+import type { VerifiedPaymentResult } from "@/lib/payment-security";
 import {
   buildOrderFingerprint,
   buildPaymentFingerprint,
@@ -37,9 +38,7 @@ const searchSchema = z.object({
   status: fallback(z.string().trim().max(40), "").default(""),
 });
 
-interface PaymentVerificationResult {
-  status: "pending" | "paid" | "failed" | "cancelled" | "refunded";
-  orderId: string;
+interface PaymentVerificationResult extends VerifiedPaymentResult {
   expectationFound: boolean;
   consistent: boolean;
 }
@@ -113,13 +112,19 @@ function CheckoutContent() {
     : null;
 
   const verifyQuery = useQuery<PaymentVerificationResult>({
-    queryKey: ["payments", "verify", search.payment_id, paymentExpectation?.orderId ?? "unbound"],
+    queryKey: [
+      "payments",
+      "verify",
+      search.payment_id,
+      paymentExpectation?.orderId ?? "unbound",
+      paymentExpectation?.amount ?? 0,
+    ],
     queryFn: async () => {
       const verified = await verifyPayment(search.payment_id);
       return {
         ...verified,
         expectationFound: Boolean(paymentExpectation),
-        consistent: Boolean(paymentExpectation && paymentExpectation.orderId === verified.orderId),
+        consistent: verified.status === "paid" && Boolean(paymentExpectation),
       };
     },
     enabled: Boolean(search.payment_id),
@@ -152,15 +157,27 @@ function CheckoutContent() {
         idempotencyKey: getOrCreateTransactionIntent("order", orderFingerprint),
         notes,
       });
+      if (order.grandTotal !== quote.grandTotal || order.currency !== quote.currency) {
+        throw new Error("مبلغ سفارش ایجادشده با Quote معتبر این Checkout سازگار نیست.");
+      }
 
       const payment = await requestPayment({
         orderId: order.id,
         idempotencyKey: getOrCreateTransactionIntent(
           "payment",
-          buildPaymentFingerprint(order.id),
+          buildPaymentFingerprint({
+            orderId: order.id,
+            amount: order.grandTotal,
+            currency: order.currency,
+          }),
         ),
       });
-      savePaymentExpectation(payment.paymentId, order.id);
+      savePaymentExpectation(
+        payment.paymentId,
+        order.id,
+        order.grandTotal,
+        order.currency,
+      );
       window.location.assign(payment.redirectUrl);
       return { order, payment };
     },
@@ -373,28 +390,20 @@ function PaymentVerification({
         ) : query.isError ? (
           <>
             <h1 className="text-2xl font-bold">تأیید پرداخت انجام نشد</h1>
-            <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">{isApiError(query.error) ? query.error.message : "ارتباط با سرویس Verify برقرار نشد."}</p>
+            <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">{isApiError(query.error) ? query.error.message : query.error instanceof Error ? query.error.message : "ارتباط با سرویس Verify برقرار نشد."}</p>
             <Button type="button" className="mt-6" onClick={() => query.refetch()}>بررسی دوباره</Button>
           </>
         ) : result?.status === "paid" && result.consistent ? (
           <>
             <CheckCircle2 size={56} className="mx-auto text-emerald-300" />
             <h1 className="mt-5 text-2xl font-bold">پرداخت با موفقیت تأیید شد</h1>
-            <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">پرداخت با Intent همین سبد و سفارش تطبیق داشت؛ سبد پاک شد.</p>
+            <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">پرداخت، مبلغ و وضعیت سفارش با Intent همین مرورگر تطبیق داشت؛ سبد پاک شد.</p>
             <Link to="/orders/$id" params={{ id: result.orderId }} className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-[color:var(--roast)] px-6 text-sm font-bold text-[color:var(--night)]">مشاهده سفارش</Link>
-          </>
-        ) : result?.status === "paid" ? (
-          <>
-            <h1 className="text-2xl font-bold">پرداخت در سرور تأیید شد</h1>
-            <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">
-              پاسخ پرداخت `paid` است، اما Intent محلی معتبر و منطبق پیدا نشد؛ برای جلوگیری از پاک‌شدن سبد اشتباه، سبد حفظ شد.
-            </p>
-            <Link to="/orders" className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-[color:var(--roast)] px-6 text-sm font-bold text-[color:var(--night)]">بررسی سفارش‌های من</Link>
           </>
         ) : (
           <>
             <h1 className="text-2xl font-bold">پرداخت تأیید نشد</h1>
-            <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">وضعیت ثبت‌شده: {result?.status ?? "نامشخص"}. تا زمان دریافت وضعیت `paid` منطبق، سبد پاک نمی‌شود.</p>
+            <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">وضعیت ثبت‌شده: {result?.status ?? "نامشخص"}. تا زمان دریافت پاسخ `paid` کاملاً منطبق، سبد پاک نمی‌شود.</p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Button type="button" onClick={() => query.refetch()}>بررسی دوباره</Button>
               <Link to="/orders" className="inline-flex min-h-11 items-center rounded-xl border border-[color:var(--mid)] px-5 text-sm">سفارش‌های من</Link>
