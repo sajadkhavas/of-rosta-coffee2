@@ -27,7 +27,11 @@ export function ServiceWorkerRegistration() {
     let registration: BrowserServiceWorkerRegistration | undefined;
 
     const revealWaitingWorker = () => {
-      if (!cancelled && registration?.waiting && navigator.serviceWorker.controller) {
+      if (
+        !cancelled &&
+        registration?.waiting &&
+        navigator.serviceWorker.controller
+      ) {
         setWaitingWorker(registration.waiting);
       }
     };
