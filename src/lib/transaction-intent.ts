@@ -1,3 +1,5 @@
+import type { CurrencyCode } from "@/lib/api/contracts";
+
 export type TransactionIntentKind = "order" | "payment";
 
 interface StorageLike {
@@ -15,19 +17,22 @@ interface StoredTransactionIntent {
 }
 
 export interface PaymentExpectation {
-  version: 1;
+  version: 2;
   paymentId: string;
   orderId: string;
+  amount: number;
+  currency: CurrencyCode;
   createdAt: string;
 }
 
 const INTENT_TTL_MS = 30 * 60 * 1000;
-const MAX_STORED_INTENT_LENGTH = 2_048;
+const MAX_STORED_INTENT_LENGTH = 4_096;
 const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9:_-]{24,160}$/;
 const SAFE_ID_PATTERN = /^[A-Za-z0-9._:-]{1,200}$/;
 
 const intentStorageKey = (kind: TransactionIntentKind) => `rosta_${kind}_intent_v1`;
-const PAYMENT_EXPECTATION_KEY = "rosta_payment_expectation_v1";
+const PAYMENT_EXPECTATION_KEY = "rosta_payment_expectation_v2";
+const LEGACY_PAYMENT_EXPECTATION_KEY = "rosta_payment_expectation_v1";
 
 const getSessionStorage = (): StorageLike | null => {
   if (typeof window === "undefined") return null;
@@ -81,7 +86,9 @@ export const buildOrderFingerprint = ({
   const normalizedItems = items
     .map((item) => ({
       variantId: normalizeText(item.variantId, 200),
-      quantity: Number.isFinite(item.quantity) ? Math.max(1, Math.min(20, Math.trunc(item.quantity))) : 1,
+      quantity: Number.isFinite(item.quantity)
+        ? Math.max(1, Math.min(20, Math.trunc(item.quantity)))
+        : 1,
     }))
     .sort((left, right) => left.variantId.localeCompare(right.variantId, "en"));
 
@@ -96,8 +103,22 @@ export const buildOrderFingerprint = ({
   return `order:${hashFingerprintSource(source)}`;
 };
 
-export const buildPaymentFingerprint = (orderId: string) =>
-  `payment:${hashFingerprintSource(normalizeText(orderId, 200))}`;
+export const buildPaymentFingerprint = ({
+  orderId,
+  amount,
+  currency,
+}: {
+  orderId: string;
+  amount: number;
+  currency: CurrencyCode;
+}) =>
+  `payment:${hashFingerprintSource(
+    JSON.stringify({
+      orderId: normalizeText(orderId, 200),
+      amount: Number.isSafeInteger(amount) && amount > 0 ? amount : 0,
+      currency,
+    }),
+  )}`;
 
 const parseIntent = (
   raw: string | null,
@@ -185,6 +206,8 @@ export const clearTransactionIntent = (
 export const savePaymentExpectation = (
   paymentId: string,
   orderId: string,
+  amount: number,
+  currency: CurrencyCode,
   options: { storage?: StorageLike | null; now?: number } = {},
 ): PaymentExpectation => {
   const normalizedPaymentId = normalizeText(paymentId, 200);
@@ -192,16 +215,22 @@ export const savePaymentExpectation = (
   if (!SAFE_ID_PATTERN.test(normalizedPaymentId) || !SAFE_ID_PATTERN.test(normalizedOrderId)) {
     throw new Error("Payment expectation identifiers are invalid.");
   }
+  if (!Number.isSafeInteger(amount) || amount <= 0 || currency !== "IRR") {
+    throw new Error("Payment expectation amount or currency is invalid.");
+  }
 
   const storage = options.storage === undefined ? getSessionStorage() : options.storage;
   const expectation: PaymentExpectation = {
-    version: 1,
+    version: 2,
     paymentId: normalizedPaymentId,
     orderId: normalizedOrderId,
+    amount,
+    currency,
     createdAt: new Date(options.now ?? Date.now()).toISOString(),
   };
 
   try {
+    storage?.removeItem(LEGACY_PAYMENT_EXPECTATION_KEY);
     storage?.setItem(PAYMENT_EXPECTATION_KEY, JSON.stringify(expectation));
   } catch {
     // The caller still has the returned expectation for the current navigation.
@@ -220,15 +249,19 @@ export const readPaymentExpectation = (
   try {
     const candidate = JSON.parse(raw) as Partial<PaymentExpectation>;
     const createdAt = Date.parse(candidate.createdAt || "");
+    const now = options.now ?? Date.now();
     if (
-      candidate.version !== 1 ||
+      candidate.version !== 2 ||
       candidate.paymentId !== paymentId ||
       typeof candidate.orderId !== "string" ||
       !SAFE_ID_PATTERN.test(candidate.paymentId || "") ||
       !SAFE_ID_PATTERN.test(candidate.orderId) ||
+      !Number.isSafeInteger(candidate.amount) ||
+      (candidate.amount ?? 0) <= 0 ||
+      candidate.currency !== "IRR" ||
       !Number.isFinite(createdAt) ||
-      createdAt > (options.now ?? Date.now()) + 60_000 ||
-      (options.now ?? Date.now()) - createdAt > INTENT_TTL_MS
+      createdAt > now + 60_000 ||
+      now - createdAt > INTENT_TTL_MS
     ) {
       return null;
     }
@@ -241,6 +274,7 @@ export const readPaymentExpectation = (
 export const clearPaymentExpectation = (storage: StorageLike | null = getSessionStorage()) => {
   try {
     storage?.removeItem(PAYMENT_EXPECTATION_KEY);
+    storage?.removeItem(LEGACY_PAYMENT_EXPECTATION_KEY);
   } catch {
     // Restricted storage must not block the verified result page.
   }
