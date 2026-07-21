@@ -103,7 +103,7 @@ export async function verifyOtp(input: { requestId: string; code: string }): Pro
 }
 
 export async function getCurrentUser(): Promise<AuthUser> {
-  const raw = await apiFetch("/me");
+  const raw = await apiFetch("/me", { suppressSessionExpiryEvent: true });
   return parseContract(resourceSchema(authUserSchema), raw, "حساب کاربری").data;
 }
 
@@ -119,12 +119,19 @@ export async function updateCurrentUser(input: {
 }
 
 export async function logout(): Promise<void> {
-  await apiFetch("/auth/logout", { method: "POST" });
+  await apiFetch("/auth/logout", {
+    method: "POST",
+    suppressSessionExpiryEvent: true,
+  });
 }
 
 export async function listAddresses(): Promise<Address[]> {
   const raw = await apiFetch("/me/addresses");
-  const response = parseContract(resourceSchema(addressWireSchema.array().max(100)), raw, "فهرست آدرس‌ها");
+  const response = parseContract(
+    resourceSchema(addressWireSchema.array().max(100)),
+    raw,
+    "فهرست آدرس‌ها",
+  );
   return response.data.map(mapAddress);
 }
 
