@@ -60,7 +60,7 @@ docker compose run --rm api php artisan storage:link >/dev/null 2>&1 || true
 docker compose run --rm api php artisan migrate --seed --force
 docker compose run --rm api composer check
 
-docker compose up -d api horizon scheduler
+docker compose up -d api worker scheduler
 
 echo "Waiting for the API health check..."
 for attempt in {1..40}; do
@@ -73,7 +73,7 @@ for attempt in {1..40}; do
 
   if [[ "$attempt" -eq 40 ]]; then
     echo "The API did not become healthy." >&2
-    docker compose logs --tail=100 api
+    docker compose logs --tail=100 api worker scheduler
     exit 1
   fi
 
@@ -82,7 +82,7 @@ done
 
 echo
 echo "Rosta backend is ready."
-echo "API:       http://127.0.0.1:8000"
-echo "Liveness:  http://127.0.0.1:8000/api/v1/health/live"
-echo "Readiness: http://127.0.0.1:8000/api/v1/health/ready"
-echo "Logs:      docker compose logs -f api horizon scheduler"
+echo "API:       http://localhost:8000"
+echo "Liveness:  http://localhost:8000/api/v1/health/live"
+echo "Readiness: http://localhost:8000/api/v1/health/ready"
+echo "Logs:      docker compose logs -f api worker scheduler"
