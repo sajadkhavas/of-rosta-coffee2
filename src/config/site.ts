@@ -21,7 +21,9 @@ function normalizeConfiguredUrl(value: string, label: string): string {
   }
 
   if (url.username || url.password || url.search || url.hash) {
-    throw new Error(`${label} نباید شامل اطلاعات ورود، Query یا Fragment باشد.`);
+    throw new Error(
+      `${label} نباید شامل اطلاعات ورود، Query یا Fragment باشد.`,
+    );
   }
 
   const localHttp = url.protocol === "http:" && isLocalHostname(url.hostname);
@@ -32,14 +34,28 @@ function normalizeConfiguredUrl(value: string, label: string): string {
   return url.toString().replace(/\/+$/, "");
 }
 
-function parsePaymentRedirectHosts(value: string | undefined, siteUrl: string, apiBaseUrl: string) {
-  const hosts = new Set<string>([new URL(siteUrl).host.toLowerCase(), new URL(apiBaseUrl).host.toLowerCase()]);
+function parsePaymentRedirectHosts(
+  value: string | undefined,
+  siteUrl: string,
+  apiBaseUrl: string,
+) {
+  const hosts = new Set<string>([
+    new URL(siteUrl).host.toLowerCase(),
+    new URL(apiBaseUrl).host.toLowerCase(),
+  ]);
 
   for (const rawHost of (value ?? "").split(",")) {
     const host = rawHost.trim().toLowerCase();
     if (!host) continue;
-    if (CONTROL_OR_BACKSLASH.test(host) || host.includes("://") || host.includes("/") || host.includes("@")) {
-      throw new Error("VITE_PAYMENT_REDIRECT_HOSTS باید فقط شامل Hostهای جداشده با ویرگول باشد.");
+    if (
+      CONTROL_OR_BACKSLASH.test(host) ||
+      host.includes("://") ||
+      host.includes("/") ||
+      host.includes("@")
+    ) {
+      throw new Error(
+        "VITE_PAYMENT_REDIRECT_HOSTS باید فقط شامل Hostهای جداشده با ویرگول باشد.",
+      );
     }
     hosts.add(host);
   }
@@ -58,7 +74,8 @@ const configuredApiUrl = normalizeConfiguredUrl(
 
 export const siteConfig = {
   name: "رستا",
-  description: "پلتفرم در حال توسعه برای کشف و مقایسه ساختاریافته دانه کامل قهوه.",
+  description:
+    "پلتفرم در حال توسعه برای کشف و مقایسه ساختاریافته دانه کامل قهوه.",
   siteUrl: configuredSiteUrl,
   apiUrl: configuredApiUrl,
   paymentRedirectHosts: parsePaymentRedirectHosts(
@@ -108,7 +125,9 @@ export function apiUrl(path = "/"): string {
     throw new Error("مسیر API اجازه خروج از محدوده تعریف‌شده را ندارد.");
   }
 
-  const normalizedPath = candidate.startsWith("/") ? candidate : `/${candidate}`;
+  const normalizedPath = candidate.startsWith("/")
+    ? candidate
+    : `/${candidate}`;
   return `${siteConfig.apiUrl}${normalizedPath}`;
 }
 
@@ -122,7 +141,9 @@ export function assertApprovedPaymentRedirect(value: string): string {
 
   const localHttp = url.protocol === "http:" && isLocalHostname(url.hostname);
   const secureProtocol = url.protocol === "https:" || localHttp;
-  const approvedHost = siteConfig.paymentRedirectHosts.includes(url.host.toLowerCase());
+  const approvedHost = siteConfig.paymentRedirectHosts.includes(
+    url.host.toLowerCase(),
+  );
 
   if (!secureProtocol || !approvedHost || url.username || url.password) {
     throw new Error("آدرس انتقال درگاه خارج از فهرست مجاز است.");
