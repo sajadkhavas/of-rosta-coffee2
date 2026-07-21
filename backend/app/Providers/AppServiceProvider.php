@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use App\Contracts\OtpSender;
+use App\Services\Sms\DisabledOtpSender;
+use App\Services\Sms\LogOtpSender;
+use App\Support\IranMobile;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -11,7 +15,18 @@ final class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // Domain bindings are added in later phases without changing the public contract.
+        $this->app->singleton(OtpSender::class, function (): OtpSender {
+            $driver = (string) config('services.sms.driver');
+
+            if (
+                $driver === 'log' &&
+                $this->app->environment(['local', 'testing'])
+            ) {
+                return new LogOtpSender;
+            }
+
+            return new DisabledOtpSender;
+        });
     }
 
     public function boot(): void
@@ -24,14 +39,26 @@ final class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(120)->by($key);
         });
 
-        RateLimiter::for('otp-request', fn (Request $request): array => [
-            Limit::perMinute(3)->by('otp-request:ip:'.$request->ip()),
-            Limit::perHour(5)->by('otp-request:mobile:'.hash('sha256', (string) $request->input('mobile'))),
-        ]);
+        RateLimiter::for('otp-request', function (Request $request): array {
+            $mobile = IranMobile::normalize((string) $request->input('mobile'));
 
-        RateLimiter::for('otp-verify', fn (Request $request): array => [
-            Limit::perMinute(10)->by('otp-verify:ip:'.$request->ip()),
-            Limit::perMinute(5)->by('otp-verify:challenge:'.hash('sha256', (string) $request->input('request_id'))),
-        ]);
+            return [
+                Limit::perMinute(3)->by('otp-request:ip:'.$request->ip()),
+                Limit::perHour(5)->by(
+                    'otp-request:mobile:'.hash('sha256', $mobile),
+                ),
+            ];
+        });
+
+        RateLimiter::for('otp-verify', function (Request $request): array {
+            $challengeId = trim((string) $request->input('request_id'));
+
+            return [
+                Limit::perMinute(10)->by('otp-verify:ip:'.$request->ip()),
+                Limit::perMinute(5)->by(
+                    'otp-verify:challenge:'.hash('sha256', $challengeId),
+                ),
+            ];
+        });
     }
 }

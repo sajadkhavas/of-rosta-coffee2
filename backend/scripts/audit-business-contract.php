@@ -9,6 +9,28 @@ $scanRoots = [
 ];
 $failures = [];
 
+$read = static function (string $relativePath) use ($root, &$failures): string {
+    $path = $root.'/'.$relativePath;
+    $content = is_file($path) ? file_get_contents($path) : false;
+    if ($content === false) {
+        $failures[] = 'Missing or unreadable file: '.$relativePath;
+
+        return '';
+    }
+
+    return $content;
+};
+
+$requireContains = static function (
+    string $relativePath,
+    string $needle,
+    string $message,
+) use ($read, &$failures): void {
+    if (! str_contains($read($relativePath), $needle)) {
+        $failures[] = $message;
+    }
+};
+
 foreach ($scanRoots as $scanRoot) {
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($scanRoot, FilesystemIterator::SKIP_DOTS),
@@ -31,25 +53,86 @@ foreach ($scanRoots as $scanRoot) {
     }
 }
 
-$rostaConfig = file_get_contents($root.'/config/rosta.php');
-if ($rostaConfig === false) {
-    $failures[] = 'Missing config/rosta.php';
-} else {
-    foreach (['50', '100', '250', '500', '1000'] as $weight) {
-        if (! str_contains($rostaConfig, $weight)) {
-            $failures[] = 'Missing whole-bean weight '.$weight.' in config/rosta.php';
-        }
+$rostaConfig = $read('config/rosta.php');
+foreach (['50', '100', '250', '500', '1000'] as $weight) {
+    if (! str_contains($rostaConfig, $weight)) {
+        $failures[] = 'Missing whole-bean weight '.$weight.' in config/rosta.php';
     }
-
-    if (! str_contains($rostaConfig, "'single_roastery_orders' => true")) {
-        $failures[] = 'Single-roastery order boundary is not locked.';
-    }
+}
+if (! str_contains($rostaConfig, "'single_roastery_orders' => true")) {
+    $failures[] = 'Single-roastery order boundary is not locked.';
 }
 
 $contractPath = dirname($root).'/docs/openapi/rosta-v1-phase6.yaml';
 if (! is_file($contractPath) || filesize($contractPath) === 0) {
     $failures[] = 'Frozen OpenAPI contract is missing.';
 }
+
+$requireContains(
+    'app/Services/Identity/OtpCodeHasher.php',
+    'random_int(',
+    'OTP codes must use a cryptographically secure generator.',
+);
+$requireContains(
+    'app/Services/Identity/OtpCodeHasher.php',
+    'hash_hmac(',
+    'OTP codes must be stored with a keyed digest.',
+);
+$requireContains(
+    'app/Services/Identity/OtpCodeHasher.php',
+    "'sha256'",
+    'OTP digests must use SHA-256.',
+);
+$otpMigration = $read('database/migrations/2026_07_21_010001_create_identity_access_tables.php');
+if (! str_contains($otpMigration, 'code_digest')) {
+    $failures[] = 'OTP challenge storage must contain code_digest.';
+}
+if (preg_match(
+    '~otp_challenges[\s\S]*?\$table->(?:string|char)\(\'code\'~',
+    $otpMigration,
+) === 1) {
+    $failures[] = 'Plaintext OTP code columns are forbidden.';
+}
+$requireContains(
+    'app/Services/Identity/OtpService.php',
+    'Cache::lock(',
+    'OTP request and verification must use distributed locks.',
+);
+$requireContains(
+    'app/Services/Identity/OtpService.php',
+    'lockForUpdate()',
+    'OTP state transitions must use database row locks.',
+);
+$requireContains(
+    'app/Jobs/SendOtpCode.php',
+    'Crypt::decryptString(',
+    'Queued OTP plaintext must remain encrypted in the job payload.',
+);
+$requireContains(
+    'routes/api.php',
+    "['auth:sanctum', 'rosta.session']",
+    'Private identity routes must require Sanctum and an active recorded session.',
+);
+$requireContains(
+    'app/Http/Middleware/EnsureActiveAuthSession.php',
+    'isActive()',
+    'Recorded sessions must be checked for revocation and expiry.',
+);
+$requireContains(
+    'app/Services/Identity/AddressService.php',
+    "->where('user_id', \$user->id)",
+    'Address access must always be scoped to the authenticated owner.',
+);
+$requireContains(
+    'app/Models/AuditLog.php',
+    'static::updating',
+    'Audit records must reject updates.',
+);
+$requireContains(
+    'app/Models/AuditLog.php',
+    'static::deleting',
+    'Audit records must reject deletes.',
+);
 
 if ($failures !== []) {
     fwrite(STDERR, "Backend business contract audit failed:\n");
