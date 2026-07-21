@@ -1,11 +1,17 @@
 <?php
 
-$frontendOrigin = rtrim((string) env('FRONTEND_URL', 'http://localhost:3000'), '/');
+$allowedOrigins = array_values(array_unique(array_filter(array_map(
+    static fn (string $origin): string => rtrim(trim($origin), '/'),
+    explode(',', (string) env(
+        'FRONTEND_ALLOWED_ORIGINS',
+        'http://localhost:5173,http://127.0.0.1:5173',
+    )),
+))));
 
 return [
     'paths' => ['api/*', 'sanctum/csrf-cookie'],
     'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    'allowed_origins' => [$frontendOrigin],
+    'allowed_origins' => $allowedOrigins,
     'allowed_origins_patterns' => [],
     'allowed_headers' => [
         'Accept',
