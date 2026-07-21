@@ -7,8 +7,8 @@ use App\Http\Resources\AuthUserResource;
 use App\Services\AuditRecorder;
 use App\Services\Identity\AuthSessionService;
 use App\Services\Identity\OtpService;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Throwable;
 
 final class VerifyOtpController
 {
@@ -26,14 +26,28 @@ final class VerifyOtpController
 
         Auth::guard('web')->login($user);
         $request->session()->regenerate();
-        $session = $sessions->start($user, $request);
 
-        $audit->record(
-            'identity.session.started',
-            actor: $user,
-            auditable: $session,
-            request: $request,
-        );
+        try {
+            $session = $sessions->start($user, $request);
+            $audit->record(
+                'identity.session.started',
+                actor: $user,
+                auditable: $session,
+                request: $request,
+            );
+        } catch (Throwable $exception) {
+            try {
+                $sessions->revokeCurrent($user, $request, 'login_failed');
+            } catch (Throwable) {
+                // The primary exception remains authoritative.
+            }
+
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            throw $exception;
+        }
 
         return new AuthUserResource($user);
     }
