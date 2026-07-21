@@ -31,7 +31,14 @@ final class AdjustStockRequest extends FormRequest
     {
         return [
             'delta' => ['required', 'integer', 'not_in:0', 'min:-1000000', 'max:1000000'],
-            'reason' => ['required', Rule::enum(StockReason::class)],
+            'reason' => ['required', Rule::in([
+                StockReason::Opening->value,
+                StockReason::Purchase->value,
+                StockReason::Correction->value,
+                StockReason::Damage->value,
+                StockReason::Expiry->value,
+                StockReason::Return->value,
+            ])],
             'roast_batch_id' => ['nullable', 'string', 'max:200'],
             'idempotency_key' => ['nullable', 'string', 'min:24', 'max:160', 'regex:/^[A-Za-z0-9:_-]+$/'],
             'metadata' => ['sometimes', 'array', 'max:30'],
