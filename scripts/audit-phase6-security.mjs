@@ -47,13 +47,33 @@ requirePattern(
 );
 requirePattern(
   "src/lib/transaction-intent.ts",
-  /readPaymentExpectation/,
-  "payment verification must be bound to an expected order",
+  /amount:\s*number[\s\S]*currency:\s*CurrencyCode/,
+  "payment expectation must be bound to amount and currency",
+);
+requirePattern(
+  "src/lib/transaction-intent.ts",
+  /buildPaymentFingerprint[\s\S]*amount[\s\S]*currency/,
+  "payment Idempotency must be bound to order amount and currency",
+);
+requirePattern(
+  "src/lib/api/payment-contract.ts",
+  /payment_id[\s\S]*order_status[\s\S]*amount[\s\S]*currency[\s\S]*verified_at/,
+  "payment verification must expose complete server truth",
+);
+requirePattern(
+  "src/lib/payment-security.ts",
+  /result\.paymentId === expectation\.paymentId[\s\S]*result\.orderId === expectation\.orderId[\s\S]*result\.amount === expectation\.amount[\s\S]*result\.currency === expectation\.currency/,
+  "paid success must require exact payment, order, amount and currency consistency",
 );
 requirePattern(
   "src/routes/checkout.tsx",
-  /status !== "paid" \|\| !verifyQuery\.data\.consistent/,
+  /status !== "paid" \|\| !verifyQuery\.data\?*\.consistent|status !== "paid" \|\| !verifyQuery\.data\.consistent/,
   "cart clearing must require consistent verified paid state",
+);
+requirePattern(
+  "src/routes/checkout.tsx",
+  /order\.grandTotal !== quote\.grandTotal \|\| order\.currency !== quote\.currency/,
+  "created order totals must match the checkout quote",
 );
 requirePattern(
   "src/lib/cart-storage.ts",
@@ -90,6 +110,19 @@ if (!serviceWorker.includes('event.data?.type === "ROSTA_SKIP_WAITING"')) {
 if (!serviceWorker.includes('request.destination === "script"')) {
   failures.push("public/sw.js: executable assets need an explicit network-first policy");
 }
+if (!serviceWorker.includes('"/api"')) {
+  failures.push("public/sw.js: the complete same-origin API path must bypass caches");
+}
+requirePattern(
+  "src/components/ServiceWorkerRegistration.tsx",
+  /navigator\.serviceWorker\.controller/,
+  "PWA update prompts must only appear for controlled clients",
+);
+requirePattern(
+  "src/components/ServiceWorkerRegistration.tsx",
+  /ROSTA_SKIP_WAITING/,
+  "PWA updates must require explicit activation",
+);
 
 for (const header of [
   "Content-Security-Policy",
@@ -105,11 +138,22 @@ requirePattern(
   /private, no-store/,
   "private customer routes must be marked no-store",
 );
+requirePattern(
+  "src/routes/__root.tsx",
+  /rosta:session-expired[\s\S]*removeQueries/,
+  "expired protected sessions must clear private query caches",
+);
+requirePattern(
+  "src/lib/api/identity.ts",
+  /suppressSessionExpiryEvent:\s*true/,
+  "authentication bootstrap must not create expiry refetch loops",
+);
 
 const businessContractFiles = [
   "src/lib/api/contracts.ts",
   "src/lib/api/schemas.ts",
   "src/lib/api/checkout.ts",
+  "src/lib/api/payment-contract.ts",
   "src/lib/cart-storage.ts",
   "src/lib/transaction-intent.ts",
 ];
