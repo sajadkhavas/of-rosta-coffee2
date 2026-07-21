@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use LogicException;
 
 final class AuditLog extends Model
 {
@@ -22,6 +23,17 @@ final class AuditLog extends Model
         'ip_hash',
         'metadata',
     ];
+
+    protected static function booted(): void
+    {
+        static::updating(static function (): never {
+            throw new LogicException('Audit records are append-only and cannot be updated.');
+        });
+
+        static::deleting(static function (): never {
+            throw new LogicException('Audit records are append-only and cannot be deleted.');
+        });
+    }
 
     protected function casts(): array
     {
