@@ -11,12 +11,11 @@ Security-first Laravel API for the Rosta whole-bean coffee marketplace.
 - SMS and payment providers are disabled until real credentials and approved callback settings are supplied.
 - The frozen frontend contract is `docs/openapi/rosta-v1-phase6.yaml`.
 
-## Requirements
+## Requirement
 
-- PHP 8.2+
-- Composer 2
-- Docker with Compose v2
-- PHP extensions: PDO MySQL, Redis, Mbstring, OpenSSL, JSON, Tokenizer, XML, Ctype, BCMath
+Only Docker Desktop with Compose v2 is required. On Windows, run the commands from WSL or Git Bash.
+
+The PHP 8.3 runtime, Composer, required PHP extensions, MySQL 8.4, Redis 7.4, Horizon and the scheduler run inside Docker.
 
 ## One-command setup
 
@@ -30,35 +29,20 @@ The setup script:
 
 1. creates the required Laravel runtime directories;
 2. copies `.env.example` to `.env` when needed;
-3. starts MySQL 8.4 and Redis 7.4;
-4. installs Composer dependencies;
-5. generates `APP_KEY`;
-6. runs migrations and the local seeder;
-7. runs tests, Larastan and Pint checks.
+3. starts MySQL and Redis and waits for healthy status;
+4. builds the reproducible PHP runtime image;
+5. installs Composer dependencies into a shared Docker volume;
+6. generates `APP_KEY`;
+7. runs migrations and the local seeder;
+8. runs PHPUnit, Larastan and Pint checks;
+9. starts the API, Horizon and scheduler;
+10. waits until the API health check is green.
 
-## Run locally
+## Local addresses
 
-```bash
-cd backend
-php artisan serve --host=127.0.0.1 --port=8000
-```
-
-In separate terminals:
-
-```bash
-cd backend
-php artisan horizon
-```
-
-```bash
-cd backend
-php artisan schedule:work
-```
-
-Health endpoints:
-
-- `GET http://127.0.0.1:8000/api/v1/health/live`
-- `GET http://127.0.0.1:8000/api/v1/health/ready`
+- API: `http://127.0.0.1:8000`
+- Liveness: `http://127.0.0.1:8000/api/v1/health/live`
+- Readiness: `http://127.0.0.1:8000/api/v1/health/ready`
 
 The frontend should use:
 
@@ -66,35 +50,47 @@ The frontend should use:
 VITE_API_URL=http://127.0.0.1:8000/api/v1
 ```
 
-## Quality commands
+## Daily commands
+
+From the `backend` directory:
 
 ```bash
-composer test
-composer analyse
-composer format
-composer check
+docker compose up -d api horizon scheduler mysql redis
+docker compose logs -f api horizon scheduler
+docker compose run --rm api composer check
+docker compose run --rm api php artisan migrate
+docker compose down
 ```
 
-`composer check` is the permanent local quality gate.
+From the repository root:
+
+```bash
+bun run backend:setup
+bun run backend:up
+bun run backend:check
+bun run backend:down
+bun run check:all
+```
 
 ## Current Phase 7 scope
 
 Implemented in this foundation:
 
 - Laravel 11 application entrypoints;
+- reproducible PHP 8.3 Docker runtime;
 - Sanctum SPA session foundation;
 - strict credentialed CORS;
 - stable API success/error envelopes;
 - request IDs and contract-version headers;
 - liveness/readiness endpoints;
 - Redis cache, sessions and queues;
-- Horizon scheduling foundation;
+- Horizon and scheduler services;
 - rate-limit definitions for API and OTP flows;
 - OTP-first ULID user model;
 - immutable encrypted audit logs;
 - MySQL migrations, factories and seeders;
 - PHPUnit, Larastan and Pint gates;
-- local Docker dependencies and setup automation.
+- local Docker automation and backend CI.
 
 Not yet implemented:
 
