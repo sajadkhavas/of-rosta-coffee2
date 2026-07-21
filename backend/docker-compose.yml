@@ -33,9 +33,22 @@ services:
       retries: 20
       start_period: 15s
 
-  horizon:
+  worker:
     <<: *rosta-app
-    command: ["php", "artisan", "horizon"]
+    command:
+      [
+        "php",
+        "artisan",
+        "queue:work",
+        "redis",
+        "--queue=critical,default,notifications",
+        "--sleep=1",
+        "--tries=3",
+        "--backoff=5",
+        "--timeout=90",
+        "--max-time=3600",
+      ]
+    stop_grace_period: 2m
 
   scheduler:
     <<: *rosta-app
