@@ -6,6 +6,8 @@ use App\Enums\OrderStatus;
 use App\Enums\ReservationStatus;
 use App\Enums\SubOrderStatus;
 use App\Exceptions\ApiDomainException;
+use App\Models\CheckoutQuote;
+use App\Models\Coupon;
 use App\Models\InventoryReservation;
 use App\Models\Order;
 use App\Models\ProductVariant;
@@ -46,6 +48,7 @@ final class OrderCancellationService
             }
 
             $this->releaseReservations($order, ReservationStatus::Released);
+            $couponReleased = $this->releaseCouponReservation($order);
 
             $order->forceFill([
                 'status' => OrderStatus::Cancelled,
@@ -61,7 +64,10 @@ final class OrderCancellationService
                 'checkout.order.cancelled',
                 actor: $user,
                 auditable: $order,
-                metadata: ['reason' => $reason],
+                metadata: [
+                    'reason' => $reason,
+                    'coupon_reservation_released' => $couponReleased,
+                ],
                 request: $request,
             );
 
@@ -78,6 +84,7 @@ final class OrderCancellationService
             }
 
             $this->releaseReservations($locked, ReservationStatus::Expired);
+            $couponReleased = $this->releaseCouponReservation($locked);
 
             $locked->forceFill([
                 'status' => OrderStatus::Cancelled,
@@ -92,7 +99,10 @@ final class OrderCancellationService
             $this->audit->record(
                 'checkout.order.reservation_expired',
                 auditable: $locked,
-                metadata: ['reason' => 'reservation_expired'],
+                metadata: [
+                    'reason' => 'reservation_expired',
+                    'coupon_reservation_released' => $couponReleased,
+                ],
             );
         }, attempts: 3);
     }
@@ -132,5 +142,30 @@ final class OrderCancellationService
                 'released_at' => now(),
             ])->save();
         }
+    }
+
+    private function releaseCouponReservation(Order $order): bool
+    {
+        $quote = CheckoutQuote::query()
+            ->lockForUpdate()
+            ->find($order->quote_id);
+
+        if (! $quote instanceof CheckoutQuote || $quote->coupon_id === null) {
+            return false;
+        }
+
+        $coupon = Coupon::query()
+            ->lockForUpdate()
+            ->find($quote->coupon_id);
+
+        if (! $coupon instanceof Coupon || $coupon->redemption_count <= 0) {
+            return false;
+        }
+
+        $coupon->forceFill([
+            'redemption_count' => $coupon->redemption_count - 1,
+        ])->save();
+
+        return true;
     }
 }
