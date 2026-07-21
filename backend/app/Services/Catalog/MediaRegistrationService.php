@@ -25,14 +25,6 @@ final class MediaRegistrationService
         array $data,
         Request $request,
     ): MediaAsset {
-        if ($roastery->mediaAssets()->count() >= (int) config('rosta.catalog.max_media_per_roastery')) {
-            throw new ApiDomainException(
-                'catalog.media_limit_reached',
-                'سقف رسانه‌های این روستری تکمیل شده است.',
-                409,
-            );
-        }
-
         foreach ($data['sources'] as $source) {
             $url = (string) $source['url'];
             $parts = parse_url($url);
@@ -52,6 +44,18 @@ final class MediaRegistrationService
         }
 
         return DB::transaction(function () use ($roastery, $actor, $data, $request): MediaAsset {
+            $lockedRoastery = Roastery::query()
+                ->lockForUpdate()
+                ->findOrFail($roastery->id);
+
+            if ($lockedRoastery->mediaAssets()->count() >= (int) config('rosta.catalog.max_media_per_roastery')) {
+                throw new ApiDomainException(
+                    'catalog.media_limit_reached',
+                    'سقف رسانه‌های این روستری تکمیل شده است.',
+                    409,
+                );
+            }
+
             $asset = MediaAsset::query()->create([
                 'roastery_id' => $roastery->id,
                 'alt' => $data['alt'],
