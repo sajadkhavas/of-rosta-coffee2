@@ -1,6 +1,11 @@
 const CACHE_VERSION = "rosta-static-v5";
 const OFFLINE_URL = "/offline.html";
-const PRECACHE_URLS = [OFFLINE_URL, "/manifest.json", "/icon-192.png", "/icon-512.png"];
+const PRECACHE_URLS = [
+  OFFLINE_URL,
+  "/manifest.json",
+  "/icon-192.png",
+  "/icon-512.png",
+];
 const PRIVATE_PREFIXES = [
   "/api",
   "/auth",
@@ -13,7 +18,9 @@ const PRIVATE_PREFIXES = [
 const CACHEABLE_DESTINATIONS = new Set(["font", "image"]);
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_VERSION).then((cache) => cache.addAll(PRECACHE_URLS)));
+  event.waitUntil(
+    caches.open(CACHE_VERSION).then((cache) => cache.addAll(PRECACHE_URLS)),
+  );
 });
 
 self.addEventListener("message", (event) => {
@@ -25,7 +32,11 @@ self.addEventListener("activate", (event) => {
     caches
       .keys()
       .then((keys) =>
-        Promise.all(keys.filter((key) => key !== CACHE_VERSION).map((key) => caches.delete(key))),
+        Promise.all(
+          keys
+            .filter((key) => key !== CACHE_VERSION)
+            .map((key) => caches.delete(key)),
+        ),
       )
       .then(() => self.clients.claim()),
   );
@@ -33,7 +44,8 @@ self.addEventListener("activate", (event) => {
 
 function isPrivateRequest(url) {
   return PRIVATE_PREFIXES.some(
-    (prefix) => url.pathname === prefix || url.pathname.startsWith(`${prefix}/`),
+    (prefix) =>
+      url.pathname === prefix || url.pathname.startsWith(`${prefix}/`),
   );
 }
 
