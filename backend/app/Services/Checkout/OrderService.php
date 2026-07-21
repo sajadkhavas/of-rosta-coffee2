@@ -91,7 +91,9 @@ final class OrderService
                 'key' => $idempotencyKey,
                 'request_hash' => $requestHash,
                 'status' => IdempotencyStatus::Processing,
-                'expires_at' => now()->addHours(24),
+                'expires_at' => now()->addHours(
+                    (int) config('rosta.checkout.idempotency_ttl_hours', 24),
+                ),
             ]);
 
             $quote = CheckoutQuote::query()
