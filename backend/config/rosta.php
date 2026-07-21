@@ -24,4 +24,10 @@ return [
     'addresses' => [
         'max_per_user' => max(1, min(100, (int) env('ROSTA_MAX_ADDRESSES_PER_USER', 20))),
     ],
+    'catalog' => [
+        'max_products_per_roastery' => max(1, min(10000, (int) env('ROSTA_MAX_PRODUCTS_PER_ROASTERY', 1000))),
+        'max_media_per_roastery' => max(1, min(100000, (int) env('ROSTA_MAX_MEDIA_PER_ROASTERY', 10000))),
+        'public_page_size' => 24,
+        'seller_page_size' => 50,
+    ],
 ];
