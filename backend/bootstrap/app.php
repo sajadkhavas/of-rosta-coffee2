@@ -8,7 +8,9 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Session\TokenMismatchException;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -34,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             $requestId = $request->attributes->get('request_id');
+            $safeRequestId = is_string($requestId) ? $requestId : null;
 
             if ($exception instanceof ValidationException) {
                 return ApiResponse::error(
@@ -41,7 +44,16 @@ return Application::configure(basePath: dirname(__DIR__))
                     'اطلاعات ارسال‌شده معتبر نیست.',
                     422,
                     $exception->errors(),
-                    is_string($requestId) ? $requestId : null,
+                    $safeRequestId,
+                );
+            }
+
+            if ($exception instanceof TokenMismatchException) {
+                return ApiResponse::error(
+                    'auth.csrf_expired',
+                    'نشست امن منقضی شده است. درخواست را دوباره ارسال کنید.',
+                    419,
+                    requestId: $safeRequestId,
                 );
             }
 
@@ -50,7 +62,7 @@ return Application::configure(basePath: dirname(__DIR__))
                     'request.unauthenticated',
                     'نشست کاربری معتبر نیست.',
                     401,
-                    requestId: is_string($requestId) ? $requestId : null,
+                    requestId: $safeRequestId,
                 );
             }
 
@@ -59,7 +71,7 @@ return Application::configure(basePath: dirname(__DIR__))
                     'request.forbidden',
                     'اجازه انجام این عملیات را ندارید.',
                     403,
-                    requestId: is_string($requestId) ? $requestId : null,
+                    requestId: $safeRequestId,
                 );
             }
 
@@ -68,7 +80,7 @@ return Application::configure(basePath: dirname(__DIR__))
                     'request.not_found',
                     'منبع درخواستی پیدا نشد.',
                     404,
-                    requestId: is_string($requestId) ? $requestId : null,
+                    requestId: $safeRequestId,
                 );
             }
 
@@ -78,19 +90,22 @@ return Application::configure(basePath: dirname(__DIR__))
                     401 => 'request.unauthenticated',
                     403 => 'request.forbidden',
                     404 => 'request.not_found',
+                    405 => 'request.method_not_allowed',
                     419 => 'auth.csrf_expired',
                     429 => 'request.rate_limited',
                     default => $status >= 500 ? 'server.unavailable' : 'request.failed',
                 };
 
-                return ApiResponse::error(
+                $response = ApiResponse::error(
                     $code,
                     $status >= 500
                         ? 'سرویس موقتاً در دسترس نیست.'
                         : ($exception->getMessage() ?: 'درخواست انجام نشد.'),
                     $status,
-                    requestId: is_string($requestId) ? $requestId : null,
+                    requestId: $safeRequestId,
                 );
+
+                return copyHttpExceptionHeaders($exception, $response);
             }
 
             report($exception);
@@ -99,8 +114,19 @@ return Application::configure(basePath: dirname(__DIR__))
                 'server.unavailable',
                 'سرویس موقتاً در دسترس نیست.',
                 500,
-                requestId: is_string($requestId) ? $requestId : null,
+                requestId: $safeRequestId,
             );
         });
     })
     ->create();
+
+function copyHttpExceptionHeaders(
+    HttpExceptionInterface $exception,
+    JsonResponse $response,
+): JsonResponse {
+    foreach ($exception->getHeaders() as $name => $value) {
+        $response->headers->set($name, $value);
+    }
+
+    return $response;
+}
