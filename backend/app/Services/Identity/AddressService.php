@@ -89,13 +89,13 @@ final class AddressService
             if ($requestedDefault) {
                 Address::query()
                     ->where('user_id', $user->id)
-                    ->whereKeyNot($address->id)
+                    ->where('id', '!=', $address->id)
                     ->where('is_default', true)
                     ->update(['is_default' => false, 'updated_at' => now()]);
             } elseif ($address->is_default) {
                 $replacement = Address::query()
                     ->where('user_id', $user->id)
-                    ->whereKeyNot($address->id)
+                    ->where('id', '!=', $address->id)
                     ->orderByDesc('updated_at')
                     ->lockForUpdate()
                     ->first();
