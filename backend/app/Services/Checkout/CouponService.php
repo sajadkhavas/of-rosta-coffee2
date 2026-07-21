@@ -62,9 +62,9 @@ final class CouponService
 
         $discount = match ($coupon->type) {
             CouponType::Fixed => min($subtotal, $coupon->value),
-            CouponType::Percentage => intdiv(
-                $subtotal * min(10_000, $coupon->value),
-                10_000,
+            CouponType::Percentage => $this->percentageDiscount(
+                $subtotal,
+                min(10_000, $coupon->value),
             ),
         };
 
@@ -73,5 +73,13 @@ final class CouponService
         }
 
         return ['coupon' => $coupon, 'discount' => max(0, $discount)];
+    }
+
+    private function percentageDiscount(int $subtotal, int $basisPoints): int
+    {
+        $whole = intdiv($subtotal, 10_000) * $basisPoints;
+        $remainder = intdiv(($subtotal % 10_000) * $basisPoints, 10_000);
+
+        return $whole + $remainder;
     }
 }
