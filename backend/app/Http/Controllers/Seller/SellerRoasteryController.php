@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Seller;
 
 use App\Enums\Role;
+use App\Enums\RoasteryStatus;
 use App\Http\Requests\Catalog\StoreRoasteryRequest;
 use App\Http\Requests\Catalog\UpdateRoasteryRequest;
 use App\Http\Resources\RoasteryDetailResource;
@@ -12,6 +13,7 @@ use App\Models\User;
 use App\Models\UserRole;
 use App\Services\AuditRecorder;
 use App\Services\Catalog\CatalogAccess;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -20,14 +22,14 @@ final class SellerRoasteryController
     public function store(
         StoreRoasteryRequest $request,
         AuditRecorder $audit,
-    ): RoasteryDetailResource {
+    ): JsonResponse {
         /** @var User $user */
         $user = $request->user();
 
         $roastery = DB::transaction(function () use ($request, $user, $audit): Roastery {
             $roastery = Roastery::query()->create([
                 ...$request->validated(),
-                'status' => 'pending',
+                'status' => RoasteryStatus::Pending->value,
             ]);
 
             UserRole::query()->firstOrCreate([
@@ -47,7 +49,9 @@ final class SellerRoasteryController
             return $roastery;
         });
 
-        return new RoasteryDetailResource($roastery->load(['logo', 'cover']));
+        return (new RoasteryDetailResource($roastery->load(['logo', 'cover'])))
+            ->response()
+            ->setStatusCode(201);
     }
 
     public function show(
@@ -89,13 +93,25 @@ final class SellerRoasteryController
                 ->findOrFail($data[$field]);
         }
 
-        $roastery->fill($data)->save();
+        $verificationSensitiveFields = ['name', 'slug', 'city', 'description'];
+        $requiresReview = $roastery->status === RoasteryStatus::Verified
+            && array_intersect($verificationSensitiveFields, array_keys($data)) !== [];
+
+        $roastery->fill($data);
+        if ($requiresReview) {
+            $roastery->status = RoasteryStatus::Pending;
+            $roastery->verified_at = null;
+        }
+        $roastery->save();
 
         $audit->record(
             'catalog.roastery.updated',
             actor: $user,
             auditable: $roastery,
-            metadata: ['fields' => array_keys($data)],
+            metadata: [
+                'fields' => array_keys($data),
+                'verification_reset' => $requiresReview,
+            ],
             request: $request,
         );
 
