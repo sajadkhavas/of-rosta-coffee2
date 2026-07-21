@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\ApiDomainException;
 use App\Http\Middleware\AssignRequestId;
 use App\Support\ApiResponse;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -14,12 +15,9 @@ use Illuminate\Session\TokenMismatchException;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
-$copyHttpExceptionHeaders = static function (
-    HttpExceptionInterface $exception,
-    JsonResponse $response,
-): JsonResponse {
-    foreach ($exception->getHeaders() as $name => $value) {
-        $response->headers->set($name, $value);
+$copyHeaders = static function (array $headers, JsonResponse $response): JsonResponse {
+    foreach ($headers as $name => $value) {
+        $response->headers->set((string) $name, $value);
     }
 
     return $response;
@@ -35,19 +33,31 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(AssignRequestId::class);
         $middleware->statefulApi();
     })
-    ->withExceptions(function (Exceptions $exceptions) use ($copyHttpExceptionHeaders): void {
+    ->withExceptions(function (Exceptions $exceptions) use ($copyHeaders): void {
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request, \Throwable $exception): bool =>
                 $request->is('api/*') || $request->expectsJson(),
         );
 
-        $exceptions->render(function (\Throwable $exception, Request $request) use ($copyHttpExceptionHeaders) {
+        $exceptions->render(function (\Throwable $exception, Request $request) use ($copyHeaders) {
             if (! ($request->is('api/*') || $request->expectsJson())) {
                 return null;
             }
 
             $requestId = $request->attributes->get('request_id');
             $safeRequestId = is_string($requestId) ? $requestId : null;
+
+            if ($exception instanceof ApiDomainException) {
+                $response = ApiResponse::error(
+                    $exception->errorCode,
+                    $exception->getMessage(),
+                    $exception->status,
+                    $exception->fields,
+                    $safeRequestId,
+                );
+
+                return $copyHeaders($exception->headers, $response);
+            }
 
             if ($exception instanceof ValidationException) {
                 return ApiResponse::error(
@@ -116,7 +126,7 @@ return Application::configure(basePath: dirname(__DIR__))
                     requestId: $safeRequestId,
                 );
 
-                return $copyHttpExceptionHeaders($exception, $response);
+                return $copyHeaders($exception->getHeaders(), $response);
             }
 
             report($exception);
