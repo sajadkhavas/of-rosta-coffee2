@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('name', 160);
             $table->string('slug', 180)->unique();
             $table->string('city', 120)->nullable();
-            $table->text('description')->default('');
+            $table->text('description')->nullable();
             $table->text('shipping_policy')->nullable();
             $table->string('status', 32)->default('pending')->index();
             $table->timestamp('verified_at')->nullable()->index();
@@ -34,7 +34,9 @@ return new class extends Migration
 
         Schema::create('media_assets', function (Blueprint $table): void {
             $table->ulid('id')->primary();
-            $table->foreignUlid('roastery_id')->constrained('roasteries')->cascadeOnDelete();
+            $table->foreignUlid('roastery_id')
+                ->constrained('roasteries')
+                ->cascadeOnDelete();
             $table->string('alt', 300)->default('');
             $table->unsignedInteger('width');
             $table->unsignedInteger('height');
@@ -45,21 +47,34 @@ return new class extends Migration
         });
 
         Schema::table('roasteries', function (Blueprint $table): void {
-            $table->foreignUlid('logo_media_id')->nullable()->after('rating_count')
-                ->constrained('media_assets')->nullOnDelete();
-            $table->foreignUlid('cover_media_id')->nullable()->after('logo_media_id')
-                ->constrained('media_assets')->nullOnDelete();
+            $table->foreignUlid('logo_media_id')
+                ->nullable()
+                ->after('rating_count')
+                ->constrained('media_assets')
+                ->nullOnDelete();
+            $table->foreignUlid('cover_media_id')
+                ->nullable()
+                ->after('logo_media_id')
+                ->constrained('media_assets')
+                ->nullOnDelete();
         });
 
         Schema::create('products', function (Blueprint $table): void {
             $table->ulid('id')->primary();
-            $table->foreignUlid('roastery_id')->constrained('roasteries')->cascadeOnDelete();
-            $table->foreignUlid('origin_id')->constrained('origins')->restrictOnDelete();
-            $table->foreignUlid('primary_media_id')->nullable()->constrained('media_assets')->nullOnDelete();
+            $table->foreignUlid('roastery_id')
+                ->constrained('roasteries')
+                ->cascadeOnDelete();
+            $table->foreignUlid('origin_id')
+                ->constrained('origins')
+                ->restrictOnDelete();
+            $table->foreignUlid('primary_media_id')
+                ->nullable()
+                ->constrained('media_assets')
+                ->nullOnDelete();
             $table->string('name', 240);
             $table->string('slug', 180)->unique();
             $table->string('short_description', 1000)->nullable();
-            $table->longText('description')->default('');
+            $table->longText('description')->nullable();
             $table->string('processing_method', 32);
             $table->string('roast_level', 32);
             $table->unsignedTinyInteger('arabica_percentage')->default(100);
@@ -76,8 +91,12 @@ return new class extends Migration
         });
 
         Schema::create('product_media', function (Blueprint $table): void {
-            $table->foreignUlid('product_id')->constrained('products')->cascadeOnDelete();
-            $table->foreignUlid('media_asset_id')->constrained('media_assets')->cascadeOnDelete();
+            $table->foreignUlid('product_id')
+                ->constrained('products')
+                ->cascadeOnDelete();
+            $table->foreignUlid('media_asset_id')
+                ->constrained('media_assets')
+                ->cascadeOnDelete();
             $table->unsignedSmallInteger('position')->default(0);
             $table->primary(['product_id', 'media_asset_id']);
             $table->index(['product_id', 'position']);
@@ -85,7 +104,9 @@ return new class extends Migration
 
         Schema::create('product_variants', function (Blueprint $table): void {
             $table->ulid('id')->primary();
-            $table->foreignUlid('product_id')->constrained('products')->cascadeOnDelete();
+            $table->foreignUlid('product_id')
+                ->constrained('products')
+                ->cascadeOnDelete();
             $table->string('sku', 120)->unique();
             $table->unsignedSmallInteger('weight_grams');
             $table->unsignedBigInteger('price');
@@ -101,7 +122,9 @@ return new class extends Migration
 
         Schema::create('roast_batches', function (Blueprint $table): void {
             $table->ulid('id')->primary();
-            $table->foreignUlid('product_id')->constrained('products')->cascadeOnDelete();
+            $table->foreignUlid('product_id')
+                ->constrained('products')
+                ->cascadeOnDelete();
             $table->string('batch_code', 120);
             $table->timestamp('roasted_at')->index();
             $table->timestamp('available_from')->nullable()->index();
@@ -113,9 +136,17 @@ return new class extends Migration
 
         Schema::create('stock_ledger_entries', function (Blueprint $table): void {
             $table->ulid('id')->primary();
-            $table->foreignUlid('variant_id')->constrained('product_variants')->cascadeOnDelete();
-            $table->foreignUlid('roast_batch_id')->nullable()->constrained('roast_batches')->nullOnDelete();
-            $table->foreignUlid('actor_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignUlid('variant_id')
+                ->constrained('product_variants')
+                ->cascadeOnDelete();
+            $table->foreignUlid('roast_batch_id')
+                ->nullable()
+                ->constrained('roast_batches')
+                ->nullOnDelete();
+            $table->foreignUlid('actor_id')
+                ->nullable()
+                ->constrained('users')
+                ->nullOnDelete();
             $table->integer('delta');
             $table->unsignedInteger('balance_after');
             $table->string('reason', 64);
