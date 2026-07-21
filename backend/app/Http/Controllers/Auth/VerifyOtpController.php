@@ -1,0 +1,40 @@
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Requests\VerifyOtpRequest;
+use App\Http\Resources\AuthUserResource;
+use App\Services\AuditRecorder;
+use App\Services\Identity\AuthSessionService;
+use App\Services\Identity\OtpService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
+final class VerifyOtpController
+{
+    public function __invoke(
+        VerifyOtpRequest $request,
+        OtpService $otp,
+        AuthSessionService $sessions,
+        AuditRecorder $audit,
+    ): AuthUserResource {
+        $user = $otp->verify(
+            $request->string('request_id')->toString(),
+            $request->string('code')->toString(),
+            $request,
+        );
+
+        Auth::guard('web')->login($user);
+        $request->session()->regenerate();
+        $session = $sessions->start($user, $request);
+
+        $audit->record(
+            'identity.session.started',
+            actor: $user,
+            auditable: $session,
+            request: $request,
+        );
+
+        return new AuthUserResource($user);
+    }
+}
