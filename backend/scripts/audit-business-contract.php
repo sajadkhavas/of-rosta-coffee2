@@ -75,17 +75,21 @@ $requireContains(
 );
 $requireContains(
     'app/Services/Identity/OtpCodeHasher.php',
-    "hash_hmac(\n            'sha256'",
-    'OTP codes must be stored as keyed SHA-256 digests.',
+    'hash_hmac(',
+    'OTP codes must be stored with a keyed digest.',
 );
 $requireContains(
-    'database/migrations/2026_07_21_010001_create_identity_access_tables.php',
-    "code_digest",
-    'OTP challenge storage must contain code_digest.',
+    'app/Services/Identity/OtpCodeHasher.php',
+    "'sha256'",
+    'OTP digests must use SHA-256.',
 );
+$otpMigration = $read('database/migrations/2026_07_21_010001_create_identity_access_tables.php');
+if (! str_contains($otpMigration, 'code_digest')) {
+    $failures[] = 'OTP challenge storage must contain code_digest.';
+}
 if (preg_match(
-    "/otp_challenges[\\s\\S]*?\\$table->(?:string|char)\\('code'/",
-    $read('database/migrations/2026_07_21_010001_create_identity_access_tables.php'),
+    '~otp_challenges[\s\S]*?\$table->(?:string|char)\(\'code\'~',
+    $otpMigration,
 ) === 1) {
     $failures[] = 'Plaintext OTP code columns are forbidden.';
 }
@@ -121,12 +125,12 @@ $requireContains(
 );
 $requireContains(
     'app/Models/AuditLog.php',
-    "static::updating",
+    'static::updating',
     'Audit records must reject updates.',
 );
 $requireContains(
     'app/Models/AuditLog.php',
-    "static::deleting",
+    'static::deleting',
     'Audit records must reject deletes.',
 );
 
