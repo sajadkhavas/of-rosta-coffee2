@@ -16,7 +16,13 @@ const media = {
   alt: "قهوه",
   width: 1200,
   height: 1200,
-  sources: [{ url: "https://cdn.rosta.shop/coffee.webp", width: 1200, format: "webp" }],
+  sources: [
+    {
+      url: "https://cdn.rosta.shop/coffee.webp",
+      width: 1200,
+      format: "webp",
+    },
+  ],
 };
 
 const roastery = {
@@ -100,7 +106,9 @@ describe("Rosta runtime API contracts", () => {
   });
 
   test("rejects grind state anywhere in a product contract", () => {
-    expect(() => productSummaryWireSchema.parse({ ...product, grind: "espresso" })).toThrow();
+    expect(() =>
+      productSummaryWireSchema.parse({ ...product, grind: "espresso" }),
+    ).toThrow();
     expect(() =>
       productSummaryWireSchema.parse({
         ...product,
@@ -112,18 +120,25 @@ describe("Rosta runtime API contracts", () => {
   test("rejects fabricated or incomplete Variant truth", () => {
     const { currency: _currency, ...withoutCurrency } = variant;
     expect(() =>
-      productSummaryWireSchema.parse({ ...product, variants: [withoutCurrency] }),
+      productSummaryWireSchema.parse({
+        ...product,
+        variants: [withoutCurrency],
+      }),
     ).toThrow();
     expect(() =>
       productSummaryWireSchema.parse({
         ...product,
-        variants: [{ ...variant, is_available: true, available_quantity: 0 }],
+        variants: [
+          { ...variant, is_available: true, available_quantity: 0 },
+        ],
       }),
     ).toThrow();
   });
 
   test("rejects unpublished products on public endpoints", () => {
-    expect(() => publicProductSummaryWireSchema.parse({ ...product, status: "draft" })).toThrow();
+    expect(() =>
+      publicProductSummaryWireSchema.parse({ ...product, status: "draft" }),
+    ).toThrow();
   });
 
   test("downgrades invalid optional media without inventing media truth", () => {
@@ -153,7 +168,10 @@ describe("Rosta runtime API contracts", () => {
 
   test("rejects insecure payment redirects at the contract layer", () => {
     expect(() =>
-      paymentRequestWireSchema.parse({ payment_id: "payment-1", redirect_url: "not a url" }),
+      paymentRequestWireSchema.parse({
+        payment_id: "payment-1",
+        redirect_url: "not a url",
+      }),
     ).toThrow();
   });
 
@@ -167,8 +185,12 @@ describe("Rosta runtime API contracts", () => {
       currency: "IRR",
       verified_at: "2026-07-21T10:00:00Z",
     };
-    expect(verifiedPaymentWireSchema.parse(valid).payment_id).toBe("payment-1");
-    expect(() => verifiedPaymentWireSchema.parse({ ...valid, verified_at: null })).toThrow();
+    expect(verifiedPaymentWireSchema.parse(valid).payment_id).toBe(
+      "payment-1",
+    );
+    expect(() =>
+      verifiedPaymentWireSchema.parse({ ...valid, verified_at: null }),
+    ).toThrow();
     expect(() => {
       const { amount: _amount, ...missingAmount } = valid;
       verifiedPaymentWireSchema.parse(missingAmount);
