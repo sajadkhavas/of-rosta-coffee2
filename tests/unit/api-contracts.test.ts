@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { verifiedPaymentWireSchema } from "../../src/lib/api/payment-contract";
 import {
   ApiContractError,
   parseContract,
@@ -126,8 +127,15 @@ describe("Rosta runtime API contracts", () => {
   });
 
   test("downgrades invalid optional media without inventing media truth", () => {
-    expect(parseOptionalMedia({ ...media, sources: [{ ...media.sources[0], url: "javascript:alert(1)" }] })).toBeNull();
-    expect(parseOptionalMedia(media)?.sources[0]?.url).toBe("https://cdn.rosta.shop/coffee.webp");
+    expect(
+      parseOptionalMedia({
+        ...media,
+        sources: [{ ...media.sources[0], url: "javascript:alert(1)" }],
+      }),
+    ).toBeNull();
+    expect(parseOptionalMedia(media)?.sources[0]?.url).toBe(
+      "https://cdn.rosta.shop/coffee.webp",
+    );
   });
 
   test("rejects cross-roastery and inconsistent quote totals", () => {
@@ -149,9 +157,45 @@ describe("Rosta runtime API contracts", () => {
     ).toThrow();
   });
 
+  test("requires complete paid verification truth", () => {
+    const valid = {
+      payment_id: "payment-1",
+      status: "paid",
+      order_id: "order-1",
+      order_status: "processing",
+      amount: 1_030_000,
+      currency: "IRR",
+      verified_at: "2026-07-21T10:00:00Z",
+    };
+    expect(verifiedPaymentWireSchema.parse(valid).payment_id).toBe("payment-1");
+    expect(() => verifiedPaymentWireSchema.parse({ ...valid, verified_at: null })).toThrow();
+    expect(() => {
+      const { amount: _amount, ...missingAmount } = valid;
+      verifiedPaymentWireSchema.parse(missingAmount);
+    }).toThrow();
+  });
+
+  test("rejects inconsistent refunded payment and order states", () => {
+    expect(() =>
+      verifiedPaymentWireSchema.parse({
+        payment_id: "payment-1",
+        status: "refunded",
+        order_id: "order-1",
+        order_status: "processing",
+        amount: 1_030_000,
+        currency: "IRR",
+        verified_at: "2026-07-21T10:00:00Z",
+      }),
+    ).toThrow();
+  });
+
   test("turns malformed envelopes into an explicit contract error", () => {
     expect(() =>
-      parseContract(resourceSchema(publicProductSummaryWireSchema), { data: { id: "only-id" } }, "محصول"),
+      parseContract(
+        resourceSchema(publicProductSummaryWireSchema),
+        { data: { id: "only-id" } },
+        "محصول",
+      ),
     ).toThrow(ApiContractError);
   });
 });
