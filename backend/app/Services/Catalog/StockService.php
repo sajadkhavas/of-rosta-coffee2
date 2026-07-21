@@ -30,6 +30,8 @@ final class StockService
         array $metadata,
         Request $request,
     ): StockLedgerEntry {
+        $metadata = $this->canonicalize($metadata);
+
         return DB::transaction(function () use (
             $variant,
             $actor,
@@ -96,6 +98,14 @@ final class StockService
                 );
             }
 
+            if ($balance < $locked->stock_reserved) {
+                throw new ApiDomainException(
+                    'inventory.reserved_stock_conflict',
+                    'موجودی کل نمی‌تواند از موجودی رزروشده کمتر شود.',
+                    409,
+                );
+            }
+
             $locked->forceFill(['stock_on_hand' => $balance])->save();
 
             $entry = StockLedgerEntry::query()->create([
@@ -124,5 +134,28 @@ final class StockService
 
             return $entry;
         });
+    }
+
+    /**
+     * @param array<string, mixed> $value
+     * @return array<string, mixed>
+     */
+    private function canonicalize(array $value): array
+    {
+        ksort($value);
+        foreach ($value as $key => $item) {
+            if (is_array($item)) {
+                $value[$key] = array_is_list($item)
+                    ? array_map(
+                        fn (mixed $child): mixed => is_array($child)
+                            ? $this->canonicalize($child)
+                            : $child,
+                        $item,
+                    )
+                    : $this->canonicalize($item);
+            }
+        }
+
+        return $value;
     }
 }
