@@ -90,7 +90,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const synchronizeAcrossTabs = (event: StorageEvent) => {
-      if (event.storageArea !== window.localStorage || event.key !== CART_STORAGE_KEY) return;
+      if (
+        event.storageArea !== window.localStorage ||
+        event.key !== CART_STORAGE_KEY
+      ) {
+        return;
+      }
       setItems(parseStoredCart(event.newValue));
     };
     window.addEventListener("storage", synchronizeAcrossTabs);
@@ -100,18 +105,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const addItem = useCallback(
     (input: CartAddInput, quantity = 1): CartAddResult => {
       const currentRoastery = items[0];
-      if (currentRoastery && currentRoastery.roasteryId !== input.product.roastery.id) {
+      if (
+        currentRoastery &&
+        currentRoastery.roasteryId !== input.product.roastery.id
+      ) {
         return {
           status: "requires_reset",
           currentRoasteryName: currentRoastery.roasteryName,
         };
       }
 
-      const existing = items.find((item) => item.variantId === input.variant.id);
-      if (!existing && items.length >= MAX_CART_ITEMS) return { status: "limit_reached" };
+      const existing = items.find(
+        (item) => item.variantId === input.variant.id,
+      );
+      if (!existing && items.length >= MAX_CART_ITEMS) {
+        return { status: "limit_reached" };
+      }
 
       setItems((current) => {
-        const index = current.findIndex((item) => item.variantId === input.variant.id);
+        const index = current.findIndex(
+          (item) => item.variantId === input.variant.id,
+        );
         if (index === -1) {
           return safelyNormalize([
             ...current,
@@ -133,29 +147,39 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [items],
   );
 
-  const replaceWithItem = useCallback((input: CartAddInput, quantity = 1) => {
-    setItems([createCartSnapshot(input.product, input.variant, quantity)]);
-  }, []);
+  const replaceWithItem = useCallback(
+    (input: CartAddInput, quantity = 1) => {
+      setItems([createCartSnapshot(input.product, input.variant, quantity)]);
+    },
+    [],
+  );
 
   const removeItem = useCallback((variantId: string) => {
-    setItems((current) => current.filter((item) => item.variantId !== variantId));
-  }, []);
-
-  const updateQuantity = useCallback((variantId: string, quantity: number) => {
-    if (quantity <= 0) {
-      setItems((current) => current.filter((item) => item.variantId !== variantId));
-      return;
-    }
     setItems((current) =>
-      safelyNormalize(
-        current.map((item) =>
-          item.variantId === variantId
-            ? { ...item, quantity: clampQuantity(quantity) }
-            : item,
-        ),
-      ),
+      current.filter((item) => item.variantId !== variantId),
     );
   }, []);
+
+  const updateQuantity = useCallback(
+    (variantId: string, quantity: number) => {
+      if (quantity <= 0) {
+        setItems((current) =>
+          current.filter((item) => item.variantId !== variantId),
+        );
+        return;
+      }
+      setItems((current) =>
+        safelyNormalize(
+          current.map((item) =>
+            item.variantId === variantId
+              ? { ...item, quantity: clampQuantity(quantity) }
+              : item,
+          ),
+        ),
+      );
+    },
+    [],
+  );
 
   const clear = useCallback(() => setItems([]), []);
   const itemCount = useMemo(
@@ -171,7 +195,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [items],
   );
   const apiItems = useMemo<CartApiItem[]>(
-    () => items.map((item) => ({ variantId: item.variantId, quantity: item.quantity })),
+    () =>
+      items.map((item) => ({
+        variantId: item.variantId,
+        quantity: item.quantity,
+      })),
     [items],
   );
 
