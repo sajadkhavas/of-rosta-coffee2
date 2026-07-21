@@ -104,6 +104,30 @@ final class CatalogSellerScopeTest extends TestCase
                 'price' => 1_100_000,
             ],
         )->assertUnprocessable();
+
+        Product::query()->findOrFail($created['id'])->forceFill([
+            'status' => 'published',
+            'published_at' => now(),
+        ])->save();
+
+        $this->patchJson(
+            '/api/v1/seller/roasteries/'.$owned->id.'/products/'.$created['id'],
+            ['name' => 'محصول ویرایش‌شده'],
+        )
+            ->assertOk()
+            ->assertJsonPath('data.status', 'review');
+
+        $owned->forceFill([
+            'status' => 'verified',
+            'verified_at' => now(),
+        ])->save();
+
+        $this->patchJson(
+            '/api/v1/seller/roasteries/'.$owned->id,
+            ['name' => 'هویت جدید روستری'],
+        )
+            ->assertOk()
+            ->assertJsonPath('data.is_verified', false);
     }
 
     private function roastery(string $slug): Roastery
