@@ -23,9 +23,9 @@ import {
 } from "./schemas";
 import { verifiedPaymentWireSchema } from "./payment-contract";
 import { mapOrderDetail } from "./orders";
-import { readPaymentExpectation } from "@/lib/transaction-intent";
 import {
   isConsistentVerifiedPaid,
+  type PaymentExpectationShape,
   type VerifiedPaymentResult,
 } from "@/lib/payment-security";
 
@@ -234,7 +234,10 @@ export async function requestPayment(input: {
   };
 }
 
-export async function verifyPayment(paymentId: string): Promise<VerifiedPaymentResult> {
+export async function verifyPayment(
+  paymentId: string,
+  expectation: PaymentExpectationShape | null,
+): Promise<VerifiedPaymentResult> {
   const normalizedPaymentId = paymentId.trim();
   if (!normalizedPaymentId) throw new Error("شناسه پرداخت معتبر نیست.");
 
@@ -259,11 +262,8 @@ export async function verifyPayment(paymentId: string): Promise<VerifiedPaymentR
   if (result.paymentId !== normalizedPaymentId) {
     throw new Error("پاسخ Verify متعلق به Payment مورد انتظار نیست.");
   }
-  if (result.status === "paid") {
-    const expectation = readPaymentExpectation(normalizedPaymentId);
-    if (!isConsistentVerifiedPaid(result, expectation)) {
-      throw new Error("پاسخ پرداخت با سفارش، مبلغ یا Intent این مرورگر سازگار نیست.");
-    }
+  if (result.status === "paid" && !isConsistentVerifiedPaid(result, expectation)) {
+    throw new Error("پاسخ پرداخت با سفارش، مبلغ یا Intent این مرورگر سازگار نیست.");
   }
 
   return result;
