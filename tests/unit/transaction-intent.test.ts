@@ -35,7 +35,11 @@ const orderInput = {
   ],
 };
 
-const paymentInput = { orderId: "order-1", amount: 1_030_000, currency: "IRR" as const };
+const paymentInput = {
+  orderId: "order-1",
+  amount: 1_030_000,
+  currency: "IRR" as const,
+};
 
 describe("transaction intents", () => {
   test("keeps one Idempotency key for the same normalized payload", () => {
@@ -62,11 +66,15 @@ describe("transaction intents", () => {
 
   test("rotates the key when the checkout payload changes", () => {
     const storage = new MemoryStorage();
-    const first = getOrCreateTransactionIntent("order", buildOrderFingerprint(orderInput), {
-      storage,
-      now: 1_000,
-      keyFactory: () => "ORD-aaaaaaaaaaaaaaaaaaaaaaaa",
-    });
+    const first = getOrCreateTransactionIntent(
+      "order",
+      buildOrderFingerprint(orderInput),
+      {
+        storage,
+        now: 1_000,
+        keyFactory: () => "ORD-aaaaaaaaaaaaaaaaaaaaaaaa",
+      },
+    );
     const second = getOrCreateTransactionIntent(
       "order",
       buildOrderFingerprint({ ...orderInput, addressId: "address-2" }),
@@ -81,7 +89,10 @@ describe("transaction intents", () => {
 
   test("binds payment Idempotency to order amount and currency", () => {
     expect(buildPaymentFingerprint(paymentInput)).not.toBe(
-      buildPaymentFingerprint({ ...paymentInput, amount: paymentInput.amount + 1 }),
+      buildPaymentFingerprint({
+        ...paymentInput,
+        amount: paymentInput.amount + 1,
+      }),
     );
     expect(buildPaymentFingerprint(paymentInput)).not.toBe(
       buildPaymentFingerprint({ ...paymentInput, orderId: "order-2" }),
@@ -111,14 +122,19 @@ describe("transaction intents", () => {
       now: 10_000,
     });
 
-    const expectation = readPaymentExpectation("payment-1", { storage, now: 11_000 });
+    const expectation = readPaymentExpectation("payment-1", {
+      storage,
+      now: 11_000,
+    });
     expect(expectation).toMatchObject({
       paymentId: "payment-1",
       orderId: "order-1",
       amount: 1_030_000,
       currency: "IRR",
     });
-    expect(readPaymentExpectation("payment-2", { storage, now: 11_000 })).toBeNull();
+    expect(
+      readPaymentExpectation("payment-2", { storage, now: 11_000 }),
+    ).toBeNull();
     expect(
       readPaymentExpectation("payment-1", {
         storage,
@@ -140,7 +156,9 @@ describe("transaction intents", () => {
         createdAt: new Date(10_000).toISOString(),
       }),
     );
-    expect(readPaymentExpectation("payment-1", { storage, now: 11_000 })).toBeNull();
+    expect(
+      readPaymentExpectation("payment-1", { storage, now: 11_000 }),
+    ).toBeNull();
   });
 
   test("rejects non-positive payment expectations", () => {
