@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Seller;
 
 use App\Enums\Role;
+use App\Exceptions\ApiDomainException;
 use App\Http\Requests\Catalog\UpsertProductRequest;
 use App\Http\Resources\ProductDetailResource;
 use App\Http\Resources\ProductSummaryResource;
@@ -61,15 +62,31 @@ final class SellerProductController
         ]);
 
         $product = DB::transaction(function () use ($request, $roastery, $user, $audit): Product {
+            $lockedRoastery = Roastery::query()
+                ->lockForUpdate()
+                ->findOrFail($roastery->id);
+
+            if ($lockedRoastery->products()->count() >= (int) config('rosta.catalog.max_products_per_roastery')) {
+                throw new ApiDomainException(
+                    'catalog.product_limit_reached',
+                    'سقف محصولات این روستری تکمیل شده است.',
+                    409,
+                );
+            }
+
             $data = $request->validated();
             $galleryIds = array_values(array_unique($data['gallery_media_ids'] ?? []));
             unset($data['gallery_media_ids']);
 
-            $this->assertMediaOwnership($roastery, $data['primary_media_id'] ?? null, $galleryIds);
+            $this->assertMediaOwnership(
+                $lockedRoastery,
+                $data['primary_media_id'] ?? null,
+                $galleryIds,
+            );
 
             $product = Product::query()->create([
                 ...$data,
-                'roastery_id' => $roastery->id,
+                'roastery_id' => $lockedRoastery->id,
                 'status' => $data['status'] ?? 'draft',
                 'brewing_suggestions' => $data['brewing_suggestions'] ?? [],
                 'description' => $data['description'] ?? '',
@@ -81,7 +98,7 @@ final class SellerProductController
                 'catalog.product.created',
                 actor: $user,
                 auditable: $product,
-                metadata: ['roastery_id' => $roastery->id],
+                metadata: ['roastery_id' => $lockedRoastery->id],
                 request: $request,
             );
 
@@ -136,7 +153,11 @@ final class SellerProductController
             $galleryIds = array_values(array_unique($data['gallery_media_ids'] ?? []));
             unset($data['gallery_media_ids']);
 
-            $this->assertMediaOwnership($roastery, $data['primary_media_id'] ?? null, $galleryIds);
+            $this->assertMediaOwnership(
+                $roastery,
+                $data['primary_media_id'] ?? null,
+                $galleryIds,
+            );
 
             $product->fill($data)->save();
             if ($galleryProvided) {
@@ -155,6 +176,9 @@ final class SellerProductController
         return new ProductDetailResource($this->loadProduct($product->refresh()));
     }
 
+    /**
+     * @param list<string> $galleryIds
+     */
     private function assertMediaOwnership(
         Roastery $roastery,
         ?string $primaryMediaId,
@@ -179,6 +203,10 @@ final class SellerProductController
         }
     }
 
+    /**
+     * @param list<string> $ids
+     * @return array<string, array{position: int}>
+     */
     private function gallerySync(array $ids): array
     {
         $sync = [];
