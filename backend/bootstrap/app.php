@@ -3,6 +3,7 @@
 use App\Exceptions\ApiDomainException;
 use App\Http\Middleware\AssignRequestId;
 use App\Http\Middleware\EnsureActiveAuthSession;
+use App\Http\Middleware\RequireAnyRole;
 use App\Support\ApiResponse;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -35,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->statefulApi();
         $middleware->alias([
             'rosta.session' => EnsureActiveAuthSession::class,
+            'rosta.role' => RequireAnyRole::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) use ($copyHeaders): void {
