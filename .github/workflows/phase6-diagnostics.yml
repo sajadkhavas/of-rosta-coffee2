@@ -1,0 +1,91 @@
+name: Phase 6 Diagnostics
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Mark checkout
+        run: echo "checkout=success" > diagnostic-stage.txt
+      - name: Upload checkout marker
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase6-checkout-marker
+          path: diagnostic-stage.txt
+          retention-days: 1
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.22
+
+      - name: Mark Bun
+        run: |
+          bun --version > bun-version.txt
+          echo "bun=success" >> diagnostic-stage.txt
+      - name: Upload Bun marker
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase6-bun-marker
+          path: |
+            diagnostic-stage.txt
+            bun-version.txt
+          retention-days: 1
+
+      - name: Install dependencies
+        id: install
+        continue-on-error: true
+        run: bun install --frozen-lockfile 2>&1 | tee install.log
+      - name: Upload install report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase6-install-report
+          path: install.log
+          if-no-files-found: warn
+          retention-days: 1
+
+      - name: Unit tests
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
+        run: bun run test:unit 2>&1 | tee unit-tests.log
+      - name: Typecheck
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
+        run: bun run typecheck 2>&1 | tee typecheck.log
+      - name: Lint
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
+        run: bun run lint 2>&1 | tee lint.log
+      - name: Build
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
+        env:
+          VITE_SITE_URL: https://rosta.shop
+          VITE_API_URL: http://127.0.0.1:8000/api/v1
+          VITE_PAYMENT_REDIRECT_HOSTS: 127.0.0.1:8000
+          VITE_ALLOW_INDEXING: "false"
+        run: bun run build 2>&1 | tee build.log
+
+      - name: Upload command reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase6-command-reports
+          path: |
+            unit-tests.log
+            typecheck.log
+            lint.log
+            build.log
+          if-no-files-found: warn
+          retention-days: 1
