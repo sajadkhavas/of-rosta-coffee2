@@ -99,6 +99,28 @@ final class InventoryLedgerTest extends TestCase
         $this->postJson(
             '/api/v1/seller/roasteries/'.$roastery->id.'/variants/'.$variant->id.'/stock-adjustments',
             [
+                ...$payload,
+                'delta' => 13,
+            ],
+        )
+            ->assertConflict()
+            ->assertJsonPath('error.code', 'inventory.idempotency_conflict');
+
+        $variant->refresh()->forceFill(['stock_reserved' => 10])->save();
+        $this->postJson(
+            '/api/v1/seller/roasteries/'.$roastery->id.'/variants/'.$variant->id.'/stock-adjustments',
+            [
+                'delta' => -3,
+                'reason' => 'correction',
+                'idempotency_key' => 'inventory:test:reserved:0001',
+            ],
+        )
+            ->assertConflict()
+            ->assertJsonPath('error.code', 'inventory.reserved_stock_conflict');
+
+        $this->postJson(
+            '/api/v1/seller/roasteries/'.$roastery->id.'/variants/'.$variant->id.'/stock-adjustments',
+            [
                 'delta' => -13,
                 'reason' => 'correction',
                 'idempotency_key' => 'inventory:test:negative:0001',
