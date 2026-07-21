@@ -16,7 +16,12 @@ final class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(OtpSender::class, function (): OtpSender {
-            if ($this->app->environment(['local', 'testing'])) {
+            $driver = (string) config('services.sms.driver');
+
+            if (
+                $driver === 'log' &&
+                $this->app->environment(['local', 'testing'])
+            ) {
                 return new LogOtpSender;
             }
 
