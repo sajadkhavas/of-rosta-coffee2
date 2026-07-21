@@ -19,6 +19,7 @@ RUN apt-get update \
         opcache \
         pcntl \
         pdo_mysql \
+        posix \
         sockets \
         zip \
     && pecl install redis \
