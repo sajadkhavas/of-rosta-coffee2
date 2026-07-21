@@ -17,39 +17,97 @@ final class Product extends Model
 {
     use HasUlids;
 
-    protected $fillable = ['roastery_id','origin_id','primary_media_id','name','slug','short_description','description','processing_method','roast_level','arabica_percentage','tasting_notes','brewing_suggestions','seo_title','seo_description','status','published_at'];
+    protected $fillable = [
+        'roastery_id',
+        'origin_id',
+        'primary_media_id',
+        'name',
+        'slug',
+        'short_description',
+        'description',
+        'processing_method',
+        'roast_level',
+        'arabica_percentage',
+        'tasting_notes',
+        'brewing_suggestions',
+        'seo_title',
+        'seo_description',
+        'status',
+        'published_at',
+    ];
 
     protected function casts(): array
     {
-        return ['processing_method' => ProcessingMethod::class,'roast_level' => RoastLevel::class,'status' => ProductStatus::class,'arabica_percentage' => 'integer','tasting_notes' => 'array','brewing_suggestions' => 'array','published_at' => 'immutable_datetime'];
+        return [
+            'processing_method' => ProcessingMethod::class,
+            'roast_level' => RoastLevel::class,
+            'status' => ProductStatus::class,
+            'arabica_percentage' => 'integer',
+            'tasting_notes' => 'array',
+            'brewing_suggestions' => 'array',
+            'published_at' => 'immutable_datetime',
+        ];
     }
 
-    public function roastery(): BelongsTo { return $this->belongsTo(Roastery::class); }
-    public function origin(): BelongsTo { return $this->belongsTo(Origin::class); }
-    public function primaryImage(): BelongsTo { return $this->belongsTo(MediaAsset::class, 'primary_media_id'); }
+    public function roastery(): BelongsTo
+    {
+        return $this->belongsTo(Roastery::class);
+    }
+
+    public function origin(): BelongsTo
+    {
+        return $this->belongsTo(Origin::class);
+    }
+
+    public function primaryImage(): BelongsTo
+    {
+        return $this->belongsTo(MediaAsset::class, 'primary_media_id');
+    }
 
     public function gallery(): BelongsToMany
     {
-        return $this->belongsToMany(MediaAsset::class, 'product_media')->withPivot('position')->orderByPivot('position');
+        return $this->belongsToMany(MediaAsset::class, 'product_media')
+            ->withPivot('position')
+            ->orderByPivot('position');
     }
 
-    public function variants(): HasMany { return $this->hasMany(ProductVariant::class)->orderBy('weight_grams'); }
-    public function roastBatches(): HasMany { return $this->hasMany(RoastBatch::class)->orderByDesc('roasted_at'); }
+    public function variants(): HasMany
+    {
+        return $this->hasMany(ProductVariant::class)->orderBy('weight_grams');
+    }
+
+    public function roastBatches(): HasMany
+    {
+        return $this->hasMany(RoastBatch::class)->orderByDesc('roasted_at');
+    }
 
     public function latestRoastBatch(): HasOne
     {
         return $this->hasOne(RoastBatch::class)->ofMany(
-            ['roasted_at' => 'max'],
-            static fn (Builder $query): Builder => $query->where('is_active', true)->where(static function (Builder $available): void {
-                $available->whereNull('available_from')->orWhere('available_from', '<=', now());
-            }),
+            ['roasted_at' => 'max', 'id' => 'max'],
+            static fn (Builder $query): Builder => $query
+                ->where('is_active', true)
+                ->where(static function (Builder $available): void {
+                    $available->whereNull('available_from')
+                        ->orWhere('available_from', '<=', now());
+                }),
         );
     }
 
     public function scopePublished(Builder $query): Builder
     {
-        return $query->where('status', ProductStatus::Published->value)
+        return $query
+            ->where('status', ProductStatus::Published->value)
             ->whereNotNull('published_at')
-            ->whereHas('roastery', static fn (Builder $roastery): Builder => $roastery->where('status', 'verified')->whereNotNull('verified_at'));
+            ->whereHas(
+                'variants',
+                static fn (Builder $variant): Builder => $variant->where('is_active', true),
+            )
+            ->whereHas(
+                'roastery',
+                static fn (Builder $roastery): Builder => $roastery
+                    ->where('status', 'verified')
+                    ->whereNotNull('verified_at'),
+            );
     }
 }
