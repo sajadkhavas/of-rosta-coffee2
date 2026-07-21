@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Support;
 
 use Illuminate\Http\JsonResponse;
@@ -33,8 +35,11 @@ final class ApiResponse
         $error = [
             'code' => $code,
             'message' => $message,
-            'request_id' => $requestId,
         ];
+
+        if ($requestId !== null) {
+            $error['request_id'] = $requestId;
+        }
 
         if ($fields !== []) {
             $error['fields'] = $fields;
