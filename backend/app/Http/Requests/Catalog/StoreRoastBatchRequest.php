@@ -4,6 +4,7 @@ namespace App\Http\Requests\Catalog;
 
 use App\Http\Requests\Concerns\RejectsUnexpectedInput;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 final class StoreRoastBatchRequest extends FormRequest
 {
@@ -22,7 +23,14 @@ final class StoreRoastBatchRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'batch_code' => ['required', 'string', 'min:1', 'max:120'],
+            'batch_code' => [
+                'required',
+                'string',
+                'min:1',
+                'max:120',
+                Rule::unique('roast_batches', 'batch_code')
+                    ->where('product_id', (string) $this->route('productId')),
+            ],
             'roasted_at' => ['required', 'date'],
             'available_from' => ['nullable', 'date', 'after_or_equal:roasted_at'],
             'is_active' => ['sometimes', 'boolean'],
