@@ -36,7 +36,9 @@ describe("verified payment security", () => {
     ["order status", { orderStatus: "awaiting_payment" as const }],
     ["verification time", { verifiedAt: null }],
   ])("rejects a %s mismatch", (_label, patch) => {
-    expect(isConsistentVerifiedPaid({ ...verifiedPaid, ...patch }, expectation)).toBe(false);
+    expect(
+      isConsistentVerifiedPaid({ ...verifiedPaid, ...patch }, expectation),
+    ).toBe(false);
   });
 
   test("never accepts a paid result without a local expectation", () => {
