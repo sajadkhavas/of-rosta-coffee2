@@ -121,14 +121,12 @@ final class OtpService
                     ]);
                     $challenge->save();
 
-                    SendOtpCode::dispatch(
-                        SendOtpCode::forPlaintextCode(
-                            $challengeId,
-                            $normalizedMobile,
-                            $purpose,
-                            $code,
-                        ),
-                    )->afterCommit();
+                    dispatch(SendOtpCode::forPlaintextCode(
+                        $challengeId,
+                        $normalizedMobile,
+                        $purpose,
+                        $code,
+                    ))->afterCommit();
 
                     return $challenge;
                 }, 3);
