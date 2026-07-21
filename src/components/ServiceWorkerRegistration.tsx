@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 
+type BrowserServiceWorkerRegistration = Awaited<
+  ReturnType<ServiceWorkerContainer["register"]>
+>;
+
 function isSecureServiceWorkerContext(): boolean {
   return (
     window.location.protocol === "https:" ||
@@ -20,7 +24,7 @@ export function ServiceWorkerRegistration() {
     }
 
     let cancelled = false;
-    let registration: globalThis.ServiceWorkerRegistration | undefined;
+    let registration: BrowserServiceWorkerRegistration | undefined;
 
     const revealWaitingWorker = () => {
       if (!cancelled && registration?.waiting && navigator.serviceWorker.controller) {
