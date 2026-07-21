@@ -134,7 +134,9 @@ function mapQuote(value: QuoteWire): CartQuote {
 }
 
 function itemsPayload(items: CartApiItem[]) {
-  if (items.length < 1 || items.length > 100) throw new Error("تعداد اقلام سبد معتبر نیست.");
+  if (items.length < 1 || items.length > 100) {
+    throw new Error("تعداد اقلام سبد معتبر نیست.");
+  }
 
   const uniqueVariants = new Set<string>();
   return items.map((item) => {
@@ -142,7 +144,11 @@ function itemsPayload(items: CartApiItem[]) {
     if (!variantId || uniqueVariants.has(variantId)) {
       throw new Error("Variant تکراری یا نامعتبر در سبد وجود دارد.");
     }
-    if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 20) {
+    if (
+      !Number.isInteger(item.quantity) ||
+      item.quantity < 1 ||
+      item.quantity > 20
+    ) {
       throw new Error("تعداد هر Variant باید بین ۱ تا ۲۰ باشد.");
     }
     uniqueVariants.add(variantId);
@@ -151,14 +157,21 @@ function itemsPayload(items: CartApiItem[]) {
 }
 
 export function createIdempotencyKey(scope: string): string {
-  const normalizedScope = scope.trim().replace(/[^a-z0-9_-]/gi, "-").slice(0, 40);
+  const normalizedScope = scope
+    .trim()
+    .replace(/[^a-z0-9_-]/gi, "-")
+    .slice(0, 40);
   if (!normalizedScope) throw new Error("محدوده Idempotency نامعتبر است.");
 
   const cryptoApi = globalThis.crypto;
-  if (cryptoApi?.randomUUID) return `rosta-${normalizedScope}-${cryptoApi.randomUUID()}`;
+  if (cryptoApi?.randomUUID) {
+    return `rosta-${normalizedScope}-${cryptoApi.randomUUID()}`;
+  }
   if (cryptoApi?.getRandomValues) {
     const bytes = cryptoApi.getRandomValues(new Uint8Array(24));
-    const entropy = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+    const entropy = Array.from(bytes, (byte) =>
+      byte.toString(16).padStart(2, "0"),
+    ).join("");
     return `rosta-${normalizedScope}-${entropy}`;
   }
   throw new Error("مرورگر امکان تولید کلید امن را ندارد.");
@@ -214,9 +227,15 @@ export async function createOrder(input: {
   const quoteId = input.quoteId.trim();
   const idempotencyKey = input.idempotencyKey.trim();
   const notes = input.notes?.trim() || null;
-  if (!quoteId || !idempotencyKey) throw new Error("شناسه Quote یا Idempotency معتبر نیست.");
-  if (idempotencyKey.length > 200) throw new Error("Idempotency Key بیش از حد طولانی است.");
-  if (notes && notes.length > 1000) throw new Error("یادداشت سفارش حداکثر ۱۰۰۰ کاراکتر است.");
+  if (!quoteId || !idempotencyKey) {
+    throw new Error("شناسه Quote یا Idempotency معتبر نیست.");
+  }
+  if (idempotencyKey.length > 200) {
+    throw new Error("Idempotency Key بیش از حد طولانی است.");
+  }
+  if (notes && notes.length > 1000) {
+    throw new Error("یادداشت سفارش حداکثر ۱۰۰۰ کاراکتر است.");
+  }
 
   const raw = await apiFetch("/orders", {
     method: "POST",
@@ -236,13 +255,19 @@ export async function requestPayment(input: {
 }): Promise<PaymentRequestResult> {
   const orderId = input.orderId.trim();
   const idempotencyKey = input.idempotencyKey.trim();
-  if (!orderId || !idempotencyKey) throw new Error("اطلاعات شروع پرداخت معتبر نیست.");
+  if (!orderId || !idempotencyKey) {
+    throw new Error("اطلاعات شروع پرداخت معتبر نیست.");
+  }
 
   const raw = await apiFetch("/payments/request", {
     method: "POST",
     body: { order_id: orderId, idempotency_key: idempotencyKey },
   });
-  const response = parseContract(resourceSchema(paymentRequestWireSchema), raw, "شروع پرداخت");
+  const response = parseContract(
+    resourceSchema(paymentRequestWireSchema),
+    raw,
+    "شروع پرداخت",
+  );
   return {
     paymentId: response.data.payment_id,
     redirectUrl: assertApprovedPaymentRedirect(response.data.redirect_url),
@@ -251,14 +276,17 @@ export async function requestPayment(input: {
 
 export async function verifyPayment(
   paymentId: string,
-  expectation: PaymentExpectationShape | null = readPaymentExpectation(paymentId),
+  expectation: PaymentExpectationShape | null = readPaymentExpectation(
+    paymentId,
+  ),
 ): Promise<VerifiedPaymentResult> {
   const normalizedPaymentId = paymentId.trim();
   if (!normalizedPaymentId) throw new Error("شناسه پرداخت معتبر نیست.");
 
-  const raw = await apiFetch(`/payments/${encodeURIComponent(normalizedPaymentId)}/verify`, {
-    method: "POST",
-  });
+  const raw = await apiFetch(
+    `/payments/${encodeURIComponent(normalizedPaymentId)}/verify`,
+    { method: "POST" },
+  );
   const response = parseContract(
     resourceSchema(verifiedPaymentWireSchema),
     raw,
@@ -277,8 +305,13 @@ export async function verifyPayment(
   if (result.paymentId !== normalizedPaymentId) {
     throw new Error("پاسخ Verify متعلق به Payment مورد انتظار نیست.");
   }
-  if (result.status === "paid" && !isConsistentVerifiedPaid(result, expectation)) {
-    throw new Error("پاسخ پرداخت با سفارش، مبلغ یا Intent این مرورگر سازگار نیست.");
+  if (
+    result.status === "paid" &&
+    !isConsistentVerifiedPaid(result, expectation)
+  ) {
+    throw new Error(
+      "پاسخ پرداخت با سفارش، مبلغ یا Intent این مرورگر سازگار نیست.",
+    );
   }
 
   return result;
