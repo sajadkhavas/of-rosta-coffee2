@@ -39,6 +39,9 @@ final class CatalogPublicTest extends TestCase
 
         $this->getJson('/api/v1/products/draft-product')->assertNotFound();
         $this->getJson('/api/v1/products/hidden-product')->assertNotFound();
+
+        $published->variants()->update(['is_active' => false]);
+        $this->getJson('/api/v1/products/published-product')->assertNotFound();
     }
 
     public function test_product_detail_matches_frozen_whole_bean_contract(): void
