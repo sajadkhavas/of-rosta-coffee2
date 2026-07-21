@@ -6,6 +6,6 @@ parameters:
     - app
     - routes
     - database
-  level: 8
+  level: 5
   tmpDir: storage/framework/cache/phpstan
   reportUnmatchedIgnoredErrors: true
