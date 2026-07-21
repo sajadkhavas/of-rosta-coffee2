@@ -1,0 +1,103 @@
+x-rosta-app: &rosta-app
+  build:
+    context: .
+    dockerfile: Dockerfile
+  working_dir: /var/www/html
+  env_file:
+    - .env
+  volumes:
+    - .:/var/www/html
+    - rosta_vendor:/var/www/html/vendor
+    - rosta_composer_cache:/tmp/composer
+  depends_on:
+    mysql:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
+
+services:
+  api:
+    <<: *rosta-app
+    command: ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "php -r \"exit(@file_get_contents('http://127.0.0.1:8000/api/v1/health/live') === false ? 1 : 0);\"",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+
+  worker:
+    <<: *rosta-app
+    command:
+      [
+        "php",
+        "artisan",
+        "queue:work",
+        "redis",
+        "--queue=critical,default,notifications",
+        "--sleep=1",
+        "--tries=3",
+        "--backoff=5",
+        "--timeout=90",
+        "--max-time=3600",
+      ]
+    stop_grace_period: 2m
+
+  scheduler:
+    <<: *rosta-app
+    command: ["php", "artisan", "schedule:work"]
+
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: rosta
+      MYSQL_USER: rosta
+      MYSQL_PASSWORD: rosta_local_only
+      MYSQL_ROOT_PASSWORD: rosta_root_local_only
+    ports:
+      - "3307:3306"
+    volumes:
+      - rosta_mysql:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-h",
+          "127.0.0.1",
+          "-uroot",
+          "-prosta_root_local_only",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6380:6379"
+    volumes:
+      - rosta_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  rosta_mysql:
+  rosta_redis:
+  rosta_vendor:
+  rosta_composer_cache:

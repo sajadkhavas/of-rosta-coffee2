@@ -13,8 +13,16 @@
     "test:unit": "bun test tests/unit",
     "audit:phase6": "node scripts/audit-phase6-security.mjs",
     "check": "bun run audit:phase6 && bun run test:unit && bun run typecheck && bun run lint && bun run build && bun run bundle:check",
+    "check:all": "bun run check && bun run backend:check",
     "format": "prettier --write .",
-    "bundle:check": "node scripts/check-bundle-size.mjs"
+    "bundle:check": "node scripts/check-bundle-size.mjs",
+    "backend:setup": "bash backend/scripts/setup.sh",
+    "backend:up": "docker compose -f backend/docker-compose.yml up -d api worker scheduler mysql redis",
+    "backend:down": "docker compose -f backend/docker-compose.yml down",
+    "backend:logs": "docker compose -f backend/docker-compose.yml logs -f api worker scheduler",
+    "backend:test": "docker compose -f backend/docker-compose.yml run --rm api composer test",
+    "backend:check": "docker compose -f backend/docker-compose.yml run --rm api composer check",
+    "backend:artisan": "docker compose -f backend/docker-compose.yml run --rm api php artisan"
   },
   "dependencies": {
     "@fontsource-variable/playfair-display": "5.2.8",

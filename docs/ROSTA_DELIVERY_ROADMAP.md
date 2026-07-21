@@ -61,15 +61,16 @@ The frozen API contract produced here becomes the only implementation target for
 
 ## Phase 7 — Laravel foundation and frozen public contract
 
-Create a dedicated backend repository and establish:
+Establish the backend workspace under `backend/` so frontend and API can evolve together during pre-launch. The workspace may be split into a dedicated repository later without changing the public contract.
 
-- Laravel 11, PHP, MySQL, Redis, queues and Horizon
+- Laravel 13 on PHP 8.3, MySQL, Redis and standard Redis queue workers
 - Sanctum session authentication and strict CORS/CSRF configuration
 - versioned API envelope, stable error codes, pagination and request IDs
 - OpenAPI 3.1 contract generated and checked in
 - environment validation, health/readiness endpoints and structured logging
 - migrations, factories, seeders, policies, rate limits and audit logs
-- CI for tests, static analysis, migrations and contract drift
+- Docker-first local setup and CI for tests, dependency audit, static analysis, migrations and contract drift
+- Horizon deferred until an official release supports Laravel 13; queue processing remains fully operational without it
 
 Exit marker:
 
