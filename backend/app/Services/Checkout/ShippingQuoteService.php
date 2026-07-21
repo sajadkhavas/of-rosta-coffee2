@@ -6,6 +6,7 @@ use App\Exceptions\ApiDomainException;
 use App\Models\Address;
 use App\Models\Roastery;
 use App\Models\ShippingRule;
+use Illuminate\Database\Eloquent\Builder;
 
 final class ShippingQuoteService
 {
@@ -20,11 +21,11 @@ final class ShippingQuoteService
         $rule = ShippingRule::query()
             ->where('roastery_id', $roastery->id)
             ->where('is_active', true)
-            ->where(static function ($query) use ($address): void {
+            ->where(static function (Builder $query) use ($address): void {
                 $query->whereNull('province')
                     ->orWhere('province', $address->province);
             })
-            ->where(static function ($query) use ($address): void {
+            ->where(static function (Builder $query) use ($address): void {
                 $query->whereNull('city')
                     ->orWhere('city', $address->city);
             })
