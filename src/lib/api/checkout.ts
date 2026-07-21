@@ -1,4 +1,5 @@
 import { assertApprovedPaymentRedirect } from "@/config/site";
+import { readPaymentExpectation } from "@/lib/transaction-intent";
 import type {
   CartQuote,
   CartShipmentGroup,
@@ -250,7 +251,7 @@ export async function requestPayment(input: {
 
 export async function verifyPayment(
   paymentId: string,
-  expectation: PaymentExpectationShape | null,
+  expectation: PaymentExpectationShape | null = readPaymentExpectation(paymentId),
 ): Promise<VerifiedPaymentResult> {
   const normalizedPaymentId = paymentId.trim();
   if (!normalizedPaymentId) throw new Error("شناسه پرداخت معتبر نیست.");
