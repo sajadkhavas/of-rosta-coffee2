@@ -1,7 +1,15 @@
 import { queryOptions } from "@tanstack/react-query";
-import type { Address, AddressInput, ApiResource, AuthUser } from "./contracts";
+import type { Address, AddressInput, AuthUser } from "./contracts";
 import { apiFetch, isForbiddenError, isUnauthenticatedError } from "./client";
 import { queryKeys } from "./query-keys";
+import {
+  addressWireSchema,
+  authUserSchema,
+  otpRequestResultSchema,
+  parseContract,
+  resourceSchema,
+  type AddressWire,
+} from "./schemas";
 
 export type AuthMode = "login" | "register" | "recover";
 export type OtpPurpose = "login" | "register" | "verify_mobile";
@@ -10,22 +18,6 @@ export interface OtpRequestResult {
   requestId: string;
   expiresIn: number;
   retryAfter: number;
-}
-
-interface OtpRequestWire {
-  data: { request_id: string; expires_in: number; retry_after: number };
-}
-
-interface AddressWire {
-  id: string;
-  title?: string | null;
-  recipient_name: string;
-  recipient_mobile: string;
-  province: string;
-  city: string;
-  address_line: string;
-  postal_code?: string | null;
-  is_default?: boolean;
 }
 
 export function toEnglishDigits(value: string): string {
@@ -60,19 +52,22 @@ function mapAddress(value: AddressWire): Address {
     city: value.city,
     addressLine: value.address_line,
     postalCode: value.postal_code ?? null,
-    isDefault: Boolean(value.is_default),
+    isDefault: value.is_default,
   };
 }
 
 function addressPayload(value: AddressInput): Record<string, unknown> {
+  const recipientMobile = normalizeIranMobile(value.recipientMobile);
+  if (!isValidIranMobile(recipientMobile)) throw new Error("شماره موبایل گیرنده معتبر نیست.");
+
   return {
-    title: value.title || null,
-    recipient_name: value.recipientName,
-    recipient_mobile: normalizeIranMobile(value.recipientMobile),
-    province: value.province,
-    city: value.city,
-    address_line: value.addressLine,
-    postal_code: value.postalCode || null,
+    title: value.title?.trim() || null,
+    recipient_name: value.recipientName.trim(),
+    recipient_mobile: recipientMobile,
+    province: value.province.trim(),
+    city: value.city.trim(),
+    address_line: value.addressLine.trim(),
+    postal_code: value.postalCode?.trim() || null,
     is_default: value.isDefault,
   };
 }
@@ -81,10 +76,14 @@ export async function requestOtp(input: {
   mobile: string;
   purpose: OtpPurpose;
 }): Promise<OtpRequestResult> {
-  const response = await apiFetch<OtpRequestWire>("/auth/otp/request", {
+  const mobile = normalizeIranMobile(input.mobile);
+  if (!isValidIranMobile(mobile)) throw new Error("شماره موبایل ایران معتبر نیست.");
+
+  const raw = await apiFetch("/auth/otp/request", {
     method: "POST",
-    body: { mobile: normalizeIranMobile(input.mobile), purpose: input.purpose },
+    body: { mobile, purpose: input.purpose },
   });
+  const response = parseContract(resourceSchema(otpRequestResultSchema), raw, "درخواست OTP");
   return {
     requestId: response.data.request_id,
     expiresIn: response.data.expires_in,
@@ -93,56 +92,62 @@ export async function requestOtp(input: {
 }
 
 export async function verifyOtp(input: { requestId: string; code: string }): Promise<AuthUser> {
-  const response = await apiFetch<ApiResource<AuthUser>>("/auth/otp/verify", {
+  const code = toEnglishDigits(input.code).trim();
+  if (!/^\d{6}$/.test(code)) throw new Error("کد تأیید باید دقیقاً شش رقم باشد.");
+
+  const raw = await apiFetch("/auth/otp/verify", {
     method: "POST",
-    body: { request_id: input.requestId, code: toEnglishDigits(input.code).trim() },
+    body: { request_id: input.requestId, code },
   });
-  return response.data;
+  return parseContract(resourceSchema(authUserSchema), raw, "تأیید OTP").data;
 }
 
 export async function getCurrentUser(): Promise<AuthUser> {
-  const response = await apiFetch<ApiResource<AuthUser>>("/me");
-  return response.data;
+  const raw = await apiFetch("/me");
+  return parseContract(resourceSchema(authUserSchema), raw, "حساب کاربری").data;
 }
 
 export async function updateCurrentUser(input: {
   name?: string | null;
   email?: string | null;
 }): Promise<AuthUser> {
-  const response = await apiFetch<ApiResource<AuthUser>>("/me", {
+  const raw = await apiFetch("/me", {
     method: "PATCH",
-    body: { name: input.name || null, email: input.email || null },
+    body: { name: input.name?.trim() || null, email: input.email?.trim() || null },
   });
-  return response.data;
+  return parseContract(resourceSchema(authUserSchema), raw, "ویرایش حساب کاربری").data;
 }
 
 export async function logout(): Promise<void> {
-  await apiFetch<void>("/auth/logout", { method: "POST" });
+  await apiFetch("/auth/logout", { method: "POST" });
 }
 
 export async function listAddresses(): Promise<Address[]> {
-  const response = await apiFetch<{ data: AddressWire[] }>("/me/addresses");
+  const raw = await apiFetch("/me/addresses");
+  const response = parseContract(resourceSchema(addressWireSchema.array().max(100)), raw, "فهرست آدرس‌ها");
   return response.data.map(mapAddress);
 }
 
 export async function createAddress(input: AddressInput): Promise<Address> {
-  const response = await apiFetch<{ data: AddressWire }>("/me/addresses", {
+  const raw = await apiFetch("/me/addresses", {
     method: "POST",
     body: addressPayload(input),
   });
+  const response = parseContract(resourceSchema(addressWireSchema), raw, "ایجاد آدرس");
   return mapAddress(response.data);
 }
 
 export async function updateAddress(id: string, input: AddressInput): Promise<Address> {
-  const response = await apiFetch<{ data: AddressWire }>(
-    `/me/addresses/${encodeURIComponent(id)}`,
-    { method: "PATCH", body: addressPayload(input) },
-  );
+  const raw = await apiFetch(`/me/addresses/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: addressPayload(input),
+  });
+  const response = parseContract(resourceSchema(addressWireSchema), raw, "ویرایش آدرس");
   return mapAddress(response.data);
 }
 
 export async function deleteAddress(id: string): Promise<void> {
-  await apiFetch<void>(`/me/addresses/${encodeURIComponent(id)}`, { method: "DELETE" });
+  await apiFetch(`/me/addresses/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
 export const currentUserQueryOptions = () =>
