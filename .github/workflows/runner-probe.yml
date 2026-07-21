@@ -1,0 +1,24 @@
+name: Runner Probe
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe runner
+        run: |
+          echo "runner=ready" | tee runner-probe.txt
+          uname -a | tee -a runner-probe.txt
+      - name: Upload probe
+        uses: actions/upload-artifact@v4
+        with:
+          name: runner-probe
+          path: runner-probe.txt
+          retention-days: 1
