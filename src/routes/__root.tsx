@@ -18,6 +18,7 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { MobileBottomNav } from "../components/MobileBottomNav";
 import { ServiceWorkerRegistration } from "../components/ServiceWorkerRegistration";
 import { CartProvider } from "../lib/cart-context";
+import { queryKeys } from "../lib/api/query-keys";
 import { ToastProvider } from "../components/system";
 import { absoluteUrl, siteConfig } from "../config/site";
 
@@ -158,8 +159,22 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const hideMobileNav = pathname === "/quiz" || pathname.startsWith("/auth");
+
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      queryClient.removeQueries({ queryKey: queryKeys.auth.all });
+      queryClient.removeQueries({ queryKey: queryKeys.profile.all });
+      queryClient.removeQueries({ queryKey: queryKeys.orders.all });
+      queryClient.removeQueries({ queryKey: queryKeys.cart.all });
+      void router.invalidate();
+    };
+
+    window.addEventListener("rosta:session-expired", handleSessionExpired);
+    return () => window.removeEventListener("rosta:session-expired", handleSessionExpired);
+  }, [queryClient, router]);
 
   useEffect(() => {
     let cancelled = false;
