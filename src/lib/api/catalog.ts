@@ -54,7 +54,10 @@ function mapRoastery(value: RoasterySummaryWire): RoasterySummary {
     logo: parseOptionalMedia(value.logo),
     cover: parseOptionalMedia(value.cover),
     preparationTime: value.preparation_time
-      ? { minHours: value.preparation_time.min_hours, maxHours: value.preparation_time.max_hours }
+      ? {
+          minHours: value.preparation_time.min_hours,
+          maxHours: value.preparation_time.max_hours,
+        }
       : null,
     rating: value.rating ? { ...value.rating } : null,
   };
@@ -118,7 +121,9 @@ function mapProductDetail(value: ProductDetailWire): ProductDetail {
   return {
     ...mapProduct(value),
     description: value.description,
-    gallery: value.gallery.map(parseOptionalMedia).filter((item): item is MediaAsset => Boolean(item)),
+    gallery: value.gallery
+      .map(parseOptionalMedia)
+      .filter((item): item is MediaAsset => Boolean(item)),
     brewingSuggestions: value.brewing_suggestions,
     seo: {
       title: value.seo.title ?? null,
@@ -127,41 +132,74 @@ function mapProductDetail(value: ProductDetailWire): ProductDetail {
   };
 }
 
-function boundedInteger(value: number | undefined, min: number, max: number): number | undefined {
+function boundedInteger(
+  value: number | undefined,
+  min: number,
+  max: number,
+): number | undefined {
   if (value === undefined || !Number.isFinite(value)) return undefined;
   return Math.min(max, Math.max(min, Math.trunc(value)));
 }
 
-function boundedStrings(values: string[] | undefined, maxItems = 20): string[] | undefined {
+function boundedStrings(
+  values: string[] | undefined,
+  maxItems = 20,
+): string[] | undefined {
   if (!values?.length) return undefined;
-  return [...new Set(values.map((value) => value.trim()).filter(Boolean))].slice(0, maxItems);
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))].slice(
+    0,
+    maxItems,
+  );
 }
 
-function appendArray(search: URLSearchParams, name: string, values?: readonly (string | number)[]) {
+function appendArray(
+  search: URLSearchParams,
+  name: string,
+  values?: readonly (string | number)[],
+) {
   values?.forEach((value) => search.append(`${name}[]`, String(value)));
 }
 
-export function productFiltersToSearch(filters: ProductFilters): URLSearchParams {
+export function productFiltersToSearch(
+  filters: ProductFilters,
+): URLSearchParams {
   const search = new URLSearchParams();
   const query = filters.query?.trim().slice(0, 120);
   const origins = boundedStrings(filters.origin);
   const roasteries = boundedStrings(filters.roastery);
-  const minPrice = boundedInteger(filters.minPrice, 0, Number.MAX_SAFE_INTEGER);
-  const maxPrice = boundedInteger(filters.maxPrice, 0, Number.MAX_SAFE_INTEGER);
+  const minPrice = boundedInteger(
+    filters.minPrice,
+    0,
+    Number.MAX_SAFE_INTEGER,
+  );
+  const maxPrice = boundedInteger(
+    filters.maxPrice,
+    0,
+    Number.MAX_SAFE_INTEGER,
+  );
   const page = boundedInteger(filters.page, 1, 10_000);
   const perPage = boundedInteger(filters.perPage, 1, 100);
 
   if (query) search.set("q", query);
   appendArray(search, "origin", origins);
   appendArray(search, "roast_level", filters.roastLevel?.slice(0, 3));
-  appendArray(search, "processing_method", filters.processingMethod?.slice(0, 4));
+  appendArray(
+    search,
+    "processing_method",
+    filters.processingMethod?.slice(0, 4),
+  );
   appendArray(search, "roastery", roasteries);
   appendArray(search, "weight", filters.weights?.slice(0, 5));
   if (minPrice !== undefined) search.set("min_price", String(minPrice));
-  if (maxPrice !== undefined && (minPrice === undefined || maxPrice >= minPrice)) {
+  if (
+    maxPrice !== undefined &&
+    (minPrice === undefined || maxPrice >= minPrice)
+  ) {
     search.set("max_price", String(maxPrice));
   }
-  if (filters.available !== undefined) search.set("available", filters.available ? "true" : "false");
+  if (filters.available !== undefined) {
+    search.set("available", filters.available ? "true" : "false");
+  }
   if (filters.sort) search.set("sort", filters.sort);
   if (page) search.set("page", String(page));
   if (perPage) search.set("per_page", String(perPage));
@@ -172,23 +210,37 @@ export async function listProducts(
   filters: ProductFilters = {},
 ): Promise<CatalogListResult<ProductSummary>> {
   const search = productFiltersToSearch(filters);
-  const raw = await apiFetch(`/products${search.size ? `?${search.toString()}` : ""}`);
+  const raw = await apiFetch(
+    `/products${search.size ? `?${search.toString()}` : ""}`,
+  );
   const response = parseContract(
     collectionSchema(publicProductSummaryWireSchema),
     raw,
     "فهرست محصولات",
   );
-  return { items: response.data.map(mapProduct), meta: response.meta, links: response.links };
+  return {
+    items: response.data.map(mapProduct),
+    meta: response.meta,
+    links: response.links,
+  };
 }
 
 export async function getProduct(slug: string): Promise<ProductDetail> {
   const raw = await apiFetch(`/products/${encodeURIComponent(slug)}`);
-  const response = parseContract(resourceSchema(productDetailWireSchema), raw, "جزئیات محصول");
+  const response = parseContract(
+    resourceSchema(productDetailWireSchema),
+    raw,
+    "جزئیات محصول",
+  );
   return mapProductDetail(response.data);
 }
 
-export async function getRelatedProducts(slug: string): Promise<ProductSummary[]> {
-  const raw = await apiFetch(`/products/${encodeURIComponent(slug)}/related`);
+export async function getRelatedProducts(
+  slug: string,
+): Promise<ProductSummary[]> {
+  const raw = await apiFetch(
+    `/products/${encodeURIComponent(slug)}/related`,
+  );
   const response = parseContract(
     resourceSchema(publicProductSummaryWireSchema.array().max(24)),
     raw,
@@ -206,18 +258,28 @@ export async function listRoasteries(
   if (page) search.set("page", String(page));
   if (perPage) search.set("per_page", String(perPage));
 
-  const raw = await apiFetch(`/roasteries${search.size ? `?${search.toString()}` : ""}`);
+  const raw = await apiFetch(
+    `/roasteries${search.size ? `?${search.toString()}` : ""}`,
+  );
   const response = parseContract(
     collectionSchema(roasterySummaryWireSchema),
     raw,
     "فهرست روستری‌ها",
   );
-  return { items: response.data.map(mapRoastery), meta: response.meta, links: response.links };
+  return {
+    items: response.data.map(mapRoastery),
+    meta: response.meta,
+    links: response.links,
+  };
 }
 
 export async function getRoastery(slug: string): Promise<RoasteryDetail> {
   const raw = await apiFetch(`/roasteries/${encodeURIComponent(slug)}`);
-  const response = parseContract(resourceSchema(roasteryDetailWireSchema), raw, "جزئیات روستری");
+  const response = parseContract(
+    resourceSchema(roasteryDetailWireSchema),
+    raw,
+    "جزئیات روستری",
+  );
   return mapRoasteryDetail(response.data);
 }
 
@@ -226,11 +288,17 @@ export async function searchCatalog(
   type: SearchCatalogType = "all",
 ): Promise<SearchCatalogResult> {
   const normalizedQuery = query.trim().slice(0, 120);
-  if (!normalizedQuery) return { products: [], roasteries: [], suggestions: [] };
+  if (!normalizedQuery) {
+    return { products: [], roasteries: [], suggestions: [] };
+  }
 
   const search = new URLSearchParams({ q: normalizedQuery, type });
   const raw = await apiFetch(`/search?${search.toString()}`);
-  const response = parseContract(resourceSchema(searchResultWireSchema), raw, "جستجوی کاتالوگ");
+  const response = parseContract(
+    resourceSchema(searchResultWireSchema),
+    raw,
+    "جستجوی کاتالوگ",
+  );
   return {
     products: response.data.products.map(mapProduct),
     roasteries: response.data.roasteries.map(mapRoastery),
@@ -283,7 +351,10 @@ export const roasteryQueryOptions = (slug: string) =>
     retry: retryPublicQuery,
   });
 
-export const searchCatalogQueryOptions = (query: string, type: SearchCatalogType) =>
+export const searchCatalogQueryOptions = (
+  query: string,
+  type: SearchCatalogType,
+) =>
   queryOptions({
     queryKey: queryKeys.search.results(query, type),
     queryFn: () => searchCatalog(query, type),
