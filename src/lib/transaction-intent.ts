@@ -272,12 +272,23 @@ export const readPaymentExpectation = (
 };
 
 export const clearPaymentExpectation = (storage: StorageLike | null = getSessionStorage()) => {
-  try {
-    storage?.removeItem(PAYMENT_EXPECTATION_KEY);
-    storage?.removeItem(LEGACY_PAYMENT_EXPECTATION_KEY);
-  } catch {
-    // Restricted storage must not block the verified result page.
+  const remove = () => {
+    try {
+      storage?.removeItem(PAYMENT_EXPECTATION_KEY);
+      storage?.removeItem(LEGACY_PAYMENT_EXPECTATION_KEY);
+    } catch {
+      // Restricted storage must not block the verified result page.
+    }
+  };
+
+  if (typeof window === "undefined") {
+    remove();
+    return;
   }
+
+  // Keep the expectation available for the current paid-result render. Removing it
+  // synchronously would change the verify query key and trigger a second verification.
+  window.addEventListener("pagehide", remove, { once: true });
 };
 
 export const TRANSACTION_INTENT_TTL_MS = INTENT_TTL_MS;
