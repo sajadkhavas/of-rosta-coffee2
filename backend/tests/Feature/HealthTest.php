@@ -22,7 +22,7 @@ final class HealthTest extends TestCase
 
     public function test_invalid_request_id_is_replaced_with_a_safe_identifier(): void
     {
-        $response = $this->withHeader('X-Request-ID', "bad\nvalue")
+        $response = $this->withHeader('X-Request-ID', 'bad value')
             ->getJson('/api/v1/health/live');
 
         $response->assertOk();
@@ -33,7 +33,7 @@ final class HealthTest extends TestCase
             '/^[A-Za-z0-9._:-]{8,128}$/',
             $requestId,
         );
-        $this->assertNotSame("bad\nvalue", $requestId);
+        $this->assertNotSame('bad value', $requestId);
     }
 
     public function test_readiness_never_claims_ready_when_a_dependency_is_missing(): void
