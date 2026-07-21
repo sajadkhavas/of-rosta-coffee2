@@ -15,46 +15,72 @@ function addIssue(
   context.addIssue({ code: z.ZodIssueCode.custom, path, message });
 }
 
-export const authoritativeQuoteWireSchema = quoteWireSchema.superRefine((value, context) => {
-  const group = value.groups[0];
-  const computedGroupSubtotal = group.items.reduce((sum, item, index) => {
-    const expectedLineTotal = item.variant.price * item.quantity;
-    if (!Number.isSafeInteger(expectedLineTotal) || item.line_total !== expectedLineTotal) {
+export const authoritativeQuoteWireSchema = quoteWireSchema.superRefine(
+  (value, context) => {
+    const group = value.groups[0];
+    const computedGroupSubtotal = group.items.reduce((sum, item, index) => {
+      const expectedLineTotal = item.variant.price * item.quantity;
+      if (
+        !Number.isSafeInteger(expectedLineTotal) ||
+        item.line_total !== expectedLineTotal
+      ) {
+        addIssue(
+          context,
+          ["groups", 0, "items", index, "line_total"],
+          "جمع سطر Quote با قیمت Variant و تعداد سازگار نیست.",
+        );
+      }
+      return sum + item.line_total;
+    }, 0);
+
+    if (group.subtotal !== computedGroupSubtotal) {
       addIssue(
         context,
-        ["groups", 0, "items", index, "line_total"],
-        "جمع سطر Quote با قیمت Variant و تعداد سازگار نیست.",
+        ["groups", 0, "subtotal"],
+        "جمع اقلام گروه Quote ناسازگار است.",
       );
     }
-    return sum + item.line_total;
-  }, 0);
-
-  if (group.subtotal !== computedGroupSubtotal) {
-    addIssue(context, ["groups", 0, "subtotal"], "جمع اقلام گروه Quote ناسازگار است.");
-  }
-  if (value.subtotal !== group.subtotal) {
-    addIssue(context, ["subtotal"], "جمع اقلام Quote با گروه تک‌روستری سازگار نیست.");
-  }
-
-  const groupShipping = group.shipping_cost ?? group.shipping_total;
-  if (group.shipping_cost !== undefined && group.shipping_total !== undefined) {
-    if (group.shipping_cost !== group.shipping_total) {
+    if (value.subtotal !== group.subtotal) {
       addIssue(
         context,
-        ["groups", 0, "shipping_total"],
-        "دو مقدار هزینه ارسال گروه Quote با هم سازگار نیستند.",
+        ["subtotal"],
+        "جمع اقلام Quote با گروه تک‌روستری سازگار نیست.",
       );
     }
-  }
-  if (groupShipping === null || groupShipping === undefined) {
-    addIssue(context, ["groups", 0], "هزینه ارسال گروه Quote باید مشخص باشد.");
-  } else if (groupShipping !== value.shipping_total) {
-    addIssue(context, ["shipping_total"], "هزینه ارسال Quote با گروه تک‌روستری سازگار نیست.");
-  }
-});
+
+    const groupShipping = group.shipping_cost ?? group.shipping_total;
+    if (
+      group.shipping_cost !== undefined &&
+      group.shipping_total !== undefined
+    ) {
+      if (group.shipping_cost !== group.shipping_total) {
+        addIssue(
+          context,
+          ["groups", 0, "shipping_total"],
+          "دو مقدار هزینه ارسال گروه Quote با هم سازگار نیستند.",
+        );
+      }
+    }
+    if (groupShipping === null || groupShipping === undefined) {
+      addIssue(
+        context,
+        ["groups", 0],
+        "هزینه ارسال گروه Quote باید مشخص باشد.",
+      );
+    } else if (groupShipping !== value.shipping_total) {
+      addIssue(
+        context,
+        ["shipping_total"],
+        "هزینه ارسال Quote با گروه تک‌روستری سازگار نیست.",
+      );
+    }
+  },
+);
 
 function validateOrderFinancials(
-  value: z.infer<typeof orderSummaryWireSchema> | z.infer<typeof orderDetailWireSchema>,
+  value:
+    | z.infer<typeof orderSummaryWireSchema>
+    | z.infer<typeof orderDetailWireSchema>,
   context: z.RefinementCtx,
 ): void {
   const subOrder = value.sub_orders[0];
@@ -68,7 +94,10 @@ function validateOrderFinancials(
     }
 
     const expectedLineTotal = item.variant.price * item.quantity;
-    if (!Number.isSafeInteger(expectedLineTotal) || item.line_total !== expectedLineTotal) {
+    if (
+      !Number.isSafeInteger(expectedLineTotal) ||
+      item.line_total !== expectedLineTotal
+    ) {
       addIssue(
         context,
         ["sub_orders", 0, "items", index, "line_total"],
@@ -88,7 +117,11 @@ function validateOrderFinancials(
 
   if ("subtotal" in value) {
     if (value.subtotal !== subOrder.subtotal) {
-      addIssue(context, ["subtotal"], "جمع سفارش با زیرسفارش تک‌روستری سازگار نیست.");
+      addIssue(
+        context,
+        ["subtotal"],
+        "جمع سفارش با زیرسفارش تک‌روستری سازگار نیست.",
+      );
     }
     if (value.shipping_total !== subOrder.shipping_total) {
       addIssue(
@@ -100,16 +133,18 @@ function validateOrderFinancials(
   }
 }
 
-export const authoritativeOrderSummaryWireSchema = orderSummaryWireSchema.superRefine(
-  validateOrderFinancials,
-);
+export const authoritativeOrderSummaryWireSchema =
+  orderSummaryWireSchema.superRefine(validateOrderFinancials);
 
-export const authoritativeOrderDetailWireSchema = orderDetailWireSchema.superRefine(
-  validateOrderFinancials,
-);
+export const authoritativeOrderDetailWireSchema =
+  orderDetailWireSchema.superRefine(validateOrderFinancials);
 
-export type AuthoritativeQuoteWire = z.infer<typeof authoritativeQuoteWireSchema>;
+export type AuthoritativeQuoteWire = z.infer<
+  typeof authoritativeQuoteWireSchema
+>;
 export type AuthoritativeOrderSummaryWire = z.infer<
   typeof authoritativeOrderSummaryWireSchema
 >;
-export type AuthoritativeOrderDetailWire = z.infer<typeof authoritativeOrderDetailWireSchema>;
+export type AuthoritativeOrderDetailWire = z.infer<
+  typeof authoritativeOrderDetailWireSchema
+>;
