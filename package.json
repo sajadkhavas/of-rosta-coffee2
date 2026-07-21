@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "test:unit": "bun test tests/unit",
-    "check": "bun run test:unit && bun run typecheck && bun run lint && bun run build && bun run bundle:check",
+    "audit:phase6": "node scripts/audit-phase6-security.mjs",
+    "check": "bun run audit:phase6 && bun run test:unit && bun run typecheck && bun run lint && bun run build && bun run bundle:check",
     "format": "prettier --write .",
     "bundle:check": "node scripts/check-bundle-size.mjs"
   },
