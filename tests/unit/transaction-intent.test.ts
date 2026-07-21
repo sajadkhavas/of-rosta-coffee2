@@ -35,6 +35,8 @@ const orderInput = {
   ],
 };
 
+const paymentInput = { orderId: "order-1", amount: 1_030_000, currency: "IRR" as const };
+
 describe("transaction intents", () => {
   test("keeps one Idempotency key for the same normalized payload", () => {
     const storage = new MemoryStorage();
@@ -77,9 +79,18 @@ describe("transaction intents", () => {
     expect(second).not.toBe(first);
   });
 
+  test("binds payment Idempotency to order amount and currency", () => {
+    expect(buildPaymentFingerprint(paymentInput)).not.toBe(
+      buildPaymentFingerprint({ ...paymentInput, amount: paymentInput.amount + 1 }),
+    );
+    expect(buildPaymentFingerprint(paymentInput)).not.toBe(
+      buildPaymentFingerprint({ ...paymentInput, orderId: "order-2" }),
+    );
+  });
+
   test("expires stale intents instead of reusing them", () => {
     const storage = new MemoryStorage();
-    const fingerprint = buildPaymentFingerprint("order-1");
+    const fingerprint = buildPaymentFingerprint(paymentInput);
     const first = getOrCreateTransactionIntent("payment", fingerprint, {
       storage,
       now: 1_000,
@@ -93,11 +104,20 @@ describe("transaction intents", () => {
     expect(second).not.toBe(first);
   });
 
-  test("binds the callback payment ID to the expected order", () => {
+  test("binds the callback payment ID to exact order amount and currency", () => {
     const storage = new MemoryStorage();
-    savePaymentExpectation("payment-1", "order-1", { storage, now: 10_000 });
+    savePaymentExpectation("payment-1", "order-1", 1_030_000, "IRR", {
+      storage,
+      now: 10_000,
+    });
 
-    expect(readPaymentExpectation("payment-1", { storage, now: 11_000 })?.orderId).toBe("order-1");
+    const expectation = readPaymentExpectation("payment-1", { storage, now: 11_000 });
+    expect(expectation).toMatchObject({
+      paymentId: "payment-1",
+      orderId: "order-1",
+      amount: 1_030_000,
+      currency: "IRR",
+    });
     expect(readPaymentExpectation("payment-2", { storage, now: 11_000 })).toBeNull();
     expect(
       readPaymentExpectation("payment-1", {
@@ -110,14 +130,26 @@ describe("transaction intents", () => {
   test("rejects malformed stored payment expectations", () => {
     const storage = new MemoryStorage();
     storage.setItem(
-      "rosta_payment_expectation_v1",
+      "rosta_payment_expectation_v2",
       JSON.stringify({
-        version: 1,
+        version: 2,
         paymentId: "payment-1",
         orderId: "javascript:alert(1)",
+        amount: 1_030_000,
+        currency: "IRR",
         createdAt: new Date(10_000).toISOString(),
       }),
     );
     expect(readPaymentExpectation("payment-1", { storage, now: 11_000 })).toBeNull();
+  });
+
+  test("rejects non-positive payment expectations", () => {
+    const storage = new MemoryStorage();
+    expect(() =>
+      savePaymentExpectation("payment-1", "order-1", 0, "IRR", {
+        storage,
+        now: 10_000,
+      }),
+    ).toThrow();
   });
 });
