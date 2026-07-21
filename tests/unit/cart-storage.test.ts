@@ -50,10 +50,16 @@ describe("versioned cart persistence", () => {
 
   test("rejects oversized, malformed and future-version payloads", () => {
     expect(parseStoredCart("{")).toEqual([]);
-    expect(parseStoredCart("x".repeat(MAX_CART_STORAGE_BYTES + 1))).toEqual([]);
+    expect(parseStoredCart("x".repeat(MAX_CART_STORAGE_BYTES + 1))).toEqual(
+      [],
+    );
     expect(
       parseStoredCart(
-        JSON.stringify({ version: 99, updatedAt: Date.now(), items: [item] }),
+        JSON.stringify({
+          version: 99,
+          updatedAt: Date.now(),
+          items: [item],
+        }),
       ),
     ).toEqual([]);
   });
