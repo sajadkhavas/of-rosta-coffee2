@@ -1,11 +1,9 @@
 import { assertApprovedPaymentRedirect } from "@/config/site";
 import type {
-  ApiResource,
   CartQuote,
   CartShipmentGroup,
   OrderDetail,
   PaymentRequestResult,
-  PaymentStatus,
   ProductSummary,
   ProductVariant,
   RoasterySummary,
@@ -16,7 +14,6 @@ import {
   parseContract,
   parseOptionalMedia,
   paymentRequestWireSchema,
-  paymentVerifyWireSchema,
   quoteWireSchema,
   resourceSchema,
   type ProductSummaryWire,
@@ -24,6 +21,12 @@ import {
   type QuoteWire,
   type RoasterySummaryWire,
 } from "./schemas";
+import { verifiedPaymentWireSchema } from "./payment-contract";
+import { readPaymentExpectation } from "@/lib/transaction-intent";
+import {
+  isConsistentVerifiedPaid,
+  type VerifiedPaymentResult,
+} from "@/lib/payment-security";
 
 export interface CartApiItem {
   variantId: string;
@@ -40,7 +43,10 @@ function roastery(value: RoasterySummaryWire): RoasterySummary {
     logo: parseOptionalMedia(value.logo),
     cover: parseOptionalMedia(value.cover),
     preparationTime: value.preparation_time
-      ? { minHours: value.preparation_time.min_hours, maxHours: value.preparation_time.max_hours }
+      ? {
+          minHours: value.preparation_time.min_hours,
+          maxHours: value.preparation_time.max_hours,
+        }
       : null,
     rating: value.rating ? { ...value.rating } : null,
   };
@@ -182,7 +188,9 @@ export async function createCheckoutQuote(input: {
   });
   const response = parseContract(resourceSchema(quoteWireSchema), raw, "Quote تسویه‌حساب");
   const quote = mapQuote(response.data);
-  if (Date.parse(quote.expiresAt) <= Date.now()) throw new Error("Quote دریافت‌شده منقضی شده است.");
+  if (Date.parse(quote.expiresAt) <= Date.now()) {
+    throw new Error("Quote دریافت‌شده منقضی شده است.");
+  }
   return quote;
 }
 
@@ -249,16 +257,37 @@ export async function requestPayment(input: {
   };
 }
 
-export async function verifyPayment(paymentId: string): Promise<{
-  status: PaymentStatus;
-  orderId: string;
-}> {
+export async function verifyPayment(paymentId: string): Promise<VerifiedPaymentResult> {
   const normalizedPaymentId = paymentId.trim();
   if (!normalizedPaymentId) throw new Error("شناسه پرداخت معتبر نیست.");
 
   const raw = await apiFetch(`/payments/${encodeURIComponent(normalizedPaymentId)}/verify`, {
     method: "POST",
   });
-  const response = parseContract(resourceSchema(paymentVerifyWireSchema), raw, "تأیید پرداخت");
-  return { status: response.data.status, orderId: response.data.order_id };
+  const response = parseContract(
+    resourceSchema(verifiedPaymentWireSchema),
+    raw,
+    "تأیید پرداخت",
+  );
+  const result: VerifiedPaymentResult = {
+    paymentId: response.data.payment_id,
+    status: response.data.status,
+    orderId: response.data.order_id,
+    orderStatus: response.data.order_status,
+    amount: response.data.amount,
+    currency: response.data.currency,
+    verifiedAt: response.data.verified_at,
+  };
+
+  if (result.paymentId !== normalizedPaymentId) {
+    throw new Error("پاسخ Verify متعلق به Payment مورد انتظار نیست.");
+  }
+  if (result.status === "paid") {
+    const expectation = readPaymentExpectation(normalizedPaymentId);
+    if (!isConsistentVerifiedPaid(result, expectation)) {
+      throw new Error("پاسخ پرداخت با سفارش، مبلغ یا Intent این مرورگر سازگار نیست.");
+    }
+  }
+
+  return result;
 }
