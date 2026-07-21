@@ -47,6 +47,7 @@
       "@php artisan key:generate --ansi",
       "@php artisan storage:link --ansi"
     ],
+    "audit": "@php scripts/audit-business-contract.php",
     "test": [
       "@php artisan config:clear --ansi",
       "@php artisan test"
@@ -54,6 +55,7 @@
     "analyse": "phpstan analyse --memory-limit=1G",
     "format": "pint",
     "check": [
+      "@composer audit",
       "@composer validate --strict",
       "@php artisan test",
       "@php vendor/bin/phpstan analyse --memory-limit=1G",
@@ -64,8 +66,10 @@
     "optimize-autoloader": true,
     "preferred-install": "dist",
     "sort-packages": true,
+    "platform": {
+      "php": "8.3.0"
+    },
     "allow-plugins": {
-      "pestphp/pest-plugin": true,
       "php-http/discovery": true
     }
   },
