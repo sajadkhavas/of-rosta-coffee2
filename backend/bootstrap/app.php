@@ -2,6 +2,7 @@
 
 use App\Exceptions\ApiDomainException;
 use App\Http\Middleware\AssignRequestId;
+use App\Http\Middleware\EnsureActiveAuthSession;
 use App\Support\ApiResponse;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -32,6 +33,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(AssignRequestId::class);
         $middleware->statefulApi();
+        $middleware->alias([
+            'rosta.session' => EnsureActiveAuthSession::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) use ($copyHeaders): void {
         $exceptions->shouldRenderJsonWhen(
