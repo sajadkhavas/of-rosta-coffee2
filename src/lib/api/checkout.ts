@@ -10,17 +10,19 @@ import type {
 } from "./contracts";
 import { apiFetch } from "./client";
 import {
-  orderDetailWireSchema,
   parseContract,
   parseOptionalMedia,
   paymentRequestWireSchema,
-  quoteWireSchema,
   resourceSchema,
   type ProductSummaryWire,
   type ProductVariantWire,
   type QuoteWire,
   type RoasterySummaryWire,
 } from "./schemas";
+import {
+  authoritativeOrderDetailWireSchema,
+  authoritativeQuoteWireSchema,
+} from "./financial-contracts";
 import { verifiedPaymentWireSchema } from "./payment-contract";
 import { mapOrderDetail } from "./orders";
 import {
@@ -166,7 +168,11 @@ export async function validateCart(items: CartApiItem[]): Promise<CartQuote> {
     method: "POST",
     body: { items: itemsPayload(items) },
   });
-  const response = parseContract(resourceSchema(quoteWireSchema), raw, "اعتبارسنجی سبد");
+  const response = parseContract(
+    resourceSchema(authoritativeQuoteWireSchema),
+    raw,
+    "اعتبارسنجی سبد",
+  );
   return mapQuote(response.data);
 }
 
@@ -187,7 +193,11 @@ export async function createCheckoutQuote(input: {
       coupon_code: couponCode,
     },
   });
-  const response = parseContract(resourceSchema(quoteWireSchema), raw, "Quote تسویه‌حساب");
+  const response = parseContract(
+    resourceSchema(authoritativeQuoteWireSchema),
+    raw,
+    "Quote تسویه‌حساب",
+  );
   const quote = mapQuote(response.data);
   if (Date.parse(quote.expiresAt) <= Date.now()) {
     throw new Error("Quote دریافت‌شده منقضی شده است.");
@@ -211,7 +221,11 @@ export async function createOrder(input: {
     method: "POST",
     body: { quote_id: quoteId, idempotency_key: idempotencyKey, notes },
   });
-  const response = parseContract(resourceSchema(orderDetailWireSchema), raw, "ایجاد سفارش");
+  const response = parseContract(
+    resourceSchema(authoritativeOrderDetailWireSchema),
+    raw,
+    "ایجاد سفارش",
+  );
   return mapOrderDetail(response.data);
 }
 
