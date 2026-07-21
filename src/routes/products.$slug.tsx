@@ -95,6 +95,7 @@ function ProductPage() {
   const [selectedVariantId, setSelectedVariantId] = useState("");
   const [selectedImage, setSelectedImage] = useState("");
   const [notice, setNotice] = useState("");
+  const [noticeVariant, setNoticeVariant] = useState<"success" | "warning">("success");
   const [added, setAdded] = useState(false);
   const { addItem, replaceWithItem } = useCart();
 
@@ -121,8 +122,15 @@ function ProductPage() {
       );
       if (!confirmed) return;
       replaceWithItem(input);
+      setNoticeVariant("success");
       setNotice("سبد قبلی پاک شد و محصول این روستری جایگزین شد.");
+    } else if (result.status === "limit_reached") {
+      setNoticeVariant("warning");
+      setNotice("تعداد Variantهای سبد به سقف امن رسیده است؛ برای افزودن محصول جدید، یک قلم را حذف کنید.");
+      setAdded(false);
+      return;
     } else {
+      setNoticeVariant("success");
       setNotice("محصول اضافه شد؛ قیمت و موجودی در صفحه سبد توسط سرور تأیید می‌شود.");
     }
     setAdded(true);
@@ -272,7 +280,7 @@ function ProductPage() {
               رستا فقط دانه کامل می‌فروشد. قیمت نمایش‌داده‌شده Snapshot کاتالوگ است و مبلغ نهایی در سبد توسط سرور تأیید می‌شود.
             </div>
 
-            {notice ? <div className="mt-5"><Alert variant="success" title="سبد خرید">{notice}</Alert></div> : null}
+            {notice ? <div className="mt-5"><Alert variant={noticeVariant} title="سبد خرید">{notice}</Alert></div> : null}
 
             <div className="mt-6 flex items-center justify-between gap-4 border-t border-[color:var(--mid)] pt-5">
               <div>
