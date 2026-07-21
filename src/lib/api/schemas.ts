@@ -10,38 +10,62 @@ function isSafeAssetUrl(value: string): boolean {
 
   try {
     const url = new URL(value);
-    return url.protocol === "https:" || (url.protocol === "http:" && LOCAL_HOSTS.has(url.hostname));
+    return (
+      url.protocol === "https:" ||
+      (url.protocol === "http:" && LOCAL_HOSTS.has(url.hostname))
+    );
   } catch {
     return false;
   }
 }
 
 const boundedText = (max = 500) => z.string().trim().min(1).max(max);
-const nullableText = (max = 500) => z.string().trim().max(max).nullable().optional();
-const identifierSchema = boundedText(200).refine((value) => !CONTROL_OR_BACKSLASH.test(value), "شناسه نامعتبر است.");
+const nullableText = (max = 500) =>
+  z.string().trim().max(max).nullable().optional();
+const identifierSchema = boundedText(200).refine(
+  (value) => !CONTROL_OR_BACKSLASH.test(value),
+  "شناسه نامعتبر است.",
+);
 const slugSchema = boundedText(180).refine(
-  (value) => !CONTROL_OR_BACKSLASH.test(value) && !value.includes("/") && value !== "." && value !== "..",
+  (value) =>
+    !CONTROL_OR_BACKSLASH.test(value) &&
+    !value.includes("/") &&
+    value !== "." &&
+    value !== "..",
   "Slug نامعتبر است.",
 );
-const isoDateTimeSchema = z.string().refine((value) => Number.isFinite(Date.parse(value)), "زمان ISO نامعتبر است.");
+const isoDateTimeSchema = z
+  .string()
+  .refine(
+    (value) => Number.isFinite(Date.parse(value)),
+    "زمان ISO نامعتبر است.",
+  );
 const moneySchema = z.number().int().nonnegative().safe();
 const currencySchema = z.literal("IRR");
 const mobileSchema = z.string().regex(/^09\d{9}$/);
-const safeHttpUrlSchema = z.string().refine(isSafeAssetUrl, "URL رسانه ناامن است.");
+const safeHttpUrlSchema = z
+  .string()
+  .refine(isSafeAssetUrl, "URL رسانه ناامن است.");
 
 export class ApiContractError extends Error {
   readonly context: string;
   readonly issues: z.ZodIssue[];
 
   constructor(context: string, error: z.ZodError) {
-    super(`پاسخ سرویس در بخش «${context}» با قرارداد رستا سازگار نیست.`, { cause: error });
+    super(`پاسخ سرویس در بخش «${context}» با قرارداد رستا سازگار نیست.`, {
+      cause: error,
+    });
     this.name = "ApiContractError";
     this.context = context;
     this.issues = error.issues;
   }
 }
 
-export function parseContract<T>(schema: z.ZodType<T>, value: unknown, context: string): T {
+export function parseContract<T>(
+  schema: z.ZodType<T>,
+  value: unknown,
+  context: string,
+): T {
   const result = schema.safeParse(value);
   if (!result.success) throw new ApiContractError(context, result.error);
   return result.data;
@@ -104,7 +128,11 @@ export const addressWireSchema = z
     province: boundedText(120),
     city: boundedText(120),
     address_line: boundedText(1000),
-    postal_code: z.string().regex(/^\d{10}$/).nullable().optional(),
+    postal_code: z
+      .string()
+      .regex(/^\d{10}$/)
+      .nullable()
+      .optional(),
     is_default: z.boolean(),
   })
   .strict();
@@ -118,7 +146,10 @@ export const mediaAssetSchema = z
     blur_data_url: z
       .string()
       .max(250_000)
-      .refine((value) => value.startsWith("data:image/") || isSafeAssetUrl(value), "Blur URL نامعتبر است.")
+      .refine(
+        (value) => value.startsWith("data:image/") || isSafeAssetUrl(value),
+        "Blur URL نامعتبر است.",
+      )
       .nullable()
       .optional(),
     sources: z
@@ -160,13 +191,22 @@ export const roasterySummaryWireSchema = z
     logo: z.unknown().nullable().optional(),
     cover: z.unknown().nullable().optional(),
     preparation_time: z
-      .object({ min_hours: z.number().int().nonnegative().max(720), max_hours: z.number().int().nonnegative().max(720) })
+      .object({
+        min_hours: z.number().int().nonnegative().max(720),
+        max_hours: z.number().int().nonnegative().max(720),
+      })
       .strict()
-      .refine((value) => value.max_hours >= value.min_hours, "بازه آماده‌سازی نامعتبر است.")
+      .refine(
+        (value) => value.max_hours >= value.min_hours,
+        "بازه آماده‌سازی نامعتبر است.",
+      )
       .nullable()
       .optional(),
     rating: z
-      .object({ value: z.number().min(0).max(5), count: z.number().int().nonnegative() })
+      .object({
+        value: z.number().min(0).max(5),
+        count: z.number().int().nonnegative(),
+      })
       .strict()
       .nullable()
       .optional(),
@@ -182,20 +222,44 @@ export const productVariantWireSchema = z
   .object({
     id: identifierSchema,
     sku: boundedText(120),
-    weight_grams: z.union([z.literal(50), z.literal(100), z.literal(250), z.literal(500), z.literal(1000)]),
+    weight_grams: z.union([
+      z.literal(50),
+      z.literal(100),
+      z.literal(250),
+      z.literal(500),
+      z.literal(1000),
+    ]),
     price: moneySchema,
     compare_at_price: moneySchema.nullable().optional(),
     currency: currencySchema,
     is_available: z.boolean(),
-    available_quantity: z.number().int().nonnegative().max(1_000_000).nullable().optional(),
+    available_quantity: z
+      .number()
+      .int()
+      .nonnegative()
+      .max(1_000_000)
+      .nullable()
+      .optional(),
   })
   .strict()
   .superRefine((value, context) => {
-    if (value.compare_at_price !== null && value.compare_at_price !== undefined && value.compare_at_price < value.price) {
-      context.addIssue({ code: z.ZodIssueCode.custom, path: ["compare_at_price"], message: "قیمت مقایسه‌ای کمتر از قیمت فروش است." });
+    if (
+      value.compare_at_price !== null &&
+      value.compare_at_price !== undefined &&
+      value.compare_at_price < value.price
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["compare_at_price"],
+        message: "قیمت مقایسه‌ای کمتر از قیمت فروش است.",
+      });
     }
     if (value.is_available && value.available_quantity === 0) {
-      context.addIssue({ code: z.ZodIssueCode.custom, path: ["available_quantity"], message: "Variant موجود نمی‌تواند موجودی صفر داشته باشد." });
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["available_quantity"],
+        message: "Variant موجود نمی‌تواند موجودی صفر داشته باشد.",
+      });
     }
   });
 
@@ -214,7 +278,11 @@ const productBaseFields = {
   slug: slugSchema,
   short_description: nullableText(1000),
   origin: z
-    .object({ id: identifierSchema, name: boundedText(160), country_code: z.string().trim().min(2).max(3).nullable().optional() })
+    .object({
+      id: identifierSchema,
+      name: boundedText(160),
+      country_code: z.string().trim().min(2).max(3).nullable().optional(),
+    })
     .strict(),
   processing_method: z.enum(["washed", "natural", "honey", "other"]),
   roast_level: z.enum(["light", "medium", "dark"]),
@@ -238,10 +306,15 @@ export const productDetailWireSchema = z
     description: z.string().trim().max(50_000),
     gallery: z.array(z.unknown()).max(30),
     brewing_suggestions: z.array(boundedText(500)).max(30),
-    seo: z.object({ title: nullableText(180), description: nullableText(500) }).strict(),
+    seo: z
+      .object({ title: nullableText(180), description: nullableText(500) })
+      .strict(),
   })
   .strict()
-  .refine((value) => value.status === "published", "محصول عمومی باید published باشد.");
+  .refine(
+    (value) => value.status === "published",
+    "محصول عمومی باید published باشد.",
+  );
 
 export const searchResultWireSchema = z
   .object({
@@ -260,7 +333,11 @@ export const cartLineWireSchema = z
     line_total: moneySchema,
   })
   .strict()
-  .refine((value) => value.product.variants.some((variant) => variant.id === value.variant.id), "Variant داخل محصول Quote وجود ندارد.");
+  .refine(
+    (value) =>
+      value.product.variants.some((variant) => variant.id === value.variant.id),
+    "Variant داخل محصول Quote وجود ندارد.",
+  );
 
 export const quoteWireSchema = z
   .object({
@@ -289,7 +366,11 @@ export const quoteWireSchema = z
     warnings: z
       .array(
         z
-          .object({ code: boundedText(160), message: boundedText(1000), cart_item_id: identifierSchema.optional() })
+          .object({
+            code: boundedText(160),
+            message: boundedText(1000),
+            cart_item_id: identifierSchema.optional(),
+          })
           .strict(),
       )
       .max(100),
@@ -299,14 +380,29 @@ export const quoteWireSchema = z
     const group = value.groups[0];
     const groupRoasteryId = group.roastery.id;
     if (value.roastery_id && value.roastery_id !== groupRoasteryId) {
-      context.addIssue({ code: z.ZodIssueCode.custom, path: ["roastery_id"], message: "روستری Quote ناسازگار است." });
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["roastery_id"],
+        message: "روستری Quote ناسازگار است.",
+      });
     }
-    if (group.items.some((item) => item.product.roastery.id !== groupRoasteryId)) {
-      context.addIssue({ code: z.ZodIssueCode.custom, path: ["groups"], message: "Quote شامل چند روستری است." });
+    if (
+      group.items.some((item) => item.product.roastery.id !== groupRoasteryId)
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["groups"],
+        message: "Quote شامل چند روستری است.",
+      });
     }
-    const expectedGrandTotal = value.subtotal + value.shipping_total - value.discount_total;
+    const expectedGrandTotal =
+      value.subtotal + value.shipping_total - value.discount_total;
     if (expectedGrandTotal !== value.grand_total) {
-      context.addIssue({ code: z.ZodIssueCode.custom, path: ["grand_total"], message: "جمع نهایی Quote ناسازگار است." });
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["grand_total"],
+        message: "جمع نهایی Quote ناسازگار است.",
+      });
     }
   });
 
@@ -341,7 +437,12 @@ const orderLineWireSchema = z
   .object({
     id: identifierSchema,
     product: z
-      .object({ id: identifierSchema, name: boundedText(240), slug: slugSchema, primary_image: z.unknown().nullable().optional() })
+      .object({
+        id: identifierSchema,
+        name: boundedText(240),
+        slug: slugSchema,
+        primary_image: z.unknown().nullable().optional(),
+      })
       .strict(),
     variant: z
       .object({
@@ -372,7 +473,13 @@ const subOrderWireSchema = z
   .object({
     id: identifierSchema,
     status: subOrderStatusSchema,
-    roastery: z.object({ id: identifierSchema, name: boundedText(160), slug: slugSchema }).strict(),
+    roastery: z
+      .object({
+        id: identifierSchema,
+        name: boundedText(160),
+        slug: slugSchema,
+      })
+      .strict(),
     items: z.array(orderLineWireSchema).min(1).max(100),
     subtotal: moneySchema,
     shipping_total: moneySchema,
@@ -401,7 +508,9 @@ export const orderDetailWireSchema = z
   })
   .strict()
   .refine(
-    (value) => value.subtotal + value.shipping_total - value.discount_total === value.grand_total,
+    (value) =>
+      value.subtotal + value.shipping_total - value.discount_total ===
+      value.grand_total,
     "جمع سفارش ناسازگار است.",
   );
 
@@ -421,12 +530,17 @@ export const createdOrderWireSchema = z
   })
   .strict()
   .refine(
-    (value) => value.subtotal + value.shipping_total - value.discount_total === value.grand_total,
+    (value) =>
+      value.subtotal + value.shipping_total - value.discount_total ===
+      value.grand_total,
     "جمع سفارش ایجادشده ناسازگار است.",
   );
 
 export const paymentRequestWireSchema = z
-  .object({ payment_id: identifierSchema, redirect_url: z.string().url().max(2000) })
+  .object({
+    payment_id: identifierSchema,
+    redirect_url: z.string().url().max(2000),
+  })
   .strict();
 
 export const paymentVerifyWireSchema = z
