@@ -14,6 +14,17 @@ use Illuminate\Session\TokenMismatchException;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
+$copyHttpExceptionHeaders = static function (
+    HttpExceptionInterface $exception,
+    JsonResponse $response,
+): JsonResponse {
+    foreach ($exception->getHeaders() as $name => $value) {
+        $response->headers->set($name, $value);
+    }
+
+    return $response;
+};
+
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         api: __DIR__.'/../routes/api.php',
@@ -24,13 +35,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prepend(AssignRequestId::class);
         $middleware->statefulApi();
     })
-    ->withExceptions(function (Exceptions $exceptions): void {
+    ->withExceptions(function (Exceptions $exceptions) use ($copyHttpExceptionHeaders): void {
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request, \Throwable $exception): bool =>
                 $request->is('api/*') || $request->expectsJson(),
         );
 
-        $exceptions->render(function (\Throwable $exception, Request $request) {
+        $exceptions->render(function (\Throwable $exception, Request $request) use ($copyHttpExceptionHeaders) {
             if (! ($request->is('api/*') || $request->expectsJson())) {
                 return null;
             }
@@ -105,7 +116,7 @@ return Application::configure(basePath: dirname(__DIR__))
                     requestId: $safeRequestId,
                 );
 
-                return copyHttpExceptionHeaders($exception, $response);
+                return $copyHttpExceptionHeaders($exception, $response);
             }
 
             report($exception);
@@ -119,14 +130,3 @@ return Application::configure(basePath: dirname(__DIR__))
         });
     })
     ->create();
-
-function copyHttpExceptionHeaders(
-    HttpExceptionInterface $exception,
-    JsonResponse $response,
-): JsonResponse {
-    foreach ($exception->getHeaders() as $name => $value) {
-        $response->headers->set($name, $value);
-    }
-
-    return $response;
-}
