@@ -10,12 +10,28 @@ final class ShippingRule extends Model
 {
     use HasUlids;
 
-    protected $fillable = ['roastery_id','province','city','base_cost','free_over','priority','is_active'];
+    protected $fillable = [
+        'roastery_id',
+        'province',
+        'city',
+        'base_cost',
+        'free_over',
+        'priority',
+        'is_active',
+    ];
 
     protected function casts(): array
     {
-        return ['base_cost' => 'integer','free_over' => 'integer','priority' => 'integer','is_active' => 'boolean'];
+        return [
+            'base_cost' => 'integer',
+            'free_over' => 'integer',
+            'priority' => 'integer',
+            'is_active' => 'boolean',
+        ];
     }
 
-    public function roastery(): BelongsTo { return $this->belongsTo(Roastery::class); }
+    public function roastery(): BelongsTo
+    {
+        return $this->belongsTo(Roastery::class);
+    }
 }

@@ -12,13 +12,42 @@ final class Coupon extends Model
 {
     use HasUlids;
 
-    protected $fillable = ['roastery_id','code','type','value','minimum_subtotal','maximum_discount','starts_at','ends_at','max_redemptions','redemption_count','is_active'];
+    protected $fillable = [
+        'roastery_id',
+        'code',
+        'type',
+        'value',
+        'minimum_subtotal',
+        'maximum_discount',
+        'starts_at',
+        'ends_at',
+        'max_redemptions',
+        'redemption_count',
+        'is_active',
+    ];
 
     protected function casts(): array
     {
-        return ['type' => CouponType::class,'value' => 'integer','minimum_subtotal' => 'integer','maximum_discount' => 'integer','starts_at' => 'immutable_datetime','ends_at' => 'immutable_datetime','max_redemptions' => 'integer','redemption_count' => 'integer','is_active' => 'boolean'];
+        return [
+            'type' => CouponType::class,
+            'value' => 'integer',
+            'minimum_subtotal' => 'integer',
+            'maximum_discount' => 'integer',
+            'starts_at' => 'immutable_datetime',
+            'ends_at' => 'immutable_datetime',
+            'max_redemptions' => 'integer',
+            'redemption_count' => 'integer',
+            'is_active' => 'boolean',
+        ];
     }
 
-    public function roastery(): BelongsTo { return $this->belongsTo(Roastery::class); }
-    public function quotes(): HasMany { return $this->hasMany(CheckoutQuote::class); }
+    public function roastery(): BelongsTo
+    {
+        return $this->belongsTo(Roastery::class);
+    }
+
+    public function quotes(): HasMany
+    {
+        return $this->hasMany(CheckoutQuote::class);
+    }
 }

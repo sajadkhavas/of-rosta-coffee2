@@ -12,14 +12,35 @@ final class SubOrder extends Model
 {
     use HasUlids;
 
-    protected $fillable = ['order_id','roastery_id','status','subtotal','shipping_total'];
+    protected $fillable = [
+        'order_id',
+        'roastery_id',
+        'status',
+        'subtotal',
+        'shipping_total',
+    ];
 
     protected function casts(): array
     {
-        return ['status' => SubOrderStatus::class,'subtotal' => 'integer','shipping_total' => 'integer'];
+        return [
+            'status' => SubOrderStatus::class,
+            'subtotal' => 'integer',
+            'shipping_total' => 'integer',
+        ];
     }
 
-    public function order(): BelongsTo { return $this->belongsTo(Order::class); }
-    public function roastery(): BelongsTo { return $this->belongsTo(Roastery::class); }
-    public function items(): HasMany { return $this->hasMany(OrderItem::class); }
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class);
+    }
+
+    public function roastery(): BelongsTo
+    {
+        return $this->belongsTo(Roastery::class);
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
+    }
 }
