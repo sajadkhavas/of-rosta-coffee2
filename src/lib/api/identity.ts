@@ -30,7 +30,9 @@ export function normalizeIranMobile(value: string): string {
   const compact = toEnglishDigits(value).replace(/[\s()-]/g, "");
   if (compact.startsWith("+98")) return `0${compact.slice(3)}`;
   if (compact.startsWith("0098")) return `0${compact.slice(4)}`;
-  if (compact.startsWith("98") && compact.length === 12) return `0${compact.slice(2)}`;
+  if (compact.startsWith("98") && compact.length === 12) {
+    return `0${compact.slice(2)}`;
+  }
   return compact;
 }
 
@@ -58,7 +60,9 @@ function mapAddress(value: AddressWire): Address {
 
 function addressPayload(value: AddressInput): Record<string, unknown> {
   const recipientMobile = normalizeIranMobile(value.recipientMobile);
-  if (!isValidIranMobile(recipientMobile)) throw new Error("شماره موبایل گیرنده معتبر نیست.");
+  if (!isValidIranMobile(recipientMobile)) {
+    throw new Error("شماره موبایل گیرنده معتبر نیست.");
+  }
 
   return {
     title: value.title?.trim() || null,
@@ -77,13 +81,19 @@ export async function requestOtp(input: {
   purpose: OtpPurpose;
 }): Promise<OtpRequestResult> {
   const mobile = normalizeIranMobile(input.mobile);
-  if (!isValidIranMobile(mobile)) throw new Error("شماره موبایل ایران معتبر نیست.");
+  if (!isValidIranMobile(mobile)) {
+    throw new Error("شماره موبایل ایران معتبر نیست.");
+  }
 
   const raw = await apiFetch("/auth/otp/request", {
     method: "POST",
     body: { mobile, purpose: input.purpose },
   });
-  const response = parseContract(resourceSchema(otpRequestResultSchema), raw, "درخواست OTP");
+  const response = parseContract(
+    resourceSchema(otpRequestResultSchema),
+    raw,
+    "درخواست OTP",
+  );
   return {
     requestId: response.data.request_id,
     expiresIn: response.data.expires_in,
@@ -91,9 +101,14 @@ export async function requestOtp(input: {
   };
 }
 
-export async function verifyOtp(input: { requestId: string; code: string }): Promise<AuthUser> {
+export async function verifyOtp(input: {
+  requestId: string;
+  code: string;
+}): Promise<AuthUser> {
   const code = toEnglishDigits(input.code).trim();
-  if (!/^\d{6}$/.test(code)) throw new Error("کد تأیید باید دقیقاً شش رقم باشد.");
+  if (!/^\d{6}$/.test(code)) {
+    throw new Error("کد تأیید باید دقیقاً شش رقم باشد.");
+  }
 
   const raw = await apiFetch("/auth/otp/verify", {
     method: "POST",
@@ -104,7 +119,8 @@ export async function verifyOtp(input: { requestId: string; code: string }): Pro
 
 export async function getCurrentUser(): Promise<AuthUser> {
   const raw = await apiFetch("/me", { suppressSessionExpiryEvent: true });
-  return parseContract(resourceSchema(authUserSchema), raw, "حساب کاربری").data;
+  return parseContract(resourceSchema(authUserSchema), raw, "حساب کاربری")
+    .data;
 }
 
 export async function updateCurrentUser(input: {
@@ -113,9 +129,16 @@ export async function updateCurrentUser(input: {
 }): Promise<AuthUser> {
   const raw = await apiFetch("/me", {
     method: "PATCH",
-    body: { name: input.name?.trim() || null, email: input.email?.trim() || null },
+    body: {
+      name: input.name?.trim() || null,
+      email: input.email?.trim() || null,
+    },
   });
-  return parseContract(resourceSchema(authUserSchema), raw, "ویرایش حساب کاربری").data;
+  return parseContract(
+    resourceSchema(authUserSchema),
+    raw,
+    "ویرایش حساب کاربری",
+  ).data;
 }
 
 export async function logout(): Promise<void> {
@@ -140,21 +163,34 @@ export async function createAddress(input: AddressInput): Promise<Address> {
     method: "POST",
     body: addressPayload(input),
   });
-  const response = parseContract(resourceSchema(addressWireSchema), raw, "ایجاد آدرس");
+  const response = parseContract(
+    resourceSchema(addressWireSchema),
+    raw,
+    "ایجاد آدرس",
+  );
   return mapAddress(response.data);
 }
 
-export async function updateAddress(id: string, input: AddressInput): Promise<Address> {
+export async function updateAddress(
+  id: string,
+  input: AddressInput,
+): Promise<Address> {
   const raw = await apiFetch(`/me/addresses/${encodeURIComponent(id)}`, {
     method: "PATCH",
     body: addressPayload(input),
   });
-  const response = parseContract(resourceSchema(addressWireSchema), raw, "ویرایش آدرس");
+  const response = parseContract(
+    resourceSchema(addressWireSchema),
+    raw,
+    "ویرایش آدرس",
+  );
   return mapAddress(response.data);
 }
 
 export async function deleteAddress(id: string): Promise<void> {
-  await apiFetch(`/me/addresses/${encodeURIComponent(id)}`, { method: "DELETE" });
+  await apiFetch(`/me/addresses/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
 }
 
 export const currentUserQueryOptions = () =>
