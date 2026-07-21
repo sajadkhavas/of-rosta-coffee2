@@ -10,11 +10,20 @@ final class RoleService
 {
     public function ensureCustomer(User $user): UserRole
     {
+        return $this->assign($user, Role::Customer);
+    }
+
+    public function assign(
+        User $user,
+        Role $role,
+        string $scopeType = 'global',
+        string $scopeId = 'global',
+    ): UserRole {
         return UserRole::query()->firstOrCreate([
             'user_id' => $user->id,
-            'role' => Role::Customer->value,
-            'scope_type' => 'global',
-            'scope_id' => 'global',
+            'role' => $role->value,
+            'scope_type' => $scopeType,
+            'scope_id' => $scopeId,
         ]);
     }
 }
