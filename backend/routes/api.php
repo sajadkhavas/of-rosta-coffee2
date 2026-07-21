@@ -60,6 +60,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         ->name('api.v1.search');
 
     Route::post('/cart/validate', CartController::class)
+        ->middleware('throttle:cart-validate')
         ->name('api.v1.cart.validate');
 
     Route::middleware(['auth:sanctum', 'rosta.session'])->group(function (): void {
@@ -83,11 +84,13 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
             ->name('api.v1.addresses.destroy');
 
         Route::post('/checkout/quote', CheckoutQuoteController::class)
+            ->middleware('throttle:checkout-quote')
             ->name('api.v1.checkout.quote');
 
         Route::get('/orders', [OrderController::class, 'index'])
             ->name('api.v1.orders.index');
         Route::post('/orders', [OrderController::class, 'store'])
+            ->middleware('throttle:order-create')
             ->name('api.v1.orders.store');
         Route::get('/orders/{orderId}', [OrderController::class, 'show'])
             ->where('orderId', '[A-Za-z0-9._:-]+')
