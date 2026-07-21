@@ -18,7 +18,10 @@ export const verifiedPaymentWireSchema = z
     currency: z.literal("IRR"),
     verified_at: z
       .string()
-      .refine((value) => Number.isFinite(Date.parse(value)), "زمان Verify نامعتبر است.")
+      .refine(
+        (value) => Number.isFinite(Date.parse(value)),
+        "زمان Verify نامعتبر است.",
+      )
       .nullable(),
   })
   .strict()
