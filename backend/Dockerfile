@@ -14,13 +14,17 @@ RUN apt-get update \
         libzip-dev \
     && docker-php-ext-install -j"$(nproc)" \
         bcmath \
+        dom \
         intl \
         mbstring \
         opcache \
         pcntl \
         pdo_mysql \
         posix \
+        simplexml \
         sockets \
+        xml \
+        xmlwriter \
         zip \
     && pecl install redis \
     && docker-php-ext-enable redis \
