@@ -8,12 +8,11 @@ on:
 
 permissions:
   contents: read
-  issues: write
 
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,144 +22,35 @@ jobs:
           bun-version: 1.2.22
       - name: Install dependencies
         run: bun install --frozen-lockfile
-
+      - name: Phase 6 security audit
+        run: bun run audit:phase6 2>&1 | tee phase6-audit.log
       - name: Unit tests
-        id: unit
-        continue-on-error: true
         run: bun run test:unit 2>&1 | tee unit-tests.log
-      - name: Upload unit test report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: unit-test-report
-          path: unit-tests.log
-          if-no-files-found: ignore
-          retention-days: 7
-
+      - name: Typecheck
+        run: bun run typecheck 2>&1 | tee typecheck.log
+      - name: Lint
+        run: bun run lint 2>&1 | tee lint.log
       - name: Build production worker
-        id: build
-        continue-on-error: true
         env:
           VITE_SITE_URL: https://rosta.shop
           VITE_API_URL: http://127.0.0.1:8000/api/v1
           VITE_PAYMENT_REDIRECT_HOSTS: 127.0.0.1:8000
           VITE_ALLOW_INDEXING: "false"
         run: bun run build 2>&1 | tee build.log
-      - name: Upload build report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-report
-          path: build.log
-          if-no-files-found: ignore
-          retention-days: 7
-
       - name: Bundle budget
-        id: bundle
-        continue-on-error: true
         run: bun run bundle:check 2>&1 | tee bundle.log
-      - name: Upload bundle report
+      - name: Upload quality reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bundle-report
+          name: quality-reports-${{ github.run_id }}
           path: |
+            phase6-audit.log
+            unit-tests.log
+            typecheck.log
+            lint.log
+            build.log
             bundle.log
             bundle-report.json
           if-no-files-found: ignore
-          retention-days: 7
-
-      - name: Typecheck
-        id: typecheck
-        continue-on-error: true
-        run: bun run typecheck 2>&1 | tee typecheck.log
-      - name: Upload typecheck report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: typecheck-report
-          path: typecheck.log
-          if-no-files-found: ignore
-          retention-days: 7
-
-      - name: Lint
-        id: lint
-        continue-on-error: true
-        run: bun run lint 2>&1 | tee lint.log
-      - name: Upload lint report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: lint-report
-          path: lint.log
-          if-no-files-found: ignore
-          retention-days: 7
-
-      - name: Publish PR diagnostics
-        if: >-
-          always() && github.event_name == 'pull_request' &&
-          (steps.unit.outcome == 'failure' || steps.build.outcome == 'failure' ||
-          steps.bundle.outcome == 'failure' || steps.typecheck.outcome == 'failure' ||
-          steps.lint.outcome == 'failure')
-        uses: actions/github-script@v7
-        env:
-          UNIT_OUTCOME: ${{ steps.unit.outcome }}
-          BUILD_OUTCOME: ${{ steps.build.outcome }}
-          BUNDLE_OUTCOME: ${{ steps.bundle.outcome }}
-          TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
-          LINT_OUTCOME: ${{ steps.lint.outcome }}
-        with:
-          script: |
-            const fs = require('fs');
-            const marker = '<!-- rosta-ci-diagnostics -->';
-            const checks = [
-              ['Unit tests', process.env.UNIT_OUTCOME, 'unit-tests.log'],
-              ['Build', process.env.BUILD_OUTCOME, 'build.log'],
-              ['Bundle', process.env.BUNDLE_OUTCOME, 'bundle.log'],
-              ['Typecheck', process.env.TYPECHECK_OUTCOME, 'typecheck.log'],
-              ['Lint', process.env.LINT_OUTCOME, 'lint.log'],
-            ];
-            const sections = checks.map(([name, outcome, file]) => {
-              let text = '';
-              try { text = fs.readFileSync(file, 'utf8').slice(-6000); } catch {}
-              return `### ${name}: ${outcome}\n\n\`\`\`text\n${text || 'No log generated.'}\n\`\`\``;
-            });
-            const body = `${marker}\n## Rosta CI diagnostics\n\n${sections.join('\n\n')}`.slice(0, 60000);
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              per_page: 100,
-            });
-            const previous = comments.find((comment) => comment.body?.includes(marker));
-            if (previous) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: previous.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body,
-              });
-            }
-
-      - name: Quality gate
-        if: always()
-        env:
-          UNIT_OUTCOME: ${{ steps.unit.outcome }}
-          BUILD_OUTCOME: ${{ steps.build.outcome }}
-          BUNDLE_OUTCOME: ${{ steps.bundle.outcome }}
-          TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
-          LINT_OUTCOME: ${{ steps.lint.outcome }}
-        run: |
-          for result in "$UNIT_OUTCOME" "$BUILD_OUTCOME" "$BUNDLE_OUTCOME" "$TYPECHECK_OUTCOME" "$LINT_OUTCOME"; do
-            if [ "$result" != "success" ]; then
-              echo "Quality gate failed: $result"
-              exit 1
-            fi
-          done
+          retention-days: 14
