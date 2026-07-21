@@ -76,6 +76,28 @@ requirePattern(
   "created order totals must match the checkout quote",
 );
 requirePattern(
+  "src/lib/api/checkout.ts",
+  /authoritativeQuoteWireSchema[\s\S]*authoritativeOrderDetailWireSchema|authoritativeOrderDetailWireSchema[\s\S]*authoritativeQuoteWireSchema/,
+  "checkout must consume authoritative quote and order schemas",
+);
+requirePattern(
+  "src/lib/api/orders.ts",
+  /authoritativeOrderSummaryWireSchema[\s\S]*authoritativeOrderDetailWireSchema|authoritativeOrderDetailWireSchema[\s\S]*authoritativeOrderSummaryWireSchema/,
+  "customer order APIs must consume authoritative financial schemas",
+);
+for (const required of [
+  /expectedLineTotal/,
+  /group\.subtotal !== computedGroupSubtotal/,
+  /value\.subtotal !== subOrder\.subtotal/,
+  /ALLOWED_WHOLE_BEAN_WEIGHTS/,
+]) {
+  requirePattern(
+    "src/lib/api/financial-contracts.ts",
+    required,
+    "financial contracts must reconcile line, group, order and whole-bean weight truth",
+  );
+}
+requirePattern(
   "src/lib/cart-storage.ts",
   /CART_STORAGE_VERSION = 3/,
   "cart persistence must be explicitly versioned",
@@ -152,6 +174,7 @@ requirePattern(
 const businessContractFiles = [
   "src/lib/api/contracts.ts",
   "src/lib/api/schemas.ts",
+  "src/lib/api/financial-contracts.ts",
   "src/lib/api/checkout.ts",
   "src/lib/api/payment-contract.ts",
   "src/lib/cart-storage.ts",
