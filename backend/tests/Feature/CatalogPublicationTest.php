@@ -83,4 +83,18 @@ final class CatalogPublicationTest extends TestCase
 
         $this->getJson('/api/v1/products/kenya-product')->assertOk();
     }
+
+    public function test_non_administrator_cannot_use_catalog_moderation_routes(): void
+    {
+        $customer = User::factory()->create();
+        $this->authenticateWithRole($customer, Role::Customer);
+
+        $this->getJson('/api/v1/admin/products')
+            ->assertForbidden()
+            ->assertJsonPath('error.code', 'request.forbidden');
+
+        $this->getJson('/api/v1/admin/roasteries')
+            ->assertForbidden()
+            ->assertJsonPath('error.code', 'request.forbidden');
+    }
 }
