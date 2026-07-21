@@ -121,6 +121,16 @@ final class OtpService
                     ]);
                     $challenge->save();
 
+                    $this->audit->record(
+                        'identity.otp.requested',
+                        auditable: $challenge,
+                        metadata: [
+                            'purpose' => $purpose,
+                            'mobile_suffix' => substr($normalizedMobile, -4),
+                        ],
+                        request: $request,
+                    );
+
                     dispatch(SendOtpCode::forPlaintextCode(
                         $challengeId,
                         $normalizedMobile,
@@ -140,16 +150,6 @@ final class OtpService
             );
         }
 
-        $this->audit->record(
-            'identity.otp.requested',
-            metadata: [
-                'challenge_id' => $challenge->id,
-                'purpose' => $purpose,
-                'mobile_suffix' => substr($normalizedMobile, -4),
-            ],
-            request: $request,
-        );
-
         return $challenge;
     }
 
@@ -166,10 +166,12 @@ final class OtpService
             $result = Cache::lock($lockName, 10)->block(3, function () use (
                 $challengeId,
                 $normalizedCode,
+                $request,
             ): array {
                 return DB::transaction(function () use (
                     $challengeId,
                     $normalizedCode,
+                    $request,
                 ): array {
                     $challenge = OtpChallenge::query()
                         ->whereKey($challengeId)
@@ -222,10 +224,19 @@ final class OtpService
                     }
 
                     $this->roles->ensureCustomer($user);
+                    $user->load('roleAssignments');
+
+                    $this->audit->record(
+                        'identity.otp.verified',
+                        actor: $user,
+                        auditable: $user,
+                        metadata: ['purpose' => $challenge->purpose],
+                        request: $request,
+                    );
 
                     return [
                         'state' => 'verified',
-                        'user' => $user->load('roleAssignments'),
+                        'user' => $user,
                     ];
                 }, 3);
             });
@@ -265,14 +276,6 @@ final class OtpService
             );
         }
 
-        $user = $result['user'];
-        $this->audit->record(
-            'identity.otp.verified',
-            actor: $user,
-            auditable: $user,
-            request: $request,
-        );
-
-        return $user;
+        return $result['user'];
     }
 }
