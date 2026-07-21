@@ -1,6 +1,32 @@
 <?php
 
+use App\Enums\IdempotencyStatus;
+use App\Models\CheckoutQuote;
+use App\Models\OrderIdempotencyKey;
+use App\Services\Checkout\ReservationExpiryService;
 use Illuminate\Support\Facades\Schedule;
+
+Schedule::call(static function (): void {
+    app(ReservationExpiryService::class)->expireDue();
+})
+    ->name('rosta.checkout.expire-reservations')
+    ->everyMinute()
+    ->withoutOverlapping();
+
+Schedule::call(static function (): void {
+    CheckoutQuote::query()
+        ->where('expires_at', '<', now()->subHour())
+        ->whereDoesntHave('order')
+        ->delete();
+
+    OrderIdempotencyKey::query()
+        ->where('expires_at', '<', now())
+        ->where('status', '!=', IdempotencyStatus::Processing->value)
+        ->delete();
+})
+    ->name('rosta.checkout.prune-expired-state')
+    ->hourly()
+    ->withoutOverlapping();
 
 Schedule::command('queue:prune-batches --hours=48 --unfinished=72 --cancelled=72')
     ->dailyAt('03:15')
