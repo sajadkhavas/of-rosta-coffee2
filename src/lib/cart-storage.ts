@@ -54,7 +54,7 @@ export const cartItemSchema = z
   })
   .strict();
 
-export interface CartItem extends z.infer<typeof cartItemSchema> {}
+export type CartItem = z.infer<typeof cartItemSchema>;
 
 const cartEnvelopeSchema = z
   .object({
@@ -93,7 +93,9 @@ interface StorageLike {
 }
 
 function byteLength(value: string): number {
-  return typeof TextEncoder !== "undefined" ? new TextEncoder().encode(value).byteLength : value.length * 2;
+  return typeof TextEncoder !== "undefined"
+    ? new TextEncoder().encode(value).byteLength
+    : value.length * 2;
 }
 
 function clampQuantity(value: number): number {
