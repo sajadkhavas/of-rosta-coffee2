@@ -84,7 +84,7 @@ function mapSubOrder(value: WireSubOrder): SubOrderSummary {
   };
 }
 
-function mapOrder(value: OrderListWire): OrderSummary {
+export function mapOrderSummary(value: OrderListWire): OrderSummary {
   return {
     id: value.id,
     orderNumber: value.order_number,
@@ -96,9 +96,9 @@ function mapOrder(value: OrderListWire): OrderSummary {
   };
 }
 
-function mapOrderDetail(value: OrderDetailWire): OrderDetail {
+export function mapOrderDetail(value: OrderDetailWire): OrderDetail {
   return {
-    ...mapOrder(value),
+    ...mapOrderSummary(value),
     address: value.address
       ? {
           id: value.address.id,
@@ -137,7 +137,11 @@ export async function listOrders(params: OrderListParams = {}): Promise<OrderLis
     raw,
     "فهرست سفارش‌ها",
   );
-  return { items: response.data.map(mapOrder), meta: response.meta, links: response.links };
+  return {
+    items: response.data.map(mapOrderSummary),
+    meta: response.meta,
+    links: response.links,
+  };
 }
 
 export async function getOrder(id: string): Promise<OrderDetail> {
