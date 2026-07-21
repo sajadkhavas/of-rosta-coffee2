@@ -14,7 +14,7 @@ final class UpsertAddressRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->merge([
+        $payload = [
             'title' => $this->input('title') === null
                 ? null
                 : trim((string) $this->input('title')),
@@ -30,12 +30,17 @@ final class UpsertAddressRequest extends FormRequest
                 : trim(IranMobile::normalizeDigits(
                     (string) $this->input('postal_code'),
                 )),
-            'is_default' => filter_var(
+        ];
+
+        if ($this->exists('is_default')) {
+            $payload['is_default'] = filter_var(
                 $this->input('is_default'),
                 FILTER_VALIDATE_BOOL,
                 FILTER_NULL_ON_FAILURE,
-            ),
-        ]);
+            );
+        }
+
+        $this->merge($payload);
     }
 
     /**
