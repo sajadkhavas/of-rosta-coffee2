@@ -21,8 +21,16 @@ for (const path of [
   "src/lib/api/orders.ts",
   "src/lib/api/checkout.ts",
 ]) {
-  requirePattern(path, /parseContract\s*\(/, "production API payloads must be runtime validated");
-  requirePattern(path, /resourceSchema|collectionSchema/, "API envelopes must be runtime validated");
+  requirePattern(
+    path,
+    /parseContract\s*\(/,
+    "production API payloads must be runtime validated",
+  );
+  requirePattern(
+    path,
+    /resourceSchema|collectionSchema/,
+    "API envelopes must be runtime validated",
+  );
 }
 
 requirePattern(
@@ -124,16 +132,22 @@ const installHandler = serviceWorker.match(
 )?.[0];
 if (!installHandler) failures.push("public/sw.js: install handler is missing");
 if (installHandler?.includes("skipWaiting")) {
-  failures.push("public/sw.js: install must not force an update during an active transaction");
+  failures.push(
+    "public/sw.js: install must not force an update during an active transaction",
+  );
 }
 if (!serviceWorker.includes('event.data?.type === "ROSTA_SKIP_WAITING"')) {
   failures.push("public/sw.js: explicit update activation message is required");
 }
 if (!serviceWorker.includes('request.destination === "script"')) {
-  failures.push("public/sw.js: executable assets need an explicit network-first policy");
+  failures.push(
+    "public/sw.js: executable assets need an explicit network-first policy",
+  );
 }
 if (!serviceWorker.includes('"/api"')) {
-  failures.push("public/sw.js: the complete same-origin API path must bypass caches");
+  failures.push(
+    "public/sw.js: the complete same-origin API path must bypass caches",
+  );
 }
 requirePattern(
   "src/components/ServiceWorkerRegistration.tsx",
@@ -153,7 +167,11 @@ for (const header of [
   "Permissions-Policy",
   "Strict-Transport-Security",
 ]) {
-  requirePattern("src/server.ts", new RegExp(header), `${header} response header is required`);
+  requirePattern(
+    "src/server.ts",
+    new RegExp(header),
+    `${header} response header is required`,
+  );
 }
 requirePattern(
   "src/server.ts",
