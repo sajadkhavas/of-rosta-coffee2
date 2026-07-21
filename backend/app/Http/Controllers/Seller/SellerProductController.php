@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Seller;
 
+use App\Enums\ProductStatus;
 use App\Enums\Role;
 use App\Exceptions\ApiDomainException;
 use App\Http\Requests\Catalog\UpsertProductRequest;
@@ -87,7 +88,7 @@ final class SellerProductController
             $product = Product::query()->create([
                 ...$data,
                 'roastery_id' => $lockedRoastery->id,
-                'status' => $data['status'] ?? 'draft',
+                'status' => $data['status'] ?? ProductStatus::Draft->value,
                 'brewing_suggestions' => $data['brewing_suggestions'] ?? [],
                 'description' => $data['description'] ?? '',
             ]);
@@ -159,7 +160,18 @@ final class SellerProductController
                 $galleryIds,
             );
 
-            $product->fill($data)->save();
+            $wasPublished = $product->status === ProductStatus::Published;
+            $statusProvided = array_key_exists('status', $data);
+
+            $product->fill($data);
+            if ($wasPublished && ! $statusProvided) {
+                $product->status = ProductStatus::Review;
+                $product->published_at = null;
+            } elseif ($statusProvided) {
+                $product->published_at = null;
+            }
+            $product->save();
+
             if ($galleryProvided) {
                 $product->gallery()->sync($this->gallerySync($galleryIds));
             }
@@ -168,7 +180,10 @@ final class SellerProductController
                 'catalog.product.updated',
                 actor: $user,
                 auditable: $product,
-                metadata: ['fields' => array_keys($data)],
+                metadata: [
+                    'fields' => array_keys($data),
+                    'returned_to_review' => $wasPublished && ! $statusProvided,
+                ],
                 request: $request,
             );
         });
