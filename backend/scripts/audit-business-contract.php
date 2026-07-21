@@ -62,6 +62,9 @@ foreach (['50', '100', '250', '500', '1000'] as $weight) {
 if (! str_contains($rostaConfig, "'single_roastery_orders' => true")) {
     $failures[] = 'Single-roastery order boundary is not locked.';
 }
+if (! str_contains($rostaConfig, "'allowed_media_hosts'")) {
+    $failures[] = 'Server-owned media host allowlist is not configured.';
+}
 
 $contractPath = dirname($root).'/docs/openapi/rosta-v1-phase6.yaml';
 if (! is_file($contractPath) || filesize($contractPath) === 0) {
@@ -147,6 +150,11 @@ $requireContains(
     'Seller catalog access must match the requested roastery id.',
 );
 $requireContains(
+    'app/Services/Catalog/CatalogAccess.php',
+    'ModelNotFoundException',
+    'Foreign seller resources must be concealed as not found.',
+);
+$requireContains(
     'app/Services/Catalog/StockService.php',
     'lockForUpdate()',
     'Stock adjustments must lock the authoritative variant row.',
@@ -202,6 +210,31 @@ $requireContains(
     'Variant weight must be limited to the permanent whole-bean list.',
 );
 $requireContains(
+    'app/Http/Requests/Catalog/AdjustStockRequest.php',
+    'StockReason::Return->value',
+    'Seller stock reasons must be explicitly allowlisted.',
+);
+$requireContains(
+    'app/Services/Catalog/MediaRegistrationService.php',
+    "config('rosta.catalog.allowed_media_hosts'",
+    'Media registration must use the server-owned host allowlist.',
+);
+$requireContains(
+    'app/Services/Catalog/MediaRegistrationService.php',
+    "in_array(\$host, \$allowedHosts, true)",
+    'Media URLs must belong to an allowlisted storage host.',
+);
+$requireContains(
+    'app/Http/Controllers/Seller/SellerProductController.php',
+    'returned_to_review',
+    'Seller product edits must return published content to moderation.',
+);
+$requireContains(
+    'app/Http/Controllers/Seller/SellerRoasteryController.php',
+    'verification_reset',
+    'Seller identity edits must reset roastery verification.',
+);
+$requireContains(
     'routes/api.php',
     "'rosta.role:roastery_owner,roastery_manager,roastery_staff,administrator'",
     'Seller routes must require an authorized operational role.',
@@ -211,6 +244,17 @@ $requireContains(
     "'rosta.role:administrator'",
     'Administration routes must require the administrator role.',
 );
+foreach ([
+    "'/seller/origins'",
+    "'/media'",
+    "'/roast-batches'",
+    "'/stock-ledger'",
+    "'/admin/origins'",
+] as $requiredRoute) {
+    if (! str_contains($read('routes/api.php'), $requiredRoute)) {
+        $failures[] = 'Missing catalog operations route: '.$requiredRoute;
+    }
+}
 
 if ($failures !== []) {
     fwrite(STDERR, "Backend business contract audit failed:\n");
