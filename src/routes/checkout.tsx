@@ -12,7 +12,6 @@ import { Alert, Button, TextareaField, TextField } from "@/components/system";
 import { absoluteUrl } from "@/config/site";
 import {
   createCheckoutQuote,
-  createIdempotencyKey,
   createOrder,
   requestPayment,
   verifyPayment,
@@ -21,12 +20,36 @@ import { isApiError } from "@/lib/api/client";
 import { addressesQueryOptions } from "@/lib/api/identity";
 import { formatIrr, formatWeight } from "@/lib/catalog-format";
 import { useCart } from "@/lib/cart-context";
+import type { VerifiedPaymentResult } from "@/lib/payment-security";
+import {
+  buildOrderFingerprint,
+  buildPaymentFingerprint,
+  clearPaymentExpectation,
+  clearTransactionIntent,
+  getOrCreateTransactionIntent,
+  readPaymentExpectation,
+  savePaymentExpectation,
+} from "@/lib/transaction-intent";
 
+const callbackIdSchema = z.string().trim().max(200).regex(/^[A-Za-z0-9._:-]+$/);
 const searchSchema = z.object({
-  payment_id: fallback(z.string(), "").default(""),
-  order_id: fallback(z.string(), "").default(""),
-  status: fallback(z.string(), "").default(""),
+  payment_id: fallback(callbackIdSchema, "").default(""),
+  order_id: fallback(callbackIdSchema, "").default(""),
+  status: fallback(z.string().trim().max(40), "").default(""),
 });
+
+interface PaymentVerificationResult extends VerifiedPaymentResult {
+  expectationFound: boolean;
+  consistent: boolean;
+}
+
+interface PaymentVerificationQuery {
+  data?: PaymentVerificationResult;
+  isPending: boolean;
+  isError: boolean;
+  error: unknown;
+  refetch: () => unknown;
+}
 
 export const Route = createFileRoute("/checkout")({
   validateSearch: zodValidator(searchSchema),
@@ -43,19 +66,6 @@ export const Route = createFileRoute("/checkout")({
   }),
   component: CheckoutPage,
 });
-
-function getAttemptKey(quoteId: string, kind: "order" | "payment"): string {
-  const storageKey = `rosta_checkout_${kind}_${quoteId}`;
-  try {
-    const existing = window.sessionStorage.getItem(storageKey);
-    if (existing) return existing;
-    const created = createIdempotencyKey(kind);
-    window.sessionStorage.setItem(storageKey, created);
-    return created;
-  } catch {
-    return createIdempotencyKey(kind);
-  }
-}
 
 function CheckoutPage() {
   return (
@@ -97,31 +107,77 @@ function CheckoutContent() {
     retry: false,
   });
 
-  const verifyQuery = useQuery({
-    queryKey: ["payments", "verify", search.payment_id],
-    queryFn: () => verifyPayment(search.payment_id),
+  const paymentExpectation = search.payment_id
+    ? readPaymentExpectation(search.payment_id)
+    : null;
+
+  const verifyQuery = useQuery<PaymentVerificationResult>({
+    queryKey: [
+      "payments",
+      "verify",
+      search.payment_id,
+      paymentExpectation?.orderId ?? "unbound",
+      paymentExpectation?.amount ?? 0,
+    ],
+    queryFn: async () => {
+      const verified = await verifyPayment(search.payment_id);
+      return {
+        ...verified,
+        expectationFound: Boolean(paymentExpectation),
+        consistent: verified.status === "paid" && Boolean(paymentExpectation),
+      };
+    },
     enabled: Boolean(search.payment_id),
     staleTime: 0,
     retry: false,
   });
 
   useEffect(() => {
-    if (verifyQuery.data?.status === "paid") clear();
-  }, [clear, verifyQuery.data?.status]);
+    if (verifyQuery.data?.status !== "paid" || !verifyQuery.data.consistent) return;
+    clear();
+    clearTransactionIntent("order");
+    clearTransactionIntent("payment");
+    clearPaymentExpectation();
+  }, [clear, verifyQuery.data?.consistent, verifyQuery.data?.status]);
 
   const checkoutMutation = useMutation({
     mutationFn: async () => {
       const quote = quoteQuery.data;
       if (!quote) throw new Error("Quote معتبر در دسترس نیست.");
+
+      const orderFingerprint = buildOrderFingerprint({
+        quoteId: quote.id,
+        addressId: selectedAddressId,
+        couponCode,
+        notes,
+        items: apiItems,
+      });
       const order = await createOrder({
         quoteId: quote.id,
-        idempotencyKey: getAttemptKey(quote.id, "order"),
+        idempotencyKey: getOrCreateTransactionIntent("order", orderFingerprint),
         notes,
       });
+      if (order.grandTotal !== quote.grandTotal || order.currency !== quote.currency) {
+        throw new Error("مبلغ سفارش ایجادشده با Quote معتبر این Checkout سازگار نیست.");
+      }
+
       const payment = await requestPayment({
         orderId: order.id,
-        idempotencyKey: getAttemptKey(quote.id, "payment"),
+        idempotencyKey: getOrCreateTransactionIntent(
+          "payment",
+          buildPaymentFingerprint({
+            orderId: order.id,
+            amount: order.grandTotal,
+            currency: order.currency,
+          }),
+        ),
       });
+      savePaymentExpectation(
+        payment.paymentId,
+        order.id,
+        order.grandTotal,
+        order.currency,
+      );
       window.location.assign(payment.redirectUrl);
       return { order, payment };
     },
@@ -129,7 +185,7 @@ function CheckoutContent() {
   });
 
   if (search.payment_id) {
-    return <PaymentVerification paymentId={search.payment_id} orderId={search.order_id} query={verifyQuery} />;
+    return <PaymentVerification paymentId={search.payment_id} query={verifyQuery} />;
   }
 
   if (!hydrated) {
@@ -168,7 +224,7 @@ function CheckoutContent() {
         <p className="text-xs font-bold tracking-[0.2em] text-[color:var(--roast)]">ATOMIC CHECKOUT</p>
         <h1 className="mt-2 text-3xl font-bold">تسویه‌حساب</h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-[color:var(--light)]">
-          Quote نهایی با آدرس انتخابی محاسبه می‌شود؛ سپس سفارش با کلید Idempotency ایجاد و موجودی به‌صورت اتمیک رزرو می‌شود.
+          Quote نهایی با آدرس انتخابی محاسبه می‌شود؛ سپس سفارش با کلید Idempotency متصل به محتوای سفارش ایجاد و موجودی به‌صورت اتمیک رزرو می‌شود.
         </p>
       </header>
 
@@ -245,7 +301,7 @@ function CheckoutContent() {
             <h2 className="font-bold">کد تخفیف</h2>
             <div className="mt-4 flex gap-3">
               <TextField label="کد تخفیف" value={couponInput} onChange={(event) => setCouponInput(event.target.value)} className="flex-1" />
-              <Button type="button" variant="secondary" className="self-end" onClick={() => setCouponCode(couponInput.trim())} disabled={!selectedAddressId || couponInput.trim() === couponCode}>اعمال</Button>
+              <Button type="button" variant="secondary" className="self-end" onClick={() => setCouponCode(couponInput.trim().slice(0, 100))} disabled={!selectedAddressId || couponInput.trim() === couponCode}>اعمال</Button>
             </div>
             {couponCode ? <button type="button" onClick={() => { setCouponCode(""); setCouponInput(""); }} className="mt-3 text-xs text-[color:var(--roast)] underline">حذف کد «{couponCode}»</button> : null}
           </section>
@@ -315,15 +371,12 @@ function CheckoutContent() {
 
 function PaymentVerification({
   paymentId,
-  orderId,
   query,
 }: {
   paymentId: string;
-  orderId: string;
-  query: ReturnType<typeof useQuery<{ status: "pending" | "paid" | "failed" | "cancelled" | "refunded"; orderId: string }>>;
+  query: PaymentVerificationQuery;
 }) {
   const result = query.data;
-  const resolvedOrderId = result?.orderId || orderId;
 
   return (
     <section className="mx-auto grid min-h-[55vh] max-w-xl place-items-center text-center">
@@ -337,20 +390,20 @@ function PaymentVerification({
         ) : query.isError ? (
           <>
             <h1 className="text-2xl font-bold">تأیید پرداخت انجام نشد</h1>
-            <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">{isApiError(query.error) ? query.error.message : "ارتباط با سرویس Verify برقرار نشد."}</p>
+            <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">{isApiError(query.error) ? query.error.message : query.error instanceof Error ? query.error.message : "ارتباط با سرویس Verify برقرار نشد."}</p>
             <Button type="button" className="mt-6" onClick={() => query.refetch()}>بررسی دوباره</Button>
           </>
-        ) : result?.status === "paid" ? (
+        ) : result?.status === "paid" && result.consistent ? (
           <>
             <CheckCircle2 size={56} className="mx-auto text-emerald-300" />
             <h1 className="mt-5 text-2xl font-bold">پرداخت با موفقیت تأیید شد</h1>
-            <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">سبد پاک شد و سفارش اکنون از صفحه سفارش‌ها قابل پیگیری است.</p>
-            {resolvedOrderId ? <Link to="/orders/$id" params={{ id: resolvedOrderId }} className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-[color:var(--roast)] px-6 text-sm font-bold text-[color:var(--night)]">مشاهده سفارش</Link> : <Link to="/orders" className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-[color:var(--roast)] px-6 text-sm font-bold text-[color:var(--night)]">مشاهده سفارش‌ها</Link>}
+            <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">پرداخت، مبلغ و وضعیت سفارش با Intent همین مرورگر تطبیق داشت؛ سبد پاک شد.</p>
+            <Link to="/orders/$id" params={{ id: result.orderId }} className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-[color:var(--roast)] px-6 text-sm font-bold text-[color:var(--night)]">مشاهده سفارش</Link>
           </>
         ) : (
           <>
             <h1 className="text-2xl font-bold">پرداخت تأیید نشد</h1>
-            <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">وضعیت ثبت‌شده: {result?.status ?? "نامشخص"}. تا زمان دریافت وضعیت `paid` سبد پاک نمی‌شود.</p>
+            <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">وضعیت ثبت‌شده: {result?.status ?? "نامشخص"}. تا زمان دریافت پاسخ `paid` کاملاً منطبق، سبد پاک نمی‌شود.</p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Button type="button" onClick={() => query.refetch()}>بررسی دوباره</Button>
               <Link to="/orders" className="inline-flex min-h-11 items-center rounded-xl border border-[color:var(--mid)] px-5 text-sm">سفارش‌های من</Link>

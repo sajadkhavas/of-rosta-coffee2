@@ -12,7 +12,7 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,49 +22,35 @@ jobs:
           bun-version: 1.2.22
       - name: Install dependencies
         run: bun install --frozen-lockfile
+      - name: Phase 6 security audit
+        run: bun run audit:phase6 2>&1 | tee phase6-audit.log
+      - name: Unit tests
+        run: bun run test:unit 2>&1 | tee unit-tests.log
+      - name: Typecheck
+        run: bun run typecheck 2>&1 | tee typecheck.log
+      - name: Lint
+        run: bun run lint 2>&1 | tee lint.log
       - name: Build production worker
         env:
           VITE_SITE_URL: https://rosta.shop
           VITE_API_URL: http://127.0.0.1:8000/api/v1
+          VITE_PAYMENT_REDIRECT_HOSTS: 127.0.0.1:8000
           VITE_ALLOW_INDEXING: "false"
         run: bun run build 2>&1 | tee build.log
-      - name: Upload build report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-report
-          path: build.log
-          if-no-files-found: ignore
-          retention-days: 7
       - name: Bundle budget
         run: bun run bundle:check 2>&1 | tee bundle.log
-      - name: Upload bundle report
+      - name: Upload quality reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bundle-report
+          name: quality-reports-${{ github.run_id }}
           path: |
+            phase6-audit.log
+            unit-tests.log
+            typecheck.log
+            lint.log
+            build.log
             bundle.log
             bundle-report.json
           if-no-files-found: ignore
-          retention-days: 7
-      - name: Typecheck
-        run: bun run typecheck 2>&1 | tee typecheck.log
-      - name: Upload typecheck report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: typecheck-report
-          path: typecheck.log
-          if-no-files-found: ignore
-          retention-days: 7
-      - name: Lint
-        run: bun run lint 2>&1 | tee lint.log
-      - name: Upload lint report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: lint-report
-          path: lint.log
-          if-no-files-found: ignore
-          retention-days: 7
+          retention-days: 14

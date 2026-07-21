@@ -1,0 +1,1061 @@
+openapi: 3.1.0
+info:
+  title: Rosta API
+  version: 1.0.0-phase6-candidate
+  description: |
+    قرارداد امنیت‌محور میان فرانت TanStack Start و بک‌اند Laravel 11.
+    قیمت‌ها ریال، زمان‌ها ISO 8601 و تمام محصولات فقط دانه کامل هستند.
+    هیچ فیلد انتخاب آسیاب در Product، Variant، Cart، Quote یا Order مجاز نیست.
+    Laravel مرجع هویت، مالکیت، قیمت، موجودی، تاریخ رست، ارسال، سفارش و پرداخت است.
+  x-rosta-contract-lock: 2026-07-21-phase-6
+  x-rosta-whole-beans-only: true
+  x-rosta-single-roastery-orders: true
+servers:
+  - url: https://api.rosta.shop/api/v1
+  - url: http://localhost:8000/api/v1
+
+tags:
+  - { name: Authentication }
+  - { name: Profile }
+  - { name: Catalog }
+  - { name: Roasteries }
+  - { name: Search }
+  - { name: Cart }
+  - { name: Checkout }
+  - { name: Orders }
+  - { name: Payments }
+
+paths:
+  /auth/otp/request:
+    post:
+      tags: [Authentication]
+      operationId: requestOtp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [mobile, purpose]
+              properties:
+                mobile: { $ref: '#/components/schemas/IranMobile' }
+                purpose: { type: string, enum: [login, register, verify_mobile] }
+      responses:
+        '202':
+          description: OTP queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OtpRequestResource'
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /auth/otp/verify:
+    post:
+      tags: [Authentication]
+      operationId: verifyOtp
+      summary: تأیید کد و ایجاد Session Cookie
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [request_id, code]
+              properties:
+                request_id: { $ref: '#/components/schemas/Identifier' }
+                code: { type: string, pattern: '^\d{6}$' }
+      responses:
+        '200': { $ref: '#/components/responses/AuthUser' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      operationId: logout
+      security: [{ sanctumCookie: [] }]
+      responses:
+        '204': { description: Logged out }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '419': { $ref: '#/components/responses/CsrfExpired' }
+
+  /me:
+    get:
+      tags: [Profile]
+      operationId: getMe
+      security: [{ sanctumCookie: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/AuthUser' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+    patch:
+      tags: [Profile]
+      operationId: updateMe
+      security: [{ sanctumCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                name: { type: [string, 'null'], maxLength: 120 }
+                email: { type: [string, 'null'], format: email, maxLength: 254 }
+      responses:
+        '200': { $ref: '#/components/responses/AuthUser' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '419': { $ref: '#/components/responses/CsrfExpired' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /me/addresses:
+    get:
+      tags: [Profile]
+      operationId: listAddresses
+      security: [{ sanctumCookie: [] }]
+      responses:
+        '200':
+          description: Address list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    maxItems: 100
+                    items: { $ref: '#/components/schemas/Address' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+    post:
+      tags: [Profile]
+      operationId: createAddress
+      security: [{ sanctumCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddressInput' }
+      responses:
+        '201': { $ref: '#/components/responses/AddressResource' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '419': { $ref: '#/components/responses/CsrfExpired' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /me/addresses/{addressId}:
+    parameters:
+      - { name: addressId, in: path, required: true, schema: { $ref: '#/components/schemas/Identifier' } }
+    patch:
+      tags: [Profile]
+      operationId: updateAddress
+      security: [{ sanctumCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddressInput' }
+      responses:
+        '200': { $ref: '#/components/responses/AddressResource' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '419': { $ref: '#/components/responses/CsrfExpired' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    delete:
+      tags: [Profile]
+      operationId: deleteAddress
+      security: [{ sanctumCookie: [] }]
+      responses:
+        '204': { description: Address deleted }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '419': { $ref: '#/components/responses/CsrfExpired' }
+
+  /products:
+    get:
+      tags: [Catalog]
+      operationId: listProducts
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PerPage' }
+        - { name: q, in: query, schema: { type: string, maxLength: 120 } }
+        - { name: 'origin[]', in: query, schema: { type: array, maxItems: 20, items: { type: string, maxLength: 200 } } }
+        - { name: 'roast_level[]', in: query, schema: { type: array, maxItems: 3, items: { $ref: '#/components/schemas/RoastLevel' } } }
+        - { name: 'processing_method[]', in: query, schema: { type: array, maxItems: 4, items: { $ref: '#/components/schemas/ProcessingMethod' } } }
+        - { name: 'roastery[]', in: query, schema: { type: array, maxItems: 20, items: { type: string, maxLength: 200 } } }
+        - { name: 'weight[]', in: query, schema: { type: array, maxItems: 5, items: { $ref: '#/components/schemas/WeightGrams' } } }
+        - { name: min_price, in: query, schema: { $ref: '#/components/schemas/Money' } }
+        - { name: max_price, in: query, schema: { $ref: '#/components/schemas/Money' } }
+        - { name: available, in: query, schema: { type: boolean } }
+        - { name: sort, in: query, schema: { type: string, enum: [recommended, newest, price_asc, price_desc] } }
+      responses:
+        '200': { $ref: '#/components/responses/ProductCollection' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /products/{slug}:
+    get:
+      tags: [Catalog]
+      operationId: getProduct
+      parameters: [{ $ref: '#/components/parameters/Slug' }]
+      responses:
+        '200': { $ref: '#/components/responses/ProductResource' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /products/{slug}/related:
+    get:
+      tags: [Catalog]
+      operationId: getRelatedProducts
+      parameters: [{ $ref: '#/components/parameters/Slug' }]
+      responses:
+        '200':
+          description: Related published products
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    maxItems: 24
+                    items: { $ref: '#/components/schemas/ProductSummary' }
+
+  /roasteries:
+    get:
+      tags: [Roasteries]
+      operationId: listRoasteries
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PerPage' }
+      responses:
+        '200': { $ref: '#/components/responses/RoasteryCollection' }
+
+  /roasteries/{slug}:
+    get:
+      tags: [Roasteries]
+      operationId: getRoastery
+      parameters: [{ $ref: '#/components/parameters/Slug' }]
+      responses:
+        '200': { $ref: '#/components/responses/RoasteryResource' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /search:
+    get:
+      tags: [Search]
+      operationId: searchCatalog
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string, minLength: 1, maxLength: 120 } }
+        - { name: type, in: query, schema: { type: string, enum: [all, products, roasteries, content], default: all } }
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [data]
+                properties:
+                  data: { $ref: '#/components/schemas/SearchResult' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /cart/validate:
+    post:
+      tags: [Cart]
+      operationId: validateCart
+      summary: اعتبارسنجی موجودی، قیمت و تک‌روستری‌بودن
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CartInput' }
+      responses:
+        '200': { $ref: '#/components/responses/QuoteResource' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /checkout/quote:
+    post:
+      tags: [Checkout]
+      operationId: createCheckoutQuote
+      security: [{ sanctumCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [items, address_id]
+              properties:
+                items: { $ref: '#/components/schemas/CartItems' }
+                address_id: { $ref: '#/components/schemas/Identifier' }
+                coupon_code: { type: [string, 'null'], maxLength: 100 }
+      responses:
+        '200': { $ref: '#/components/responses/QuoteResource' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '419': { $ref: '#/components/responses/CsrfExpired' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /orders:
+    get:
+      tags: [Orders]
+      operationId: listOrders
+      security: [{ sanctumCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PerPage' }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/OrderStatus' } }
+      responses:
+        '200': { $ref: '#/components/responses/OrderCollection' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+    post:
+      tags: [Orders]
+      operationId: createOrder
+      security: [{ sanctumCookie: [] }]
+      summary: ایجاد سفارش از Quote معتبر با رزرو اتمیک موجودی
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [quote_id, idempotency_key]
+              properties:
+                quote_id: { $ref: '#/components/schemas/Identifier' }
+                idempotency_key: { $ref: '#/components/schemas/IdempotencyKey' }
+                notes: { type: [string, 'null'], maxLength: 1000 }
+      responses:
+        '201': { $ref: '#/components/responses/OrderResource' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '419': { $ref: '#/components/responses/CsrfExpired' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /orders/{orderId}:
+    get:
+      tags: [Orders]
+      operationId: getOrder
+      security: [{ sanctumCookie: [] }]
+      parameters:
+        - { name: orderId, in: path, required: true, schema: { $ref: '#/components/schemas/Identifier' } }
+      responses:
+        '200': { $ref: '#/components/responses/OrderResource' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /payments/request:
+    post:
+      tags: [Payments]
+      operationId: requestPayment
+      security: [{ sanctumCookie: [] }]
+      summary: ایجاد Payment Attempt برای سفارش متعلق به کاربر
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [order_id, idempotency_key]
+              properties:
+                order_id: { $ref: '#/components/schemas/Identifier' }
+                idempotency_key: { $ref: '#/components/schemas/IdempotencyKey' }
+      responses:
+        '201': { $ref: '#/components/responses/PaymentRequestResource' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '419': { $ref: '#/components/responses/CsrfExpired' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /payments/callback:
+    post:
+      tags: [Payments]
+      operationId: paymentCallback
+      summary: Callback امضاشده و Idempotent درگاه؛ Query مرورگر مدرک پرداخت نیست
+      responses:
+        '200': { description: Callback accepted idempotently }
+        '400': { description: Invalid provider callback }
+
+  /payments/{paymentId}/verify:
+    post:
+      tags: [Payments]
+      operationId: verifyPayment
+      security: [{ sanctumCookie: [] }]
+      summary: Verify متعلق به کاربر با حقیقت کامل Payment و Order
+      parameters:
+        - { name: paymentId, in: path, required: true, schema: { $ref: '#/components/schemas/Identifier' } }
+      responses:
+        '200': { $ref: '#/components/responses/PaymentVerificationResource' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '419': { $ref: '#/components/responses/CsrfExpired' }
+
+components:
+  securitySchemes:
+    sanctumCookie:
+      type: apiKey
+      in: cookie
+      name: laravel_session
+
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 10000, default: 1 }
+    PerPage:
+      name: per_page
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 24 }
+    Slug:
+      name: slug
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/Slug' }
+
+  responses:
+    AuthUser:
+      description: Current authenticated user
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/AuthUserResource' }
+    AddressResource:
+      description: Address resource
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/AddressResource' }
+    ProductResource:
+      description: Published product detail
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [data]
+            properties:
+              data: { $ref: '#/components/schemas/ProductDetail' }
+    ProductCollection:
+      description: Published product collection
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProductCollection'
+    RoasteryResource:
+      description: Roastery detail
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [data]
+            properties:
+              data: { $ref: '#/components/schemas/RoasteryDetail' }
+    RoasteryCollection:
+      description: Roastery collection
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/RoasteryCollection' }
+    QuoteResource:
+      description: Authoritative, expiring, single-roastery quote
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [data]
+            properties:
+              data: { $ref: '#/components/schemas/CartQuote' }
+    OrderResource:
+      description: Customer-owned immutable order snapshot
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [data]
+            properties:
+              data: { $ref: '#/components/schemas/OrderDetail' }
+    OrderCollection:
+      description: Customer-owned orders
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/OrderCollection' }
+    PaymentRequestResource:
+      description: Payment attempt created
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [data]
+            properties:
+              data: { $ref: '#/components/schemas/PaymentRequest' }
+    PaymentVerificationResource:
+      description: Complete payment and order verification truth
+      content:
+        application/json:
+          schema:
+            type: object
+            additionalProperties: false
+            required: [data]
+            properties:
+              data: { $ref: '#/components/schemas/PaymentVerification' }
+    Unauthenticated:
+      description: Authentication required or session expired
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    NotFound:
+      description: Resource not found within caller ownership scope
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    CsrfExpired:
+      description: CSRF token expired; client may bootstrap once and retry once
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    ValidationError:
+      description: Invalid input
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    RateLimited:
+      description: Too many requests; Retry-After header is authoritative
+      headers:
+        Retry-After:
+          schema: { type: string }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    Conflict:
+      description: Price, stock, quote, ownership, state or idempotency conflict
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+
+  schemas:
+    Identifier:
+      type: string
+      minLength: 1
+      maxLength: 200
+      pattern: '^[A-Za-z0-9._:-]+$'
+    Slug:
+      type: string
+      minLength: 1
+      maxLength: 180
+      pattern: '^[A-Za-z0-9\u0600-\u06ff](?:[A-Za-z0-9\u0600-\u06ff_-]{0,178}[A-Za-z0-9\u0600-\u06ff])?$'
+    IranMobile:
+      type: string
+      pattern: '^09\d{9}$'
+      example: '09123456789'
+    IdempotencyKey:
+      type: string
+      minLength: 24
+      maxLength: 160
+      pattern: '^[A-Za-z0-9:_-]+$'
+    Money:
+      type: integer
+      minimum: 0
+      maximum: 9007199254740991
+    Currency:
+      type: string
+      const: IRR
+    RoastLevel: { type: string, enum: [light, medium, dark] }
+    ProcessingMethod: { type: string, enum: [washed, natural, honey, other] }
+    WeightGrams: { type: integer, enum: [50, 100, 250, 500, 1000] }
+    ProductStatus: { type: string, enum: [draft, review, published, archived] }
+    PaymentStatus: { type: string, enum: [pending, paid, failed, cancelled, refunded] }
+    OrderStatus:
+      type: string
+      enum: [draft, awaiting_payment, paid, processing, partially_shipped, shipped, partially_delivered, delivered, partially_cancelled, cancelled, refunded]
+    SubOrderStatus:
+      type: string
+      enum: [pending_acceptance, accepted, rejected, preparing, ready_to_ship, shipped, delivered, cancelled, refund_pending, refunded]
+
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message, request_id]
+          properties:
+            code: { type: string, minLength: 1, maxLength: 160 }
+            message: { type: string, minLength: 1, maxLength: 1000 }
+            fields:
+              type: object
+              additionalProperties:
+                oneOf:
+                  - { type: string }
+                  - { type: array, items: { type: string } }
+            request_id: { $ref: '#/components/schemas/Identifier' }
+
+    OtpRequestResource:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [request_id, expires_in, retry_after]
+          properties:
+            request_id: { $ref: '#/components/schemas/Identifier' }
+            expires_in: { type: integer, minimum: 30, maximum: 900 }
+            retry_after: { type: integer, minimum: 0, maximum: 900 }
+
+    AuthUser:
+      type: object
+      additionalProperties: false
+      required: [id, mobile, roles]
+      properties:
+        id: { $ref: '#/components/schemas/Identifier' }
+        mobile: { $ref: '#/components/schemas/IranMobile' }
+        name: { type: [string, 'null'], maxLength: 120 }
+        email: { type: [string, 'null'], format: email, maxLength: 254 }
+        roles:
+          type: array
+          maxItems: 20
+          items: { type: string, minLength: 1, maxLength: 80 }
+    AuthUserResource:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/AuthUser' }
+
+    AddressInput:
+      type: object
+      additionalProperties: false
+      required: [recipient_name, recipient_mobile, province, city, address_line, is_default]
+      properties:
+        title: { type: [string, 'null'], maxLength: 80 }
+        recipient_name: { type: string, minLength: 1, maxLength: 120 }
+        recipient_mobile: { $ref: '#/components/schemas/IranMobile' }
+        province: { type: string, minLength: 1, maxLength: 120 }
+        city: { type: string, minLength: 1, maxLength: 120 }
+        address_line: { type: string, minLength: 1, maxLength: 1000 }
+        postal_code: { type: [string, 'null'], pattern: '^\d{10}$' }
+        is_default: { type: boolean }
+    Address:
+      allOf:
+        - { $ref: '#/components/schemas/AddressInput' }
+        - type: object
+          additionalProperties: false
+          required: [id]
+          properties:
+            id: { $ref: '#/components/schemas/Identifier' }
+    AddressResource:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data: { $ref: '#/components/schemas/Address' }
+
+    MediaSource:
+      type: object
+      additionalProperties: false
+      required: [url, width, format]
+      properties:
+        url: { type: string, format: uri, maxLength: 2000 }
+        width: { type: integer, minimum: 1, maximum: 20000 }
+        format: { type: string, enum: [avif, webp, jpeg, png] }
+    MediaAsset:
+      type: object
+      additionalProperties: false
+      required: [id, alt, width, height, sources]
+      properties:
+        id: { $ref: '#/components/schemas/Identifier' }
+        alt: { type: string, maxLength: 300 }
+        width: { type: integer, minimum: 1, maximum: 20000 }
+        height: { type: integer, minimum: 1, maximum: 20000 }
+        blur_data_url: { type: [string, 'null'], maxLength: 250000 }
+        sources:
+          type: array
+          minItems: 1
+          maxItems: 12
+          items: { $ref: '#/components/schemas/MediaSource' }
+
+    PreparationTime:
+      type: object
+      additionalProperties: false
+      required: [min_hours, max_hours]
+      properties:
+        min_hours: { type: integer, minimum: 0, maximum: 720 }
+        max_hours: { type: integer, minimum: 0, maximum: 720 }
+    Rating:
+      type: object
+      additionalProperties: false
+      required: [value, count]
+      properties:
+        value: { type: number, minimum: 0, maximum: 5 }
+        count: { type: integer, minimum: 0 }
+    RoasterySummary:
+      type: object
+      additionalProperties: false
+      required: [id, name, slug, is_verified]
+      properties:
+        id: { $ref: '#/components/schemas/Identifier' }
+        name: { type: string, minLength: 1, maxLength: 160 }
+        slug: { $ref: '#/components/schemas/Slug' }
+        city: { type: [string, 'null'], maxLength: 120 }
+        is_verified: { type: boolean }
+        logo: { oneOf: [{ $ref: '#/components/schemas/MediaAsset' }, { type: 'null' }] }
+        cover: { oneOf: [{ $ref: '#/components/schemas/MediaAsset' }, { type: 'null' }] }
+        preparation_time: { oneOf: [{ $ref: '#/components/schemas/PreparationTime' }, { type: 'null' }] }
+        rating: { oneOf: [{ $ref: '#/components/schemas/Rating' }, { type: 'null' }] }
+    RoasteryDetail:
+      allOf:
+        - { $ref: '#/components/schemas/RoasterySummary' }
+        - type: object
+          required: [description]
+          properties:
+            description: { type: string, maxLength: 20000 }
+            shipping_policy: { type: [string, 'null'], maxLength: 10000 }
+
+    ProductVariant:
+      description: Variant وزن دانه کامل؛ فیلد آسیاب ممنوع است.
+      type: object
+      additionalProperties: false
+      required: [id, sku, weight_grams, price, currency, is_available]
+      properties:
+        id: { $ref: '#/components/schemas/Identifier' }
+        sku: { type: string, minLength: 1, maxLength: 120 }
+        weight_grams: { $ref: '#/components/schemas/WeightGrams' }
+        price: { $ref: '#/components/schemas/Money' }
+        compare_at_price: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+        currency: { $ref: '#/components/schemas/Currency' }
+        is_available: { type: boolean }
+        available_quantity: { type: [integer, 'null'], minimum: 0, maximum: 1000000 }
+    RoastBatch:
+      type: object
+      additionalProperties: false
+      required: [id, batch_code, roasted_at]
+      properties:
+        id: { $ref: '#/components/schemas/Identifier' }
+        batch_code: { type: string, minLength: 1, maxLength: 120 }
+        roasted_at: { type: string, format: date-time }
+        available_from: { type: [string, 'null'], format: date-time }
+    Origin:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id: { $ref: '#/components/schemas/Identifier' }
+        name: { type: string, minLength: 1, maxLength: 160 }
+        country_code: { type: [string, 'null'], minLength: 2, maxLength: 3 }
+    ProductSummary:
+      type: object
+      additionalProperties: false
+      required: [id, name, slug, origin, processing_method, roast_level, arabica_percentage, tasting_notes, roastery, variants, status]
+      properties:
+        id: { $ref: '#/components/schemas/Identifier' }
+        name: { type: string, minLength: 1, maxLength: 240 }
+        slug: { $ref: '#/components/schemas/Slug' }
+        short_description: { type: [string, 'null'], maxLength: 1000 }
+        origin: { $ref: '#/components/schemas/Origin' }
+        processing_method: { $ref: '#/components/schemas/ProcessingMethod' }
+        roast_level: { $ref: '#/components/schemas/RoastLevel' }
+        arabica_percentage: { type: integer, minimum: 0, maximum: 100 }
+        tasting_notes:
+          type: array
+          maxItems: 30
+          items: { type: string, minLength: 1, maxLength: 100 }
+        primary_image: { oneOf: [{ $ref: '#/components/schemas/MediaAsset' }, { type: 'null' }] }
+        roastery: { $ref: '#/components/schemas/RoasterySummary' }
+        variants:
+          type: array
+          minItems: 1
+          maxItems: 30
+          items: { $ref: '#/components/schemas/ProductVariant' }
+        latest_roast_batch: { oneOf: [{ $ref: '#/components/schemas/RoastBatch' }, { type: 'null' }] }
+        status: { $ref: '#/components/schemas/ProductStatus' }
+    ProductDetail:
+      allOf:
+        - { $ref: '#/components/schemas/ProductSummary' }
+        - type: object
+          required: [description, gallery, brewing_suggestions, seo]
+          properties:
+            description: { type: string, maxLength: 50000 }
+            gallery:
+              type: array
+              maxItems: 30
+              items: { $ref: '#/components/schemas/MediaAsset' }
+            brewing_suggestions:
+              type: array
+              maxItems: 30
+              items: { type: string, minLength: 1, maxLength: 500 }
+            seo:
+              type: object
+              additionalProperties: false
+              required: [title, description]
+              properties:
+                title: { type: [string, 'null'], maxLength: 180 }
+                description: { type: [string, 'null'], maxLength: 500 }
+
+    SearchResult:
+      type: object
+      additionalProperties: false
+      required: [products, roasteries]
+      properties:
+        products:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/ProductSummary' }
+        roasteries:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/RoasterySummary' }
+        suggestions:
+          type: array
+          maxItems: 20
+          items: { type: string, minLength: 1, maxLength: 200 }
+
+    CartItemInput:
+      type: object
+      additionalProperties: false
+      required: [variant_id, quantity]
+      properties:
+        variant_id: { $ref: '#/components/schemas/Identifier' }
+        quantity: { type: integer, minimum: 1, maximum: 20 }
+    CartItems:
+      type: array
+      minItems: 1
+      maxItems: 100
+      uniqueItems: true
+      items: { $ref: '#/components/schemas/CartItemInput' }
+    CartInput:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items: { $ref: '#/components/schemas/CartItems' }
+    CartLine:
+      type: object
+      additionalProperties: false
+      required: [id, product, variant, quantity, line_total]
+      properties:
+        id: { $ref: '#/components/schemas/Identifier' }
+        product: { $ref: '#/components/schemas/ProductSummary' }
+        variant: { $ref: '#/components/schemas/ProductVariant' }
+        quantity: { type: integer, minimum: 1, maximum: 20 }
+        line_total: { $ref: '#/components/schemas/Money' }
+    QuoteGroup:
+      type: object
+      additionalProperties: false
+      required: [roastery, items, subtotal]
+      properties:
+        roastery: { $ref: '#/components/schemas/RoasterySummary' }
+        items:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: { $ref: '#/components/schemas/CartLine' }
+        subtotal: { $ref: '#/components/schemas/Money' }
+        shipping_cost: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+        shipping_total: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+    QuoteWarning:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code: { type: string, minLength: 1, maxLength: 160 }
+        message: { type: string, minLength: 1, maxLength: 1000 }
+        cart_item_id: { $ref: '#/components/schemas/Identifier' }
+    CartQuote:
+      description: دقیقاً یک گروه روستری؛ grand_total = subtotal + shipping_total - discount_total
+      type: object
+      additionalProperties: false
+      required: [id, expires_at, groups, subtotal, shipping_total, discount_total, grand_total, currency, warnings]
+      properties:
+        id: { $ref: '#/components/schemas/Identifier' }
+        expires_at: { type: string, format: date-time }
+        roastery_id: { type: [string, 'null'], maxLength: 200 }
+        groups:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items: { $ref: '#/components/schemas/QuoteGroup' }
+        subtotal: { $ref: '#/components/schemas/Money' }
+        shipping_total: { $ref: '#/components/schemas/Money' }
+        discount_total: { $ref: '#/components/schemas/Money' }
+        grand_total: { $ref: '#/components/schemas/Money' }
+        currency: { $ref: '#/components/schemas/Currency' }
+        warnings:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/QuoteWarning' }
+
+    OrderProductSnapshot:
+      type: object
+      additionalProperties: false
+      required: [id, name, slug]
+      properties:
+        id: { $ref: '#/components/schemas/Identifier' }
+        name: { type: string, minLength: 1, maxLength: 240 }
+        slug: { $ref: '#/components/schemas/Slug' }
+        primary_image: { oneOf: [{ $ref: '#/components/schemas/MediaAsset' }, { type: 'null' }] }
+    OrderVariantSnapshot:
+      description: Snapshot دانه کامل؛ هیچ فیلد آسیاب مجاز نیست.
+      type: object
+      additionalProperties: false
+      required: [id, sku, weight_grams, price, currency]
+      properties:
+        id: { $ref: '#/components/schemas/Identifier' }
+        sku: { type: string, minLength: 1, maxLength: 120 }
+        weight_grams: { type: integer, minimum: 1, maximum: 100000 }
+        price: { $ref: '#/components/schemas/Money' }
+        currency: { $ref: '#/components/schemas/Currency' }
+    OrderLine:
+      type: object
+      additionalProperties: false
+      required: [id, product, variant, quantity, line_total]
+      properties:
+        id: { $ref: '#/components/schemas/Identifier' }
+        product: { $ref: '#/components/schemas/OrderProductSnapshot' }
+        variant: { $ref: '#/components/schemas/OrderVariantSnapshot' }
+        quantity: { type: integer, minimum: 1, maximum: 20 }
+        line_total: { $ref: '#/components/schemas/Money' }
+    Shipment:
+      type: object
+      additionalProperties: false
+      required: [id, status]
+      properties:
+        id: { $ref: '#/components/schemas/Identifier' }
+        carrier: { type: [string, 'null'], maxLength: 120 }
+        tracking_code: { type: [string, 'null'], maxLength: 200 }
+        status: { type: string, minLength: 1, maxLength: 100 }
+        shipped_at: { type: [string, 'null'], format: date-time }
+        delivered_at: { type: [string, 'null'], format: date-time }
+    SubOrder:
+      type: object
+      additionalProperties: false
+      required: [id, status, roastery, items, subtotal, shipping_total]
+      properties:
+        id: { $ref: '#/components/schemas/Identifier' }
+        status: { $ref: '#/components/schemas/SubOrderStatus' }
+        roastery:
+          type: object
+          additionalProperties: false
+          required: [id, name, slug]
+          properties:
+            id: { $ref: '#/components/schemas/Identifier' }
+            name: { type: string, minLength: 1, maxLength: 160 }
+            slug: { $ref: '#/components/schemas/Slug' }
+        items:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: { $ref: '#/components/schemas/OrderLine' }
+        subtotal: { $ref: '#/components/schemas/Money' }
+        shipping_total: { $ref: '#/components/schemas/Money' }
+        shipment: { oneOf: [{ $ref: '#/components/schemas/Shipment' }, { type: 'null' }] }
+    OrderSummary:
+      type: object
+      additionalProperties: false
+      required: [id, order_number, status, grand_total, currency, sub_orders]
+      properties:
+        id: { $ref: '#/components/schemas/Identifier' }
+        order_number: { type: string, minLength: 1, maxLength: 120 }
+        status: { $ref: '#/components/schemas/OrderStatus' }
+        placed_at: { type: [string, 'null'], format: date-time }
+        grand_total: { $ref: '#/components/schemas/Money' }
+        currency: { $ref: '#/components/schemas/Currency' }
+        sub_orders:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items: { $ref: '#/components/schemas/SubOrder' }
+    OrderDetail:
+      allOf:
+        - { $ref: '#/components/schemas/OrderSummary' }
+        - type: object
+          required: [address, subtotal, shipping_total, discount_total]
+          properties:
+            address: { oneOf: [{ $ref: '#/components/schemas/Address' }, { type: 'null' }] }
+            subtotal: { $ref: '#/components/schemas/Money' }
+            shipping_total: { $ref: '#/components/schemas/Money' }
+            discount_total: { $ref: '#/components/schemas/Money' }
+
+    PaymentRequest:
+      type: object
+      additionalProperties: false
+      required: [payment_id, redirect_url]
+      properties:
+        payment_id: { $ref: '#/components/schemas/Identifier' }
+        redirect_url: { type: string, format: uri, maxLength: 2000 }
+    PaymentVerification:
+      description: پاسخ paid فقط وقتی معتبر است که Payment، Order، مبلغ، ارز و verified_at سازگار باشند.
+      type: object
+      additionalProperties: false
+      required: [payment_id, status, order_id, order_status, amount, currency, verified_at]
+      properties:
+        payment_id: { $ref: '#/components/schemas/Identifier' }
+        status: { $ref: '#/components/schemas/PaymentStatus' }
+        order_id: { $ref: '#/components/schemas/Identifier' }
+        order_status: { $ref: '#/components/schemas/OrderStatus' }
+        amount: { type: integer, minimum: 1, maximum: 9007199254740991 }
+        currency: { $ref: '#/components/schemas/Currency' }
+        verified_at: { type: [string, 'null'], format: date-time }
+
+    PaginationMeta:
+      type: object
+      additionalProperties: false
+      properties:
+        current_page: { type: integer, minimum: 1 }
+        last_page: { type: integer, minimum: 1 }
+        per_page: { type: integer, minimum: 1, maximum: 100 }
+        total: { type: integer, minimum: 0 }
+    PaginationLinks:
+      type: object
+      additionalProperties: false
+      properties:
+        first: { type: [string, 'null'] }
+        last: { type: [string, 'null'] }
+        prev: { type: [string, 'null'] }
+        next: { type: [string, 'null'] }
+    ProductCollection:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: array
+          maxItems: 500
+          items: { $ref: '#/components/schemas/ProductSummary' }
+        meta: { $ref: '#/components/schemas/PaginationMeta' }
+        links: { $ref: '#/components/schemas/PaginationLinks' }
+    RoasteryCollection:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: array
+          maxItems: 500
+          items: { $ref: '#/components/schemas/RoasterySummary' }
+        meta: { $ref: '#/components/schemas/PaginationMeta' }
+        links: { $ref: '#/components/schemas/PaginationLinks' }
+    OrderCollection:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: array
+          maxItems: 500
+          items:
+            oneOf:
+              - { $ref: '#/components/schemas/OrderSummary' }
+              - { $ref: '#/components/schemas/OrderDetail' }
+        meta: { $ref: '#/components/schemas/PaginationMeta' }
+        links: { $ref: '#/components/schemas/PaginationLinks' }
