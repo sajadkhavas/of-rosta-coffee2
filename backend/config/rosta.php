@@ -11,4 +11,17 @@ return [
         static fn (string $host): string => strtolower(trim($host)),
         explode(',', (string) env('ROSTA_ALLOWED_PAYMENT_REDIRECT_HOSTS', '')),
     ))),
+    'otp' => [
+        'length' => 6,
+        'ttl_seconds' => max(30, min(900, (int) env('ROSTA_OTP_TTL_SECONDS', 120))),
+        'resend_after_seconds' => max(15, min(900, (int) env('ROSTA_OTP_RESEND_AFTER_SECONDS', 60))),
+        'max_attempts' => max(3, min(10, (int) env('ROSTA_OTP_MAX_ATTEMPTS', 5))),
+    ],
+    'auth_sessions' => [
+        'ttl_minutes' => max(30, min(43_200, (int) env('ROSTA_AUTH_SESSION_TTL_MINUTES', 120))),
+        'max_active_per_user' => max(1, min(20, (int) env('ROSTA_MAX_ACTIVE_SESSIONS', 5))),
+    ],
+    'addresses' => [
+        'max_per_user' => max(1, min(100, (int) env('ROSTA_MAX_ADDRESSES_PER_USER', 20))),
+    ],
 ];
