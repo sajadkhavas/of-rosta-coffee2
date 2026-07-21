@@ -41,8 +41,8 @@ final class CatalogSellerScopeTest extends TestCase
             '/api/v1/seller/roasteries/'.$foreign->id.'/products/'.$foreignProduct->id,
             ['name' => 'دستکاری'],
         )
-            ->assertForbidden()
-            ->assertJsonPath('error.code', 'request.forbidden');
+            ->assertNotFound()
+            ->assertJsonPath('error.code', 'request.not_found');
 
         $this->postJson(
             '/api/v1/seller/roasteries/'.$owned->id.'/products',
