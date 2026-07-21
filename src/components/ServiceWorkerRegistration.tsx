@@ -20,7 +20,7 @@ export function ServiceWorkerRegistration() {
     }
 
     let cancelled = false;
-    let registration: ServiceWorkerRegistration | undefined;
+    let registration: globalThis.ServiceWorkerRegistration | undefined;
 
     const revealWaitingWorker = () => {
       if (!cancelled && registration?.waiting && navigator.serviceWorker.controller) {
