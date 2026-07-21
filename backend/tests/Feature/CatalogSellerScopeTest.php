@@ -95,6 +95,15 @@ final class CatalogSellerScopeTest extends TestCase
         )
             ->assertOk()
             ->assertJsonPath('data.weight_grams', 250);
+
+        $this->postJson(
+            '/api/v1/seller/roasteries/'.$owned->id.'/products/'.$created['id'].'/variants',
+            [
+                'sku' => 'DUPLICATE-WEIGHT',
+                'weight_grams' => 250,
+                'price' => 1_100_000,
+            ],
+        )->assertUnprocessable();
     }
 
     private function roastery(string $slug): Roastery
