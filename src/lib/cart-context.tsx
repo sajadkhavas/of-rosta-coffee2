@@ -9,22 +9,20 @@ import {
 } from "react";
 import type { ProductSummary, ProductVariant } from "@/lib/api/contracts";
 import type { CartApiItem } from "@/lib/api/checkout";
-import { bestMediaUrl } from "@/lib/catalog-format";
+import {
+  CART_STORAGE_KEY,
+  MAX_CART_ITEMS,
+  MAX_CART_QUANTITY,
+  createCartSnapshot,
+  normalizeCartItems,
+  parseStoredCart,
+  readCartStorage,
+  removeLegacyCartStorage,
+  writeCartStorage,
+  type CartItem,
+} from "@/lib/cart-storage";
 
-export interface CartItem {
-  variantId: string;
-  productId: string;
-  productSlug: string;
-  productName: string;
-  productImageUrl?: string | null;
-  roasteryId: string;
-  roasteryName: string;
-  roasterySlug: string;
-  weightGrams: ProductVariant["weightGrams"];
-  unitPriceSnapshot: number;
-  quantity: number;
-  addedAt: number;
-}
+export type { CartItem } from "@/lib/cart-storage";
 
 export interface CartAddInput {
   product: ProductSummary;
@@ -33,7 +31,8 @@ export interface CartAddInput {
 
 export type CartAddResult =
   | { status: "added" }
-  | { status: "requires_reset"; currentRoasteryName: string };
+  | { status: "requires_reset"; currentRoasteryName: string }
+  | { status: "limit_reached" };
 
 interface CartContextValue {
   items: CartItem[];
@@ -50,73 +49,18 @@ interface CartContextValue {
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
-const STORAGE_KEY = "rosta_cart_v2";
-const MAX_QUANTITY = 20;
 
 function clampQuantity(value: number): number {
   if (!Number.isFinite(value)) return 1;
-  return Math.max(1, Math.min(MAX_QUANTITY, Math.trunc(value)));
+  return Math.max(1, Math.min(MAX_CART_QUANTITY, Math.trunc(value)));
 }
 
-function snapshot(input: CartAddInput, quantity = 1): CartItem {
-  return {
-    variantId: input.variant.id,
-    productId: input.product.id,
-    productSlug: input.product.slug,
-    productName: input.product.name,
-    productImageUrl: bestMediaUrl(input.product.primaryImage),
-    roasteryId: input.product.roastery.id,
-    roasteryName: input.product.roastery.name,
-    roasterySlug: input.product.roastery.slug,
-    weightGrams: input.variant.weightGrams,
-    unitPriceSnapshot: input.variant.price,
-    quantity: clampQuantity(quantity),
-    addedAt: Date.now(),
-  };
-}
-
-function sanitize(raw: unknown): CartItem[] {
-  if (!Array.isArray(raw)) return [];
-  const out: CartItem[] = [];
-  for (const entry of raw) {
-    if (!entry || typeof entry !== "object") continue;
-    const value = entry as Partial<CartItem>;
-    if (
-      typeof value.variantId !== "string" ||
-      typeof value.productId !== "string" ||
-      typeof value.productSlug !== "string" ||
-      typeof value.productName !== "string" ||
-      typeof value.roasteryId !== "string" ||
-      typeof value.roasteryName !== "string" ||
-      typeof value.roasterySlug !== "string" ||
-      typeof value.weightGrams !== "number" ||
-      typeof value.unitPriceSnapshot !== "number"
-    ) {
-      continue;
-    }
-    if (out.length > 0 && out[0].roasteryId !== value.roasteryId) continue;
-    const quantity = clampQuantity(value.quantity ?? 1);
-    const existing = out.find((item) => item.variantId === value.variantId);
-    if (existing) {
-      existing.quantity = clampQuantity(existing.quantity + quantity);
-      continue;
-    }
-    out.push({
-      variantId: value.variantId,
-      productId: value.productId,
-      productSlug: value.productSlug,
-      productName: value.productName,
-      productImageUrl: value.productImageUrl ?? null,
-      roasteryId: value.roasteryId,
-      roasteryName: value.roasteryName,
-      roasterySlug: value.roasterySlug,
-      weightGrams: value.weightGrams as CartItem["weightGrams"],
-      unitPriceSnapshot: value.unitPriceSnapshot,
-      quantity,
-      addedAt: typeof value.addedAt === "number" ? value.addedAt : Date.now(),
-    });
+function safelyNormalize(items: CartItem[]): CartItem[] {
+  try {
+    return normalizeCartItems(items);
+  } catch {
+    return [];
   }
-  return out;
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
@@ -125,11 +69,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) setItems(sanitize(JSON.parse(raw)));
-      window.localStorage.removeItem("rosta_cart");
+      const loaded = readCartStorage(window.localStorage);
+      setItems(loaded);
+      removeLegacyCartStorage(window.localStorage);
     } catch {
-      // A disabled storage layer must not break shopping.
+      // A disabled or corrupted storage layer must not break shopping.
     } finally {
       setHydrated(true);
     }
@@ -138,11 +82,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!hydrated) return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+      writeCartStorage(window.localStorage, items);
     } catch {
       // Cart remains usable for the current tab when persistence is unavailable.
     }
   }, [hydrated, items]);
+
+  useEffect(() => {
+    const synchronizeAcrossTabs = (event: StorageEvent) => {
+      if (event.storageArea !== window.localStorage || event.key !== CART_STORAGE_KEY) return;
+      setItems(parseStoredCart(event.newValue));
+    };
+    window.addEventListener("storage", synchronizeAcrossTabs);
+    return () => window.removeEventListener("storage", synchronizeAcrossTabs);
+  }, []);
 
   const addItem = useCallback(
     (input: CartAddInput, quantity = 1): CartAddResult => {
@@ -153,16 +106,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
           currentRoasteryName: currentRoastery.roasteryName,
         };
       }
+
+      const existing = items.find((item) => item.variantId === input.variant.id);
+      if (!existing && items.length >= MAX_CART_ITEMS) return { status: "limit_reached" };
+
       setItems((current) => {
         const index = current.findIndex((item) => item.variantId === input.variant.id);
-        if (index === -1) return [...current, snapshot(input, quantity)];
+        if (index === -1) {
+          return safelyNormalize([
+            ...current,
+            createCartSnapshot(input.product, input.variant, quantity),
+          ]);
+        }
         const next = current.slice();
         next[index] = {
           ...next[index],
+          productName: input.product.name,
+          roasteryName: input.product.roastery.name,
           unitPriceSnapshot: input.variant.price,
           quantity: clampQuantity(next[index].quantity + quantity),
         };
-        return next;
+        return safelyNormalize(next);
       });
       return { status: "added" };
     },
@@ -170,7 +134,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   );
 
   const replaceWithItem = useCallback((input: CartAddInput, quantity = 1) => {
-    setItems([snapshot(input, quantity)]);
+    setItems([createCartSnapshot(input.product, input.variant, quantity)]);
   }, []);
 
   const removeItem = useCallback((variantId: string) => {
@@ -183,10 +147,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return;
     }
     setItems((current) =>
-      current.map((item) =>
-        item.variantId === variantId
-          ? { ...item, quantity: clampQuantity(quantity) }
-          : item,
+      safelyNormalize(
+        current.map((item) =>
+          item.variantId === variantId
+            ? { ...item, quantity: clampQuantity(quantity) }
+            : item,
+        ),
       ),
     );
   }, []);
