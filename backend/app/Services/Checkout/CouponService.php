@@ -6,6 +6,7 @@ use App\Enums\CouponType;
 use App\Exceptions\ApiDomainException;
 use App\Models\Coupon;
 use App\Models\Roastery;
+use Illuminate\Database\Eloquent\Builder;
 
 final class CouponService
 {
@@ -25,7 +26,7 @@ final class CouponService
         $coupon = Coupon::query()
             ->where('code', $normalized)
             ->where('is_active', true)
-            ->where(static function ($query) use ($roastery): void {
+            ->where(static function (Builder $query) use ($roastery): void {
                 $query->whereNull('roastery_id')
                     ->orWhere('roastery_id', $roastery->id);
             })
@@ -61,7 +62,10 @@ final class CouponService
 
         $discount = match ($coupon->type) {
             CouponType::Fixed => min($subtotal, $coupon->value),
-            CouponType::Percentage => intdiv($subtotal * min(10_000, $coupon->value), 10_000),
+            CouponType::Percentage => intdiv(
+                $subtotal * min(10_000, $coupon->value),
+                10_000,
+            ),
         };
 
         if ($coupon->maximum_discount !== null) {
