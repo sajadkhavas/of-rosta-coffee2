@@ -10,7 +10,7 @@ import type {
 } from "./contracts";
 import { apiFetch } from "./client";
 import {
-  createdOrderWireSchema,
+  orderDetailWireSchema,
   parseContract,
   parseOptionalMedia,
   paymentRequestWireSchema,
@@ -22,6 +22,7 @@ import {
   type RoasterySummaryWire,
 } from "./schemas";
 import { verifiedPaymentWireSchema } from "./payment-contract";
+import { mapOrderDetail } from "./orders";
 import { readPaymentExpectation } from "@/lib/transaction-intent";
 import {
   isConsistentVerifiedPaid,
@@ -210,32 +211,8 @@ export async function createOrder(input: {
     method: "POST",
     body: { quote_id: quoteId, idempotency_key: idempotencyKey, notes },
   });
-  const response = parseContract(resourceSchema(createdOrderWireSchema), raw, "ایجاد سفارش");
-  return {
-    id: response.data.id,
-    orderNumber: response.data.order_number,
-    status: response.data.status,
-    placedAt: response.data.placed_at ?? null,
-    subtotal: response.data.subtotal,
-    shippingTotal: response.data.shipping_total,
-    discountTotal: response.data.discount_total,
-    grandTotal: response.data.grand_total,
-    currency: response.data.currency,
-    address: response.data.address
-      ? {
-          id: response.data.address.id,
-          title: response.data.address.title ?? null,
-          recipientName: response.data.address.recipient_name,
-          recipientMobile: response.data.address.recipient_mobile,
-          province: response.data.address.province,
-          city: response.data.address.city,
-          addressLine: response.data.address.address_line,
-          postalCode: response.data.address.postal_code ?? null,
-          isDefault: response.data.address.is_default,
-        }
-      : null,
-    subOrders: [],
-  };
+  const response = parseContract(resourceSchema(orderDetailWireSchema), raw, "ایجاد سفارش");
+  return mapOrderDetail(response.data);
 }
 
 export async function requestPayment(input: {
