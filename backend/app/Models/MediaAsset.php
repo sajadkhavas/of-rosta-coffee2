@@ -11,17 +11,33 @@ final class MediaAsset extends Model
 {
     use HasUlids;
 
-    protected $fillable = ['roastery_id','alt','width','height','blur_data_url','sources'];
+    protected $fillable = [
+        'roastery_id',
+        'alt',
+        'width',
+        'height',
+        'blur_data_url',
+        'sources',
+    ];
 
     protected function casts(): array
     {
-        return ['width' => 'integer','height' => 'integer','sources' => 'array'];
+        return [
+            'width' => 'integer',
+            'height' => 'integer',
+            'sources' => 'array',
+        ];
     }
 
-    public function roastery(): BelongsTo { return $this->belongsTo(Roastery::class); }
+    public function roastery(): BelongsTo
+    {
+        return $this->belongsTo(Roastery::class);
+    }
 
     public function products(): BelongsToMany
     {
-        return $this->belongsToMany(Product::class, 'product_media')->withPivot('position')->orderByPivot('position');
+        return $this->belongsToMany(Product::class, 'product_media')
+            ->withPivot('position')
+            ->orderByPivot('position');
     }
 }

@@ -11,13 +11,30 @@ final class RoastBatch extends Model
 {
     use HasUlids;
 
-    protected $fillable = ['product_id','batch_code','roasted_at','available_from','is_active'];
+    protected $fillable = [
+        'product_id',
+        'batch_code',
+        'roasted_at',
+        'available_from',
+        'is_active',
+    ];
 
     protected function casts(): array
     {
-        return ['roasted_at' => 'immutable_datetime','available_from' => 'immutable_datetime','is_active' => 'boolean'];
+        return [
+            'roasted_at' => 'immutable_datetime',
+            'available_from' => 'immutable_datetime',
+            'is_active' => 'boolean',
+        ];
     }
 
-    public function product(): BelongsTo { return $this->belongsTo(Product::class); }
-    public function stockLedgerEntries(): HasMany { return $this->hasMany(StockLedgerEntry::class); }
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    public function stockLedgerEntries(): HasMany
+    {
+        return $this->hasMany(StockLedgerEntry::class);
+    }
 }
