@@ -25,19 +25,33 @@ final class MediaRegistrationService
         array $data,
         Request $request,
     ): MediaAsset {
+        $allowedHosts = (array) config('rosta.catalog.allowed_media_hosts', []);
+        if ($allowedHosts === []) {
+            throw new ApiDomainException(
+                'catalog.media_storage_unavailable',
+                'فضای ذخیره‌سازی رسانه هنوز پیکربندی نشده است.',
+                503,
+            );
+        }
+
         foreach ($data['sources'] as $source) {
             $url = (string) $source['url'];
             $parts = parse_url($url);
+            $host = is_array($parts) && isset($parts['host'])
+                ? strtolower((string) $parts['host'])
+                : null;
 
             if (
                 ! is_array($parts)
                 || ! isset($parts['scheme'], $parts['host'])
                 || strtolower((string) $parts['scheme']) !== 'https'
                 || isset($parts['user'], $parts['pass'])
+                || $host === null
+                || ! in_array($host, $allowedHosts, true)
             ) {
                 throw new ApiDomainException(
                     'catalog.media_url_invalid',
-                    'نشانی رسانه باید HTTPS و بدون اطلاعات احراز هویت باشد.',
+                    'نشانی رسانه باید HTTPS و متعلق به فضای ذخیره‌سازی تأییدشده رستا باشد.',
                     422,
                 );
             }
