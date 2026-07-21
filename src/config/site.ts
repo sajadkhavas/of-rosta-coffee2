@@ -25,7 +25,7 @@ function normalizeConfiguredUrl(value: string, label: string): string {
   }
 
   const localHttp = url.protocol === "http:" && isLocalHostname(url.hostname);
-  if (url.protocol !== "https:" && !(import.meta.env.DEV && localHttp)) {
+  if (url.protocol !== "https:" && !localHttp) {
     throw new Error(`${label} در محیط تولید باید HTTPS باشد.`);
   }
 
@@ -121,7 +121,7 @@ export function assertApprovedPaymentRedirect(value: string): string {
   }
 
   const localHttp = url.protocol === "http:" && isLocalHostname(url.hostname);
-  const secureProtocol = url.protocol === "https:" || (import.meta.env.DEV && localHttp);
+  const secureProtocol = url.protocol === "https:" || localHttp;
   const approvedHost = siteConfig.paymentRedirectHosts.includes(url.host.toLowerCase());
 
   if (!secureProtocol || !approvedHost || url.username || url.password) {
