@@ -2,7 +2,7 @@ const CACHE_VERSION = "rosta-static-v5";
 const OFFLINE_URL = "/offline.html";
 const PRECACHE_URLS = [OFFLINE_URL, "/manifest.json", "/icon-192.png", "/icon-512.png"];
 const PRIVATE_PREFIXES = [
-  "/api/",
+  "/api",
   "/auth",
   "/cart",
   "/checkout",
