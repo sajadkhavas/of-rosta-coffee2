@@ -4,9 +4,9 @@ namespace App\Support;
 
 final class IranMobile
 {
-    public static function normalize(string $value): string
+    public static function normalizeDigits(string $value): string
     {
-        $englishDigits = strtr($value, [
+        return strtr($value, [
             '۰' => '0',
             '۱' => '1',
             '۲' => '2',
@@ -28,8 +28,15 @@ final class IranMobile
             '٨' => '8',
             '٩' => '9',
         ]);
+    }
 
-        $compact = preg_replace('/[\s()\-]/u', '', trim($englishDigits)) ?? '';
+    public static function normalize(string $value): string
+    {
+        $compact = preg_replace(
+            '/[\s()\-]/u',
+            '',
+            trim(self::normalizeDigits($value)),
+        ) ?? '';
 
         if (str_starts_with($compact, '+98')) {
             return '0'.substr($compact, 3);
