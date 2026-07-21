@@ -10,6 +10,8 @@
     "preview": "wrangler dev --config .output/server/wrangler.json",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
+    "test:unit": "bun test tests/unit",
+    "check": "bun run test:unit && bun run typecheck && bun run lint && bun run build && bun run bundle:check",
     "format": "prettier --write .",
     "bundle:check": "node scripts/check-bundle-size.mjs"
   },
@@ -85,7 +87,7 @@
     "eslint": "9.32.0",
     "eslint-config-prettier": "10.1.1",
     "eslint-plugin-prettier": "5.2.6",
-    "eslint-plugin-react-hooks": "5.2.0",
+    "eslint-plugin-react-hooks": "6.1.1",
     "eslint-plugin-react-refresh": "0.4.20",
     "globals": "15.15.0",
     "nitro": "3.0.260603-beta",
