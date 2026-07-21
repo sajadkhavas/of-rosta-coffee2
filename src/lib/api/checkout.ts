@@ -1,8 +1,8 @@
+import { assertApprovedPaymentRedirect } from "@/config/site";
 import type {
   ApiResource,
   CartQuote,
   CartShipmentGroup,
-  CurrencyCode,
   OrderDetail,
   PaymentRequestResult,
   PaymentStatus,
@@ -11,185 +11,90 @@ import type {
   RoasterySummary,
 } from "./contracts";
 import { apiFetch } from "./client";
+import {
+  createdOrderWireSchema,
+  parseContract,
+  parseOptionalMedia,
+  paymentRequestWireSchema,
+  paymentVerifyWireSchema,
+  quoteWireSchema,
+  resourceSchema,
+  type ProductSummaryWire,
+  type ProductVariantWire,
+  type QuoteWire,
+  type RoasterySummaryWire,
+} from "./schemas";
 
 export interface CartApiItem {
   variantId: string;
   quantity: number;
 }
 
-interface WireMedia {
-  id?: string;
-  alt?: string;
-  width?: number;
-  height?: number;
-  blur_data_url?: string | null;
-  sources?: Array<{
-    url: string;
-    width?: number;
-    format?: "avif" | "webp" | "jpeg" | "png";
-  }>;
-}
-
-interface WireVariant {
-  id: string;
-  sku?: string;
-  weight_grams: ProductVariant["weightGrams"];
-  price: number;
-  compare_at_price?: number | null;
-  currency?: CurrencyCode;
-  is_available?: boolean;
-  available_quantity?: number | null;
-}
-
-interface WireRoastery {
-  id: string;
-  name: string;
-  slug?: string;
-  city?: string | null;
-  is_verified?: boolean;
-  logo?: WireMedia | null;
-  cover?: WireMedia | null;
-}
-
-interface WireProduct {
-  id: string;
-  name: string;
-  slug: string;
-  short_description?: string | null;
-  origin?: { id?: string; name?: string; country_code?: string | null };
-  processing_method?: ProductSummary["processingMethod"];
-  roast_level?: ProductSummary["roastLevel"];
-  arabica_percentage?: number;
-  tasting_notes?: string[];
-  primary_image?: WireMedia | null;
-  roastery?: WireRoastery;
-  variants?: WireVariant[];
-  status?: ProductSummary["status"];
-}
-
-interface WireCartLine {
-  id: string;
-  product: WireProduct;
-  variant: WireVariant;
-  quantity: number;
-  line_total: number;
-}
-
-interface WireQuote {
-  id: string;
-  expires_at: string;
-  roastery_id?: string | null;
-  groups?: Array<{
-    roastery: WireRoastery;
-    items: WireCartLine[];
-    subtotal: number;
-    shipping_cost?: number | null;
-    shipping_total?: number | null;
-  }>;
-  subtotal: number;
-  shipping_total: number;
-  discount_total: number;
-  grand_total: number;
-  currency?: CurrencyCode;
-  warnings?: Array<{ code?: string; message?: string; cart_item_id?: string }>;
-}
-
-interface WireOrder {
-  id: string;
-  order_number: string;
-  status: OrderDetail["status"];
-  placed_at?: string | null;
-  subtotal?: number;
-  shipping_total?: number;
-  discount_total?: number;
-  grand_total: number;
-  currency?: CurrencyCode;
-  address?: null;
-  sub_orders?: [];
-}
-
-interface WirePaymentRequest {
-  payment_id: string;
-  redirect_url: string;
-}
-
-interface WirePaymentVerify {
-  status: PaymentStatus;
-  order_id: string;
-}
-
-function media(value?: WireMedia | null) {
-  if (!value) return null;
-  return {
-    id: value.id ?? value.sources?.[0]?.url ?? "media",
-    alt: value.alt ?? "",
-    width: value.width ?? value.sources?.[0]?.width ?? 1,
-    height: value.height ?? value.width ?? 1,
-    blurDataUrl: value.blur_data_url ?? null,
-    sources: (value.sources ?? []).map((source) => ({
-      url: source.url,
-      width: source.width ?? value.width ?? 1,
-      format: source.format ?? "jpeg",
-    })),
-  };
-}
-
-function roastery(value: WireRoastery): RoasterySummary {
+function roastery(value: RoasterySummaryWire): RoasterySummary {
   return {
     id: value.id,
     name: value.name,
-    slug: value.slug ?? value.id,
+    slug: value.slug,
     city: value.city ?? null,
-    isVerified: Boolean(value.is_verified),
-    logo: media(value.logo),
-    cover: media(value.cover),
+    isVerified: value.is_verified,
+    logo: parseOptionalMedia(value.logo),
+    cover: parseOptionalMedia(value.cover),
+    preparationTime: value.preparation_time
+      ? { minHours: value.preparation_time.min_hours, maxHours: value.preparation_time.max_hours }
+      : null,
+    rating: value.rating ? { ...value.rating } : null,
   };
 }
 
-function variant(value: WireVariant): ProductVariant {
+function variant(value: ProductVariantWire): ProductVariant {
   return {
     id: value.id,
-    sku: value.sku ?? value.id,
+    sku: value.sku,
     weightGrams: value.weight_grams,
     price: value.price,
     compareAtPrice: value.compare_at_price ?? null,
-    currency: value.currency ?? "IRR",
-    isAvailable: value.is_available ?? true,
+    currency: value.currency,
+    isAvailable: value.is_available,
     availableQuantity: value.available_quantity ?? null,
   };
 }
 
-function product(value: WireProduct): ProductSummary {
-  const mappedRoastery = value.roastery
-    ? roastery(value.roastery)
-    : { id: "unknown", name: "روستری", slug: "unknown", isVerified: false };
+function product(value: ProductSummaryWire): ProductSummary {
   return {
     id: value.id,
     name: value.name,
     slug: value.slug,
     shortDescription: value.short_description ?? null,
     origin: {
-      id: value.origin?.id ?? "unknown",
-      name: value.origin?.name ?? "نامشخص",
-      countryCode: value.origin?.country_code ?? null,
+      id: value.origin.id,
+      name: value.origin.name,
+      countryCode: value.origin.country_code ?? null,
     },
-    processingMethod: value.processing_method ?? "other",
-    roastLevel: value.roast_level ?? "medium",
-    arabicaPercentage: value.arabica_percentage ?? 0,
-    tastingNotes: value.tasting_notes ?? [],
-    primaryImage: media(value.primary_image),
-    roastery: mappedRoastery,
-    variants: (value.variants ?? []).map(variant),
-    status: value.status ?? "published",
+    processingMethod: value.processing_method,
+    roastLevel: value.roast_level,
+    arabicaPercentage: value.arabica_percentage,
+    tastingNotes: value.tasting_notes,
+    primaryImage: parseOptionalMedia(value.primary_image),
+    roastery: roastery(value.roastery),
+    variants: value.variants.map(variant),
+    latestRoastBatch: value.latest_roast_batch
+      ? {
+          id: value.latest_roast_batch.id,
+          batchCode: value.latest_roast_batch.batch_code,
+          roastedAt: value.latest_roast_batch.roasted_at,
+          availableFrom: value.latest_roast_batch.available_from ?? null,
+        }
+      : null,
+    status: value.status,
   };
 }
 
-function mapGroup(value: NonNullable<WireQuote["groups"]>[number]): CartShipmentGroup {
+function mapGroup(value: QuoteWire["groups"][number]): CartShipmentGroup {
   return {
     roastery: roastery(value.roastery),
     items: value.items.map((line) => ({
       id: line.id,
-      product: product({ ...line.product, roastery: line.product.roastery ?? value.roastery }),
+      product: product(line.product),
       variant: variant(line.variant),
       quantity: line.quantity,
       lineTotal: line.line_total,
@@ -199,49 +104,62 @@ function mapGroup(value: NonNullable<WireQuote["groups"]>[number]): CartShipment
   };
 }
 
-function mapQuote(value: WireQuote): CartQuote {
+function mapQuote(value: QuoteWire): CartQuote {
   return {
     id: value.id,
     expiresAt: value.expires_at,
-    roasteryId: value.roastery_id ?? value.groups?.[0]?.roastery.id ?? null,
-    groups: (value.groups ?? []).map(mapGroup),
+    roasteryId: value.roastery_id ?? value.groups[0].roastery.id,
+    groups: value.groups.map(mapGroup),
     subtotal: value.subtotal,
     shippingTotal: value.shipping_total,
     discountTotal: value.discount_total,
     grandTotal: value.grand_total,
-    currency: value.currency ?? "IRR",
-    warnings: (value.warnings ?? []).map((warning) => ({
-      code: warning.code ?? "cart.warning",
-      message: warning.message ?? "سبد نیاز به بررسی دارد.",
+    currency: value.currency,
+    warnings: value.warnings.map((warning) => ({
+      code: warning.code,
+      message: warning.message,
       cartItemId: warning.cart_item_id,
     })),
   };
 }
 
 function itemsPayload(items: CartApiItem[]) {
-  return items.map((item) => ({ variant_id: item.variantId, quantity: item.quantity }));
+  if (items.length < 1 || items.length > 100) throw new Error("تعداد اقلام سبد معتبر نیست.");
+
+  const uniqueVariants = new Set<string>();
+  return items.map((item) => {
+    const variantId = item.variantId.trim();
+    if (!variantId || uniqueVariants.has(variantId)) {
+      throw new Error("Variant تکراری یا نامعتبر در سبد وجود دارد.");
+    }
+    if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 20) {
+      throw new Error("تعداد هر Variant باید بین ۱ تا ۲۰ باشد.");
+    }
+    uniqueVariants.add(variantId);
+    return { variant_id: variantId, quantity: item.quantity };
+  });
 }
 
 export function createIdempotencyKey(scope: string): string {
-  const uuid = globalThis.crypto?.randomUUID?.();
-  const entropy = uuid ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  return `rosta-${scope}-${entropy}`;
-}
+  const normalizedScope = scope.trim().replace(/[^a-z0-9_-]/gi, "-").slice(0, 40);
+  if (!normalizedScope) throw new Error("محدوده Idempotency نامعتبر است.");
 
-export function assertSafePaymentRedirect(value: string): string {
-  const url = new URL(value);
-  const isLocalHttp = url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname);
-  if (url.protocol !== "https:" && !isLocalHttp) {
-    throw new Error("آدرس انتقال درگاه معتبر نیست.");
+  const cryptoApi = globalThis.crypto;
+  if (cryptoApi?.randomUUID) return `rosta-${normalizedScope}-${cryptoApi.randomUUID()}`;
+  if (cryptoApi?.getRandomValues) {
+    const bytes = cryptoApi.getRandomValues(new Uint8Array(24));
+    const entropy = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+    return `rosta-${normalizedScope}-${entropy}`;
   }
-  return url.toString();
+  throw new Error("مرورگر امکان تولید کلید امن را ندارد.");
 }
 
 export async function validateCart(items: CartApiItem[]): Promise<CartQuote> {
-  const response = await apiFetch<ApiResource<WireQuote>>("/cart/validate", {
+  const raw = await apiFetch("/cart/validate", {
     method: "POST",
     body: { items: itemsPayload(items) },
   });
+  const response = parseContract(resourceSchema(quoteWireSchema), raw, "اعتبارسنجی سبد");
   return mapQuote(response.data);
 }
 
@@ -250,15 +168,22 @@ export async function createCheckoutQuote(input: {
   addressId: string;
   couponCode?: string | null;
 }): Promise<CartQuote> {
-  const response = await apiFetch<ApiResource<WireQuote>>("/checkout/quote", {
+  const addressId = input.addressId.trim();
+  if (!addressId) throw new Error("آدرس تحویل معتبر نیست.");
+
+  const couponCode = input.couponCode?.trim().slice(0, 100) || null;
+  const raw = await apiFetch("/checkout/quote", {
     method: "POST",
     body: {
       items: itemsPayload(input.items),
-      address_id: input.addressId,
-      coupon_code: input.couponCode?.trim() || null,
+      address_id: addressId,
+      coupon_code: couponCode,
     },
   });
-  return mapQuote(response.data);
+  const response = parseContract(resourceSchema(quoteWireSchema), raw, "Quote تسویه‌حساب");
+  const quote = mapQuote(response.data);
+  if (Date.parse(quote.expiresAt) <= Date.now()) throw new Error("Quote دریافت‌شده منقضی شده است.");
+  return quote;
 }
 
 export async function createOrder(input: {
@@ -266,25 +191,41 @@ export async function createOrder(input: {
   idempotencyKey: string;
   notes?: string | null;
 }): Promise<OrderDetail> {
-  const response = await apiFetch<ApiResource<WireOrder>>("/orders", {
+  const quoteId = input.quoteId.trim();
+  const idempotencyKey = input.idempotencyKey.trim();
+  const notes = input.notes?.trim() || null;
+  if (!quoteId || !idempotencyKey) throw new Error("شناسه Quote یا Idempotency معتبر نیست.");
+  if (idempotencyKey.length > 200) throw new Error("Idempotency Key بیش از حد طولانی است.");
+  if (notes && notes.length > 1000) throw new Error("یادداشت سفارش حداکثر ۱۰۰۰ کاراکتر است.");
+
+  const raw = await apiFetch("/orders", {
     method: "POST",
-    body: {
-      quote_id: input.quoteId,
-      idempotency_key: input.idempotencyKey,
-      notes: input.notes?.trim() || null,
-    },
+    body: { quote_id: quoteId, idempotency_key: idempotencyKey, notes },
   });
+  const response = parseContract(resourceSchema(createdOrderWireSchema), raw, "ایجاد سفارش");
   return {
     id: response.data.id,
     orderNumber: response.data.order_number,
     status: response.data.status,
     placedAt: response.data.placed_at ?? null,
-    subtotal: response.data.subtotal ?? 0,
-    shippingTotal: response.data.shipping_total ?? 0,
-    discountTotal: response.data.discount_total ?? 0,
+    subtotal: response.data.subtotal,
+    shippingTotal: response.data.shipping_total,
+    discountTotal: response.data.discount_total,
     grandTotal: response.data.grand_total,
-    currency: response.data.currency ?? "IRR",
-    address: null,
+    currency: response.data.currency,
+    address: response.data.address
+      ? {
+          id: response.data.address.id,
+          title: response.data.address.title ?? null,
+          recipientName: response.data.address.recipient_name,
+          recipientMobile: response.data.address.recipient_mobile,
+          province: response.data.address.province,
+          city: response.data.address.city,
+          addressLine: response.data.address.address_line,
+          postalCode: response.data.address.postal_code ?? null,
+          isDefault: response.data.address.is_default,
+        }
+      : null,
     subOrders: [],
   };
 }
@@ -293,13 +234,18 @@ export async function requestPayment(input: {
   orderId: string;
   idempotencyKey: string;
 }): Promise<PaymentRequestResult> {
-  const response = await apiFetch<ApiResource<WirePaymentRequest>>("/payments/request", {
+  const orderId = input.orderId.trim();
+  const idempotencyKey = input.idempotencyKey.trim();
+  if (!orderId || !idempotencyKey) throw new Error("اطلاعات شروع پرداخت معتبر نیست.");
+
+  const raw = await apiFetch("/payments/request", {
     method: "POST",
-    body: { order_id: input.orderId, idempotency_key: input.idempotencyKey },
+    body: { order_id: orderId, idempotency_key: idempotencyKey },
   });
+  const response = parseContract(resourceSchema(paymentRequestWireSchema), raw, "شروع پرداخت");
   return {
     paymentId: response.data.payment_id,
-    redirectUrl: assertSafePaymentRedirect(response.data.redirect_url),
+    redirectUrl: assertApprovedPaymentRedirect(response.data.redirect_url),
   };
 }
 
@@ -307,9 +253,12 @@ export async function verifyPayment(paymentId: string): Promise<{
   status: PaymentStatus;
   orderId: string;
 }> {
-  const response = await apiFetch<ApiResource<WirePaymentVerify>>(
-    `/payments/${encodeURIComponent(paymentId)}/verify`,
-    { method: "POST" },
-  );
+  const normalizedPaymentId = paymentId.trim();
+  if (!normalizedPaymentId) throw new Error("شناسه پرداخت معتبر نیست.");
+
+  const raw = await apiFetch(`/payments/${encodeURIComponent(normalizedPaymentId)}/verify`, {
+    method: "POST",
+  });
+  const response = parseContract(resourceSchema(paymentVerifyWireSchema), raw, "تأیید پرداخت");
   return { status: response.data.status, orderId: response.data.order_id };
 }
