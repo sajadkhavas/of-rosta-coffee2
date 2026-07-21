@@ -4,16 +4,14 @@ namespace App\Jobs;
 
 use App\Contracts\OtpSender;
 use App\Models\OtpChallenge;
-use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable as FoundationQueueable;
+use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Crypt;
 use Throwable;
 
 final class SendOtpCode implements ShouldQueue
 {
-    use FoundationQueueable;
     use Queueable;
 
     public int $tries = 3;
