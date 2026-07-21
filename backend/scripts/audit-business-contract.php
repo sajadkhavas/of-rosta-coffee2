@@ -65,6 +65,11 @@ if (! str_contains($rostaConfig, "'single_roastery_orders' => true")) {
 if (! str_contains($rostaConfig, "'allowed_media_hosts'")) {
     $failures[] = 'Server-owned media host allowlist is not configured.';
 }
+foreach (['quote_ttl_minutes', 'reservation_ttl_minutes', 'idempotency_ttl_hours'] as $checkoutSetting) {
+    if (! str_contains($rostaConfig, "'{$checkoutSetting}'")) {
+        $failures[] = 'Missing checkout safety setting: '.$checkoutSetting;
+    }
+}
 
 $contractPath = dirname($root).'/docs/openapi/rosta-v1-phase6.yaml';
 if (! is_file($contractPath) || filesize($contractPath) === 0) {
@@ -253,6 +258,141 @@ foreach ([
 ] as $requiredRoute) {
     if (! str_contains($read('routes/api.php'), $requiredRoute)) {
         $failures[] = 'Missing catalog operations route: '.$requiredRoute;
+    }
+}
+
+$checkoutMigration = 'database/migrations/2026_07_21_030001_create_transactional_checkout_tables.php';
+foreach ([
+    "Schema::create('checkout_quotes'",
+    "Schema::create('checkout_quote_items'",
+    "Schema::create('orders'",
+    "Schema::create('sub_orders'",
+    "Schema::create('order_items'",
+    "Schema::create('inventory_reservations'",
+    "Schema::create('order_idempotency_keys'",
+] as $requiredTable) {
+    $requireContains(
+        $checkoutMigration,
+        $requiredTable,
+        'Missing transactional checkout table: '.$requiredTable,
+    );
+}
+$requireContains(
+    $checkoutMigration,
+    "foreignUlid('order_id')->unique()",
+    'Every order must map to exactly one sub-order in the single-roastery model.',
+);
+$requireContains(
+    $checkoutMigration,
+    "unique(['user_id', 'key'])",
+    'Order idempotency keys must be customer scoped.',
+);
+$requireContains(
+    $checkoutMigration,
+    "unique(['quote_id', 'variant_id'])",
+    'Quote variants must be unique.',
+);
+
+$requireContains(
+    'app/Services/Checkout/QuoteService.php',
+    'cart.multiple_roasteries',
+    'Cart validation must reject multiple roasteries.',
+);
+$requireContains(
+    'app/Services/Checkout/QuoteService.php',
+    'availableQuantity()',
+    'Quote creation must use authoritative available stock.',
+);
+$requireContains(
+    'app/Services/Checkout/QuoteService.php',
+    "'unit_price' => \$variant->price",
+    'Quote prices must come from the authoritative variant.',
+);
+$requireContains(
+    'app/Services/Checkout/QuoteService.php',
+    "'product_snapshot'",
+    'Quote items must persist immutable product snapshots.',
+);
+$requireContains(
+    'app/Services/Checkout/QuoteService.php',
+    "'variant_snapshot'",
+    'Quote items must persist immutable variant snapshots.',
+);
+$requireContains(
+    'app/Services/Checkout/QuoteService.php',
+    "'roast_batch_snapshot'",
+    'Quote items must persist immutable roast-batch snapshots.',
+);
+$requireContains(
+    'app/Services/Checkout/OrderService.php',
+    'User::query()->lockForUpdate()',
+    'Order creation must serialize requests per customer.',
+);
+$requireContains(
+    'app/Services/Checkout/OrderService.php',
+    "->where('user_id', \$user->id)",
+    'Order idempotency and ownership must be customer scoped.',
+);
+$requireContains(
+    'app/Services/Checkout/OrderService.php',
+    'order.idempotency_conflict',
+    'Order idempotency keys must be payload-bound.',
+);
+$requireContains(
+    'app/Services/Checkout/OrderService.php',
+    "->lockForUpdate()",
+    'Order creation must lock quote, variants and mutable counters.',
+);
+$requireContains(
+    'app/Services/Checkout/OrderService.php',
+    "'stock_reserved' => \$variant->stock_reserved + \$quoteItem->quantity",
+    'Order creation must reserve stock atomically.',
+);
+$requireContains(
+    'app/Services/Checkout/OrderService.php',
+    'InventoryReservation::query()->create',
+    'Every reserved order line must have an explicit reservation.',
+);
+$requireContains(
+    'app/Services/Checkout/OrderService.php',
+    "'consumed_at' => now()",
+    'A checkout quote must be consumed exactly once.',
+);
+$requireContains(
+    'app/Services/Checkout/OrderCancellationService.php',
+    'OrderStatus::AwaitingPayment',
+    'Direct customer cancellation must have a bounded state transition.',
+);
+$requireContains(
+    'app/Services/Checkout/OrderCancellationService.php',
+    'stock_reserved - $reservation->quantity',
+    'Cancellation and expiry must release reserved stock.',
+);
+$requireContains(
+    'app/Services/Checkout/ReservationExpiryService.php',
+    "ReservationStatus::Active->value",
+    'Reservation expiry must target active reservations only.',
+);
+$requireContains(
+    'routes/console.php',
+    'rosta.checkout.expire-reservations',
+    'Reservation expiry must be scheduled.',
+);
+$requireContains(
+    'routes/console.php',
+    'withoutOverlapping()',
+    'Checkout recovery jobs must not overlap.',
+);
+foreach ([
+    "'/cart/validate'",
+    "'/checkout/quote'",
+    "'/orders'",
+    "'/orders/{orderId}/cancel'",
+    "'/seller/roasteries/{roasteryId}'",
+    "'/admin'",
+] as $requiredRoute) {
+    if (! str_contains($read('routes/api.php'), $requiredRoute)) {
+        $failures[] = 'Missing transactional checkout route boundary: '.$requiredRoute;
     }
 }
 
