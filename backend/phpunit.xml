@@ -17,18 +17,20 @@
         </include>
     </source>
     <php>
-        <env name="APP_ENV" value="testing"/>
-        <env name="APP_KEY" value="base64:9XG3m7wgSb6P2VJ1kN4qQW0fS8ZrL5cYtA1uE6iHjKo="/>
-        <env name="APP_DEBUG" value="true"/>
-        <env name="BCRYPT_ROUNDS" value="4"/>
-        <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
-        <env name="MAIL_MAILER" value="array"/>
-        <env name="QUEUE_CONNECTION" value="sync"/>
-        <env name="SESSION_DRIVER" value="array"/>
-        <env name="LOG_CHANNEL" value="null"/>
-        <env name="ROSTA_PAYMENT_ENABLED" value="false"/>
-        <env name="ROSTA_SMS_ENABLED" value="false"/>
+        <env name="APP_ENV" value="testing" force="true"/>
+        <env name="APP_KEY" value="base64:9XG3m7wgSb6P2VJ1kN4qQW0fS8ZrL5cYtA1uE6iHjKo=" force="true"/>
+        <env name="APP_DEBUG" value="true" force="true"/>
+        <env name="BCRYPT_ROUNDS" value="4" force="true"/>
+        <env name="CACHE_STORE" value="array" force="true"/>
+        <env name="DB_CONNECTION" value="sqlite" force="true"/>
+        <env name="DB_DATABASE" value=":memory:" force="true"/>
+        <env name="MAIL_MAILER" value="array" force="true"/>
+        <env name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <env name="SESSION_DRIVER" value="array" force="true"/>
+        <env name="LOG_CHANNEL" value="null" force="true"/>
+        <env name="REDIS_HOST" value="127.0.0.1" force="true"/>
+        <env name="REDIS_PORT" value="6399" force="true"/>
+        <env name="ROSTA_PAYMENT_ENABLED" value="false" force="true"/>
+        <env name="ROSTA_SMS_ENABLED" value="false" force="true"/>
     </php>
 </phpunit>
