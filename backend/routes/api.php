@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminOriginController;
 use App\Http\Controllers\Admin\AdminProductController;
 use App\Http\Controllers\Admin\AdminRoasteryController;
 use App\Http\Controllers\Auth\LogoutController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\Profile\AddressController;
 use App\Http\Controllers\Profile\MeController;
 use App\Http\Controllers\Seller\SellerInventoryController;
 use App\Http\Controllers\Seller\SellerMediaController;
+use App\Http\Controllers\Seller\SellerOriginController;
 use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\Seller\SellerRoastBatchController;
 use App\Http\Controllers\Seller\SellerRoasteryController;
@@ -72,6 +74,10 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
             ->where('addressId', '[A-Za-z0-9._:-]+')
             ->name('api.v1.addresses.destroy');
 
+        Route::get('/seller/origins', SellerOriginController::class)
+            ->middleware('rosta.role:roastery_owner,roastery_manager,roastery_staff,administrator')
+            ->name('api.v1.seller.origins.index');
+
         Route::post('/seller/roasteries', [SellerRoasteryController::class, 'store'])
             ->name('api.v1.seller.roasteries.store');
 
@@ -83,6 +89,9 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
                     ->name('api.v1.seller.roasteries.show');
                 Route::patch('/', [SellerRoasteryController::class, 'update'])
                     ->name('api.v1.seller.roasteries.update');
+
+                Route::get('/media', [SellerMediaController::class, 'index'])
+                    ->name('api.v1.seller.media.index');
                 Route::post('/media', [SellerMediaController::class, 'store'])
                     ->name('api.v1.seller.media.store');
 
@@ -107,10 +116,16 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
                     ])
                     ->name('api.v1.seller.variants.update');
 
+                Route::get('/products/{productId}/roast-batches', [SellerRoastBatchController::class, 'index'])
+                    ->where('productId', '[A-Za-z0-9._:-]+')
+                    ->name('api.v1.seller.roast_batches.index');
                 Route::post('/products/{productId}/roast-batches', [SellerRoastBatchController::class, 'store'])
                     ->where('productId', '[A-Za-z0-9._:-]+')
                     ->name('api.v1.seller.roast_batches.store');
 
+                Route::get('/variants/{variantId}/stock-ledger', [SellerInventoryController::class, 'index'])
+                    ->where('variantId', '[A-Za-z0-9._:-]+')
+                    ->name('api.v1.seller.inventory.index');
                 Route::post('/variants/{variantId}/stock-adjustments', [SellerInventoryController::class, 'adjust'])
                     ->where('variantId', '[A-Za-z0-9._:-]+')
                     ->name('api.v1.seller.inventory.adjust');
@@ -119,6 +134,14 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::prefix('/admin')
             ->middleware('rosta.role:administrator')
             ->group(function (): void {
+                Route::get('/origins', [AdminOriginController::class, 'index'])
+                    ->name('api.v1.admin.origins.index');
+                Route::post('/origins', [AdminOriginController::class, 'store'])
+                    ->name('api.v1.admin.origins.store');
+                Route::patch('/origins/{originId}', [AdminOriginController::class, 'update'])
+                    ->where('originId', '[A-Za-z0-9._:-]+')
+                    ->name('api.v1.admin.origins.update');
+
                 Route::get('/roasteries', [AdminRoasteryController::class, 'index'])
                     ->name('api.v1.admin.roasteries.index');
                 Route::patch('/roasteries/{roasteryId}/status', [AdminRoasteryController::class, 'setStatus'])
