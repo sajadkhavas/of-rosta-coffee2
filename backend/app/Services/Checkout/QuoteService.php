@@ -21,6 +21,8 @@ use LogicException;
 
 final class QuoteService
 {
+    private const int MAX_MONEY = 9_007_199_254_740_991;
+
     public function __construct(
         private readonly CheckoutHasher $hasher,
         private readonly CouponService $coupons,
@@ -157,8 +159,8 @@ final class QuoteService
                 );
             }
 
-            $lineTotal = $variant->price * $quantity;
-            $subtotal += $lineTotal;
+            $lineTotal = $this->multiplyMoney($variant->price, $quantity);
+            $subtotal = $this->addMoney($subtotal, $lineTotal);
 
             $resolvedItems[] = [
                 'product' => $product,
@@ -186,11 +188,12 @@ final class QuoteService
             : ['total' => 0, 'snapshot' => null];
 
         $shippingTotal = (int) $shippingResult['total'];
+        $beforeDiscount = $this->addMoney($subtotal, $shippingTotal);
         $discountTotal = min(
-            $subtotal + $shippingTotal,
+            $beforeDiscount,
             (int) $couponResult['discount'],
         );
-        $grandTotal = max(0, $subtotal + $shippingTotal - $discountTotal);
+        $grandTotal = $beforeDiscount - $discountTotal;
 
         $payload = [
             'purpose' => $purpose->value,
@@ -269,7 +272,43 @@ final class QuoteService
         });
     }
 
-    /** @return array<string, mixed> */
+    private function multiplyMoney(int $amount, int $multiplier): int
+    {
+        if (
+            $amount < 0
+            || $multiplier < 0
+            || ($multiplier > 0 && $amount > intdiv(self::MAX_MONEY, $multiplier))
+        ) {
+            throw new ApiDomainException(
+                'checkout.amount_out_of_range',
+                'مبلغ محاسبه‌شده خارج از محدوده مجاز است.',
+                409,
+            );
+        }
+
+        return $amount * $multiplier;
+    }
+
+    private function addMoney(int $left, int $right): int
+    {
+        if (
+            $left < 0
+            || $right < 0
+            || $left > self::MAX_MONEY - $right
+        ) {
+            throw new ApiDomainException(
+                'checkout.amount_out_of_range',
+                'مبلغ محاسبه‌شده خارج از محدوده مجاز است.',
+                409,
+            );
+        }
+
+        return $left + $right;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     private function addressSnapshot(Address $address): array
     {
         return [
@@ -285,7 +324,9 @@ final class QuoteService
         ];
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @return array<string, mixed>
+     */
     private function productSnapshot(Product $product): array
     {
         return [
@@ -336,7 +377,9 @@ final class QuoteService
         ];
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @return array<string, mixed>
+     */
     private function variantSnapshot(ProductVariant $variant): array
     {
         return [
@@ -351,7 +394,9 @@ final class QuoteService
         ];
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * @return array<string, mixed>
+     */
     private function batchSnapshot(RoastBatch $batch): array
     {
         return [
@@ -362,7 +407,9 @@ final class QuoteService
         ];
     }
 
-    /** @return array<string, mixed>|null */
+    /**
+     * @return array<string, mixed>|null
+     */
     private function mediaSnapshot(?MediaAsset $media): ?array
     {
         if (! $media instanceof MediaAsset) {
