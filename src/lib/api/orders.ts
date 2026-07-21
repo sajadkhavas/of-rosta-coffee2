@@ -34,6 +34,7 @@ export interface OrderListResult {
   links?: ApiLinks;
 }
 
+type OrderListWire = OrderSummaryWire | OrderDetailWire;
 type WireLine = OrderSummaryWire["sub_orders"][number]["items"][number];
 type WireShipment = NonNullable<OrderSummaryWire["sub_orders"][number]["shipment"]>;
 type WireSubOrder = OrderSummaryWire["sub_orders"][number];
@@ -83,7 +84,7 @@ function mapSubOrder(value: WireSubOrder): SubOrderSummary {
   };
 }
 
-function mapOrder(value: OrderSummaryWire): OrderSummary {
+function mapOrder(value: OrderListWire): OrderSummary {
   return {
     id: value.id,
     orderNumber: value.order_number,
@@ -131,7 +132,11 @@ export async function listOrders(params: OrderListParams = {}): Promise<OrderLis
   if (params.status && params.status !== "all") search.set("status", params.status);
 
   const raw = await apiFetch(`/orders${search.size ? `?${search.toString()}` : ""}`);
-  const response = parseContract(collectionSchema(orderSummaryWireSchema), raw, "فهرست سفارش‌ها");
+  const response = parseContract(
+    collectionSchema(orderSummaryWireSchema.or(orderDetailWireSchema)),
+    raw,
+    "فهرست سفارش‌ها",
+  );
   return { items: response.data.map(mapOrder), meta: response.meta, links: response.links };
 }
 
