@@ -9,10 +9,12 @@ import { EditorialContentDialog } from "@/components/admin/EditorialContentDialo
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
+import { Alert, Button } from "@/components/system";
 import {
   contentAuthorsQueryOptions,
   type AdminContentDetail,
 } from "@/lib/api/admin-content";
+import { isApiError } from "@/lib/api/client";
 
 export const Route = createFileRoute("/admin/content-edit/$entryId")({
   head: () => ({
@@ -69,6 +71,42 @@ function EditorialEditWorkspace() {
     });
   };
 
+  if (authorsQuery.isPending) {
+    return (
+      <section
+        className="mt-8 grid min-h-64 place-items-center rounded-3xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-6 text-center"
+        aria-busy="true"
+        role="status"
+      >
+        <p className="text-sm text-[color:var(--light)]">
+          در حال دریافت نویسندگان فعال…
+        </p>
+      </section>
+    );
+  }
+
+  if (authorsQuery.isError) {
+    return (
+      <section className="mx-auto mt-8 max-w-xl rounded-3xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-6">
+        <Alert variant="danger" title="ویرایشگر قابل بازشدن نیست">
+          {isApiError(authorsQuery.error)
+            ? authorsQuery.error.message
+            : "فهرست نویسندگان دریافت نشد. اتصال API را بررسی کنید."}
+        </Alert>
+        <Button
+          type="button"
+          variant="outline"
+          className="mt-4 w-full"
+          onClick={() => {
+            void authorsQuery.refetch();
+          }}
+        >
+          تلاش مجدد
+        </Button>
+      </section>
+    );
+  }
+
   return (
     <section className="mt-8 rounded-3xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-6 text-center">
       <h1 className="text-2xl font-bold text-[color:var(--steam)]">
@@ -80,7 +118,7 @@ function EditorialEditWorkspace() {
 
       <EditorialContentDialog
         entryId={entryId}
-        authors={authorsQuery.data ?? []}
+        authors={authorsQuery.data}
         onClose={closeEditor}
         onSaved={handleSaved}
       />
