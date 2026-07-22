@@ -13,6 +13,7 @@ use App\Models\PaymentAttempt;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Services\AuditRecorder;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -80,18 +81,15 @@ final class PaymentService
                     );
                 }
 
-                return [
-                    'attempt' => $existing,
-                    'order' => $order,
-                    'dispatch' => false,
-                    'replayed' => true,
-                ];
+                return $this->replayPreparedAttempt($existing, $order);
             }
 
             $active = PaymentAttempt::query()
                 ->where('order_id', $order->id)
-                ->where('status', PaymentAttemptStatus::Pending->value)
-                ->whereNotNull('redirect_url')
+                ->whereIn('status', [
+                    PaymentAttemptStatus::Initiated->value,
+                    PaymentAttemptStatus::Pending->value,
+                ])
                 ->where(function ($query): void {
                     $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
                 })
@@ -100,12 +98,7 @@ final class PaymentService
                 ->first();
 
             if ($active instanceof PaymentAttempt) {
-                return [
-                    'attempt' => $active,
-                    'order' => $order,
-                    'dispatch' => false,
-                    'replayed' => true,
-                ];
+                return $this->replayPreparedAttempt($active, $order);
             }
 
             $this->assertPayableLocked($order);
@@ -113,7 +106,9 @@ final class PaymentService
                 ->where('order_id', $order->id)
                 ->where('status', ReservationStatus::Active->value)
                 ->min('expires_at');
-            $reservationExpiresAt = $reservationExpiry ? now()->parse($reservationExpiry) : null;
+            $reservationExpiresAt = $reservationExpiry
+                ? CarbonImmutable::parse((string) $reservationExpiry)
+                : null;
 
             if (! $reservationExpiresAt || $reservationExpiresAt->isPast()) {
                 throw new ApiDomainException(
@@ -249,7 +244,19 @@ final class PaymentService
             ->with('order')
             ->firstOrFail();
 
-        if (
+        if ($attempt->provider === 'zarinpal') {
+            if (
+                $authority === null
+                || $attempt->authority === null
+                || ! hash_equals($attempt->authority, trim($authority))
+            ) {
+                throw new ApiDomainException(
+                    'payment.callback_mismatch',
+                    'Authority بازگشت زرین‌پال با تلاش پرداخت سازگار نیست.',
+                    409,
+                );
+            }
+        } elseif (
             $authority !== null
             && $attempt->authority !== null
             && ! hash_equals($attempt->authority, trim($authority))
@@ -362,15 +369,15 @@ final class PaymentService
             }
 
             if ($order->status === OrderStatus::Paid) {
-                $lockedAttempt->forceFill([
-                    'status' => PaymentAttemptStatus::Verified,
-                    'reference_id' => $result->referenceId,
-                    'gateway_code' => $result->gatewayCode,
-                    'verification_payload' => $result->payload,
-                    'verified_at' => $order->paid_at ?? now(),
-                ])->save();
-
-                return $lockedAttempt;
+                return $this->markReviewRequiredLocked(
+                    $lockedAttempt,
+                    $result->referenceId,
+                    $result->gatewayCode,
+                    $result->payload,
+                    'duplicate_verified_payment',
+                    'یک پرداخت دیگر قبلاً این سفارش را تسویه کرده است.',
+                    $request,
+                );
             }
 
             if ($order->status !== OrderStatus::AwaitingPayment) {
@@ -473,6 +480,42 @@ final class PaymentService
 
             return $lockedAttempt;
         }, 3);
+    }
+
+    /**
+     * @return array{attempt: PaymentAttempt, order: Order, dispatch: false, replayed: true}
+     */
+    private function replayPreparedAttempt(
+        PaymentAttempt $attempt,
+        Order $order,
+    ): array {
+        if (
+            $attempt->status === PaymentAttemptStatus::Pending
+            && $attempt->redirect_url
+            && (! $attempt->expires_at || $attempt->expires_at->isFuture())
+        ) {
+            return [
+                'attempt' => $attempt,
+                'order' => $order,
+                'dispatch' => false,
+                'replayed' => true,
+            ];
+        }
+
+        if ($attempt->status === PaymentAttemptStatus::Initiated) {
+            throw new ApiDomainException(
+                'payment.in_progress',
+                'درخواست پرداخت در حال اتصال به درگاه است.',
+                409,
+                headers: ['Retry-After' => '1'],
+            );
+        }
+
+        throw new ApiDomainException(
+            'payment.idempotency_terminal',
+            'نتیجه این تلاش پرداخت نهایی شده است؛ وضعیت سفارش را بررسی کنید.',
+            409,
+        );
     }
 
     private function assertPayableLocked(Order $order): void
