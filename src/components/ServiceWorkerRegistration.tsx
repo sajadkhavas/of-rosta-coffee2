@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type BrowserServiceWorkerRegistration = Awaited<
   ReturnType<ServiceWorkerContainer["register"]>
 >;
+
+const UPDATE_INTERVAL_MS = 60 * 60 * 1000;
 
 function isSecureServiceWorkerContext(): boolean {
   return (
@@ -13,6 +15,8 @@ function isSecureServiceWorkerContext(): boolean {
 
 export function ServiceWorkerRegistration() {
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
+  const [dismissed, setDismissed] = useState(false);
+  const reloadRequested = useRef(false);
 
   useEffect(() => {
     if (
@@ -25,6 +29,7 @@ export function ServiceWorkerRegistration() {
 
     let cancelled = false;
     let registration: BrowserServiceWorkerRegistration | undefined;
+    let interval: number | undefined;
 
     const revealWaitingWorker = () => {
       if (
@@ -32,7 +37,25 @@ export function ServiceWorkerRegistration() {
         registration?.waiting &&
         navigator.serviceWorker.controller
       ) {
+        setDismissed(false);
         setWaitingWorker(registration.waiting);
+      }
+    };
+
+    const handleUpdateFound = () => {
+      const installing = registration?.installing;
+      if (!installing) return;
+      const handleStateChange = () => {
+        if (installing.state !== "installed") return;
+        installing.removeEventListener("statechange", handleStateChange);
+        revealWaitingWorker();
+      };
+      installing.addEventListener("statechange", handleStateChange);
+    };
+
+    const checkForUpdate = () => {
+      if (document.visibilityState === "visible" && navigator.onLine) {
+        void registration?.update().catch(() => undefined);
       }
     };
 
@@ -42,14 +65,13 @@ export function ServiceWorkerRegistration() {
           scope: "/",
           updateViaCache: "none",
         });
+        if (cancelled) return;
         revealWaitingWorker();
-        registration.addEventListener("updatefound", () => {
-          const installing = registration?.installing;
-          installing?.addEventListener("statechange", () => {
-            if (installing.state === "installed") revealWaitingWorker();
-          });
-        });
-        await registration.update().catch(() => undefined);
+        registration.addEventListener("updatefound", handleUpdateFound);
+        window.addEventListener("online", checkForUpdate);
+        document.addEventListener("visibilitychange", checkForUpdate);
+        interval = window.setInterval(checkForUpdate, UPDATE_INTERVAL_MS);
+        checkForUpdate();
       } catch (error) {
         console.error("Service worker registration failed", error);
       }
@@ -58,11 +80,16 @@ export function ServiceWorkerRegistration() {
     void register();
     return () => {
       cancelled = true;
+      registration?.removeEventListener("updatefound", handleUpdateFound);
+      window.removeEventListener("online", checkForUpdate);
+      document.removeEventListener("visibilitychange", checkForUpdate);
+      if (interval) window.clearInterval(interval);
     };
   }, []);
 
   const activateUpdate = () => {
-    if (!waitingWorker) return;
+    if (!waitingWorker || reloadRequested.current) return;
+    reloadRequested.current = true;
     navigator.serviceWorker.addEventListener(
       "controllerchange",
       () => window.location.reload(),
@@ -71,7 +98,7 @@ export function ServiceWorkerRegistration() {
     waitingWorker.postMessage({ type: "ROSTA_SKIP_WAITING" });
   };
 
-  if (!waitingWorker) return null;
+  if (!waitingWorker || dismissed) return null;
 
   return (
     <aside
@@ -85,13 +112,22 @@ export function ServiceWorkerRegistration() {
           برای جلوگیری از تغییر برنامه وسط سفارش، به‌روزرسانی فقط با تأیید شما اعمال می‌شود.
         </p>
       </div>
-      <button
-        type="button"
-        onClick={activateUpdate}
-        className="min-h-11 shrink-0 rounded-xl bg-[color:var(--roast)] px-4 text-xs font-bold text-[color:var(--night)]"
-      >
-        به‌روزرسانی
-      </button>
+      <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+        <button
+          type="button"
+          onClick={() => setDismissed(true)}
+          className="min-h-11 rounded-xl border border-[color:var(--mid)] px-4 text-xs font-bold"
+        >
+          بعداً
+        </button>
+        <button
+          type="button"
+          onClick={activateUpdate}
+          className="min-h-11 rounded-xl bg-[color:var(--roast)] px-4 text-xs font-bold text-[color:var(--night)]"
+        >
+          به‌روزرسانی
+        </button>
+      </div>
     </aside>
   );
 }

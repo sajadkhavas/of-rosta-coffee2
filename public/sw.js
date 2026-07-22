@@ -1,26 +1,31 @@
-const CACHE_VERSION = "rosta-static-v5";
+const CACHE_VERSION = "v6";
+const PRECACHE = `rosta-precache-${CACHE_VERSION}`;
+const STATIC_CACHE = `rosta-static-${CACHE_VERSION}`;
+const MEDIA_CACHE = `rosta-media-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline.html";
 const PRECACHE_URLS = [
   OFFLINE_URL,
   "/manifest.json",
   "/icon-192.png",
   "/icon-512.png",
+  "/icon-512-maskable.png",
 ];
 const PRIVATE_PREFIXES = [
   "/api",
+  "/admin",
   "/auth",
   "/cart",
   "/checkout",
-  "/profile",
-  "/orders",
   "/forbidden",
+  "/orders",
+  "/panel",
+  "/profile",
 ];
-const CACHEABLE_DESTINATIONS = new Set(["font", "image"]);
+const ACTIVE_CACHES = new Set([PRECACHE, STATIC_CACHE, MEDIA_CACHE]);
+const MEDIA_LIMIT = 80;
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_VERSION).then((cache) => cache.addAll(PRECACHE_URLS)),
-  );
+  event.waitUntil(caches.open(PRECACHE).then((cache) => cache.addAll(PRECACHE_URLS)));
 });
 
 self.addEventListener("message", (event) => {
@@ -34,7 +39,7 @@ self.addEventListener("activate", (event) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((key) => key !== CACHE_VERSION)
+            .filter((key) => key.startsWith("rosta-") && !ACTIVE_CACHES.has(key))
             .map((key) => caches.delete(key)),
         ),
       )
@@ -44,15 +49,44 @@ self.addEventListener("activate", (event) => {
 
 function isPrivateRequest(url) {
   return PRIVATE_PREFIXES.some(
-    (prefix) =>
-      url.pathname === prefix || url.pathname.startsWith(`${prefix}/`),
+    (prefix) => url.pathname === prefix || url.pathname.startsWith(`${prefix}/`),
   );
 }
 
 function mayCache(response) {
-  if (!response?.ok || response.type !== "basic") return false;
+  if (!response?.ok || !["basic", "cors"].includes(response.type)) return false;
   const cacheControl = response.headers.get("cache-control") ?? "";
   return !/no-store|private/i.test(cacheControl);
+}
+
+async function trimCache(cacheName, maxEntries) {
+  const cache = await caches.open(cacheName);
+  const keys = await cache.keys();
+  await Promise.all(keys.slice(0, Math.max(0, keys.length - maxEntries)).map((key) => cache.delete(key)));
+}
+
+async function cacheFirst(request, cacheName) {
+  const cache = await caches.open(cacheName);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  const response = await fetch(request);
+  if (mayCache(response)) await cache.put(request, response.clone());
+  return response;
+}
+
+async function staleWhileRevalidate(request, cacheName) {
+  const cache = await caches.open(cacheName);
+  const cached = await cache.match(request);
+  const network = fetch(request)
+    .then(async (response) => {
+      if (mayCache(response)) {
+        await cache.put(request, response.clone());
+        await trimCache(cacheName, MEDIA_LIMIT);
+      }
+      return response;
+    })
+    .catch(() => undefined);
+  return cached || (await network) || Response.error();
 }
 
 self.addEventListener("fetch", (event) => {
@@ -65,37 +99,20 @@ self.addEventListener("fetch", (event) => {
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request, { cache: "no-store" }).catch(async () => {
-        const fallback = await caches.match(OFFLINE_URL);
-        return fallback || Response.error();
+        return (await caches.match(OFFLINE_URL)) || Response.error();
       }),
     );
     return;
   }
+
+  if (url.pathname === "/sw.js") return;
 
   if (request.destination === "script" || request.destination === "style") {
-    event.respondWith(
-      fetch(request)
-        .then(async (response) => {
-          if (mayCache(response)) {
-            const cache = await caches.open(CACHE_VERSION);
-            await cache.put(request, response.clone());
-          }
-          return response;
-        })
-        .catch(async () => (await caches.match(request)) || Response.error()),
-    );
+    event.respondWith(cacheFirst(request, STATIC_CACHE));
     return;
   }
 
-  if (CACHEABLE_DESTINATIONS.has(request.destination)) {
-    event.respondWith(
-      caches.open(CACHE_VERSION).then(async (cache) => {
-        const cached = await cache.match(request);
-        if (cached) return cached;
-        const response = await fetch(request);
-        if (mayCache(response)) await cache.put(request, response.clone());
-        return response;
-      }),
-    );
+  if (request.destination === "font" || request.destination === "image") {
+    event.respondWith(staleWhileRevalidate(request, MEDIA_CACHE));
   }
 });

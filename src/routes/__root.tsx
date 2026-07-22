@@ -16,11 +16,55 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { MobileBottomNav } from "../components/MobileBottomNav";
+import { NetworkStatus } from "../components/NetworkStatus";
 import { ServiceWorkerRegistration } from "../components/ServiceWorkerRegistration";
 import { CartProvider } from "../lib/cart-context";
 import { queryKeys } from "../lib/api/query-keys";
 import { ToastProvider } from "../components/system";
 import { absoluteUrl, siteConfig } from "../config/site";
+import {
+  getBrowserPerformanceTier,
+  scheduleIdleTask,
+  startWebVitals,
+} from "../lib/performance";
+
+const NOINDEX_PATHS = new Set([
+  "/cart",
+  "/checkout",
+  "/design-system",
+  "/forbidden",
+  "/profile",
+  "/quiz",
+  "/search",
+]);
+
+const NOINDEX_PREFIXES = ["/admin", "/auth", "/orders", "/panel"];
+const MOTION_EXCLUDED_PREFIXES = [
+  "/admin",
+  "/auth",
+  "/cart",
+  "/checkout",
+  "/orders",
+  "/panel",
+  "/profile",
+];
+
+function routeShouldNoIndex(pathname: string): boolean {
+  return (
+    !siteConfig.allowIndexing ||
+    NOINDEX_PATHS.has(pathname) ||
+    NOINDEX_PREFIXES.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    )
+  );
+}
+
+function routeAllowsEnhancedMotion(pathname: string): boolean {
+  if (pathname === "/quiz") return false;
+  return !MOTION_EXCLUDED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
 
 function NotFoundComponent() {
   return (
@@ -97,82 +141,85 @@ function ErrorComponent({
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
 }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      {
-        name: "viewport",
-        content: "width=device-width, initial-scale=1, viewport-fit=cover",
-      },
-      { name: "theme-color", content: siteConfig.themeColor },
-      { title: "رستا | کشف و مقایسه دانه کامل قهوه" },
-      { name: "description", content: siteConfig.description },
-      { name: "author", content: siteConfig.name },
-      { property: "og:site_name", content: siteConfig.name },
-      { property: "og:type", content: "website" },
-      { property: "og:locale", content: siteConfig.locale },
-      { property: "og:url", content: absoluteUrl("/") },
-      {
-        property: "og:image",
-        content: absoluteUrl(siteConfig.socialImagePath),
-      },
-      { name: "twitter:card", content: "summary_large_image" },
-      {
-        name: "twitter:image",
-        content: absoluteUrl(siteConfig.socialImagePath),
-      },
-      { name: "apple-mobile-web-app-capable", content: "yes" },
-      {
-        name: "apple-mobile-web-app-status-bar-style",
-        content: "black-translucent",
-      },
-      { name: "apple-mobile-web-app-title", content: siteConfig.name },
-      {
-        name: "robots",
-        content: siteConfig.allowIndexing ? "index,follow" : "noindex,nofollow",
-      },
-    ],
-    links: [
-      { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
-      {
-        rel: "icon",
-        href: "/icon-192.png",
-        type: "image/png",
-        sizes: "192x192",
-      },
-      { rel: "apple-touch-icon", href: "/icon-192.png" },
-      { rel: "manifest", href: "/manifest.json" },
-      { rel: "canonical", href: absoluteUrl("/") },
-    ],
-    scripts: [
-      {
-        type: "application/ld+json",
-        children: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "Organization",
-          name: siteConfig.name,
-          url: siteConfig.siteUrl,
-          logo: absoluteUrl("/icon-512.png"),
-        }),
-      },
-      {
-        type: "application/ld+json",
-        children: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "WebSite",
-          name: siteConfig.name,
-          url: siteConfig.siteUrl,
-          inLanguage: siteConfig.language,
-          potentialAction: {
-            "@type": "SearchAction",
-            target: `${siteConfig.siteUrl}/search?q={search_term_string}`,
-            "query-input": "required name=search_term_string",
-          },
-        }),
-      },
-    ],
-  }),
+  head: ({ location }) => {
+    const noIndex = routeShouldNoIndex(location.pathname);
+
+    return {
+      meta: [
+        { charSet: "utf-8" },
+        {
+          name: "viewport",
+          content: "width=device-width, initial-scale=1, viewport-fit=cover",
+        },
+        { name: "theme-color", content: siteConfig.themeColor },
+        { title: "رستا | کشف و مقایسه دانه کامل قهوه" },
+        { name: "description", content: siteConfig.description },
+        { name: "author", content: siteConfig.name },
+        { property: "og:site_name", content: siteConfig.name },
+        { property: "og:type", content: "website" },
+        { property: "og:locale", content: siteConfig.locale },
+        { property: "og:url", content: absoluteUrl(location.pathname) },
+        {
+          property: "og:image",
+          content: absoluteUrl(siteConfig.socialImagePath),
+        },
+        { name: "twitter:card", content: "summary_large_image" },
+        {
+          name: "twitter:image",
+          content: absoluteUrl(siteConfig.socialImagePath),
+        },
+        { name: "apple-mobile-web-app-capable", content: "yes" },
+        {
+          name: "apple-mobile-web-app-status-bar-style",
+          content: "black-translucent",
+        },
+        { name: "apple-mobile-web-app-title", content: siteConfig.name },
+        ...(noIndex
+          ? [{ name: "robots", content: "noindex,follow" }]
+          : []),
+      ],
+      links: [
+        { rel: "stylesheet", href: appCss },
+        { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+        {
+          rel: "icon",
+          href: "/icon-192.png",
+          type: "image/png",
+          sizes: "192x192",
+        },
+        { rel: "apple-touch-icon", href: "/icon-192.png" },
+        { rel: "manifest", href: "/manifest.json" },
+        { rel: "canonical", href: absoluteUrl(location.pathname) },
+      ],
+      scripts: [
+        {
+          type: "application/ld+json",
+          children: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            name: siteConfig.name,
+            url: siteConfig.siteUrl,
+            logo: absoluteUrl("/icon-512.png"),
+          }),
+        },
+        {
+          type: "application/ld+json",
+          children: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: siteConfig.name,
+            url: siteConfig.siteUrl,
+            inLanguage: siteConfig.language,
+            potentialAction: {
+              "@type": "SearchAction",
+              target: `${siteConfig.siteUrl}/search?q={search_term_string}`,
+              "query-input": "required name=search_term_string",
+            },
+          }),
+        },
+      ],
+    };
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -215,45 +262,36 @@ function RootComponent() {
       window.removeEventListener("rosta:session-expired", handleSessionExpired);
   }, [queryClient, router]);
 
+  useEffect(() => startWebVitals(), []);
+
   useEffect(() => {
-    let cancelled = false;
-    let cleanup: (() => void) | undefined;
-    void import("../lib/animations").then((animations) => {
-      if (cancelled) return;
-      animations.initLenis();
-      animations.initCursor();
-      const timer = window.setTimeout(() => {
-        animations.splitTextReveal("[data-split-text]");
-        animations.fadeUpStagger("[data-fade-up]", 0.08);
-        animations.fadeUpStagger(".r-card", 0.1);
-        document
-          .querySelectorAll<HTMLElement>("[data-counter]")
-          .forEach((element) => {
-            const target = Number.parseInt(
-              element.getAttribute("data-counter") || "0",
-              10,
-            );
-            animations.animateCounter(
-              element,
-              target,
-              element.getAttribute("data-suffix") || "",
-            );
-          });
-        animations.magneticEffect("[data-magnetic]");
-      }, 60);
-      cleanup = () => window.clearTimeout(timer);
-    });
+    if (!routeAllowsEnhancedMotion(pathname)) return;
+
+    const tier = getBrowserPerformanceTier();
+    if (tier === "minimal") return;
+
+    let disposed = false;
+    let cleanupAnimations: (() => void) | undefined;
+    const cancelScheduledImport = scheduleIdleTask(() => {
+      void import("../lib/animations").then((animations) => {
+        if (disposed) return;
+        cleanupAnimations = animations.initPageAnimations({ tier });
+      });
+    }, 900);
+
     return () => {
-      cancelled = true;
-      cleanup?.();
+      disposed = true;
+      cancelScheduledImport();
+      cleanupAnimations?.();
     };
-  }, []);
+  }, [pathname]);
 
   return (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <CartProvider>
           <ServiceWorkerRegistration />
+          <NetworkStatus />
           <div className={hideMobileNav ? "" : "pb-16 md:pb-0"}>
             <Outlet />
           </div>
