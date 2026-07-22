@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Seller;
 
 use App\Http\Requests\Checkout\OrderIndexRequest;
+use App\Http\Requests\Fulfillment\UpdateFulfillmentRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Models\Roastery;
 use App\Models\User;
 use App\Services\Catalog\CatalogAccess;
 use App\Services\Checkout\OrderService;
+use App\Services\Fulfillment\FulfillmentService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -27,6 +29,7 @@ final class SellerOrderController
 
         $validated = $request->validated();
         $query = Order::query()
+            ->with(['subOrder.shipment', 'subOrder.statusHistory.actor'])
             ->where('roastery_id', $roastery->id)
             ->orderByDesc('created_at');
 
@@ -59,9 +62,31 @@ final class SellerOrderController
         $access->assertRoasteryAccess($user, $roastery);
 
         $order = Order::query()
+            ->with(['subOrder.shipment', 'subOrder.statusHistory.actor'])
             ->where('roastery_id', $roastery->id)
             ->findOrFail($orderId);
 
         return new OrderResource($orders->loadOrder($order));
+    }
+
+    public function transition(
+        UpdateFulfillmentRequest $request,
+        string $roasteryId,
+        string $orderId,
+        CatalogAccess $access,
+        FulfillmentService $fulfillment,
+    ): OrderResource {
+        /** @var User $user */
+        $user = $request->user();
+        $roastery = Roastery::query()->findOrFail($roasteryId);
+        $access->assertRoasteryAccess($user, $roastery);
+
+        return new OrderResource($fulfillment->transition(
+            $user,
+            $roastery,
+            $orderId,
+            $request->validated(),
+            $request,
+        ));
     }
 }
