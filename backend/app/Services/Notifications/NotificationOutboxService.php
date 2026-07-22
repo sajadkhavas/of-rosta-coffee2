@@ -51,7 +51,7 @@ final class NotificationOutboxService
         ];
 
         if ($deduplicationKey !== null) {
-            return NotificationOutbox::query()->firstOrCreate(
+            return NotificationOutbox::query()->createOrFirst(
                 ['deduplication_key' => $deduplicationKey],
                 $attributes,
             );
@@ -122,7 +122,7 @@ final class NotificationOutboxService
                 'processing_at' => now(),
             ])->save();
 
-            return $locked->fresh();
+            return $locked;
         }, 3);
 
         if (! $notification) {
@@ -160,6 +160,15 @@ final class NotificationOutboxService
                     ->whereKey($notification->id)
                     ->lockForUpdate()
                     ->firstOrFail();
+
+                if ($locked->status === NotificationStatus::Sent) {
+                    return;
+                }
+
+                if ($locked->status !== NotificationStatus::Processing) {
+                    throw new RuntimeException('وضعیت Outbox هنگام ثبت ارسال معتبر نیست.');
+                }
+
                 $locked->forceFill([
                     'status' => NotificationStatus::Sent,
                     'provider' => $provider->name(),
@@ -204,7 +213,7 @@ final class NotificationOutboxService
                     ? $locked->available_at
                     : now()->addSeconds(
                         max(30, (int) config('rosta.notifications.retry_seconds', 60))
-                        * $locked->attempts,
+                        * max(1, $locked->attempts),
                     ),
                 'failed_at' => $terminal ? now() : null,
             ])->save();
