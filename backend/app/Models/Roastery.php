@@ -50,6 +50,31 @@ final class Roastery extends Model
         return $this->hasMany(MediaAsset::class);
     }
 
+    public function shippingRules(): HasMany
+    {
+        return $this->hasMany(ShippingRule::class);
+    }
+
+    public function coupons(): HasMany
+    {
+        return $this->hasMany(Coupon::class);
+    }
+
+    public function checkoutQuotes(): HasMany
+    {
+        return $this->hasMany(CheckoutQuote::class);
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    public function subOrders(): HasMany
+    {
+        return $this->hasMany(SubOrder::class);
+    }
+
     public function logo(): BelongsTo
     {
         return $this->belongsTo(MediaAsset::class, 'logo_media_id');

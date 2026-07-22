@@ -3,11 +3,13 @@
 namespace Database\Seeders;
 
 use App\Enums\Role;
+use App\Models\Coupon;
 use App\Models\Origin;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\RoastBatch;
 use App\Models\Roastery;
+use App\Models\ShippingRule;
 use App\Models\StockLedgerEntry;
 use App\Models\User;
 use App\Models\UserRole;
@@ -63,6 +65,30 @@ final class DatabaseSeeder extends Seeder
                 'role' => Role::RoasteryOwner->value,
                 'scope_type' => 'roastery',
                 'scope_id' => $roastery->id,
+            ]);
+
+            ShippingRule::query()->create([
+                'roastery_id' => $roastery->id,
+                'province' => null,
+                'city' => null,
+                'base_cost' => 450_000,
+                'free_over' => 15_000_000,
+                'priority' => 0,
+                'is_active' => true,
+            ]);
+
+            Coupon::query()->create([
+                'roastery_id' => $roastery->id,
+                'code' => 'ROSTA10',
+                'type' => 'percentage',
+                'value' => 1000,
+                'minimum_subtotal' => 5_000_000,
+                'maximum_discount' => 1_500_000,
+                'starts_at' => now()->subDay(),
+                'ends_at' => now()->addMonths(3),
+                'max_redemptions' => 1000,
+                'redemption_count' => 0,
+                'is_active' => true,
             ]);
 
             $origin = Origin::query()->create([

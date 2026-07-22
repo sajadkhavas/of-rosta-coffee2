@@ -45,6 +45,21 @@ final class ProductVariant extends Model
         return $this->hasMany(StockLedgerEntry::class, 'variant_id');
     }
 
+    public function quoteItems(): HasMany
+    {
+        return $this->hasMany(CheckoutQuoteItem::class, 'variant_id');
+    }
+
+    public function orderItems(): HasMany
+    {
+        return $this->hasMany(OrderItem::class, 'variant_id');
+    }
+
+    public function reservations(): HasMany
+    {
+        return $this->hasMany(InventoryReservation::class, 'variant_id');
+    }
+
     public function availableQuantity(): int
     {
         return max(0, $this->stock_on_hand - $this->stock_reserved);

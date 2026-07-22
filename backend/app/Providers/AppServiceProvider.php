@@ -19,8 +19,8 @@ final class AppServiceProvider extends ServiceProvider
             $driver = (string) config('services.sms.driver');
 
             if (
-                $driver === 'log' &&
-                $this->app->environment(['local', 'testing'])
+                $driver === 'log'
+                && $this->app->environment(['local', 'testing'])
             ) {
                 return new LogOtpSender;
             }
@@ -58,6 +58,31 @@ final class AppServiceProvider extends ServiceProvider
                 Limit::perMinute(5)->by(
                     'otp-verify:challenge:'.hash('sha256', $challengeId),
                 ),
+            ];
+        });
+
+        RateLimiter::for('cart-validate', function (Request $request): array {
+            return [
+                Limit::perMinute(30)->by('cart-validate:ip:'.$request->ip()),
+                Limit::perHour(300)->by('cart-validate-hour:ip:'.$request->ip()),
+            ];
+        });
+
+        RateLimiter::for('checkout-quote', function (Request $request): array {
+            $userId = (string) $request->user()?->getAuthIdentifier();
+
+            return [
+                Limit::perMinute(20)->by('checkout-quote:user:'.$userId),
+                Limit::perHour(200)->by('checkout-quote-hour:user:'.$userId),
+            ];
+        });
+
+        RateLimiter::for('order-create', function (Request $request): array {
+            $userId = (string) $request->user()?->getAuthIdentifier();
+
+            return [
+                Limit::perMinute(10)->by('order-create:user:'.$userId),
+                Limit::perHour(60)->by('order-create-hour:user:'.$userId),
             ];
         });
     }

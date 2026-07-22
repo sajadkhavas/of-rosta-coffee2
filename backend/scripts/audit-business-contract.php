@@ -57,6 +57,9 @@ foreach (['50', '100', '250', '500', '1000'] as $weight) {
 foreach ([
     "'single_roastery_orders' => true" => 'Single-roastery order boundary is not locked.',
     "'allowed_media_hosts'" => 'Media host allowlist is missing.',
+    "'quote_ttl_minutes'" => 'Quote TTL is missing.',
+    "'reservation_ttl_minutes'" => 'Reservation TTL is missing.',
+    "'idempotency_ttl_hours'" => 'Order idempotency TTL is missing.',
 ] as $needle => $message) {
     if (! str_contains($config, $needle)) {
         $failures[] = $message;
@@ -117,18 +120,43 @@ $checks = [
     'app/Http/Requests/Catalog/UpsertVariantRequest.php' => [
         "Rule::in(config('rosta.whole_bean_weights'))" => 'Variant weights must use the permanent list.',
     ],
-    'app/Http/Requests/Catalog/AdjustStockRequest.php' => [
-        'StockReason::Return->value' => 'Seller stock reasons must be explicitly allowlisted.',
-    ],
     'app/Services/Catalog/MediaRegistrationService.php' => [
         "config('rosta.catalog.allowed_media_hosts'" => 'Media must use a server allowlist.',
         "in_array(\$host, \$allowedHosts, true)" => 'Media hosts must be allowlisted.',
     ],
-    'app/Http/Controllers/Seller/SellerProductController.php' => [
-        'returned_to_review' => 'Seller product edits must return content to moderation.',
+    'app/Services/Checkout/QuoteService.php' => [
+        'cart.multiple_roasteries' => 'Cart validation must reject multiple roasteries.',
+        'availableQuantity()' => 'Quotes must use authoritative stock.',
+        "'unit_price' => \$variant->price" => 'Quotes must use authoritative prices.',
+        'private const int MAX_MONEY' => 'Money calculations need a safe upper bound.',
+        'multiplyMoney(' => 'Line totals must use checked multiplication.',
+        'addMoney(' => 'Quote totals must use checked addition.',
+        "'product_snapshot'" => 'Product snapshots are required.',
+        "'variant_snapshot'" => 'Variant snapshots are required.',
+        "'roast_batch_snapshot'" => 'Roast-batch snapshots are required.',
     ],
-    'app/Http/Controllers/Seller/SellerRoasteryController.php' => [
-        'verification_reset' => 'Seller identity edits must reset verification.',
+    'app/Services/Checkout/CouponService.php' => [
+        '$subtotal % 10_000' => 'Percentage discounts must avoid integer overflow.',
+    ],
+    'app/Services/Checkout/OrderService.php' => [
+        'User::query()->lockForUpdate()' => 'Order creation must serialize per customer.',
+        'order.idempotency_conflict' => 'Order idempotency must be payload-bound.',
+        "'stock_reserved' => \$variant->stock_reserved + \$quoteItem->quantity" => 'Order creation must reserve stock.',
+        'InventoryReservation::query()->create' => 'Explicit reservations are required.',
+        "'consumed_at' => now()" => 'Quotes must be consumed once.',
+        "config('rosta.checkout.idempotency_ttl_hours'" => 'Order idempotency must use configured retention.',
+    ],
+    'app/Services/Checkout/OrderCancellationService.php' => [
+        'OrderStatus::AwaitingPayment' => 'Direct cancellation must have a bounded state.',
+        'stock_reserved - $reservation->quantity' => 'Cancellation must release stock.',
+        'releaseCouponReservation(' => 'Cancellation must release coupon capacity.',
+    ],
+    'app/Services/Checkout/ReservationExpiryService.php' => [
+        'ReservationStatus::Active->value' => 'Expiry must target active reservations.',
+    ],
+    'routes/console.php' => [
+        'rosta.checkout.expire-reservations' => 'Reservation expiry must be scheduled.',
+        'withoutOverlapping()' => 'Recovery jobs must not overlap.',
     ],
 ];
 
@@ -146,6 +174,27 @@ if (preg_match('~otp_challenges[\s\S]*?\$table->(?:string|char)\(\'code\'~', $id
     $failures[] = 'Plaintext OTP columns are forbidden.';
 }
 
+$checkoutMigration = 'database/migrations/2026_07_21_030001_create_transactional_checkout_tables.php';
+foreach ([
+    "Schema::create('checkout_quotes'",
+    "Schema::create('orders'",
+    "Schema::create('sub_orders'",
+    "Schema::create('inventory_reservations'",
+    "Schema::create('order_idempotency_keys'",
+] as $table) {
+    $requireContains($checkoutMigration, $table, 'Missing checkout table: '.$table);
+}
+$requireContains(
+    $checkoutMigration,
+    "foreignUlid('order_id')->unique()",
+    'Single-roastery orders must have one sub-order.',
+);
+$requireContains(
+    $checkoutMigration,
+    "unique(['user_id', 'key'])",
+    'Idempotency keys must be customer scoped.',
+);
+
 $routes = $read('routes/api.php');
 foreach ([
     '/seller/origins',
@@ -153,9 +202,16 @@ foreach ([
     'roast-batches',
     'stock-ledger',
     '/admin/origins',
+    '/cart/validate',
+    '/checkout/quote',
+    '/orders',
+    '/orders/{orderId}/cancel',
+    'throttle:cart-validate',
+    'throttle:checkout-quote',
+    'throttle:order-create',
 ] as $routeBoundary) {
     if (! str_contains($routes, $routeBoundary)) {
-        $failures[] = 'Missing catalog route boundary: '.$routeBoundary;
+        $failures[] = 'Missing route boundary: '.$routeBoundary;
     }
 }
 foreach ([

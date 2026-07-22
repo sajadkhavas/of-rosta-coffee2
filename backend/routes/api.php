@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminOriginController;
 use App\Http\Controllers\Admin\AdminProductController;
 use App\Http\Controllers\Admin\AdminRoasteryController;
@@ -9,11 +10,15 @@ use App\Http\Controllers\Auth\VerifyOtpController;
 use App\Http\Controllers\Catalog\ProductController;
 use App\Http\Controllers\Catalog\RoasteryController;
 use App\Http\Controllers\Catalog\SearchController;
+use App\Http\Controllers\Checkout\CartController;
+use App\Http\Controllers\Checkout\CheckoutQuoteController;
+use App\Http\Controllers\Checkout\OrderController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\Profile\AddressController;
 use App\Http\Controllers\Profile\MeController;
 use App\Http\Controllers\Seller\SellerInventoryController;
 use App\Http\Controllers\Seller\SellerMediaController;
+use App\Http\Controllers\Seller\SellerOrderController;
 use App\Http\Controllers\Seller\SellerOriginController;
 use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\Seller\SellerRoastBatchController;
@@ -54,6 +59,10 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
     Route::get('/search', SearchController::class)
         ->name('api.v1.search');
 
+    Route::post('/cart/validate', CartController::class)
+        ->middleware('throttle:cart-validate')
+        ->name('api.v1.cart.validate');
+
     Route::middleware(['auth:sanctum', 'rosta.session'])->group(function (): void {
         Route::post('/auth/logout', LogoutController::class)
             ->name('api.v1.auth.logout');
@@ -73,6 +82,22 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::delete('/me/addresses/{addressId}', [AddressController::class, 'destroy'])
             ->where('addressId', '[A-Za-z0-9._:-]+')
             ->name('api.v1.addresses.destroy');
+
+        Route::post('/checkout/quote', CheckoutQuoteController::class)
+            ->middleware('throttle:checkout-quote')
+            ->name('api.v1.checkout.quote');
+
+        Route::get('/orders', [OrderController::class, 'index'])
+            ->name('api.v1.orders.index');
+        Route::post('/orders', [OrderController::class, 'store'])
+            ->middleware('throttle:order-create')
+            ->name('api.v1.orders.store');
+        Route::get('/orders/{orderId}', [OrderController::class, 'show'])
+            ->where('orderId', '[A-Za-z0-9._:-]+')
+            ->name('api.v1.orders.show');
+        Route::post('/orders/{orderId}/cancel', [OrderController::class, 'cancel'])
+            ->where('orderId', '[A-Za-z0-9._:-]+')
+            ->name('api.v1.orders.cancel');
 
         Route::get('/seller/origins', SellerOriginController::class)
             ->middleware('rosta.role:roastery_owner,roastery_manager,roastery_staff,administrator')
@@ -129,6 +154,12 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
                 Route::post('/variants/{variantId}/stock-adjustments', [SellerInventoryController::class, 'adjust'])
                     ->where('variantId', '[A-Za-z0-9._:-]+')
                     ->name('api.v1.seller.inventory.adjust');
+
+                Route::get('/orders', [SellerOrderController::class, 'index'])
+                    ->name('api.v1.seller.orders.index');
+                Route::get('/orders/{orderId}', [SellerOrderController::class, 'show'])
+                    ->where('orderId', '[A-Za-z0-9._:-]+')
+                    ->name('api.v1.seller.orders.show');
             });
 
         Route::prefix('/admin')
@@ -153,6 +184,12 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
                 Route::patch('/products/{productId}/status', [AdminProductController::class, 'setStatus'])
                     ->where('productId', '[A-Za-z0-9._:-]+')
                     ->name('api.v1.admin.products.status');
+
+                Route::get('/orders', [AdminOrderController::class, 'index'])
+                    ->name('api.v1.admin.orders.index');
+                Route::get('/orders/{orderId}', [AdminOrderController::class, 'show'])
+                    ->where('orderId', '[A-Za-z0-9._:-]+')
+                    ->name('api.v1.admin.orders.show');
             });
     });
 });
