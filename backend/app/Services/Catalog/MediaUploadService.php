@@ -97,17 +97,20 @@ final class MediaUploadService
             );
         }
 
-        if (
-            ! is_array($signed)
-            || ! isset($signed['url'])
-            || ! is_string($signed['url'])
-        ) {
+        if (! is_array($signed) || ! isset($signed['url']) || ! is_string($signed['url'])) {
+            $intent->forceFill([
+                'status' => MediaUploadStatus::Failed,
+                'failed_at' => now(),
+                'failure_reason' => 'invalid_signed_url_response',
+            ])->save();
+
             throw new ApiDomainException(
                 'catalog.media_storage_unavailable',
                 'فضای ذخیره‌سازی پاسخ معتبر نداد.',
                 503,
             );
         }
+
         $headers = [];
         foreach (($signed['headers'] ?? []) as $name => $value) {
             if (is_string($name) && is_scalar($value)) {
@@ -146,6 +149,39 @@ final class MediaUploadService
     ): MediaAsset {
         $this->assertConfigured();
 
+        try {
+            return $this->completeTransaction($roastery, $actor, $uploadId, $data, $request);
+        } catch (ApiDomainException $exception) {
+            $terminal = match ($exception->errorCode) {
+                'catalog.media_upload_expired' => [MediaUploadStatus::Expired, 'upload_intent_expired'],
+                'catalog.media_size_mismatch' => [MediaUploadStatus::Failed, 'size_mismatch'],
+                'catalog.media_mime_mismatch' => [MediaUploadStatus::Failed, 'mime_mismatch'],
+                default => null,
+            };
+            if (is_array($terminal)) {
+                $this->recordTerminalState(
+                    $roastery,
+                    $actor,
+                    $uploadId,
+                    $terminal[0],
+                    $terminal[1],
+                );
+            }
+
+            throw $exception;
+        }
+    }
+
+    /**
+     * @param  array{alt: string, width: int, height: int, blur_data_url?: string|null}  $data
+     */
+    private function completeTransaction(
+        Roastery $roastery,
+        User $actor,
+        string $uploadId,
+        array $data,
+        Request $request,
+    ): MediaAsset {
         return DB::transaction(function () use (
             $roastery,
             $actor,
@@ -160,23 +196,10 @@ final class MediaUploadService
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if (
-                $intent->status === MediaUploadStatus::Completed
-                && $intent->mediaAsset
-            ) {
+            if ($intent->status === MediaUploadStatus::Completed && $intent->mediaAsset) {
                 return $intent->mediaAsset;
             }
-            if (
-                $intent->status !== MediaUploadStatus::Pending
-                || $intent->expires_at->isPast()
-            ) {
-                if ($intent->status === MediaUploadStatus::Pending) {
-                    $intent->forceFill([
-                        'status' => MediaUploadStatus::Expired,
-                        'failure_reason' => 'upload_intent_expired',
-                    ])->save();
-                }
-
+            if ($intent->status !== MediaUploadStatus::Pending || $intent->expires_at->isPast()) {
                 throw new ApiDomainException(
                     'catalog.media_upload_expired',
                     'مهلت تکمیل بارگذاری پایان یافته است.',
@@ -196,7 +219,6 @@ final class MediaUploadService
             $size = $disk->size($intent->object_key);
             $mime = $disk->mimeType($intent->object_key);
             if ($size !== $intent->size_bytes) {
-                $this->failIntent($intent, 'size_mismatch');
                 throw new ApiDomainException(
                     'catalog.media_size_mismatch',
                     'حجم فایل با Upload Intent سازگار نیست.',
@@ -204,7 +226,6 @@ final class MediaUploadService
                 );
             }
             if (! is_string($mime) || strtolower($mime) !== $intent->mime_type) {
-                $this->failIntent($intent, 'mime_mismatch');
                 throw new ApiDomainException(
                     'catalog.media_mime_mismatch',
                     'نوع فایل بارگذاری‌شده معتبر نیست.',
@@ -268,11 +289,7 @@ final class MediaUploadService
                     ->whereKey($intent->id)
                     ->lockForUpdate()
                     ->first();
-                if (
-                    ! $locked
-                    || $locked->status !== MediaUploadStatus::Pending
-                    || $locked->expires_at->isFuture()
-                ) {
+                if (! $locked || $locked->status !== MediaUploadStatus::Pending || $locked->expires_at->isFuture()) {
                     return;
                 }
 
@@ -291,12 +308,35 @@ final class MediaUploadService
         return $expired;
     }
 
+    private function recordTerminalState(
+        Roastery $roastery,
+        User $actor,
+        string $uploadId,
+        MediaUploadStatus $status,
+        string $reason,
+    ): void {
+        DB::transaction(function () use ($roastery, $actor, $uploadId, $status, $reason): void {
+            $intent = MediaUploadIntent::query()
+                ->where('roastery_id', $roastery->id)
+                ->where('user_id', $actor->id)
+                ->whereKey($uploadId)
+                ->lockForUpdate()
+                ->first();
+            if (! $intent || $intent->status !== MediaUploadStatus::Pending) {
+                return;
+            }
+
+            $intent->forceFill([
+                'status' => $status,
+                'failed_at' => $status === MediaUploadStatus::Failed ? now() : null,
+                'failure_reason' => $reason,
+            ])->save();
+        }, 3);
+    }
+
     private function assertConfigured(): void
     {
-        if (
-            ! config('rosta.media_uploads.enabled', false)
-            || trim((string) config('rosta.media_uploads.public_base_url')) === ''
-        ) {
+        if (! config('rosta.media_uploads.enabled', false) || trim((string) config('rosta.media_uploads.public_base_url')) === '') {
             throw new ApiDomainException(
                 'catalog.media_storage_unavailable',
                 'فضای ذخیره‌سازی رسانه هنوز پیکربندی نشده است.',
@@ -319,12 +359,7 @@ final class MediaUploadService
     {
         $base = rtrim((string) config('rosta.media_uploads.public_base_url'), '/');
         $parts = parse_url($base);
-        if (
-            ! is_array($parts)
-            || strtolower((string) ($parts['scheme'] ?? '')) !== 'https'
-            || ! isset($parts['host'])
-            || isset($parts['user'], $parts['pass'])
-        ) {
+        if (! is_array($parts) || strtolower((string) ($parts['scheme'] ?? '')) !== 'https' || ! isset($parts['host']) || isset($parts['user'], $parts['pass'])) {
             throw new ApiDomainException(
                 'catalog.media_public_url_invalid',
                 'نشانی عمومی CDN معتبر نیست.',
@@ -334,15 +369,6 @@ final class MediaUploadService
         $encoded = implode('/', array_map('rawurlencode', explode('/', $objectKey)));
 
         return $base.'/'.$encoded;
-    }
-
-    private function failIntent(MediaUploadIntent $intent, string $reason): void
-    {
-        $intent->forceFill([
-            'status' => MediaUploadStatus::Failed,
-            'failed_at' => now(),
-            'failure_reason' => $reason,
-        ])->save();
     }
 
     private function extensionFor(string $mime): string
