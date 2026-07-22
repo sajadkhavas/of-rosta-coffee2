@@ -1,0 +1,145 @@
+openapi: 3.1.0
+info:
+  title: Rosta Commerce Additions API
+  version: 2026-07-22
+  description: Provider-neutral payments, marketplace fulfillment, verified reviews, support inquiries and signed media uploads.
+servers:
+  - url: https://api-staging.rosta.shop/api/v1
+paths:
+  /payments/request:
+    post:
+      operationId: requestPayment
+      security: [{ sanctumSession: [] }]
+      responses:
+        '201': { description: Payment attempt created }
+        '409': { description: Idempotency or order-state conflict }
+        '503': { description: Payment provider unavailable }
+  /payments/{paymentId}/verify:
+    post:
+      operationId: verifyOwnedPayment
+      security: [{ sanctumSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/PaymentId'
+      responses:
+        '200': { description: Current owned payment result }
+        '404': { description: Payment not owned or not found }
+  /seller/roasteries/{roasteryId}/orders/{orderId}/fulfillment:
+    patch:
+      operationId: transitionSellerFulfillment
+      security: [{ sanctumSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RoasteryId'
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200': { description: Fulfillment state transitioned }
+        '409': { description: Invalid state transition }
+        '422': { description: Missing rejection or shipment data }
+  /admin/orders/{orderId}/fulfillment:
+    patch:
+      operationId: transitionAdminFulfillment
+      security: [{ sanctumSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      responses:
+        '200': { description: Fulfillment state transitioned }
+  /reviews:
+    post:
+      operationId: createVerifiedPurchaseReview
+      security: [{ sanctumSession: [] }]
+      responses:
+        '201': { description: Pending verified-purchase review created }
+        '409': { description: Order not delivered or review already submitted }
+  /products/{productSlug}/reviews:
+    get:
+      operationId: listApprovedProductReviews
+      parameters:
+        - name: productSlug
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Approved verified review summary and items }
+  /admin/reviews/{reviewId}:
+    patch:
+      operationId: moderateReview
+      security: [{ sanctumSession: [] }]
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Review moderation decision stored }
+  /inquiries:
+    post:
+      operationId: createInquiry
+      responses:
+        '201': { description: Inquiry persisted with reference ID }
+        '200': { description: Recent duplicate replayed }
+        '422': { description: Validation or honeypot failure }
+  /admin/inquiries/{inquiryId}:
+    get:
+      operationId: showInquiry
+      security: [{ sanctumSession: [] }]
+      parameters:
+        - name: inquiryId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Decrypted inquiry for administrator }
+    patch:
+      operationId: updateInquiryStatus
+      security: [{ sanctumSession: [] }]
+      parameters:
+        - name: inquiryId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Inquiry workflow updated }
+  /seller/roasteries/{roasteryId}/media/uploads:
+    post:
+      operationId: createMediaUploadIntent
+      security: [{ sanctumSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RoasteryId'
+      responses:
+        '201': { description: Presigned PUT intent created }
+        '503': { description: Object storage disabled or unavailable }
+  /seller/roasteries/{roasteryId}/media/uploads/{uploadId}/complete:
+    post:
+      operationId: completeMediaUploadIntent
+      security: [{ sanctumSession: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RoasteryId'
+        - name: uploadId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Media asset registered or replayed }
+        '409': { description: Stored object missing or does not match intent }
+        '410': { description: Upload intent expired }
+components:
+  securitySchemes:
+    sanctumSession:
+      type: apiKey
+      in: cookie
+      name: rosta_session
+  parameters:
+    PaymentId:
+      name: paymentId
+      in: path
+      required: true
+      schema: { type: string }
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      schema: { type: string }
+    RoasteryId:
+      name: roasteryId
+      in: path
+      required: true
+      schema: { type: string }
