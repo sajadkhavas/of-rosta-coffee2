@@ -57,6 +57,9 @@
     "audit:fulfillment": "@php scripts/audit-fulfillment-contract.php",
     "audit:reviews-support": "@php scripts/audit-reviews-support-contract.php",
     "audit:media-storage": "@php scripts/audit-media-storage-contract.php",
+    "audit:openapi": "@php scripts/audit-commerce-openapi-drift.php",
+    "audit:validation": "@php scripts/audit-validation-hardening.php",
+    "readiness": "@php artisan rosta:readiness --json",
     "test": [
       "@php artisan config:clear --ansi @no_additional_args",
       "@php artisan test"
@@ -73,6 +76,8 @@
       "@audit:fulfillment",
       "@audit:reviews-support",
       "@audit:media-storage",
+      "@audit:openapi",
+      "@audit:validation",
       "@php artisan test",
       "@php vendor/bin/phpstan analyse --memory-limit=1G",
       "@php vendor/bin/pint --parallel --test"
