@@ -58,6 +58,11 @@ $require(
 );
 $require(
     'app/Services/Content/ContentPublicationService.php',
+    'content.review_required',
+    'Draft content must not bypass the review state.',
+);
+$require(
+    'app/Services/Content/ContentPublicationService.php',
     'content.author_required',
     'Publishing must require an active author.',
 );
@@ -70,6 +75,11 @@ $require(
     'app/Models/ContentEntry.php',
     "->where('robots_index', true)",
     'Indexable content scope must require robots_index.',
+);
+$require(
+    'app/Models/ContentEntry.php',
+    '->published()',
+    'Indexability must remain dependent on publication status.',
 );
 $require(
     'app/Support/SeoPath.php',
