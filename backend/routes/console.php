@@ -18,6 +18,11 @@ Schedule::command('notifications:dispatch --limit=100')
     ->everyMinute()
     ->withoutOverlapping();
 
+Schedule::command('media:expire-upload-intents --limit=500')
+    ->name('rosta.media.expire-upload-intents')
+    ->everyTenMinutes()
+    ->withoutOverlapping();
+
 Schedule::call(static function (): void {
     CheckoutQuote::query()
         ->where('expires_at', '<', now()->subHour())
