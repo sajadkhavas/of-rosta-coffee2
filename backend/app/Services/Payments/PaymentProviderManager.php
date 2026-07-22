@@ -19,7 +19,7 @@ final class PaymentProviderManager
     {
         return match (strtolower(trim($provider))) {
             'disabled', 'null' => app(DisabledPaymentProvider::class),
-            'testing' => app(TestingPaymentProvider::class),
+            'testing' => $this->testingProvider(),
             'zarinpal' => app(ZarinpalPaymentProvider::class),
             default => throw new ApiDomainException(
                 'payment.provider_unknown',
@@ -42,5 +42,18 @@ final class PaymentProviderManager
             'zarinpal' => trim((string) config('rosta.payment.zarinpal.merchant_id')) !== '',
             default => false,
         };
+    }
+
+    private function testingProvider(): PaymentProvider
+    {
+        if (! app()->environment('production')) {
+            return app(TestingPaymentProvider::class);
+        }
+
+        throw new ApiDomainException(
+            'payment.testing_provider_forbidden',
+            'درگاه آزمایشی در محیط Production مجاز نیست.',
+            503,
+        );
     }
 }
