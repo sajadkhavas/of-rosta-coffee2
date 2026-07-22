@@ -119,84 +119,85 @@ function ErrorComponent({
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
 }>()({
-  head: ({ location }) => ({
-    meta: [
-      { charSet: "utf-8" },
-      {
-        name: "viewport",
-        content: "width=device-width, initial-scale=1, viewport-fit=cover",
-      },
-      { name: "theme-color", content: siteConfig.themeColor },
-      { title: "رستا | کشف و مقایسه دانه کامل قهوه" },
-      { name: "description", content: siteConfig.description },
-      { name: "author", content: siteConfig.name },
-      { property: "og:site_name", content: siteConfig.name },
-      { property: "og:type", content: "website" },
-      { property: "og:locale", content: siteConfig.locale },
-      { property: "og:url", content: absoluteUrl("/") },
-      {
-        property: "og:image",
-        content: absoluteUrl(siteConfig.socialImagePath),
-      },
-      { name: "twitter:card", content: "summary_large_image" },
-      {
-        name: "twitter:image",
-        content: absoluteUrl(siteConfig.socialImagePath),
-      },
-      { name: "apple-mobile-web-app-capable", content: "yes" },
-      {
-        name: "apple-mobile-web-app-status-bar-style",
-        content: "black-translucent",
-      },
-      { name: "apple-mobile-web-app-title", content: siteConfig.name },
-      {
-        name: "robots",
-        content: routeShouldNoIndex(location.pathname)
-          ? "noindex,follow"
-          : "index,follow",
-      },
-    ],
-    links: [
-      { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
-      {
-        rel: "icon",
-        href: "/icon-192.png",
-        type: "image/png",
-        sizes: "192x192",
-      },
-      { rel: "apple-touch-icon", href: "/icon-192.png" },
-      { rel: "manifest", href: "/manifest.json" },
-      { rel: "canonical", href: absoluteUrl("/") },
-    ],
-    scripts: [
-      {
-        type: "application/ld+json",
-        children: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "Organization",
-          name: siteConfig.name,
-          url: siteConfig.siteUrl,
-          logo: absoluteUrl("/icon-512.png"),
-        }),
-      },
-      {
-        type: "application/ld+json",
-        children: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "WebSite",
-          name: siteConfig.name,
-          url: siteConfig.siteUrl,
-          inLanguage: siteConfig.language,
-          potentialAction: {
-            "@type": "SearchAction",
-            target: `${siteConfig.siteUrl}/search?q={search_term_string}`,
-            "query-input": "required name=search_term_string",
-          },
-        }),
-      },
-    ],
-  }),
+  head: ({ location }) => {
+    const noIndex = routeShouldNoIndex(location.pathname);
+
+    return {
+      meta: [
+        { charSet: "utf-8" },
+        {
+          name: "viewport",
+          content: "width=device-width, initial-scale=1, viewport-fit=cover",
+        },
+        { name: "theme-color", content: siteConfig.themeColor },
+        { title: "رستا | کشف و مقایسه دانه کامل قهوه" },
+        { name: "description", content: siteConfig.description },
+        { name: "author", content: siteConfig.name },
+        { property: "og:site_name", content: siteConfig.name },
+        { property: "og:type", content: "website" },
+        { property: "og:locale", content: siteConfig.locale },
+        { property: "og:url", content: absoluteUrl(location.pathname) },
+        {
+          property: "og:image",
+          content: absoluteUrl(siteConfig.socialImagePath),
+        },
+        { name: "twitter:card", content: "summary_large_image" },
+        {
+          name: "twitter:image",
+          content: absoluteUrl(siteConfig.socialImagePath),
+        },
+        { name: "apple-mobile-web-app-capable", content: "yes" },
+        {
+          name: "apple-mobile-web-app-status-bar-style",
+          content: "black-translucent",
+        },
+        { name: "apple-mobile-web-app-title", content: siteConfig.name },
+        ...(noIndex
+          ? [{ name: "robots", content: "noindex,follow" }]
+          : []),
+      ],
+      links: [
+        { rel: "stylesheet", href: appCss },
+        { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+        {
+          rel: "icon",
+          href: "/icon-192.png",
+          type: "image/png",
+          sizes: "192x192",
+        },
+        { rel: "apple-touch-icon", href: "/icon-192.png" },
+        { rel: "manifest", href: "/manifest.json" },
+        { rel: "canonical", href: absoluteUrl(location.pathname) },
+      ],
+      scripts: [
+        {
+          type: "application/ld+json",
+          children: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            name: siteConfig.name,
+            url: siteConfig.siteUrl,
+            logo: absoluteUrl("/icon-512.png"),
+          }),
+        },
+        {
+          type: "application/ld+json",
+          children: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: siteConfig.name,
+            url: siteConfig.siteUrl,
+            inLanguage: siteConfig.language,
+            potentialAction: {
+              "@type": "SearchAction",
+              target: `${siteConfig.siteUrl}/search?q={search_term_string}`,
+              "query-input": "required name=search_term_string",
+            },
+          }),
+        },
+      ],
+    };
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
