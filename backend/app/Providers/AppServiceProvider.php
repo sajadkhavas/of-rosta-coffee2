@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Contracts\OtpSender;
+use App\Models\Order;
+use App\Observers\OrderObserver;
 use App\Services\Sms\DisabledOtpSender;
 use App\Services\Sms\LogOtpSender;
 use App\Support\IranMobile;
@@ -32,6 +34,8 @@ final class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Order::observe(OrderObserver::class);
+
         Route::prefix('api/v1')
             ->middleware('api')
             ->group(base_path('routes/payments.php'));
