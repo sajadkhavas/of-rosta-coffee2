@@ -61,7 +61,7 @@ final class ContentSeoTest extends TestCase
             );
     }
 
-    public function test_admin_content_workflow_rejects_raw_blocks_and_requires_review(): void
+    public function test_admin_content_workflow_rejects_raw_blocks_requires_review_and_detects_stale_edits(): void
     {
         $administrator = User::factory()->create();
         $this->authenticateWithRole($administrator, Role::Administrator);
@@ -130,21 +130,36 @@ final class ContentSeoTest extends TestCase
             ->assertJsonPath('data.status', 'review')
             ->assertJsonPath('data.seo.robots_index', true);
 
-        $this->patchJson(
+        $published = $this->patchJson(
             '/api/v1/admin/content/'.$entry['id'].'/status',
             ['status' => 'published'],
         )
             ->assertOk()
             ->assertJsonPath('data.status', 'published')
-            ->assertJsonPath('data.seo.robots_index', true);
+            ->assertJsonPath('data.seo.robots_index', true)
+            ->json('data');
 
         $this->patchJson('/api/v1/admin/content/'.$entry['id'], [
+            'title' => 'بدون Hash',
+        ])->assertUnprocessable();
+
+        $this->patchJson('/api/v1/admin/content/'.$entry['id'], [
+            'expected_content_hash' => str_repeat('0', 64),
+            'title' => 'نسخه قدیمی',
+        ])
+            ->assertConflict()
+            ->assertJsonPath('error.code', 'content.edit_conflict');
+
+        $updated = $this->patchJson('/api/v1/admin/content/'.$entry['id'], [
+            'expected_content_hash' => $published['content_hash'],
             'title' => 'راهنمای ویرایش‌شده',
         ])
             ->assertOk()
             ->assertJsonPath('data.status', 'review')
-            ->assertJsonPath('data.seo.robots_index', true);
+            ->assertJsonPath('data.seo.robots_index', true)
+            ->json('data');
 
+        $this->assertNotSame($published['content_hash'], $updated['content_hash']);
         $this->getJson('/api/v1/content/test-guide')->assertNotFound();
     }
 
