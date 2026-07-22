@@ -2,7 +2,9 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 return new class extends Migration
 {
@@ -43,6 +45,34 @@ return new class extends Migration
             $table->index(['order_id', 'created_at']);
             $table->index(['sub_order_id', 'created_at']);
         });
+
+        $now = now();
+        $templates = [
+            'order.paid' => 'پرداخت سفارش {{order_number}} در رستا تأیید شد. روستری {{roastery_name}} سفارش را بررسی می‌کند.',
+            'order.accepted' => 'سفارش {{order_number}} توسط {{roastery_name}} پذیرفته شد.',
+            'order.rejected' => 'سفارش {{order_number}} توسط روستری پذیرفته نشد. وضعیت بازپرداخت را از حساب خود پیگیری کنید.',
+            'order.preparing' => 'آماده‌سازی سفارش {{order_number}} در {{roastery_name}} شروع شد.',
+            'order.ready_to_ship' => 'سفارش {{order_number}} آماده ارسال است.',
+            'order.shipped' => 'سفارش {{order_number}} ارسال شد. کد رهگیری: {{tracking_code}}',
+            'order.delivered' => 'سفارش {{order_number}} تحویل شد. از همراهی شما با رستا سپاسگزاریم.',
+            'order.cancelled' => 'سفارش {{order_number}} لغو شد. جزئیات در حساب کاربری قابل مشاهده است.',
+            'order.refunded' => 'بازپرداخت سفارش {{order_number}} ثبت شد. شناسه پیگیری: {{refund_reference}}',
+        ];
+
+        DB::table('notification_templates')->insert(array_map(
+            static fn (string $key, string $body): array => [
+                'id' => (string) Str::ulid(),
+                'key' => $key,
+                'channel' => 'sms',
+                'body' => $body,
+                'provider_template' => null,
+                'is_active' => true,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ],
+            array_keys($templates),
+            array_values($templates),
+        ));
     }
 
     public function down(): void
