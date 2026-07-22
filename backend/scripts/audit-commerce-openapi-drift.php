@@ -1,0 +1,55 @@
+<?php
+
+$root = dirname(__DIR__);
+$openApi = file_get_contents(dirname($root).'/docs/openapi/rosta-v1-commerce-additions.yaml');
+$routeSources = implode("\n", array_map(
+    static fn (string $file): string => file_get_contents($root.'/routes/'.$file),
+    ['payments.php', 'fulfillment.php', 'reviews-support.php', 'media-uploads.php'],
+));
+
+$contracts = [
+    '/payments/request',
+    '/payments/{paymentId}/verify',
+    '/seller/roasteries/{roasteryId}/orders/{orderId}/fulfillment',
+    '/admin/orders/{orderId}/fulfillment',
+    '/reviews',
+    '/products/{productSlug}/reviews',
+    '/admin/reviews/{reviewId}',
+    '/inquiries',
+    '/admin/inquiries/{inquiryId}',
+    '/seller/roasteries/{roasteryId}/media/uploads',
+    '/seller/roasteries/{roasteryId}/media/uploads/{uploadId}/complete',
+];
+
+$missingRoutes = [];
+$missingOpenApi = [];
+foreach ($contracts as $path) {
+    if (! str_contains($routeSources, $path)) {
+        $missingRoutes[] = $path;
+    }
+    if (! str_contains($openApi, $path.':')) {
+        $missingOpenApi[] = $path;
+    }
+}
+
+$passed = $missingRoutes === [] && $missingOpenApi === [];
+file_put_contents($root.'/commerce-openapi-drift-audit.json', json_encode([
+    'generatedAt' => gmdate(DATE_ATOM),
+    'marker' => 'commerce_openapi_drift=clean',
+    'passed' => $passed,
+    'missingRoutes' => $missingRoutes,
+    'missingOpenApi' => $missingOpenApi,
+], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES).PHP_EOL);
+
+if (! $passed) {
+    fwrite(STDERR, "Commerce OpenAPI drift detected.\n");
+    foreach ($missingRoutes as $path) {
+        fwrite(STDERR, "- Missing route: {$path}\n");
+    }
+    foreach ($missingOpenApi as $path) {
+        fwrite(STDERR, "- Missing OpenAPI path: {$path}\n");
+    }
+    exit(1);
+}
+
+echo 'Commerce OpenAPI drift audit passed ('.count($contracts)." paths).\n";
