@@ -2,9 +2,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [main]
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -45,5 +45,6 @@ jobs:
           path: |
             frontend-check.log
             bundle-report.json
+            release-integrity-audit.json
           if-no-files-found: ignore
           retention-days: 14
