@@ -4,7 +4,6 @@ namespace App\Services\Content;
 
 use App\Enums\ContentStatus;
 use App\Enums\ContentType;
-use App\Enums\ProductStatus;
 use App\Enums\RoasteryStatus;
 use App\Models\ContentEntry;
 use App\Models\ContentRelation;
@@ -12,7 +11,6 @@ use App\Models\Origin;
 use App\Models\Product;
 use App\Models\Roastery;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\Eloquent\Relations\Relation;
 
 final class ContentLinkReportService
 {
@@ -66,7 +64,7 @@ final class ContentLinkReportService
         }
 
         $incomingContentSlugs = ContentRelation::query()
-            ->where('target_type', 'content')
+            ->whereIn('target_type', ['content', 'brew_method', 'taste'])
             ->select('target_key');
 
         $orphaned = ContentEntry::query()
@@ -165,15 +163,23 @@ final class ContentLinkReportService
             ])
             ->all();
 
+        $productKeys = $keys->get('product', []);
         $products = Product::query()
-            ->whereIn('slug', $keys->get('product', []))
-            ->get(['slug', 'status', 'published_at'])
-            ->keyBy('slug')
-            ->map(static fn (Product $product): array => [
-                'live' => $product->status === ProductStatus::Published
-                    && $product->published_at !== null,
+            ->whereIn('slug', $productKeys)
+            ->pluck('slug')
+            ->mapWithKeys(static fn (string $slug): array => [
+                $slug => ['live' => false],
             ])
             ->all();
+
+        $publicProductSlugs = Product::query()
+            ->published()
+            ->whereIn('slug', $productKeys)
+            ->pluck('slug')
+            ->all();
+        foreach ($publicProductSlugs as $slug) {
+            $products[$slug]['live'] = true;
+        }
 
         $roasteries = Roastery::query()
             ->whereIn('slug', $keys->get('roastery', []))
