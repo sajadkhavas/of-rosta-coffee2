@@ -1,16 +1,56 @@
 <?php
 
+$boolean = static fn (string $key, bool $default = false): bool => filter_var(
+    env($key, $default),
+    FILTER_VALIDATE_BOOL,
+);
+
+$paymentEnabled = $boolean('ROSTA_PAYMENT_ENABLED');
+$smsEnabled = $boolean('ROSTA_SMS_ENABLED');
+$zarinpalSandbox = $boolean('ZARINPAL_SANDBOX', true);
+
 return [
     'api_version' => env('ROSTA_API_VERSION', 'v1'),
     'contract_version' => env('ROSTA_CONTRACT_VERSION', '2026-07-21-phase-6'),
     'whole_bean_weights' => [50, 100, 250, 500, 1000],
     'single_roastery_orders' => true,
-    'payment_enabled' => (bool) env('ROSTA_PAYMENT_ENABLED', false),
-    'sms_enabled' => (bool) env('ROSTA_SMS_ENABLED', false),
+    'payment_enabled' => $paymentEnabled,
+    'sms_enabled' => $smsEnabled,
     'allowed_payment_redirect_hosts' => array_values(array_filter(array_map(
         static fn (string $host): string => strtolower(trim($host)),
         explode(',', (string) env('ROSTA_ALLOWED_PAYMENT_REDIRECT_HOSTS', '')),
     ))),
+    'payment' => [
+        'enabled' => $paymentEnabled,
+        'provider' => env('PAYMENT_DRIVER', 'disabled'),
+        'currency' => 'IRR',
+        'amount_multiplier' => max(1, (int) env('PAYMENT_AMOUNT_MULTIPLIER', 1)),
+        'attempt_ttl_minutes' => max(1, min(60, (int) env('PAYMENT_ATTEMPT_TTL_MINUTES', 20))),
+        'timeout_seconds' => max(2, min(60, (int) env('PAYMENT_TIMEOUT_SECONDS', 10))),
+        'frontend_callback_url' => env('PAYMENT_CALLBACK_URL', 'http://localhost:5173/checkout'),
+        'zarinpal' => [
+            'merchant_id' => env('PAYMENT_MERCHANT_ID'),
+            'sandbox' => $zarinpalSandbox,
+            'request_url' => env(
+                'ZARINPAL_REQUEST_URL',
+                $zarinpalSandbox
+                    ? 'https://sandbox.zarinpal.com/pg/v4/payment/request.json'
+                    : 'https://api.zarinpal.com/pg/v4/payment/request.json',
+            ),
+            'verify_url' => env(
+                'ZARINPAL_VERIFY_URL',
+                $zarinpalSandbox
+                    ? 'https://sandbox.zarinpal.com/pg/v4/payment/verify.json'
+                    : 'https://api.zarinpal.com/pg/v4/payment/verify.json',
+            ),
+            'start_pay_url' => env(
+                'ZARINPAL_START_PAY_URL',
+                $zarinpalSandbox
+                    ? 'https://sandbox.zarinpal.com/pg/StartPay'
+                    : 'https://www.zarinpal.com/pg/StartPay',
+            ),
+        ],
+    ],
     'otp' => [
         'length' => 6,
         'ttl_seconds' => max(30, min(900, (int) env('ROSTA_OTP_TTL_SECONDS', 120))),
