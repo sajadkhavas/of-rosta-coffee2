@@ -30,11 +30,12 @@ final class ContentPublicationService
                 ->with('author')
                 ->lockForUpdate()
                 ->findOrFail($entry->id);
+            $previousStatus = $locked->status;
 
             if ($status === ContentStatus::Published) {
                 if (
-                    $locked->status !== ContentStatus::Review
-                    && $locked->status !== ContentStatus::Published
+                    $previousStatus !== ContentStatus::Review
+                    && $previousStatus !== ContentStatus::Published
                 ) {
                     throw new ApiDomainException(
                         'content.review_required',
@@ -89,7 +90,7 @@ final class ContentPublicationService
                 actor: $reviewer,
                 auditable: $locked,
                 metadata: [
-                    'previous_status' => $entry->status->value,
+                    'previous_status' => $previousStatus->value,
                     'status' => $status->value,
                     'robots_index' => $locked->robots_index,
                 ],
