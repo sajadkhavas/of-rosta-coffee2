@@ -21,10 +21,7 @@ final class AppServiceProvider extends ServiceProvider
         $this->app->singleton(OtpSender::class, function (): OtpSender {
             $driver = (string) config('services.sms.driver');
 
-            if (
-                $driver === 'log'
-                && $this->app->environment(['local', 'testing'])
-            ) {
+            if ($driver === 'log' && $this->app->environment(['local', 'testing'])) {
                 return new LogOtpSender;
             }
 
@@ -36,7 +33,7 @@ final class AppServiceProvider extends ServiceProvider
     {
         Order::observe(OrderObserver::class);
 
-        foreach (['payments.php', 'fulfillment.php', 'reviews-support.php'] as $routes) {
+        foreach (['payments.php', 'fulfillment.php', 'reviews-support.php', 'media-uploads.php'] as $routes) {
             Route::prefix('api/v1')
                 ->middleware('api')
                 ->group(base_path('routes/'.$routes));
@@ -55,9 +52,7 @@ final class AppServiceProvider extends ServiceProvider
 
             return [
                 Limit::perMinute(3)->by('otp-request:ip:'.$request->ip()),
-                Limit::perHour(5)->by(
-                    'otp-request:mobile:'.hash('sha256', $mobile),
-                ),
+                Limit::perHour(5)->by('otp-request:mobile:'.hash('sha256', $mobile)),
             ];
         });
 
@@ -66,18 +61,14 @@ final class AppServiceProvider extends ServiceProvider
 
             return [
                 Limit::perMinute(10)->by('otp-verify:ip:'.$request->ip()),
-                Limit::perMinute(5)->by(
-                    'otp-verify:challenge:'.hash('sha256', $challengeId),
-                ),
+                Limit::perMinute(5)->by('otp-verify:challenge:'.hash('sha256', $challengeId)),
             ];
         });
 
-        RateLimiter::for('cart-validate', function (Request $request): array {
-            return [
-                Limit::perMinute(30)->by('cart-validate:ip:'.$request->ip()),
-                Limit::perHour(300)->by('cart-validate-hour:ip:'.$request->ip()),
-            ];
-        });
+        RateLimiter::for('cart-validate', fn (Request $request): array => [
+            Limit::perMinute(30)->by('cart-validate:ip:'.$request->ip()),
+            Limit::perHour(300)->by('cart-validate-hour:ip:'.$request->ip()),
+        ]);
 
         RateLimiter::for('checkout-quote', function (Request $request): array {
             $userId = (string) $request->user()?->getAuthIdentifier();
@@ -115,14 +106,10 @@ final class AppServiceProvider extends ServiceProvider
             ];
         });
 
-        RateLimiter::for('payment-callback', function (Request $request): array {
-            return [
-                Limit::perMinute(30)->by('payment-callback:ip:'.$request->ip()),
-                Limit::perMinute(10)->by(
-                    'payment-callback:id:'.hash('sha256', (string) $request->route('paymentId')),
-                ),
-            ];
-        });
+        RateLimiter::for('payment-callback', fn (Request $request): array => [
+            Limit::perMinute(30)->by('payment-callback:ip:'.$request->ip()),
+            Limit::perMinute(10)->by('payment-callback:id:'.hash('sha256', (string) $request->route('paymentId'))),
+        ]);
 
         RateLimiter::for('fulfillment-transition', function (Request $request): array {
             $userId = (string) $request->user()?->getAuthIdentifier();
@@ -130,20 +117,14 @@ final class AppServiceProvider extends ServiceProvider
 
             return [
                 Limit::perMinute(20)->by('fulfillment:user:'.$userId),
-                Limit::perMinute(6)->by(
-                    'fulfillment:order:'.hash('sha256', $orderId),
-                ),
+                Limit::perMinute(6)->by('fulfillment:order:'.hash('sha256', $orderId)),
             ];
         });
 
-        RateLimiter::for('public-reviews', function (Request $request): array {
-            return [
-                Limit::perMinute(60)->by('reviews:ip:'.$request->ip()),
-                Limit::perMinute(30)->by(
-                    'reviews:product:'.hash('sha256', (string) $request->route('productSlug')),
-                ),
-            ];
-        });
+        RateLimiter::for('public-reviews', fn (Request $request): array => [
+            Limit::perMinute(60)->by('reviews:ip:'.$request->ip()),
+            Limit::perMinute(30)->by('reviews:product:'.hash('sha256', (string) $request->route('productSlug'))),
+        ]);
 
         RateLimiter::for('review-submit', function (Request $request): array {
             $userId = (string) $request->user()?->getAuthIdentifier();
@@ -160,9 +141,7 @@ final class AppServiceProvider extends ServiceProvider
             return [
                 Limit::perMinute(3)->by('inquiry:ip:'.$request->ip()),
                 Limit::perHour(10)->by('inquiry-hour:ip:'.$request->ip()),
-                Limit::perHour(5)->by(
-                    'inquiry:contact:'.hash('sha256', mb_strtolower($contact)),
-                ),
+                Limit::perHour(5)->by('inquiry:contact:'.hash('sha256', mb_strtolower($contact))),
             ];
         });
 
@@ -172,6 +151,16 @@ final class AppServiceProvider extends ServiceProvider
             return [
                 Limit::perMinute(60)->by('admin-operations:user:'.$userId),
                 Limit::perHour(1000)->by('admin-operations-hour:user:'.$userId),
+            ];
+        });
+
+        RateLimiter::for('media-upload', function (Request $request): array {
+            $userId = (string) $request->user()?->getAuthIdentifier();
+            $roasteryId = (string) $request->route('roasteryId');
+
+            return [
+                Limit::perMinute(15)->by('media-upload:user:'.$userId),
+                Limit::perHour(200)->by('media-upload-hour:roastery:'.hash('sha256', $roasteryId)),
             ];
         });
     }
