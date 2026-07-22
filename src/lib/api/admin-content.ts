@@ -95,7 +95,9 @@ const authorCollectionSchema = collectionSchema(authorSchema);
 const contentCollectionSchema = collectionSchema(contentSummarySchema);
 const redirectCollectionSchema = collectionSchema(redirectSchema);
 const authorResourceSchema = z.object({ data: authorSchema }).passthrough();
-const contentResourceSchema = z.object({ data: contentSummarySchema }).passthrough();
+const contentResourceSchema = z
+  .object({ data: contentSummarySchema })
+  .passthrough();
 const redirectResourceSchema = z.object({ data: redirectSchema }).passthrough();
 
 export type AdminContentAuthor = z.infer<typeof authorSchema>;
@@ -122,7 +124,12 @@ export interface CreateContentEntryInput {
   seo_description: string;
   robots_index: boolean;
   robots_follow: boolean;
-  schema_type: "Article" | "BlogPosting" | "CollectionPage" | "FAQPage" | "WebPage";
+  schema_type:
+    | "Article"
+    | "BlogPosting"
+    | "CollectionPage"
+    | "FAQPage"
+    | "WebPage";
   keywords: string[];
 }
 
@@ -159,7 +166,7 @@ export async function createContentAuthor(
   const payload = authorResourceSchema.parse(
     await apiFetch<unknown>("/admin/content-authors", {
       method: "POST",
-      body: input,
+      body: { ...input },
     }),
   );
   return payload.data;
@@ -171,7 +178,7 @@ export async function createContentEntry(
   const payload = contentResourceSchema.parse(
     await apiFetch<unknown>("/admin/content", {
       method: "POST",
-      body: input,
+      body: { ...input },
     }),
   );
   return payload.data;
@@ -182,10 +189,13 @@ export async function setContentStatus(
   status: AdminContentStatus,
 ): Promise<AdminContentSummary> {
   const payload = contentResourceSchema.parse(
-    await apiFetch<unknown>(`/admin/content/${encodeURIComponent(entryId)}/status`, {
-      method: "PATCH",
-      body: { status },
-    }),
+    await apiFetch<unknown>(
+      `/admin/content/${encodeURIComponent(entryId)}/status`,
+      {
+        method: "PATCH",
+        body: { status },
+      },
+    ),
   );
   return payload.data;
 }
@@ -196,7 +206,7 @@ export async function createSeoRedirect(
   const payload = redirectResourceSchema.parse(
     await apiFetch<unknown>("/admin/seo-redirects", {
       method: "POST",
-      body: input,
+      body: { ...input },
     }),
   );
   return payload.data;
