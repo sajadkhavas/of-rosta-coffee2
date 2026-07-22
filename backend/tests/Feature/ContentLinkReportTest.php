@@ -20,13 +20,7 @@ final class ContentLinkReportTest extends TestCase
     {
         $administrator = User::factory()->create();
         $this->authenticateWithRole($administrator, Role::Administrator);
-        $author = ContentAuthor::query()->create([
-            'name' => 'تحریریه گزارش',
-            'slug' => 'report-editorial',
-            'bio' => null,
-            'credentials' => [],
-            'is_active' => true,
-        ]);
+        $author = $this->author();
 
         $source = $this->entry($author, 'source-guide');
         $target = $this->entry($author, 'target-guide');
@@ -62,6 +56,31 @@ final class ContentLinkReportTest extends TestCase
             ->assertJsonPath('data.weak_outbound_entries.0.relations_count', 0);
     }
 
+    public function test_typed_brew_relation_counts_as_an_incoming_content_link(): void
+    {
+        $administrator = User::factory()->create();
+        $this->authenticateWithRole($administrator, Role::Administrator);
+        $author = $this->author('typed-report-editorial');
+
+        $source = $this->entry($author, 'brew-source');
+        $brew = $this->entry($author, 'v60-method', 'brew_method', '/brew/v60-method');
+
+        ContentRelation::query()->create([
+            'content_entry_id' => $source->id,
+            'relation_type' => 'related',
+            'target_type' => 'brew_method',
+            'target_key' => $brew->slug,
+            'anchor_text' => 'راهنمای V60',
+            'position' => 0,
+        ]);
+
+        $this->getJson('/api/v1/admin/content-link-report')
+            ->assertOk()
+            ->assertJsonPath('data.summary.broken_relations', 0)
+            ->assertJsonPath('data.summary.orphaned_entries', 1)
+            ->assertJsonPath('data.orphaned_entries.0.slug', 'brew-source');
+    }
+
     public function test_non_administrator_cannot_read_link_report(): void
     {
         $customer = User::factory()->create();
@@ -70,14 +89,29 @@ final class ContentLinkReportTest extends TestCase
         $this->getJson('/api/v1/admin/content-link-report')->assertForbidden();
     }
 
-    private function entry(ContentAuthor $author, string $slug): ContentEntry
+    private function author(string $slug = 'report-editorial'): ContentAuthor
     {
+        return ContentAuthor::query()->create([
+            'name' => 'تحریریه گزارش',
+            'slug' => $slug,
+            'bio' => null,
+            'credentials' => [],
+            'is_active' => true,
+        ]);
+    }
+
+    private function entry(
+        ContentAuthor $author,
+        string $slug,
+        string $type = 'guide',
+        ?string $canonicalPath = null,
+    ): ContentEntry {
         return ContentEntry::query()->create([
             'author_id' => $author->id,
-            'type' => 'guide',
+            'type' => $type,
             'title' => $slug,
             'slug' => $slug,
-            'canonical_path' => '/guides/'.$slug,
+            'canonical_path' => $canonicalPath ?? '/guides/'.$slug,
             'excerpt' => 'محتوای تست گزارش لینک داخلی.',
             'body' => [
                 ['type' => 'paragraph', 'text' => 'پاراگراف اول.'],
