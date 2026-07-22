@@ -1,18 +1,36 @@
 {
+  "id": "/",
   "name": "رستا — مارکت‌پلیس قهوه",
   "short_name": "رستا",
-  "description": "خرید قهوه تازه مستقیم از روستری، بدون واسطه",
+  "description": "کشف و خرید دانه کامل قهوه تازه، مستقیم از روستری‌های منتخب",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "background_color": "#0A0400",
   "theme_color": "#C8965A",
-  "orientation": "portrait",
+  "orientation": "any",
   "dir": "rtl",
   "lang": "fa",
+  "categories": ["shopping", "food", "lifestyle"],
+  "prefer_related_applications": false,
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
     { "src": "/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "محصولات قهوه",
+      "short_name": "محصولات",
+      "url": "/products",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "کوییز سلیقه قهوه",
+      "short_name": "کوییز",
+      "url": "/quiz",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
   ]
 }
