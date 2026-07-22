@@ -27,6 +27,15 @@ describe("verified payment security", () => {
     expect(isConsistentVerifiedPaid(verifiedPaid, expectation)).toBe(true);
   });
 
+  test("preserves paid truth while the order awaits a real refund", () => {
+    expect(
+      isConsistentVerifiedPaid(
+        { ...verifiedPaid, orderStatus: "refund_pending" },
+        expectation,
+      ),
+    ).toBe(true);
+  });
+
   test.each([
     ["payment id", { paymentId: "payment-2" }],
     ["order id", { orderId: "order-2" }],
