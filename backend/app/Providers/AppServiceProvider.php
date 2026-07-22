@@ -36,12 +36,11 @@ final class AppServiceProvider extends ServiceProvider
     {
         Order::observe(OrderObserver::class);
 
-        Route::prefix('api/v1')
-            ->middleware('api')
-            ->group(base_path('routes/payments.php'));
-        Route::prefix('api/v1')
-            ->middleware('api')
-            ->group(base_path('routes/fulfillment.php'));
+        foreach (['payments.php', 'fulfillment.php', 'reviews-support.php'] as $routes) {
+            Route::prefix('api/v1')
+                ->middleware('api')
+                ->group(base_path('routes/'.$routes));
+        }
 
         RateLimiter::for('api', function (Request $request): Limit {
             $key = $request->user()?->getAuthIdentifier()
@@ -134,6 +133,45 @@ final class AppServiceProvider extends ServiceProvider
                 Limit::perMinute(6)->by(
                     'fulfillment:order:'.hash('sha256', $orderId),
                 ),
+            ];
+        });
+
+        RateLimiter::for('public-reviews', function (Request $request): array {
+            return [
+                Limit::perMinute(60)->by('reviews:ip:'.$request->ip()),
+                Limit::perMinute(30)->by(
+                    'reviews:product:'.hash('sha256', (string) $request->route('productSlug')),
+                ),
+            ];
+        });
+
+        RateLimiter::for('review-submit', function (Request $request): array {
+            $userId = (string) $request->user()?->getAuthIdentifier();
+
+            return [
+                Limit::perMinute(5)->by('review-submit:user:'.$userId),
+                Limit::perHour(20)->by('review-submit-hour:user:'.$userId),
+            ];
+        });
+
+        RateLimiter::for('inquiry-submit', function (Request $request): array {
+            $contact = trim((string) ($request->input('mobile') ?: $request->input('email')));
+
+            return [
+                Limit::perMinute(3)->by('inquiry:ip:'.$request->ip()),
+                Limit::perHour(10)->by('inquiry-hour:ip:'.$request->ip()),
+                Limit::perHour(5)->by(
+                    'inquiry:contact:'.hash('sha256', mb_strtolower($contact)),
+                ),
+            ];
+        });
+
+        RateLimiter::for('admin-operations', function (Request $request): array {
+            $userId = (string) $request->user()?->getAuthIdentifier();
+
+            return [
+                Limit::perMinute(60)->by('admin-operations:user:'.$userId),
+                Limit::perHour(1000)->by('admin-operations-hour:user:'.$userId),
             ];
         });
     }
