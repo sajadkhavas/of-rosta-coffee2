@@ -30,7 +30,6 @@ final class ContentWriteService
             $entry = ContentEntry::query()->create([
                 ...$this->normalizedData($data, $body, true),
                 'status' => ContentStatus::Draft->value,
-                'robots_index' => false,
             ]);
 
             $this->syncRelations($entry, $relations);
@@ -56,7 +55,9 @@ final class ContentWriteService
         Request $request,
     ): ContentEntry {
         return DB::transaction(function () use ($entry, $data, $actor, $request): ContentEntry {
-            $locked = ContentEntry::query()->lockForUpdate()->findOrFail($entry->id);
+            $locked = ContentEntry::query()
+                ->lockForUpdate()
+                ->findOrFail($entry->id);
             $relationsProvided = array_key_exists('relations', $data);
             $relations = $data['relations'] ?? [];
             unset($data['relations']);
@@ -70,7 +71,6 @@ final class ContentWriteService
             if ($wasPublished) {
                 $locked->status = ContentStatus::Review;
                 $locked->published_at = null;
-                $locked->robots_index = false;
             }
             $locked->save();
 
@@ -98,10 +98,15 @@ final class ContentWriteService
      * @param list<array<string, mixed>> $body
      * @return array<string, mixed>
      */
-    private function normalizedData(array $data, array $body, bool $isCreate = false): array
-    {
+    private function normalizedData(
+        array $data,
+        array $body,
+        bool $isCreate = false,
+    ): array {
         if (array_key_exists('canonical_path', $data)) {
-            $data['canonical_path'] = SeoPath::assertPublic((string) $data['canonical_path']);
+            $data['canonical_path'] = SeoPath::assertPublic(
+                (string) $data['canonical_path'],
+            );
         }
 
         $data['body'] = $body;
@@ -118,6 +123,7 @@ final class ContentWriteService
 
         if ($isCreate) {
             $data['schema_type'] ??= 'Article';
+            $data['robots_index'] ??= false;
             $data['robots_follow'] ??= true;
         }
 
