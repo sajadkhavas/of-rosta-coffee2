@@ -23,6 +23,7 @@ final class Inquiry extends Model
         'ip_hmac',
         'user_agent_hash',
         'duplicate_hash',
+        'deduplication_key',
         'assigned_to',
         'resolved_at',
     ];
