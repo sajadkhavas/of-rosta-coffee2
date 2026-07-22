@@ -3,16 +3,20 @@
 namespace Database\Seeders;
 
 use App\Enums\Role;
+use App\Models\ContentAuthor;
+use App\Models\ContentEntry;
 use App\Models\Coupon;
 use App\Models\Origin;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\RoastBatch;
 use App\Models\Roastery;
+use App\Models\SeoRedirect;
 use App\Models\ShippingRule;
 use App\Models\StockLedgerEntry;
 use App\Models\User;
 use App\Models\UserRole;
+use App\Services\Content\ContentBlockValidator;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -143,6 +147,85 @@ final class DatabaseSeeder extends Seeder
                 'reason' => 'opening',
                 'idempotency_key' => 'seed:opening:ROSTA-ETH-250',
                 'metadata' => ['source' => 'development-seeder'],
+            ]);
+
+            $author = ContentAuthor::query()->create([
+                'name' => 'تحریریه رستا',
+                'slug' => 'rosta-editorial',
+                'bio' => 'تیم محتوای رستا با تمرکز بر انتخاب دانه کامل، تازگی و روش دم‌آوری.',
+                'credentials' => ['تحقیق محصول', 'راهنمای انتخاب قهوه'],
+                'is_active' => true,
+            ]);
+
+            $body = app(ContentBlockValidator::class)->validate([
+                [
+                    'type' => 'paragraph',
+                    'text' => 'قهوه تازه‌رست فقط به معنی نزدیک‌بودن تاریخ رست نیست؛ روش دم‌آوری و زمان استراحت دانه نیز روی نتیجه فنجان اثر می‌گذارد.',
+                ],
+                [
+                    'type' => 'heading',
+                    'level' => 2,
+                    'text' => 'بازه مناسب مصرف',
+                ],
+                [
+                    'type' => 'list',
+                    'style' => 'unordered',
+                    'items' => [
+                        'برای روش‌های دمی معمولاً چند روز پس از رست مناسب است.',
+                        'برای اسپرسو زمان استراحت بیشتری لازم است.',
+                        'تاریخ رست باید کنار موجودی واقعی نمایش داده شود.',
+                    ],
+                ],
+                [
+                    'type' => 'product_grid',
+                    'product_slugs' => [$product->slug],
+                ],
+            ]);
+
+            $entry = ContentEntry::query()->create([
+                'author_id' => $author->id,
+                'reviewed_by' => $administrator->id,
+                'type' => 'guide',
+                'title' => 'راهنمای انتخاب قهوه تازه‌رست',
+                'slug' => 'fresh-roast-basics',
+                'canonical_path' => '/guides/fresh-roast-basics',
+                'excerpt' => 'چطور تاریخ رست، زمان استراحت و روش دم‌آوری را برای انتخاب دانه کامل بررسی کنیم.',
+                'body' => $body,
+                'status' => 'published',
+                'published_at' => now(),
+                'seo_title' => 'راهنمای انتخاب قهوه تازه‌رست | رستا',
+                'seo_description' => 'راهنمای عملی بررسی تاریخ رست، زمان استراحت و انتخاب دانه کامل مناسب روش دم‌آوری.',
+                'robots_index' => true,
+                'robots_follow' => true,
+                'schema_type' => 'BlogPosting',
+                'keywords' => ['قهوه تازه رست', 'تاریخ رست', 'دانه کامل'],
+                'content_hash' => app(ContentBlockValidator::class)->hash($body),
+            ]);
+
+            $entry->relations()->createMany([
+                [
+                    'relation_type' => 'recommends',
+                    'target_type' => 'product',
+                    'target_key' => $product->slug,
+                    'anchor_text' => $product->name,
+                    'position' => 0,
+                ],
+                [
+                    'relation_type' => 'mentions',
+                    'target_type' => 'roastery',
+                    'target_key' => $roastery->slug,
+                    'anchor_text' => $roastery->name,
+                    'position' => 1,
+                ],
+            ]);
+
+            SeoRedirect::query()->create([
+                'source_path' => '/articles/fresh-roast',
+                'destination_path' => $entry->canonical_path,
+                'status_code' => 301,
+                'is_active' => true,
+                'hits' => 0,
+                'created_by' => $administrator->id,
             ]);
         });
     }
