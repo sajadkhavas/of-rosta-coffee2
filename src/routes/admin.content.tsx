@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { EditorialContentDialog } from "@/components/admin/EditorialContentDialog";
 import { AccountGuard } from "@/components/account/AccountGuard";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { Footer } from "@/components/Footer";
@@ -14,7 +15,10 @@ import {
   createSeoRedirect,
   seoRedirectsQueryOptions,
   setContentStatus,
+  type AdminContentDetail,
   type AdminContentStatus,
+  type AdminContentType,
+  type AdminSchemaType,
 } from "@/lib/api/admin-content";
 import { isApiError } from "@/lib/api/client";
 import type { ContentBlock } from "@/lib/api/content";
@@ -30,13 +34,38 @@ export const Route = createFileRoute("/admin/content")({
 });
 
 const fieldClass =
-  "w-full rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2.5 text-sm outline-none focus:border-[color:var(--roast)]";
+  "w-full rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2.5 text-sm text-[color:var(--steam)] outline-none focus:border-[color:var(--roast)]";
 
 const STATUS_LABELS: Record<AdminContentStatus, string> = {
   draft: "پیش‌نویس",
   review: "در انتظار بررسی",
   published: "منتشرشده",
   archived: "بایگانی",
+};
+
+const TYPE_LABELS: Record<AdminContentType, string> = {
+  article: "مقاله",
+  guide: "راهنما",
+  comparison: "مقایسه",
+  landing: "لندینگ",
+  origin: "خاستگاه",
+  brew_method: "روش دم‌آوری",
+  taste: "طعم",
+  collection: "کالکشن",
+};
+
+const TYPE_DEFAULTS: Record<
+  AdminContentType,
+  { prefix: string; schema: AdminSchemaType }
+> = {
+  article: { prefix: "/blog/", schema: "BlogPosting" },
+  guide: { prefix: "/guides/", schema: "BlogPosting" },
+  comparison: { prefix: "/compare/", schema: "Article" },
+  landing: { prefix: "/", schema: "WebPage" },
+  origin: { prefix: "/origins/", schema: "CollectionPage" },
+  brew_method: { prefix: "/brew/", schema: "Article" },
+  taste: { prefix: "/tastes/", schema: "CollectionPage" },
+  collection: { prefix: "/collections/", schema: "CollectionPage" },
 };
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -52,6 +81,10 @@ function errorMessage(error: unknown): string {
   return isApiError(error)
     ? error.message
     : "درخواست انجام نشد. اتصال سرویس و اطلاعات ورودی را بررسی کنید.";
+}
+
+function splitComma(value: string): string[] {
+  return [...new Set(value.split(/[،,]/).map((item) => item.trim()).filter(Boolean))];
 }
 
 function AdminContentPage() {
@@ -85,6 +118,7 @@ function AdminContentDashboard() {
   const contentQuery = useQuery(adminContentQueryOptions());
   const authorsQuery = useQuery(contentAuthorsQueryOptions());
   const redirectsQuery = useQuery(seoRedirectsQueryOptions());
+  const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
 
   const [authorForm, setAuthorForm] = useState({
     name: "",
@@ -94,6 +128,7 @@ function AdminContentDashboard() {
   });
   const [contentForm, setContentForm] = useState({
     authorId: "",
+    type: "guide" as AdminContentType,
     title: "",
     slug: "",
     canonicalPath: "/guides/",
@@ -103,6 +138,7 @@ function AdminContentDashboard() {
     seoDescription: "",
     keywords: "",
     robotsIndex: true,
+    schemaType: "BlogPosting" as AdminSchemaType,
   });
   const [redirectForm, setRedirectForm] = useState({
     sourcePath: "",
@@ -122,12 +158,13 @@ function AdminContentDashboard() {
 
   const contentMutation = useMutation({
     mutationFn: createContentEntry,
-    onSuccess: async () => {
+    onSuccess: async (entry) => {
+      const defaults = TYPE_DEFAULTS[contentForm.type];
       setContentForm((current) => ({
         ...current,
         title: "",
         slug: "",
-        canonicalPath: "/guides/",
+        canonicalPath: defaults.prefix,
         excerpt: "",
         paragraphs: "",
         seoTitle: "",
@@ -135,13 +172,15 @@ function AdminContentDashboard() {
         keywords: "",
       }));
       await queryClient.invalidateQueries({ queryKey: ["admin", "content"] });
+      setSelectedEntryId(entry.id);
     },
   });
 
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: AdminContentStatus }) =>
       setContentStatus(id, status),
-    onSuccess: async () => {
+    onSuccess: async (entry) => {
+      queryClient.setQueryData(["admin", "content", entry.id], entry);
       await queryClient.invalidateQueries({ queryKey: ["admin", "content"] });
     },
   });
@@ -174,10 +213,7 @@ function AdminContentDashboard() {
       name: authorForm.name.trim(),
       slug: authorForm.slug.trim(),
       bio: authorForm.bio.trim() || undefined,
-      credentials: authorForm.credentials
-        .split("،")
-        .map((value) => value.trim())
-        .filter(Boolean),
+      credentials: splitComma(authorForm.credentials),
     });
   };
 
@@ -187,7 +223,7 @@ function AdminContentDashboard() {
 
     contentMutation.mutate({
       author_id: contentForm.authorId,
-      type: "guide",
+      type: contentForm.type,
       title: contentForm.title.trim(),
       slug: contentForm.slug.trim(),
       canonical_path: contentForm.canonicalPath.trim(),
@@ -197,11 +233,9 @@ function AdminContentDashboard() {
       seo_description: contentForm.seoDescription.trim(),
       robots_index: contentForm.robotsIndex,
       robots_follow: true,
-      schema_type: "BlogPosting",
-      keywords: contentForm.keywords
-        .split("،")
-        .map((value) => value.trim())
-        .filter(Boolean),
+      schema_type: contentForm.schemaType,
+      keywords: splitComma(contentForm.keywords),
+      relations: [],
     });
   };
 
@@ -214,8 +248,25 @@ function AdminContentDashboard() {
     });
   };
 
+  const changeContentType = (type: AdminContentType) => {
+    const defaults = TYPE_DEFAULTS[type];
+    setContentForm((current) => ({
+      ...current,
+      type,
+      canonicalPath:
+        current.canonicalPath === TYPE_DEFAULTS[current.type].prefix
+          ? defaults.prefix
+          : current.canonicalPath,
+      schemaType: defaults.schema,
+    }));
+  };
+
   const initialError =
     contentQuery.error || authorsQuery.error || redirectsQuery.error;
+
+  const handleSaved = (entry: AdminContentDetail) => {
+    queryClient.setQueryData(["admin", "content", entry.id], entry);
+  };
 
   return (
     <section className="mt-8 space-y-10">
@@ -227,7 +278,7 @@ function AdminContentDashboard() {
           مدیریت محتوا، انتشار و Redirect
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-8 text-[color:var(--light)]">
-          محتوای جدید ابتدا Draft است. برای ورود به Sitemap باید نویسنده فعال داشته باشد، وارد Review شود و سپس توسط ادمین منتشر شود.
+          محتوای جدید ابتدا Draft است. ویرایشگر کامل از Blockهای امن، روابط داخلی، Preview مشترک و جلوگیری از بازنویسی هم‌زمان استفاده می‌کند.
         </p>
       </header>
 
@@ -284,7 +335,7 @@ function AdminContentDashboard() {
                 className={fieldClass}
               />
             </Field>
-            <Field label="تخصص‌ها با ، جدا شوند">
+            <Field label="تخصص‌ها با ویرگول جدا شوند">
               <input
                 value={authorForm.credentials}
                 onChange={(event) =>
@@ -305,9 +356,9 @@ function AdminContentDashboard() {
           <Button
             type="submit"
             className="mt-4 w-full"
-            disabled={authorMutation.isPending}
+            loading={authorMutation.isPending}
           >
-            {authorMutation.isPending ? "در حال ثبت…" : "ثبت نویسنده"}
+            ثبت نویسنده
           </Button>
         </form>
 
@@ -371,9 +422,9 @@ function AdminContentDashboard() {
           <Button
             type="submit"
             className="mt-4 w-full"
-            disabled={redirectMutation.isPending}
+            loading={redirectMutation.isPending}
           >
-            {redirectMutation.isPending ? "در حال ثبت…" : "ثبت Redirect"}
+            ثبت Redirect
           </Button>
         </form>
 
@@ -411,11 +462,33 @@ function AdminContentDashboard() {
         onSubmit={submitContent}
         className="rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5 sm:p-6"
       >
-        <h2 className="text-xl font-bold">ایجاد راهنمای ساختاریافته</h2>
-        <p className="mt-2 text-xs leading-6 text-[color:var(--light)]">
-          هر پاراگراف را با یک خط خالی از پاراگراف بعدی جدا کنید. برای عبور از Gate انتشار حداقل دو پاراگراف لازم است.
-        </p>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold">ایجاد Draft سریع</h2>
+            <p className="mt-2 text-xs leading-6 text-[color:var(--light)]">
+              Draft اولیه با دو پاراگراف ساخته می‌شود؛ پس از ساخت، ویرایشگر کامل خودکار باز خواهد شد.
+            </p>
+          </div>
+          <span className="rounded-full border border-[color:var(--mid)] px-3 py-1 text-xs text-[color:var(--roast)]">
+            {paragraphBlocks.length.toLocaleString("fa-IR")} بلوک اولیه
+          </span>
+        </div>
         <div className="mt-5 grid gap-3 md:grid-cols-2">
+          <Field label="نوع محتوا">
+            <select
+              value={contentForm.type}
+              onChange={(event) =>
+                changeContentType(event.target.value as AdminContentType)
+              }
+              className={fieldClass}
+            >
+              {(Object.keys(TYPE_LABELS) as AdminContentType[]).map((type) => (
+                <option key={type} value={type}>
+                  {TYPE_LABELS[type]}
+                </option>
+              ))}
+            </select>
+          </Field>
           <Field label="نویسنده">
             <select
               required
@@ -438,7 +511,7 @@ function AdminContentDashboard() {
                 ))}
             </select>
           </Field>
-          <Field label="عنوان راهنما">
+          <Field label="عنوان صفحه">
             <input
               required
               value={contentForm.title}
@@ -451,7 +524,7 @@ function AdminContentDashboard() {
               className={fieldClass}
             />
           </Field>
-          <Field label="Slug راهنما">
+          <Field label="Slug">
             <input
               required
               dir="ltr"
@@ -479,6 +552,19 @@ function AdminContentDashboard() {
               className={`${fieldClass} text-left`}
             />
           </Field>
+          <Field label="عنوان SEO">
+            <input
+              required
+              value={contentForm.seoTitle}
+              onChange={(event) =>
+                setContentForm((current) => ({
+                  ...current,
+                  seoTitle: event.target.value,
+                }))
+              }
+              className={fieldClass}
+            />
+          </Field>
           <div className="md:col-span-2">
             <Field label="خلاصه صفحه">
               <textarea
@@ -496,7 +582,7 @@ function AdminContentDashboard() {
             </Field>
           </div>
           <div className="md:col-span-2">
-            <Field label="پاراگراف‌های محتوا">
+            <Field label="پاراگراف‌های اولیه؛ با خط خالی جدا شوند">
               <textarea
                 required
                 value={contentForm.paragraphs}
@@ -507,38 +593,13 @@ function AdminContentDashboard() {
                   }))
                 }
                 placeholder={"پاراگراف اول…\n\nپاراگراف دوم…"}
-                rows={10}
+                rows={7}
                 className={fieldClass}
               />
             </Field>
           </div>
-          <Field label="عنوان سئو">
-            <input
-              required
-              value={contentForm.seoTitle}
-              onChange={(event) =>
-                setContentForm((current) => ({
-                  ...current,
-                  seoTitle: event.target.value,
-                }))
-              }
-              className={fieldClass}
-            />
-          </Field>
-          <Field label="کلمات کلیدی با ، جدا شوند">
-            <input
-              value={contentForm.keywords}
-              onChange={(event) =>
-                setContentForm((current) => ({
-                  ...current,
-                  keywords: event.target.value,
-                }))
-              }
-              className={fieldClass}
-            />
-          </Field>
           <div className="md:col-span-2">
-            <Field label="توضیح سئو">
+            <Field label="توضیح SEO">
               <textarea
                 required
                 value={contentForm.seoDescription}
@@ -553,23 +614,32 @@ function AdminContentDashboard() {
               />
             </Field>
           </div>
+          <Field label="کلمات کلیدی">
+            <input
+              value={contentForm.keywords}
+              onChange={(event) =>
+                setContentForm((current) => ({
+                  ...current,
+                  keywords: event.target.value,
+                }))
+              }
+              className={fieldClass}
+            />
+          </Field>
+          <label className="flex items-center gap-2 rounded-xl border border-[color:var(--mid)] p-3 text-sm text-[color:var(--light)]">
+            <input
+              type="checkbox"
+              checked={contentForm.robotsIndex}
+              onChange={(event) =>
+                setContentForm((current) => ({
+                  ...current,
+                  robotsIndex: event.target.checked,
+                }))
+              }
+            />
+            پس از Review و انتشار وارد Sitemap شود
+          </label>
         </div>
-        <label className="mt-4 flex items-center gap-2 text-sm text-[color:var(--light)]">
-          <input
-            type="checkbox"
-            checked={contentForm.robotsIndex}
-            onChange={(event) =>
-              setContentForm((current) => ({
-                ...current,
-                robotsIndex: event.target.checked,
-              }))
-            }
-          />
-          پس از بررسی و انتشار اجازه ورود به Sitemap داشته باشد
-        </label>
-        <p className="mt-3 text-xs text-[color:var(--light)]">
-          تعداد بلوک‌ها: {paragraphBlocks.length.toLocaleString("fa-IR")}
-        </p>
         {contentMutation.isError ? (
           <p className="mt-3 text-sm text-red-300">
             {errorMessage(contentMutation.error)}
@@ -578,14 +648,25 @@ function AdminContentDashboard() {
         <Button
           type="submit"
           className="mt-5"
-          disabled={contentMutation.isPending || paragraphBlocks.length < 2}
+          loading={contentMutation.isPending}
+          disabled={paragraphBlocks.length < 2}
         >
-          {contentMutation.isPending ? "در حال ایجاد…" : "ایجاد Draft"}
+          ایجاد Draft و بازکردن ویرایشگر
         </Button>
       </form>
 
       <section>
-        <h2 className="text-2xl font-bold">صف انتشار</h2>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold">صف محتوا و انتشار</h2>
+            <p className="mt-2 text-xs text-[color:var(--light)]">
+              ویرایش محتوای Published آن را خودکار به Review برمی‌گرداند.
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => contentQuery.refetch()}>
+            تازه‌سازی
+          </Button>
+        </div>
         <div className="mt-5 space-y-3">
           {contentQuery.isPending ? (
             <p className="text-sm text-[color:var(--light)]">
@@ -606,11 +687,14 @@ function AdminContentDashboard() {
                       {STATUS_LABELS[entry.status]}
                     </span>
                     <span className="rounded-full border border-[color:var(--mid)] px-2 py-0.5 text-[10px]">
+                      {TYPE_LABELS[entry.type]}
+                    </span>
+                    <span className="rounded-full border border-[color:var(--mid)] px-2 py-0.5 text-[10px]">
                       {entry.seo.robots_index ? "index" : "noindex"}
                     </span>
                   </div>
                   <p
-                    className="mt-2 text-xs text-[color:var(--light)]"
+                    className="mt-2 break-all text-xs text-[color:var(--light)]"
                     dir="ltr"
                   >
                     {entry.canonical_path}
@@ -620,6 +704,12 @@ function AdminContentDashboard() {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setSelectedEntryId(entry.id)}
+                  >
+                    ویرایش و Preview
+                  </Button>
                   {entry.status === "draft" ? (
                     <Button
                       variant="outline"
@@ -675,6 +765,13 @@ function AdminContentDashboard() {
           </div>
         ) : null}
       </section>
+
+      <EditorialContentDialog
+        entryId={selectedEntryId}
+        authors={authorsQuery.data ?? []}
+        onClose={() => setSelectedEntryId(null)}
+        onSaved={handleSaved}
+      />
     </section>
   );
 }
