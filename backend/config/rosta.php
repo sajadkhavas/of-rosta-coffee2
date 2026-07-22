@@ -24,4 +24,14 @@ return [
     'addresses' => [
         'max_per_user' => max(1, min(100, (int) env('ROSTA_MAX_ADDRESSES_PER_USER', 20))),
     ],
+    'catalog' => [
+        'max_products_per_roastery' => max(1, min(10000, (int) env('ROSTA_MAX_PRODUCTS_PER_ROASTERY', 1000))),
+        'max_media_per_roastery' => max(1, min(100000, (int) env('ROSTA_MAX_MEDIA_PER_ROASTERY', 10000))),
+        'allowed_media_hosts' => array_values(array_unique(array_filter(array_map(
+            static fn (string $host): string => strtolower(trim($host)),
+            explode(',', (string) env('ROSTA_ALLOWED_MEDIA_HOSTS', '')),
+        )))),
+        'public_page_size' => 24,
+        'seller_page_size' => 50,
+    ],
 ];

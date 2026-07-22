@@ -51,9 +51,11 @@ final class User extends Authenticatable
         return $this->hasMany(Address::class);
     }
 
-    /**
-     * @return list<string>
-     */
+    public function stockLedgerEntries(): HasMany
+    {
+        return $this->hasMany(StockLedgerEntry::class, 'actor_id');
+    }
+
     public function roleNames(): array
     {
         return $this->roleAssignments

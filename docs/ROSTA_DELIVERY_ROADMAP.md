@@ -1,6 +1,34 @@
 # Rosta security-first delivery roadmap
 
-Roadmap lock: `2026-07-21-rosta-security-first`
+Roadmap lock: `2026-07-21-rosta-full-launch`
+
+## Launch definition
+
+Rosta is not considered launch-ready with customer checkout alone. The first complete online release must include:
+
+- customer storefront, account, cart, checkout, payment and fulfillment
+- complete seller panel for roastery operations
+- complete administration and operations panel
+- blog, FAQ, legal and trust content
+- taste-profile quiz with inventory-aware recommendations
+- verified-purchase reviews and moderation
+- finalized responsive motion and interaction system
+- production deployment, monitoring, backups and rollback
+
+These capabilities are not post-launch extras. They are first-release requirements and must be delivered with the same security and contract discipline as checkout and payment.
+
+## Execution model for speed without quality loss
+
+Work proceeds in dependency-safe parallel lanes instead of postponing major product areas:
+
+1. **Commerce backend lane** — catalog, inventory, checkout, orders, payments and fulfillment.
+2. **Seller operations lane** — `/panel`, onboarding, catalog/stock management, order actions, reports and settlements.
+3. **Administration lane** — `/admin`, moderation, finance, users, roasteries, orders, support and audit tooling.
+4. **Content and trust lane** — blog, FAQ, legal pages, quiz, reviews, SEO and structured data.
+5. **Experience lane** — responsive UX, accessibility, motion, loading/error states and performance.
+6. **Launch lane** — integration, adversarial testing, deployment, monitoring, backups and rollback.
+
+Shared models, policies and APIs are implemented once in the commerce backend and consumed by seller, admin and public surfaces. Parallel work may begin as soon as the relevant contract is frozen; no lane may invent independent business truth.
 
 ## Current completed baseline
 
@@ -100,8 +128,16 @@ Implement:
 - roast batches and immutable roast-date snapshots
 - media validation and safe generated variants
 - stock ledger, adjustments and availability rules
-- seller-scoped catalog management
+- seller-scoped catalog management APIs
 - public filtering, search and pagination matching the frozen frontend contract
+- admin moderation and verification APIs required by the administration panel
+- staging seed data for public, seller and admin acceptance
+
+Parallel deliverables unlocked by this phase:
+
+- seller panel catalog, variant, roast-batch and stock screens
+- admin roastery/product verification screens
+- public product, roastery and search integration
 
 Exit marker:
 
@@ -119,6 +155,8 @@ Implement:
 - immutable price, product, variant and roast-batch snapshots
 - order lifecycle and safe cancellation boundaries
 - reservation expiry and recovery jobs
+- seller order queues and authorized operational actions
+- admin order visibility and restricted support actions
 
 Exit marker:
 
@@ -135,6 +173,7 @@ Implement:
 - reconciliation jobs and operational visibility
 - marketplace ledger separating gross sale, gateway fee, Rosta commission, refund and seller payable
 - settlement batches and seller statements
+- seller finance views and admin finance operations
 - provider and split activation disabled until legal/account credentials are available
 
 Exit marker:
@@ -151,36 +190,45 @@ Implement:
 - shipping rules and price snapshots
 - notification outbox with retry/dead-letter behavior
 - SMS/email adapters disabled by default
-- customer and seller timelines
+- customer, seller and admin timelines
 
 Exit marker:
 
 `fulfillment_and_notifications=ready`
 
-## Phase 13 — Seller panel
+## Phase 13 — Complete seller panel
 
-Build `/panel` for authorized roastery staff:
+Build `/panel` for authorized roastery staff as a first-release requirement:
 
-- dashboard and order queues
+- onboarding status and roastery profile
+- dashboard, operational KPIs and actionable order queues
 - acceptance, rejection, preparation and shipment actions
-- products, variants, roast batches, prices and stock
-- working hours and temporary closure
+- products, variants, media, roast batches, prices and stock
+- working hours, delivery settings and temporary closure
+- coupons and seller-scoped promotions where authorized
+- customer review responses and issue escalation
 - sales, fees, wallet and settlement statements
+- notifications, audit trail and staff permissions
 - strict roastery ownership and server-side authorization
+- complete loading, empty, error, offline and mobile states
 
 Exit marker:
 
 `seller_panel=ready`
 
-## Phase 14 — Administration and operations
+## Phase 14 — Complete administration and operations
 
-Build `/admin` with Filament:
+Build `/admin` with Filament as a first-release requirement:
 
-- roastery onboarding and verification
-- products, users, orders, payments, refunds and fulfillment
-- commissions, ledger entries and settlements
-- coupons, content and SEO metadata
+- roastery onboarding, verification, suspension and staff management
+- products, media, origins, roast batches and inventory oversight
+- users, orders, payments, refunds and fulfillment
+- commissions, ledger entries, settlement batches and seller statements
+- coupons, campaigns, blog, FAQ, legal and SEO metadata
+- quiz questions, scoring, recommendation rules and inventory fallback
+- review moderation, abuse reports and verified-purchase controls
 - audit logs, support tooling and restricted operational actions
+- health, queue, failed-job and reconciliation visibility
 - no manual mutation that bypasses domain services
 
 Exit marker:
@@ -189,36 +237,44 @@ Exit marker:
 
 ## Phase 15 — Content, quiz, reviews and public trust
 
-Implement persisted and moderated:
+Implement persisted, editable and moderated first-release features:
 
-- articles, FAQs, legal pages and roastery stories
-- taste profile quiz and inventory-aware recommendations
-- verified-purchase reviews
-- contact and partnership inquiries
-- dynamic sitemap and structured data
+- articles, categories, authors, FAQs, legal pages and roastery stories
+- editorial preview, scheduled publishing and safe rich-content rendering
+- taste-profile quiz, scoring and inventory-aware recommendations
+- saved customer taste profile and explainable recommendation reasons
+- verified-purchase ratings and reviews
+- review moderation, seller replies, reports and abuse controls
+- contact, support and partnership inquiries
+- dynamic sitemap, canonical metadata and structured data
 - no unsupported marketing claims or unsafe raw HTML
 
 Exit marker:
 
 `content_and_recommendations=ready`
 
-## Phase 16 — Full frontend/backend integration
+## Phase 16 — Full frontend/backend integration and experience completion
 
-Replace all development-shaped data sources with the frozen Laravel API:
+Replace all development-shaped data sources with the frozen Laravel API and finish the production experience:
 
 - production mocks disabled
 - contract-version guard enabled
-- all customer flows integrated
-- all loading, empty, error and ownership states verified
+- all customer, seller and admin flows integrated
+- all loading, empty, error, permission and ownership states verified
+- final responsive behavior across customer, panel and admin surfaces
+- accessible keyboard, focus, reduced-motion and screen-reader behavior
+- purposeful GSAP/ScrollTrigger/Lenis motion without blocking commerce
+- route transitions, skeletons, optimistic feedback and safe cancellation
+- performance budgets for images, scripts, fonts and animations
 - coordinated frontend/backend CI
 
 Exit marker:
 
-`storefront_integrated=ready`
+`all_surfaces_integrated=ready`
 
 ## Phase 17 — Adversarial acceptance and operational readiness
 
-Test:
+Test every first-release surface:
 
 - desktop/mobile browser matrix
 - expired sessions, rate limits and hostile redirects
@@ -226,23 +282,26 @@ Test:
 - duplicate submits and ambiguous network failures
 - payment success/failure/cancel/replay/refund
 - IDOR, role boundaries and seller isolation
+- admin privilege boundaries and dangerous-operation confirmation
+- content sanitization, quiz manipulation and review abuse
 - concurrency, queue retry, backup/restore and rollback
-- accessibility, performance, CSP and security headers
+- accessibility, performance, animation stability, CSP and security headers
 
 Exit marker:
 
 `security_and_operations_accepted=ready`
 
-## Phase 18 — Deployment and external activation
+## Phase 18 — Complete deployment and external activation
 
-Deploy reproducibly with separate frontend/API origins, HTTPS, monitoring, backups and rollback.
+Deploy the complete first release reproducibly with separate frontend/API origins, HTTPS, monitoring, backups and rollback.
 
 External activation remains limited to values that cannot be invented in code:
 
 1. payment provider credentials and approved callback/settlement account
 2. SMS provider credentials and approved templates
 3. legal/trust inputs such as eNAMAD badge and finalized business policies
+4. production content approval, seller onboarding data and operational ownership
 
 Final marker:
 
-`rosta_launch_ready=ready`
+`rosta_complete_launch_ready=ready`
