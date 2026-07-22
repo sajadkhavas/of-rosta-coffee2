@@ -44,7 +44,7 @@ Canonical paths:
 
 - are internal paths beginning with `/`;
 - never contain a host, query string or fragment;
-- reject path traversal and control characters;
+- reject plain, encoded and repeatedly encoded path traversal;
 - cannot use transactional or private prefixes;
 - are unique in the database;
 - require an explicit permanent redirect when changed.
@@ -69,27 +69,30 @@ Reserved prefixes include `/api`, `/admin`, `/panel`, `/auth`, `/checkout`, `/ca
 
 The Laravel endpoint `/api/v1/seo/indexable` is the authoritative feed for structured content URLs. The TanStack sitemap also paginates the complete product and roastery catalogs instead of stopping at the first page.
 
+`robots_index` expresses the desired policy after publication. Draft and Review records may preserve that choice for editorial workflow, but they remain unavailable publicly and cannot enter the indexable URL feed until their status is Published.
+
 ## Publication workflow
 
 ```text
 Draft
   ↓ editor submits
 Review
-  ↓ administrator reviews author, content and SEO fields
+  ↓ administrator reviews author, content, canonical and SEO fields
 Published
   ↓ any editorial edit
-Review + robots_index=false
+Review (desired robots policy is preserved, public access is removed)
 ```
 
-Publishing requires:
+Direct Draft-to-Published transitions are rejected. Publishing requires:
 
+- the current status to be Review;
 - an active author;
 - at least two safe content blocks;
 - a title and SEO description;
 - an administrator reviewer;
 - a valid canonical path.
 
-Published content edits automatically clear the publication date and indexability until reviewed again.
+Published content edits automatically clear the publication date and return the entry to Review. Because public queries require Published status, the entry immediately disappears from public rendering and the sitemap even when its desired `robots_index` setting remains true.
 
 ## Structured content blocks
 
@@ -127,6 +130,8 @@ Supported targets:
 - origin;
 - brew method;
 - taste.
+
+Target keys use bounded slug syntax. Arbitrary URLs and control characters are not accepted as relationship targets.
 
 ## Metadata ownership
 
@@ -170,14 +175,33 @@ No structured product price, inventory, rating or payment fact may be entered ma
 Redirects:
 
 - support only 301 and 308;
-- have an internal destination;
+- have an internal public source and destination;
+- cannot originate from private or transactional routes;
 - reject self-redirects;
+- reject encoded traversal;
 - reject loops;
 - reject chains longer than 12 hops;
 - record hit count and last hit time;
 - are administered behind the administrator role boundary.
 
 Launch acceptance should reduce all known redirects to a single hop.
+
+## Administration interface
+
+An initial administrator dashboard is available at `/admin/content` and is protected by both the frontend role guard and Laravel administrator middleware.
+
+The current MVP supports:
+
+- listing content and its status/index policy;
+- creating an active author;
+- creating a structured Guide from safe paragraph blocks;
+- sending Draft content to Review;
+- publishing only reviewed content;
+- archiving content;
+- creating internal 301/308 redirects;
+- viewing redirect hit counts.
+
+This is an operational MVP, not the final editor. The advanced editor still needs block reordering, FAQ/table/product selectors, editing existing entries, relation management, previews and field-level validation summaries.
 
 ## Legacy blog migration
 
@@ -231,6 +255,7 @@ Permanent audits protect:
 - raw HTML prohibition;
 - reviewed publishing;
 - redirect loop prevention;
+- encoded traversal rejection;
 - authoritative indexable URL feed.
 
 ## Launch checklist
@@ -249,9 +274,11 @@ Permanent audits protect:
 
 ## Known remaining work
 
-- Build the administration UI for authors, content entries, relations and redirects.
+- Complete the advanced administration editor for all block types and existing-entry edits.
+- Add relation management and internal-link reporting to the admin interface.
 - Migrate legacy static blog articles.
 - Add public author pages before emitting author profile URLs.
 - Add verified-review structured data after the review domain is implemented.
 - Split the sitemap into an index when URL volume approaches operational limits.
+- Regenerate and commit the TanStack route tree through the real build toolchain.
 - Run full frontend and backend gates after the GitHub runner and Composer lock issues are resolved.
