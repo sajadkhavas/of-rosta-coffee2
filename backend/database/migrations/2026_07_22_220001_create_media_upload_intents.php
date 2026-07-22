@@ -14,7 +14,7 @@ return new class extends Migration
             $table->foreignUlid('user_id')->constrained('users')->restrictOnDelete();
             $table->foreignUlid('media_asset_id')->nullable()->constrained('media_assets')->nullOnDelete();
             $table->string('disk', 64);
-            $table->string('object_key', 1000)->unique();
+            $table->string('object_key', 512)->unique();
             $table->string('original_filename', 255);
             $table->string('mime_type', 120);
             $table->unsignedBigInteger('size_bytes');
