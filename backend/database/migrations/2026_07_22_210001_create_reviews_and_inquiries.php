@@ -42,6 +42,7 @@ return new class extends Migration
             $table->char('ip_hmac', 64)->index();
             $table->char('user_agent_hash', 64)->nullable();
             $table->char('duplicate_hash', 64)->index();
+            $table->char('deduplication_key', 64)->unique();
             $table->foreignUlid('assigned_to')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('resolved_at')->nullable()->index();
             $table->timestamps();
