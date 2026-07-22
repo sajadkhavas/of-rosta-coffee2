@@ -1,267 +1,91 @@
 import { z } from "zod";
-import type { MediaAsset } from "./contracts";
 
-const CONTROL_OR_BACKSLASH = /[\\\u0000-\u001f\u007f]/;
-const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
-
-function isSafeAssetUrl(value: string): boolean {
-  if (CONTROL_OR_BACKSLASH.test(value) || value.startsWith("//")) return false;
-  if (value.startsWith("/")) return true;
-
-  try {
-    const url = new URL(value);
-    return (
-      url.protocol === "https:" ||
-      (url.protocol === "http:" && LOCAL_HOSTS.has(url.hostname))
-    );
-  } catch {
-    return false;
-  }
-}
-
-const boundedText = (max = 500) => z.string().trim().min(1).max(max);
-const nullableText = (max = 500) =>
-  z.string().trim().max(max).nullable().optional();
-const identifierSchema = boundedText(200).refine(
-  (value) => !CONTROL_OR_BACKSLASH.test(value),
-  "شناسه نامعتبر است.",
-);
-const slugSchema = boundedText(180).refine(
-  (value) =>
-    !CONTROL_OR_BACKSLASH.test(value) &&
-    !value.includes("/") &&
-    value !== "." &&
-    value !== "..",
-  "Slug نامعتبر است.",
-);
-const isoDateTimeSchema = z
+const MAX_TEXT = 10_000;
+const MAX_ARRAY = 100;
+const moneySchema = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
+const boundedText = (max = MAX_TEXT) => z.string().trim().min(1).max(max);
+const nullableText = (max = MAX_TEXT) => boundedText(max).nullable().optional();
+const identifierSchema = z
   .string()
-  .refine(
-    (value) => Number.isFinite(Date.parse(value)),
-    "زمان ISO نامعتبر است.",
-  );
-const moneySchema = z.number().int().nonnegative().safe();
+  .trim()
+  .min(1)
+  .max(200)
+  .regex(/^[A-Za-z0-9._:-]+$/);
+const slugSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(180)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 const currencySchema = z.literal("IRR");
-const mobileSchema = z.string().regex(/^09\d{9}$/);
-const safeHttpUrlSchema = z
-  .string()
-  .refine(isSafeAssetUrl, "URL رسانه ناامن است.");
+const isoDateTimeSchema = z.string().refine(
+  (value) => Number.isFinite(Date.parse(value)),
+  "زمان ISO نامعتبر است.",
+);
 
-export class ApiContractError extends Error {
-  readonly context: string;
-  readonly issues: z.ZodIssue[];
-
-  constructor(context: string, error: z.ZodError) {
-    super(`پاسخ سرویس در بخش «${context}» با قرارداد رستا سازگار نیست.`, {
-      cause: error,
-    });
-    this.name = "ApiContractError";
-    this.context = context;
-    this.issues = error.issues;
-  }
-}
-
-export function parseContract<T>(
-  schema: z.ZodType<T>,
-  value: unknown,
-  context: string,
-): T {
-  const result = schema.safeParse(value);
-  if (!result.success) throw new ApiContractError(context, result.error);
-  return result.data;
-}
-
-export function resourceSchema<T extends z.ZodTypeAny>(data: T) {
-  return z.object({ data }).passthrough();
-}
-
-export function collectionSchema<T extends z.ZodTypeAny>(item: T) {
-  return z
-    .object({
-      data: z.array(item).max(500),
-      meta: z
-        .object({
-          current_page: z.number().int().min(1).optional(),
-          last_page: z.number().int().min(1).optional(),
-          per_page: z.number().int().min(1).max(100).optional(),
-          total: z.number().int().nonnegative().optional(),
-        })
-        .strict()
-        .optional(),
-      links: z
-        .object({
-          first: z.string().nullable().optional(),
-          last: z.string().nullable().optional(),
-          prev: z.string().nullable().optional(),
-          next: z.string().nullable().optional(),
-        })
-        .strict()
-        .optional(),
-    })
-    .passthrough();
-}
-
-export const authUserSchema = z
+export const mediaSourceWireSchema = z
   .object({
-    id: identifierSchema,
-    mobile: mobileSchema,
-    name: nullableText(120),
-    email: z.string().trim().email().max(254).nullable().optional(),
-    roles: z.array(boundedText(80)).max(20),
+    url: z.string().url().max(2_000),
+    width: z.number().int().positive().max(20_000),
+    format: z.enum(["avif", "webp", "jpeg", "png"]),
   })
   .strict();
 
-export const otpRequestResultSchema = z
-  .object({
-    request_id: identifierSchema,
-    expires_in: z.number().int().min(30).max(900),
-    retry_after: z.number().int().min(0).max(900),
-  })
-  .strict();
-
-export const addressWireSchema = z
+export const mediaWireSchema = z
   .object({
     id: identifierSchema,
-    title: nullableText(80),
-    recipient_name: boundedText(120),
-    recipient_mobile: mobileSchema,
-    province: boundedText(120),
-    city: boundedText(120),
-    address_line: boundedText(1000),
-    postal_code: z
-      .string()
-      .regex(/^\d{10}$/)
-      .nullable()
-      .optional(),
-    is_default: z.boolean(),
-  })
-  .strict();
-
-export const mediaAssetSchema = z
-  .object({
-    id: identifierSchema,
-    alt: z.string().trim().max(300),
+    alt: boundedText(300),
     width: z.number().int().positive().max(20_000),
     height: z.number().int().positive().max(20_000),
-    blur_data_url: z
-      .string()
-      .max(250_000)
-      .refine(
-        (value) => value.startsWith("data:image/") || isSafeAssetUrl(value),
-        "Blur URL نامعتبر است.",
-      )
-      .nullable()
-      .optional(),
-    sources: z
-      .array(
-        z
-          .object({
-            url: safeHttpUrlSchema,
-            width: z.number().int().positive().max(20_000),
-            format: z.enum(["avif", "webp", "jpeg", "png"]),
-          })
-          .strict(),
-      )
-      .min(1)
-      .max(12),
+    blur_data_url: nullableText(250_000),
+    sources: z.array(mediaSourceWireSchema).min(1).max(12),
   })
   .strict();
 
-export function parseOptionalMedia(value: unknown): MediaAsset | null {
-  if (value === null || value === undefined) return null;
-  const parsed = mediaAssetSchema.safeParse(value);
-  if (!parsed.success) return null;
-  return {
-    id: parsed.data.id,
-    alt: parsed.data.alt,
-    width: parsed.data.width,
-    height: parsed.data.height,
-    blurDataUrl: parsed.data.blur_data_url ?? null,
-    sources: parsed.data.sources,
-  };
-}
+export const paginationWireSchema = z
+  .object({
+    current_page: z.number().int().min(1),
+    last_page: z.number().int().min(1),
+    per_page: z.number().int().min(1).max(100),
+    total: z.number().int().min(0),
+  })
+  .strict();
 
-export const roasterySummaryWireSchema = z
+export const originWireSchema = z
+  .object({
+    id: identifierSchema,
+    name: boundedText(160),
+    country_code: z.string().trim().min(2).max(3).nullable().optional(),
+  })
+  .strict();
+
+export const roasteryWireSchema = z
   .object({
     id: identifierSchema,
     name: boundedText(160),
     slug: slugSchema,
-    city: nullableText(120),
+    city: nullableText(160),
     is_verified: z.boolean(),
-    logo: z.unknown().nullable().optional(),
-    cover: z.unknown().nullable().optional(),
+    logo: mediaWireSchema.nullable().optional(),
+    cover: mediaWireSchema.nullable().optional(),
     preparation_time: z
       .object({
-        min_hours: z.number().int().nonnegative().max(720),
-        max_hours: z.number().int().nonnegative().max(720),
+        min_hours: z.number().int().min(0).max(720),
+        max_hours: z.number().int().min(0).max(720),
       })
       .strict()
-      .refine(
-        (value) => value.max_hours >= value.min_hours,
-        "بازه آماده‌سازی نامعتبر است.",
-      )
       .nullable()
       .optional(),
     rating: z
       .object({
-        value: z.number().min(0).max(5),
-        count: z.number().int().nonnegative(),
+        average: z.number().min(0).max(5),
+        count: z.number().int().min(0),
       })
       .strict()
       .nullable()
       .optional(),
   })
   .strict();
-
-export const roasteryDetailWireSchema = roasterySummaryWireSchema.extend({
-  description: z.string().trim().max(20_000),
-  shipping_policy: nullableText(10_000),
-});
-
-export const productVariantWireSchema = z
-  .object({
-    id: identifierSchema,
-    sku: boundedText(120),
-    weight_grams: z.union([
-      z.literal(50),
-      z.literal(100),
-      z.literal(250),
-      z.literal(500),
-      z.literal(1000),
-    ]),
-    price: moneySchema,
-    compare_at_price: moneySchema.nullable().optional(),
-    currency: currencySchema,
-    is_available: z.boolean(),
-    available_quantity: z
-      .number()
-      .int()
-      .nonnegative()
-      .max(1_000_000)
-      .nullable()
-      .optional(),
-  })
-  .strict()
-  .superRefine((value, context) => {
-    if (
-      value.compare_at_price !== null &&
-      value.compare_at_price !== undefined &&
-      value.compare_at_price < value.price
-    ) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["compare_at_price"],
-        message: "قیمت مقایسه‌ای کمتر از قیمت فروش است.",
-      });
-    }
-    if (value.is_available && value.available_quantity === 0) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["available_quantity"],
-        message: "Variant موجود نمی‌تواند موجودی صفر داشته باشد.",
-      });
-    }
-  });
 
 export const roastBatchWireSchema = z
   .object({
@@ -272,59 +96,129 @@ export const roastBatchWireSchema = z
   })
   .strict();
 
-const productBaseFields = {
-  id: identifierSchema,
-  name: boundedText(240),
-  slug: slugSchema,
-  short_description: nullableText(1000),
-  origin: z
-    .object({
-      id: identifierSchema,
-      name: boundedText(160),
-      country_code: z.string().trim().min(2).max(3).nullable().optional(),
-    })
-    .strict(),
-  processing_method: z.enum(["washed", "natural", "honey", "other"]),
-  roast_level: z.enum(["light", "medium", "dark"]),
-  arabica_percentage: z.number().int().min(0).max(100),
-  tasting_notes: z.array(boundedText(100)).max(30),
-  primary_image: z.unknown().nullable().optional(),
-  roastery: roasterySummaryWireSchema,
-  variants: z.array(productVariantWireSchema).min(1).max(30),
-  latest_roast_batch: roastBatchWireSchema.nullable().optional(),
-  status: z.enum(["draft", "review", "published", "archived"]),
-};
-
-export const productSummaryWireSchema = z.object(productBaseFields).strict();
-export const publicProductSummaryWireSchema = productSummaryWireSchema.refine(
-  (value) => value.status === "published",
-  "محصول عمومی باید published باشد.",
-);
-export const productDetailWireSchema = z
+export const productVariantWireSchema = z
   .object({
-    ...productBaseFields,
-    description: z.string().trim().max(50_000),
-    gallery: z.array(z.unknown()).max(30),
-    brewing_suggestions: z.array(boundedText(500)).max(30),
-    seo: z
-      .object({ title: nullableText(180), description: nullableText(500) })
-      .strict(),
-  })
-  .strict()
-  .refine(
-    (value) => value.status === "published",
-    "محصول عمومی باید published باشد.",
-  );
-
-export const searchResultWireSchema = z
-  .object({
-    products: z.array(publicProductSummaryWireSchema).max(100),
-    roasteries: z.array(roasterySummaryWireSchema).max(100),
-    suggestions: z.array(boundedText(200)).max(20).optional(),
+    id: identifierSchema,
+    sku: boundedText(120),
+    weight_grams: z.number().int().positive().max(100_000),
+    price: moneySchema,
+    compare_at_price: moneySchema.nullable().optional(),
+    currency: currencySchema,
+    is_available: z.boolean(),
+    available_quantity: z.number().int().min(0).nullable().optional(),
   })
   .strict();
 
-export const cartLineWireSchema = z
+export const productSummaryWireSchema = z
+  .object({
+    id: identifierSchema,
+    name: boundedText(240),
+    slug: slugSchema,
+    short_description: nullableText(1_000),
+    origin: originWireSchema,
+    processing_method: boundedText(100),
+    roast_level: boundedText(100),
+    arabica_percentage: z.number().int().min(0).max(100),
+    tasting_notes: z.array(boundedText(160)).max(30),
+    primary_image: mediaWireSchema.nullable().optional(),
+    roastery: roasteryWireSchema,
+    variants: z.array(productVariantWireSchema).min(1).max(20),
+    latest_roast_batch: roastBatchWireSchema.nullable().optional(),
+    status: z.enum(["draft", "review", "published", "archived"]),
+  })
+  .strict();
+
+export const productDetailWireSchema = productSummaryWireSchema.extend({
+  description: nullableText(20_000),
+  brewing_suggestions: z.array(boundedText(300)).max(30),
+  media: z.array(mediaWireSchema).max(30),
+});
+
+export const productListWireSchema = z
+  .object({
+    items: z.array(productSummaryWireSchema).max(100),
+    pagination: paginationWireSchema,
+  })
+  .strict();
+
+export const roasteryDetailWireSchema = roasteryWireSchema.extend({
+  description: nullableText(20_000),
+  products: z.array(productSummaryWireSchema).max(100),
+});
+
+export const roasteryListWireSchema = z
+  .object({
+    items: z.array(roasteryWireSchema).max(100),
+    pagination: paginationWireSchema,
+  })
+  .strict();
+
+export const cartValidationItemWireSchema = z
+  .object({
+    variant_id: identifierSchema,
+    requested_quantity: z.number().int().min(1).max(20),
+    available_quantity: z.number().int().min(0),
+    is_available: z.boolean(),
+    unit_price: moneySchema,
+    currency: currencySchema,
+  })
+  .strict();
+
+export const cartValidationWireSchema = z
+  .object({
+    valid: z.boolean(),
+    roastery_id: identifierSchema.nullable(),
+    subtotal: moneySchema,
+    currency: currencySchema,
+    items: z.array(cartValidationItemWireSchema).max(MAX_ARRAY),
+    warnings: z
+      .array(
+        z
+          .object({
+            code: boundedText(160),
+            message: boundedText(1_000),
+          })
+          .strict(),
+      )
+      .max(MAX_ARRAY),
+  })
+  .strict();
+
+export const addressWireSchema = z
+  .object({
+    id: identifierSchema,
+    title: nullableText(120),
+    recipient_name: boundedText(160),
+    recipient_mobile: boundedText(32),
+    province: boundedText(160),
+    city: boundedText(160),
+    address_line: boundedText(2_000),
+    postal_code: nullableText(32),
+    is_default: z.boolean(),
+  })
+  .strict();
+
+export const userWireSchema = z
+  .object({
+    id: identifierSchema,
+    name: nullableText(160),
+    mobile: boundedText(32),
+    email: z.string().email().max(254).nullable().optional(),
+    roles: z.array(boundedText(120)).max(50),
+  })
+  .strict();
+
+export const authSessionWireSchema = z
+  .object({
+    id: identifierSchema,
+    expires_at: isoDateTimeSchema,
+    last_seen_at: isoDateTimeSchema.nullable().optional(),
+    created_at: isoDateTimeSchema,
+    current: z.boolean(),
+  })
+  .strict();
+
+export const quoteLineWireSchema = z
   .object({
     id: identifierSchema,
     product: productSummaryWireSchema,
@@ -332,62 +226,50 @@ export const cartLineWireSchema = z
     quantity: z.number().int().min(1).max(20),
     line_total: moneySchema,
   })
-  .strict()
-  .refine(
-    (value) =>
-      value.product.variants.some((variant) => variant.id === value.variant.id),
-    "Variant داخل محصول Quote وجود ندارد.",
-  );
+  .strict();
+
+export const quoteGroupWireSchema = z
+  .object({
+    roastery: roasteryWireSchema,
+    items: z.array(quoteLineWireSchema).min(1).max(100),
+    subtotal: moneySchema,
+    shipping_cost: moneySchema.nullable().optional(),
+    shipping_total: moneySchema.nullable().optional(),
+  })
+  .strict();
 
 export const quoteWireSchema = z
   .object({
     id: identifierSchema,
     expires_at: isoDateTimeSchema,
     roastery_id: identifierSchema.nullable().optional(),
-    groups: z
-      .array(
-        z
-          .object({
-            roastery: roasterySummaryWireSchema,
-            items: z.array(cartLineWireSchema).min(1).max(100),
-            subtotal: moneySchema,
-            shipping_cost: moneySchema.nullable().optional(),
-            shipping_total: moneySchema.nullable().optional(),
-          })
-          .strict(),
-      )
-      .min(1)
-      .max(1),
+    groups: z.array(quoteGroupWireSchema).min(1).max(1),
     subtotal: moneySchema,
     shipping_total: moneySchema,
     discount_total: moneySchema,
     grand_total: moneySchema,
     currency: currencySchema,
+    address: addressWireSchema.nullable(),
     warnings: z
       .array(
         z
           .object({
             code: boundedText(160),
-            message: boundedText(1000),
-            cart_item_id: identifierSchema.optional(),
+            message: boundedText(1_000),
           })
           .strict(),
       )
-      .max(100),
+      .max(MAX_ARRAY),
   })
   .strict()
   .superRefine((value, context) => {
-    const group = value.groups[0];
-    const groupRoasteryId = group.roastery.id;
-    if (value.roastery_id && value.roastery_id !== groupRoasteryId) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["roastery_id"],
-        message: "روستری Quote ناسازگار است.",
-      });
-    }
+    const groupRoasteryId = value.groups[0]?.roastery.id;
     if (
-      group.items.some((item) => item.product.roastery.id !== groupRoasteryId)
+      !groupRoasteryId ||
+      value.groups.some((group) => group.roastery.id !== groupRoasteryId) ||
+      value.groups.some((group) =>
+        group.items.some((item) => item.product.roastery.id !== groupRoasteryId),
+      )
     ) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -417,6 +299,7 @@ export const orderStatusSchema = z.enum([
   "delivered",
   "partially_cancelled",
   "cancelled",
+  "refund_pending",
   "refunded",
 ]);
 
@@ -528,36 +411,55 @@ export const createdOrderWireSchema = z
     address: addressWireSchema.nullable(),
     sub_orders: z.array(subOrderWireSchema).max(1),
   })
-  .strict()
-  .refine(
-    (value) =>
-      value.subtotal + value.shipping_total - value.discount_total ===
-      value.grand_total,
-    "جمع سفارش ایجادشده ناسازگار است.",
-  );
+  .strict();
 
 export const paymentRequestWireSchema = z
   .object({
     payment_id: identifierSchema,
-    redirect_url: z.string().url().max(2000),
+    redirect_url: z.string().url().max(2_000),
   })
   .strict();
 
-export const paymentVerifyWireSchema = z
+export const contentPageSummaryWireSchema = z
   .object({
-    status: z.enum(["pending", "paid", "failed", "cancelled", "refunded"]),
-    order_id: identifierSchema,
+    id: identifierSchema,
+    slug: slugSchema,
+    title: boundedText(240),
+    excerpt: nullableText(1_000),
+    status: z.enum(["draft", "published", "archived"]),
+    published_at: isoDateTimeSchema.nullable().optional(),
+    updated_at: isoDateTimeSchema.nullable().optional(),
   })
   .strict();
 
-export type AddressWire = z.infer<typeof addressWireSchema>;
-export type RoasterySummaryWire = z.infer<typeof roasterySummaryWireSchema>;
-export type RoasteryDetailWire = z.infer<typeof roasteryDetailWireSchema>;
-export type ProductVariantWire = z.infer<typeof productVariantWireSchema>;
-export type RoastBatchWire = z.infer<typeof roastBatchWireSchema>;
+export const contentPageDetailWireSchema = contentPageSummaryWireSchema.extend({
+  description: nullableText(20_000),
+  blocks: z.array(z.unknown()).max(200),
+  seo: z.unknown().nullable().optional(),
+});
+
+export const contentListWireSchema = z
+  .object({
+    items: z.array(contentPageSummaryWireSchema).max(100),
+    pagination: paginationWireSchema,
+  })
+  .strict();
+
+export const resourceSchema = <T extends z.ZodTypeAny>(data: T) =>
+  z.object({ data }).strict();
+
+export const listResourceSchema = <T extends z.ZodTypeAny>(item: T) =>
+  z
+    .object({
+      data: z.array(item).max(100),
+      meta: paginationWireSchema,
+    })
+    .strict();
+
 export type ProductSummaryWire = z.infer<typeof productSummaryWireSchema>;
 export type ProductDetailWire = z.infer<typeof productDetailWireSchema>;
-export type SearchResultWire = z.infer<typeof searchResultWireSchema>;
+export type ProductVariantWire = z.infer<typeof productVariantWireSchema>;
+export type RoasterySummaryWire = z.infer<typeof roasteryWireSchema>;
 export type QuoteWire = z.infer<typeof quoteWireSchema>;
 export type OrderSummaryWire = z.infer<typeof orderSummaryWireSchema>;
 export type OrderDetailWire = z.infer<typeof orderDetailWireSchema>;
