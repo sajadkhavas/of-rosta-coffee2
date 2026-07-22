@@ -12,4 +12,31 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  vite: {
+    build: {
+      target: "es2022",
+      cssCodeSplit: true,
+      reportCompressedSize: false,
+      modulePreload: { polyfill: false },
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes("node_modules")) return undefined;
+            if (id.includes("/gsap/") || id.includes("/@studio-freight/lenis/")) {
+              return "motion";
+            }
+            if (id.includes("/three/")) return "three";
+            if (id.includes("/recharts/") || id.includes("/d3-")) {
+              return "charts";
+            }
+            if (id.includes("/@tanstack/")) return "tanstack";
+            if (id.includes("/react/") || id.includes("/react-dom/")) {
+              return "react";
+            }
+            return undefined;
+          },
+        },
+      },
+    },
+  },
 });

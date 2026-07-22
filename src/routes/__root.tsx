@@ -16,11 +16,17 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { MobileBottomNav } from "../components/MobileBottomNav";
+import { NetworkStatus } from "../components/NetworkStatus";
 import { ServiceWorkerRegistration } from "../components/ServiceWorkerRegistration";
 import { CartProvider } from "../lib/cart-context";
 import { queryKeys } from "../lib/api/query-keys";
 import { ToastProvider } from "../components/system";
 import { absoluteUrl, siteConfig } from "../config/site";
+import {
+  getBrowserPerformanceTier,
+  scheduleIdleTask,
+  startWebVitals,
+} from "../lib/performance";
 
 const NOINDEX_PATHS = new Set([
   "/cart",
@@ -33,6 +39,15 @@ const NOINDEX_PATHS = new Set([
 ]);
 
 const NOINDEX_PREFIXES = ["/admin", "/auth", "/orders", "/panel"];
+const MOTION_EXCLUDED_PREFIXES = [
+  "/admin",
+  "/auth",
+  "/cart",
+  "/checkout",
+  "/orders",
+  "/panel",
+  "/profile",
+];
 
 function routeShouldNoIndex(pathname: string): boolean {
   return (
@@ -41,6 +56,13 @@ function routeShouldNoIndex(pathname: string): boolean {
     NOINDEX_PREFIXES.some(
       (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
     )
+  );
+}
+
+function routeAllowsEnhancedMotion(pathname: string): boolean {
+  if (pathname === "/quiz") return false;
+  return !MOTION_EXCLUDED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 }
 
@@ -240,45 +262,36 @@ function RootComponent() {
       window.removeEventListener("rosta:session-expired", handleSessionExpired);
   }, [queryClient, router]);
 
+  useEffect(() => startWebVitals(), []);
+
   useEffect(() => {
-    let cancelled = false;
-    let cleanup: (() => void) | undefined;
-    void import("../lib/animations").then((animations) => {
-      if (cancelled) return;
-      animations.initLenis();
-      animations.initCursor();
-      const timer = window.setTimeout(() => {
-        animations.splitTextReveal("[data-split-text]");
-        animations.fadeUpStagger("[data-fade-up]", 0.08);
-        animations.fadeUpStagger(".r-card", 0.1);
-        document
-          .querySelectorAll<HTMLElement>("[data-counter]")
-          .forEach((element) => {
-            const target = Number.parseInt(
-              element.getAttribute("data-counter") || "0",
-              10,
-            );
-            animations.animateCounter(
-              element,
-              target,
-              element.getAttribute("data-suffix") || "",
-            );
-          });
-        animations.magneticEffect("[data-magnetic]");
-      }, 60);
-      cleanup = () => window.clearTimeout(timer);
-    });
+    if (!routeAllowsEnhancedMotion(pathname)) return;
+
+    const tier = getBrowserPerformanceTier();
+    if (tier === "minimal") return;
+
+    let disposed = false;
+    let cleanupAnimations: (() => void) | undefined;
+    const cancelScheduledImport = scheduleIdleTask(() => {
+      void import("../lib/animations").then((animations) => {
+        if (disposed) return;
+        cleanupAnimations = animations.initPageAnimations({ tier });
+      });
+    }, 900);
+
     return () => {
-      cancelled = true;
-      cleanup?.();
+      disposed = true;
+      cancelScheduledImport();
+      cleanupAnimations?.();
     };
-  }, []);
+  }, [pathname]);
 
   return (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <CartProvider>
           <ServiceWorkerRegistration />
+          <NetworkStatus />
           <div className={hideMobileNav ? "" : "pb-16 md:pb-0"}>
             <Outlet />
           </div>

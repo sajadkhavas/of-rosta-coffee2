@@ -12,11 +12,14 @@ type ServerEntry = {
 };
 
 const PRIVATE_PREFIXES = [
+  "/api",
+  "/admin",
   "/auth",
   "/cart",
   "/checkout",
   "/profile",
   "/orders",
+  "/panel",
   "/forbidden",
 ];
 const BASE_CSP = [
