@@ -28,7 +28,7 @@ final class ContentWriteService
 
             $body = $this->blocks->validate($data['body']);
             $entry = ContentEntry::query()->create([
-                ...$this->normalizedData($data, $body),
+                ...$this->normalizedData($data, $body, true),
                 'status' => ContentStatus::Draft->value,
                 'robots_index' => false,
             ]);
@@ -98,7 +98,7 @@ final class ContentWriteService
      * @param list<array<string, mixed>> $body
      * @return array<string, mixed>
      */
-    private function normalizedData(array $data, array $body): array
+    private function normalizedData(array $data, array $body, bool $isCreate = false): array
     {
         if (array_key_exists('canonical_path', $data)) {
             $data['canonical_path'] = SeoPath::assertPublic((string) $data['canonical_path']);
@@ -106,12 +106,20 @@ final class ContentWriteService
 
         $data['body'] = $body;
         $data['content_hash'] = $this->blocks->hash($body);
-        $data['keywords'] = array_values(array_unique(array_map(
-            static fn (mixed $keyword): string => trim((string) $keyword),
-            $data['keywords'] ?? [],
-        )));
-        $data['schema_type'] ??= 'Article';
-        $data['robots_follow'] ??= true;
+
+        if (array_key_exists('keywords', $data)) {
+            $data['keywords'] = array_values(array_unique(array_filter(array_map(
+                static fn (mixed $keyword): string => trim((string) $keyword),
+                $data['keywords'],
+            ))));
+        } elseif ($isCreate) {
+            $data['keywords'] = [];
+        }
+
+        if ($isCreate) {
+            $data['schema_type'] ??= 'Article';
+            $data['robots_follow'] ??= true;
+        }
 
         return $data;
     }
