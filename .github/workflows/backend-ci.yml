@@ -87,11 +87,14 @@ jobs:
           coverage: none
           tools: composer:v2
 
+      - name: Require deterministic dependency lock
+        run: test -s composer.lock
+
       - name: Cache Composer downloads
         uses: actions/cache@v4
         with:
           path: ~/.composer/cache/files
-          key: composer-${{ runner.os }}-${{ hashFiles('backend/composer.lock', 'backend/composer.json') }}
+          key: composer-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
           restore-keys: composer-${{ runner.os }}-
 
       - name: Prepare environment
@@ -99,7 +102,7 @@ jobs:
           cp .env.example .env
           mkdir -p bootstrap/cache storage/app/private storage/app/public storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
 
-      - name: Install dependencies
+      - name: Install locked dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Generate application key
