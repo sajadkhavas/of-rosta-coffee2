@@ -37,6 +37,7 @@ final class OrderResource extends JsonResource
             })
             ->values()
             ->all();
+        $shipment = $subOrder->shipment;
 
         return [
             'id' => $this->id,
@@ -56,7 +57,14 @@ final class OrderResource extends JsonResource
                 'items' => $items,
                 'subtotal' => $subOrder->subtotal,
                 'shipping_total' => $subOrder->shipping_total,
-                'shipment' => null,
+                'shipment' => $shipment ? [
+                    'id' => $shipment->id,
+                    'carrier' => $shipment->carrier,
+                    'tracking_code' => $shipment->tracking_code,
+                    'status' => $shipment->status,
+                    'shipped_at' => $shipment->shipped_at?->toIso8601String(),
+                    'delivered_at' => $shipment->delivered_at?->toIso8601String(),
+                ] : null,
             ]],
             'address' => $this->address_snapshot,
             'subtotal' => $this->subtotal,
