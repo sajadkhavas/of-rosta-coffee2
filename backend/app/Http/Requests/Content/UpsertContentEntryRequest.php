@@ -14,6 +14,7 @@ final class UpsertContentEntryRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->rejectUnexpected([
+            'expected_content_hash',
             'author_id',
             'type',
             'title',
@@ -57,10 +58,14 @@ final class UpsertContentEntryRequest extends FormRequest
     public function rules(): array
     {
         $entryId = $this->route('entryId');
-        $required = $this->isMethod('post') ? 'required' : 'sometimes';
+        $isCreate = $this->isMethod('post');
+        $required = $isCreate ? 'required' : 'sometimes';
         $slugPattern = 'regex:/^[A-Za-z0-9\x{0600}-\x{06FF}](?:[A-Za-z0-9\x{0600}-\x{06FF}_-]{0,238}[A-Za-z0-9\x{0600}-\x{06FF}])?$/u';
 
         return [
+            'expected_content_hash' => $isCreate
+                ? ['prohibited']
+                : ['required', 'string', 'regex:/^[a-f0-9]{64}$/'],
             'author_id' => ['nullable', 'string', 'exists:content_authors,id'],
             'type' => [$required, Rule::enum(ContentType::class)],
             'title' => [$required, 'string', 'min:1', 'max:240'],
