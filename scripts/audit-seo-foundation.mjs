@@ -57,7 +57,7 @@ for (const needle of [
 
 requireContains(
   "src/routes/robots[.]txt.ts",
-  'Disallow: /checkout',
+  "Disallow: /checkout",
   "robots.txt must protect transactional routes.",
 );
 requireContains(
@@ -116,7 +116,7 @@ requireContains(
 );
 requireContains(
   "src/lib/seo.ts",
-  'replace(/</g, "\\\\u003c")',
+  'replace(/</g, "\\u003c")',
   "JSON-LD serialization must escape opening angle brackets.",
 );
 
@@ -128,16 +128,80 @@ for (const needle of [
   'entry.status === "review"',
   'status: "published"',
   'name: "robots", content: "noindex,nofollow"',
+  "EditorialContentDialog",
 ]) {
   if (!adminContentRoute.includes(needle)) {
     failures.push(`Admin content workflow is missing boundary: ${needle}`);
   }
 }
-requireContains(
-  "src/lib/api/admin-content.ts",
+
+for (const [path, needles] of [
+  [
+    "src/routes/admin.content-links.tsx",
+    [
+      'user.roles.includes("administrator")',
+      'name: "robots", content: "noindex,nofollow"',
+      "contentLinkReportQueryOptions",
+      'to: "/admin/content-edit/$entryId"',
+    ],
+  ],
+  [
+    "src/routes/admin.content-edit.$entryId.tsx",
+    [
+      'user.roles.includes("administrator")',
+      'name: "robots", content: "noindex,nofollow"',
+      "EditorialContentDialog",
+      'queryKey: ["admin", "content-link-report"]',
+    ],
+  ],
+]) {
+  for (const needle of needles) {
+    requireContains(path, needle, `${path} is missing design boundary: ${needle}`);
+  }
+}
+
+for (const needle of [
+  "aria-busy",
+  "گزارش لینک داخلی دریافت نشد",
+  "هیچ رابطه شکسته‌ای پیدا نشد",
+  "صفحات یتیم",
+  "لینک خروجی ضعیف",
+  "onEditEntry",
+]) {
+  requireContains(
+    "src/components/admin/ContentLinkReportPanel.tsx",
+    needle,
+    `Internal-link report is missing UI state or action: ${needle}`,
+  );
+}
+
+for (const needle of [
+  "expected_content_hash",
+  "content.edit_conflict",
+  "StructuredBlockEditor",
+  "ContentRelationEditor",
+  "StructuredContentBlocks",
+  "تغییرات ذخیره نشده‌اند",
+]) {
+  requireContains(
+    "src/components/admin/EditorialContentDialog.tsx",
+    needle,
+    `Editorial workspace is missing safety or UX boundary: ${needle}`,
+  );
+}
+
+for (const needle of [
   "contentSummarySchema",
-  "Administrator content responses must be runtime-validated.",
-);
+  "contentLinkReportSchema",
+  "expected_content_hash",
+  'queryKey: ["admin", "content-link-report"]',
+]) {
+  requireContains(
+    "src/lib/api/admin-content.ts",
+    needle,
+    `Administrator content API is missing runtime boundary: ${needle}`,
+  );
+}
 
 if (failures.length) {
   console.error("SEO foundation audit failed:");
