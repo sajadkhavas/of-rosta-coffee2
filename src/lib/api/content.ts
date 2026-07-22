@@ -4,10 +4,13 @@ import { apiFetch } from "./client";
 
 const identifier = z.string().trim().min(1).max(240);
 const text = (max: number) => z.string().trim().min(1).max(max);
-const nullableText = (max: number) => z.string().trim().max(max).nullable().optional();
-const isoDate = z.string().refine((value) => Number.isFinite(Date.parse(value)));
+const nullableText = (max: number) =>
+  z.string().trim().max(max).nullable().optional();
+const isoDate = z
+  .string()
+  .refine((value) => Number.isFinite(Date.parse(value)));
 
-const authorSchema = z
+export const contentAuthorSchema = z
   .object({
     id: identifier,
     name: text(160),
@@ -18,9 +21,15 @@ const authorSchema = z
   })
   .strict();
 
-const paragraphBlock = z.object({ type: z.literal("paragraph"), text: text(6000) }).strict();
+const paragraphBlock = z
+  .object({ type: z.literal("paragraph"), text: text(6000) })
+  .strict();
 const headingBlock = z
-  .object({ type: z.literal("heading"), level: z.union([z.literal(2), z.literal(3)]), text: text(240) })
+  .object({
+    type: z.literal("heading"),
+    level: z.union([z.literal(2), z.literal(3)]),
+    text: text(240),
+  })
   .strict();
 const listBlock = z
   .object({
@@ -30,10 +39,18 @@ const listBlock = z
   })
   .strict();
 const quoteBlock = z
-  .object({ type: z.literal("quote"), text: text(3000), citation: nullableText(300) })
+  .object({
+    type: z.literal("quote"),
+    text: text(3000),
+    citation: nullableText(300),
+  })
   .strict();
 const calloutBlock = z
-  .object({ type: z.literal("callout"), tone: z.enum(["info", "tip", "warning"]), text: text(3000) })
+  .object({
+    type: z.literal("callout"),
+    tone: z.enum(["info", "tip", "warning"]),
+    text: text(3000),
+  })
   .strict();
 const faqBlock = z
   .object({
@@ -45,10 +62,16 @@ const faqBlock = z
   })
   .strict();
 const productGridBlock = z
-  .object({ type: z.literal("product_grid"), product_slugs: z.array(identifier).min(1).max(24) })
+  .object({
+    type: z.literal("product_grid"),
+    product_slugs: z.array(identifier).min(1).max(24),
+  })
   .strict();
 const roasterySpotlightBlock = z
-  .object({ type: z.literal("roastery_spotlight"), roastery_slug: identifier })
+  .object({
+    type: z.literal("roastery_spotlight"),
+    roastery_slug: identifier,
+  })
   .strict();
 const comparisonTableBlock = z
   .object({
@@ -81,18 +104,31 @@ export const contentBlockSchema = z.discriminatedUnion("type", [
   comparisonTableBlock,
 ]);
 
-const relationSchema = z
+export const contentRelationSchema = z
   .object({
     id: identifier,
-    relation_type: z.enum(["related", "mentions", "recommends", "compares", "primary_topic"]),
-    target_type: z.enum(["content", "product", "roastery", "origin", "brew_method", "taste"]),
+    relation_type: z.enum([
+      "related",
+      "mentions",
+      "recommends",
+      "compares",
+      "primary_topic",
+    ]),
+    target_type: z.enum([
+      "content",
+      "product",
+      "roastery",
+      "origin",
+      "brew_method",
+      "taste",
+    ]),
     target_key: identifier,
     anchor_text: nullableText(300),
     position: z.number().int().min(0).max(1000),
   })
   .strict();
 
-const seoSchema = z
+export const contentSeoSchema = z
   .object({
     title: text(240),
     description: nullableText(1000),
@@ -102,14 +138,29 @@ const seoSchema = z
     og_title: text(240),
     og_description: nullableText(1000),
     og_media_url: z.string().url().nullable().optional(),
-    schema_type: z.enum(["Article", "BlogPosting", "CollectionPage", "FAQPage", "WebPage"]),
+    schema_type: z.enum([
+      "Article",
+      "BlogPosting",
+      "CollectionPage",
+      "FAQPage",
+      "WebPage",
+    ]),
   })
   .strict();
 
-const entrySchema = z
+export const contentEntrySchema = z
   .object({
     id: identifier,
-    type: z.enum(["article", "guide", "comparison", "landing", "origin", "brew_method", "taste", "collection"]),
+    type: z.enum([
+      "article",
+      "guide",
+      "comparison",
+      "landing",
+      "origin",
+      "brew_method",
+      "taste",
+      "collection",
+    ]),
     title: text(240),
     slug: identifier,
     canonical_path: z.string().startsWith("/").max(500),
@@ -117,17 +168,17 @@ const entrySchema = z
     status: z.enum(["draft", "review", "published", "archived"]),
     published_at: isoDate.nullable().optional(),
     updated_at: isoDate.nullable().optional(),
-    author: authorSchema.nullable(),
-    seo: seoSchema,
+    author: contentAuthorSchema.nullable(),
+    seo: contentSeoSchema,
     keywords: z.array(text(120)).max(30),
     body: z.array(contentBlockSchema).min(1).max(200),
     content_hash: z.string().regex(/^[a-f0-9]{64}$/),
-    relations: z.array(relationSchema).max(100),
+    relations: z.array(contentRelationSchema).max(100),
     reviewed_by: identifier.nullable().optional(),
   })
   .strict();
 
-const resourceSchema = z.object({ data: entrySchema }).passthrough();
+const resourceSchema = z.object({ data: contentEntrySchema }).passthrough();
 const indexableSchema = z
   .object({
     data: z
@@ -137,7 +188,16 @@ const indexableSchema = z
             z
               .object({
                 path: z.string().startsWith("/").max(500),
-                type: z.enum(["article", "guide", "comparison", "landing", "origin", "brew_method", "taste", "collection"]),
+                type: z.enum([
+                  "article",
+                  "guide",
+                  "comparison",
+                  "landing",
+                  "origin",
+                  "brew_method",
+                  "taste",
+                  "collection",
+                ]),
                 last_modified_at: isoDate.nullable().optional(),
               })
               .strict(),
@@ -149,12 +209,18 @@ const indexableSchema = z
   })
   .passthrough();
 
+export type ContentAuthor = z.infer<typeof contentAuthorSchema>;
 export type ContentBlock = z.infer<typeof contentBlockSchema>;
-export type ContentEntry = z.infer<typeof entrySchema>;
-export type IndexableContentItem = z.infer<typeof indexableSchema>["data"]["items"][number];
+export type ContentRelation = z.infer<typeof contentRelationSchema>;
+export type ContentEntry = z.infer<typeof contentEntrySchema>;
+export type IndexableContentItem = z.infer<
+  typeof indexableSchema
+>["data"]["items"][number];
 
 export async function getContentByPath(path: string): Promise<ContentEntry> {
-  const payload = await apiFetch<unknown>(`/content/resolve?path=${encodeURIComponent(path)}`);
+  const payload = await apiFetch<unknown>(
+    `/content/resolve?path=${encodeURIComponent(path)}`,
+  );
   return resourceSchema.parse(payload).data;
 }
 
@@ -169,7 +235,9 @@ export async function listIndexableContent(cursor?: string): Promise<{
 }> {
   const search = new URLSearchParams({ limit: "500" });
   if (cursor) search.set("cursor", cursor);
-  const payload = indexableSchema.parse(await apiFetch<unknown>(`/seo/indexable?${search}`));
+  const payload = indexableSchema.parse(
+    await apiFetch<unknown>(`/seo/indexable?${search}`),
+  );
   return {
     items: payload.data.items,
     nextCursor: payload.data.next_cursor ?? null,
