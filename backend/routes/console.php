@@ -13,6 +13,11 @@ Schedule::call(static function (): void {
     ->everyMinute()
     ->withoutOverlapping();
 
+Schedule::command('notifications:dispatch --limit=100')
+    ->name('rosta.notifications.dispatch')
+    ->everyMinute()
+    ->withoutOverlapping();
+
 Schedule::call(static function (): void {
     CheckoutQuote::query()
         ->where('expires_at', '<', now()->subHour())
