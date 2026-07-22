@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Navigate } from "@tanstack/react-router";
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { AccountGuard } from "@/components/account/AccountGuard";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { Footer } from "@/components/Footer";
@@ -29,12 +29,24 @@ export const Route = createFileRoute("/admin/content")({
   component: AdminContentPage,
 });
 
+const fieldClass =
+  "w-full rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2.5 text-sm outline-none focus:border-[color:var(--roast)]";
+
 const STATUS_LABELS: Record<AdminContentStatus, string> = {
   draft: "پیش‌نویس",
   review: "در انتظار بررسی",
   published: "منتشرشده",
   archived: "بایگانی",
 };
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="grid gap-2 text-sm font-bold text-[color:var(--steam)]">
+      {label}
+      {children}
+    </label>
+  );
+}
 
 function errorMessage(error: unknown): string {
   return isApiError(error)
@@ -102,7 +114,9 @@ function AdminContentDashboard() {
     mutationFn: createContentAuthor,
     onSuccess: async () => {
       setAuthorForm({ name: "", slug: "", bio: "", credentials: "" });
-      await queryClient.invalidateQueries({ queryKey: ["admin", "content-authors"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["admin", "content-authors"],
+      });
     },
   });
 
@@ -135,17 +149,23 @@ function AdminContentDashboard() {
   const redirectMutation = useMutation({
     mutationFn: createSeoRedirect,
     onSuccess: async () => {
-      setRedirectForm({ sourcePath: "", destinationPath: "", statusCode: 301 });
-      await queryClient.invalidateQueries({ queryKey: ["admin", "seo-redirects"] });
+      setRedirectForm({
+        sourcePath: "",
+        destinationPath: "",
+        statusCode: 301,
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["admin", "seo-redirects"],
+      });
     },
   });
 
   const paragraphBlocks = useMemo<ContentBlock[]>(() => {
-    const paragraphs = contentForm.paragraphs
+    return contentForm.paragraphs
       .split(/\n\s*\n/)
       .map((paragraph) => paragraph.trim())
-      .filter(Boolean);
-    return paragraphs.map((text) => ({ type: "paragraph", text }));
+      .filter(Boolean)
+      .map((text) => ({ type: "paragraph", text }));
   }, [contentForm.paragraphs]);
 
   const submitAuthor = (event: FormEvent) => {
@@ -163,6 +183,8 @@ function AdminContentDashboard() {
 
   const submitContent = (event: FormEvent) => {
     event.preventDefault();
+    if (paragraphBlocks.length < 2) return;
+
     contentMutation.mutate({
       author_id: contentForm.authorId,
       type: "guide",
@@ -192,12 +214,15 @@ function AdminContentDashboard() {
     });
   };
 
-  const initialError = contentQuery.error || authorsQuery.error || redirectsQuery.error;
+  const initialError =
+    contentQuery.error || authorsQuery.error || redirectsQuery.error;
 
   return (
     <section className="mt-8 space-y-10">
       <header>
-        <p className="text-xs font-bold text-[color:var(--roast)]">SEO OPERATIONS</p>
+        <p className="text-xs font-bold text-[color:var(--roast)]">
+          SEO OPERATIONS
+        </p>
         <h1 className="mt-2 text-3xl font-bold text-[color:var(--steam)]">
           مدیریت محتوا، انتشار و Redirect
         </h1>
@@ -219,50 +244,69 @@ function AdminContentDashboard() {
         >
           <h2 className="text-lg font-bold">نویسنده جدید</h2>
           <div className="mt-4 space-y-3">
-            <input
-              required
-              value={authorForm.name}
-              onChange={(event) =>
-                setAuthorForm((current) => ({ ...current, name: event.target.value }))
-              }
-              placeholder="نام نویسنده"
-              className="w-full rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2.5"
-            />
-            <input
-              required
-              dir="ltr"
-              value={authorForm.slug}
-              onChange={(event) =>
-                setAuthorForm((current) => ({ ...current, slug: event.target.value }))
-              }
-              placeholder="author-slug"
-              className="w-full rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2.5 text-left"
-            />
-            <textarea
-              value={authorForm.bio}
-              onChange={(event) =>
-                setAuthorForm((current) => ({ ...current, bio: event.target.value }))
-              }
-              placeholder="زندگی‌نامه و حوزه تخصص"
-              rows={4}
-              className="w-full rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2.5"
-            />
-            <input
-              value={authorForm.credentials}
-              onChange={(event) =>
-                setAuthorForm((current) => ({
-                  ...current,
-                  credentials: event.target.value,
-                }))
-              }
-              placeholder="تخصص‌ها با ، جدا شوند"
-              className="w-full rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2.5"
-            />
+            <Field label="نام نویسنده">
+              <input
+                required
+                value={authorForm.name}
+                onChange={(event) =>
+                  setAuthorForm((current) => ({
+                    ...current,
+                    name: event.target.value,
+                  }))
+                }
+                className={fieldClass}
+              />
+            </Field>
+            <Field label="Slug نویسنده">
+              <input
+                required
+                dir="ltr"
+                value={authorForm.slug}
+                onChange={(event) =>
+                  setAuthorForm((current) => ({
+                    ...current,
+                    slug: event.target.value,
+                  }))
+                }
+                className={`${fieldClass} text-left`}
+              />
+            </Field>
+            <Field label="زندگی‌نامه و حوزه تخصص">
+              <textarea
+                value={authorForm.bio}
+                onChange={(event) =>
+                  setAuthorForm((current) => ({
+                    ...current,
+                    bio: event.target.value,
+                  }))
+                }
+                rows={4}
+                className={fieldClass}
+              />
+            </Field>
+            <Field label="تخصص‌ها با ، جدا شوند">
+              <input
+                value={authorForm.credentials}
+                onChange={(event) =>
+                  setAuthorForm((current) => ({
+                    ...current,
+                    credentials: event.target.value,
+                  }))
+                }
+                className={fieldClass}
+              />
+            </Field>
           </div>
           {authorMutation.isError ? (
-            <p className="mt-3 text-xs text-red-300">{errorMessage(authorMutation.error)}</p>
+            <p className="mt-3 text-xs text-red-300">
+              {errorMessage(authorMutation.error)}
+            </p>
           ) : null}
-          <Button className="mt-4 w-full" disabled={authorMutation.isPending}>
+          <Button
+            type="submit"
+            className="mt-4 w-full"
+            disabled={authorMutation.isPending}
+          >
             {authorMutation.isPending ? "در حال ثبت…" : "ثبت نویسنده"}
           </Button>
         </form>
@@ -273,50 +317,62 @@ function AdminContentDashboard() {
         >
           <h2 className="text-lg font-bold">Redirect دائمی</h2>
           <div className="mt-4 space-y-3">
-            <input
-              required
-              dir="ltr"
-              value={redirectForm.sourcePath}
-              onChange={(event) =>
-                setRedirectForm((current) => ({
-                  ...current,
-                  sourcePath: event.target.value,
-                }))
-              }
-              placeholder="/old-path"
-              className="w-full rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2.5 text-left"
-            />
-            <input
-              required
-              dir="ltr"
-              value={redirectForm.destinationPath}
-              onChange={(event) =>
-                setRedirectForm((current) => ({
-                  ...current,
-                  destinationPath: event.target.value,
-                }))
-              }
-              placeholder="/guides/new-path"
-              className="w-full rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2.5 text-left"
-            />
-            <select
-              value={redirectForm.statusCode}
-              onChange={(event) =>
-                setRedirectForm((current) => ({
-                  ...current,
-                  statusCode: Number(event.target.value) as 301 | 308,
-                }))
-              }
-              className="w-full rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2.5"
-            >
-              <option value={301}>301</option>
-              <option value={308}>308</option>
-            </select>
+            <Field label="مسیر قدیمی">
+              <input
+                required
+                dir="ltr"
+                value={redirectForm.sourcePath}
+                onChange={(event) =>
+                  setRedirectForm((current) => ({
+                    ...current,
+                    sourcePath: event.target.value,
+                  }))
+                }
+                placeholder="/old-path"
+                className={`${fieldClass} text-left`}
+              />
+            </Field>
+            <Field label="مسیر مقصد">
+              <input
+                required
+                dir="ltr"
+                value={redirectForm.destinationPath}
+                onChange={(event) =>
+                  setRedirectForm((current) => ({
+                    ...current,
+                    destinationPath: event.target.value,
+                  }))
+                }
+                placeholder="/guides/new-path"
+                className={`${fieldClass} text-left`}
+              />
+            </Field>
+            <Field label="کد Redirect">
+              <select
+                value={redirectForm.statusCode}
+                onChange={(event) =>
+                  setRedirectForm((current) => ({
+                    ...current,
+                    statusCode: Number(event.target.value) as 301 | 308,
+                  }))
+                }
+                className={fieldClass}
+              >
+                <option value={301}>301</option>
+                <option value={308}>308</option>
+              </select>
+            </Field>
           </div>
           {redirectMutation.isError ? (
-            <p className="mt-3 text-xs text-red-300">{errorMessage(redirectMutation.error)}</p>
+            <p className="mt-3 text-xs text-red-300">
+              {errorMessage(redirectMutation.error)}
+            </p>
           ) : null}
-          <Button className="mt-4 w-full" disabled={redirectMutation.isPending}>
+          <Button
+            type="submit"
+            className="mt-4 w-full"
+            disabled={redirectMutation.isPending}
+          >
             {redirectMutation.isPending ? "در حال ثبت…" : "ثبت Redirect"}
           </Button>
         </form>
@@ -324,28 +380,26 @@ function AdminContentDashboard() {
         <div className="rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5">
           <h2 className="text-lg font-bold">خلاصه عملیات</h2>
           <dl className="mt-5 space-y-4 text-sm">
-            <div className="flex justify-between">
-              <dt className="text-[color:var(--light)]">محتوا</dt>
-              <dd className="font-bold text-[color:var(--roast)]">
-                {(contentQuery.data?.length ?? 0).toLocaleString("fa-IR")}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-[color:var(--light)]">نویسندگان</dt>
-              <dd className="font-bold text-[color:var(--roast)]">
-                {(authorsQuery.data?.length ?? 0).toLocaleString("fa-IR")}
-              </dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-[color:var(--light)]">Redirectها</dt>
-              <dd className="font-bold text-[color:var(--roast)]">
-                {(redirectsQuery.data?.length ?? 0).toLocaleString("fa-IR")}
-              </dd>
-            </div>
+            {[
+              ["محتوا", contentQuery.data?.length ?? 0],
+              ["نویسندگان", authorsQuery.data?.length ?? 0],
+              ["Redirectها", redirectsQuery.data?.length ?? 0],
+            ].map(([label, count]) => (
+              <div key={String(label)} className="flex justify-between">
+                <dt className="text-[color:var(--light)]">{label}</dt>
+                <dd className="font-bold text-[color:var(--roast)]">
+                  {Number(count).toLocaleString("fa-IR")}
+                </dd>
+              </div>
+            ))}
           </dl>
           <div className="mt-6 max-h-48 space-y-2 overflow-auto text-xs text-[color:var(--light)]">
             {redirectsQuery.data?.map((redirect) => (
-              <div key={redirect.id} className="rounded-lg border border-[color:var(--mid)] p-2" dir="ltr">
+              <div
+                key={redirect.id}
+                className="rounded-lg border border-[color:var(--mid)] p-2"
+                dir="ltr"
+              >
                 {redirect.source_path} → {redirect.destination_path} ({redirect.hits})
               </div>
             ))}
@@ -362,109 +416,143 @@ function AdminContentDashboard() {
           هر پاراگراف را با یک خط خالی از پاراگراف بعدی جدا کنید. برای عبور از Gate انتشار حداقل دو پاراگراف لازم است.
         </p>
         <div className="mt-5 grid gap-3 md:grid-cols-2">
-          <select
-            required
-            value={contentForm.authorId}
-            onChange={(event) =>
-              setContentForm((current) => ({
-                ...current,
-                authorId: event.target.value,
-              }))
-            }
-            className="rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2.5"
-          >
-            <option value="">انتخاب نویسنده</option>
-            {authorsQuery.data?.filter((author) => author.is_active).map((author) => (
-              <option key={author.id} value={author.id}>
-                {author.name}
-              </option>
-            ))}
-          </select>
-          <input
-            required
-            value={contentForm.title}
-            onChange={(event) =>
-              setContentForm((current) => ({ ...current, title: event.target.value }))
-            }
-            placeholder="عنوان راهنما"
-            className="rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2.5"
-          />
-          <input
-            required
-            dir="ltr"
-            value={contentForm.slug}
-            onChange={(event) =>
-              setContentForm((current) => ({ ...current, slug: event.target.value }))
-            }
-            placeholder="guide-slug"
-            className="rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2.5 text-left"
-          />
-          <input
-            required
-            dir="ltr"
-            value={contentForm.canonicalPath}
-            onChange={(event) =>
-              setContentForm((current) => ({
-                ...current,
-                canonicalPath: event.target.value,
-              }))
-            }
-            placeholder="/guides/guide-slug"
-            className="rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2.5 text-left"
-          />
-          <textarea
-            required
-            value={contentForm.excerpt}
-            onChange={(event) =>
-              setContentForm((current) => ({ ...current, excerpt: event.target.value }))
-            }
-            placeholder="خلاصه صفحه"
-            rows={3}
-            className="rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2.5 md:col-span-2"
-          />
-          <textarea
-            required
-            value={contentForm.paragraphs}
-            onChange={(event) =>
-              setContentForm((current) => ({
-                ...current,
-                paragraphs: event.target.value,
-              }))
-            }
-            placeholder="پاراگراف اول…\n\nپاراگراف دوم…"
-            rows={10}
-            className="rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2.5 md:col-span-2"
-          />
-          <input
-            required
-            value={contentForm.seoTitle}
-            onChange={(event) =>
-              setContentForm((current) => ({ ...current, seoTitle: event.target.value }))
-            }
-            placeholder="عنوان سئو"
-            className="rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2.5"
-          />
-          <input
-            value={contentForm.keywords}
-            onChange={(event) =>
-              setContentForm((current) => ({ ...current, keywords: event.target.value }))
-            }
-            placeholder="کلمات کلیدی با ، جدا شوند"
-            className="rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2.5"
-          />
-          <textarea
-            required
-            value={contentForm.seoDescription}
-            onChange={(event) =>
-              setContentForm((current) => ({
-                ...current,
-                seoDescription: event.target.value,
-              }))
-            }
-            placeholder="توضیح سئو"
-            rows={3}
-            className="rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2.5 md:col-span-2"
-          />
+          <Field label="نویسنده">
+            <select
+              required
+              value={contentForm.authorId}
+              onChange={(event) =>
+                setContentForm((current) => ({
+                  ...current,
+                  authorId: event.target.value,
+                }))
+              }
+              className={fieldClass}
+            >
+              <option value="">انتخاب نویسنده</option>
+              {authorsQuery.data
+                ?.filter((author) => author.is_active)
+                .map((author) => (
+                  <option key={author.id} value={author.id}>
+                    {author.name}
+                  </option>
+                ))}
+            </select>
+          </Field>
+          <Field label="عنوان راهنما">
+            <input
+              required
+              value={contentForm.title}
+              onChange={(event) =>
+                setContentForm((current) => ({
+                  ...current,
+                  title: event.target.value,
+                }))
+              }
+              className={fieldClass}
+            />
+          </Field>
+          <Field label="Slug راهنما">
+            <input
+              required
+              dir="ltr"
+              value={contentForm.slug}
+              onChange={(event) =>
+                setContentForm((current) => ({
+                  ...current,
+                  slug: event.target.value,
+                }))
+              }
+              className={`${fieldClass} text-left`}
+            />
+          </Field>
+          <Field label="Canonical path">
+            <input
+              required
+              dir="ltr"
+              value={contentForm.canonicalPath}
+              onChange={(event) =>
+                setContentForm((current) => ({
+                  ...current,
+                  canonicalPath: event.target.value,
+                }))
+              }
+              className={`${fieldClass} text-left`}
+            />
+          </Field>
+          <div className="md:col-span-2">
+            <Field label="خلاصه صفحه">
+              <textarea
+                required
+                value={contentForm.excerpt}
+                onChange={(event) =>
+                  setContentForm((current) => ({
+                    ...current,
+                    excerpt: event.target.value,
+                  }))
+                }
+                rows={3}
+                className={fieldClass}
+              />
+            </Field>
+          </div>
+          <div className="md:col-span-2">
+            <Field label="پاراگراف‌های محتوا">
+              <textarea
+                required
+                value={contentForm.paragraphs}
+                onChange={(event) =>
+                  setContentForm((current) => ({
+                    ...current,
+                    paragraphs: event.target.value,
+                  }))
+                }
+                placeholder={"پاراگراف اول…\n\nپاراگراف دوم…"}
+                rows={10}
+                className={fieldClass}
+              />
+            </Field>
+          </div>
+          <Field label="عنوان سئو">
+            <input
+              required
+              value={contentForm.seoTitle}
+              onChange={(event) =>
+                setContentForm((current) => ({
+                  ...current,
+                  seoTitle: event.target.value,
+                }))
+              }
+              className={fieldClass}
+            />
+          </Field>
+          <Field label="کلمات کلیدی با ، جدا شوند">
+            <input
+              value={contentForm.keywords}
+              onChange={(event) =>
+                setContentForm((current) => ({
+                  ...current,
+                  keywords: event.target.value,
+                }))
+              }
+              className={fieldClass}
+            />
+          </Field>
+          <div className="md:col-span-2">
+            <Field label="توضیح سئو">
+              <textarea
+                required
+                value={contentForm.seoDescription}
+                onChange={(event) =>
+                  setContentForm((current) => ({
+                    ...current,
+                    seoDescription: event.target.value,
+                  }))
+                }
+                rows={3}
+                className={fieldClass}
+              />
+            </Field>
+          </div>
         </div>
         <label className="mt-4 flex items-center gap-2 text-sm text-[color:var(--light)]">
           <input
@@ -480,12 +568,15 @@ function AdminContentDashboard() {
           پس از بررسی و انتشار اجازه ورود به Sitemap داشته باشد
         </label>
         <p className="mt-3 text-xs text-[color:var(--light)]">
-          تعداد بلوک‌های ساخته‌شده: {paragraphBlocks.length.toLocaleString("fa-IR")}
+          تعداد بلوک‌ها: {paragraphBlocks.length.toLocaleString("fa-IR")}
         </p>
         {contentMutation.isError ? (
-          <p className="mt-3 text-sm text-red-300">{errorMessage(contentMutation.error)}</p>
+          <p className="mt-3 text-sm text-red-300">
+            {errorMessage(contentMutation.error)}
+          </p>
         ) : null}
         <Button
+          type="submit"
           className="mt-5"
           disabled={contentMutation.isPending || paragraphBlocks.length < 2}
         >
@@ -497,7 +588,9 @@ function AdminContentDashboard() {
         <h2 className="text-2xl font-bold">صف انتشار</h2>
         <div className="mt-5 space-y-3">
           {contentQuery.isPending ? (
-            <p className="text-sm text-[color:var(--light)]">در حال دریافت محتوا…</p>
+            <p className="text-sm text-[color:var(--light)]">
+              در حال دریافت محتوا…
+            </p>
           ) : contentQuery.data?.length ? (
             contentQuery.data.map((entry) => (
               <article
@@ -506,7 +599,9 @@ function AdminContentDashboard() {
               >
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-bold text-[color:var(--steam)]">{entry.title}</h3>
+                    <h3 className="font-bold text-[color:var(--steam)]">
+                      {entry.title}
+                    </h3>
                     <span className="rounded-full border border-[color:var(--mid)] px-2 py-0.5 text-[10px] text-[color:var(--roast)]">
                       {STATUS_LABELS[entry.status]}
                     </span>
@@ -514,7 +609,10 @@ function AdminContentDashboard() {
                       {entry.seo.robots_index ? "index" : "noindex"}
                     </span>
                   </div>
-                  <p className="mt-2 text-xs text-[color:var(--light)]" dir="ltr">
+                  <p
+                    className="mt-2 text-xs text-[color:var(--light)]"
+                    dir="ltr"
+                  >
                     {entry.canonical_path}
                   </p>
                   <p className="mt-2 text-xs text-[color:var(--light)]">
@@ -526,7 +624,9 @@ function AdminContentDashboard() {
                     <Button
                       variant="outline"
                       disabled={statusMutation.isPending}
-                      onClick={() => statusMutation.mutate({ id: entry.id, status: "review" })}
+                      onClick={() =>
+                        statusMutation.mutate({ id: entry.id, status: "review" })
+                      }
                     >
                       ارسال برای بررسی
                     </Button>
@@ -534,7 +634,12 @@ function AdminContentDashboard() {
                   {entry.status !== "published" ? (
                     <Button
                       disabled={statusMutation.isPending}
-                      onClick={() => statusMutation.mutate({ id: entry.id, status: "published" })}
+                      onClick={() =>
+                        statusMutation.mutate({
+                          id: entry.id,
+                          status: "published",
+                        })
+                      }
                     >
                       انتشار
                     </Button>
@@ -543,7 +648,12 @@ function AdminContentDashboard() {
                     <Button
                       variant="ghost"
                       disabled={statusMutation.isPending}
-                      onClick={() => statusMutation.mutate({ id: entry.id, status: "archived" })}
+                      onClick={() =>
+                        statusMutation.mutate({
+                          id: entry.id,
+                          status: "archived",
+                        })
+                      }
                     >
                       بایگانی
                     </Button>
@@ -558,9 +668,11 @@ function AdminContentDashboard() {
           )}
         </div>
         {statusMutation.isError ? (
-          <Alert variant="danger" title="تغییر وضعیت انجام نشد" className="mt-4">
-            {errorMessage(statusMutation.error)}
-          </Alert>
+          <div className="mt-4">
+            <Alert variant="danger" title="تغییر وضعیت انجام نشد">
+              {errorMessage(statusMutation.error)}
+            </Alert>
+          </div>
         ) : null}
       </section>
     </section>
