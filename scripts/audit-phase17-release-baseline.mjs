@@ -22,9 +22,15 @@ const paths = {
   frontendStaging: ".env.staging.example",
   backendStaging: "backend/.env.staging.example",
   composerLock: "backend/composer.lock",
-  routeTree: "src/routeTree.gen.ts",
+  generatedRouteTree: "src/routeTree.gen.ts",
+  phase17RouteTree: "src/routeTree.phase17.ts",
+  router: "src/router.tsx",
   icon: "public/icon.svg",
   maskableIcon: "public/icon-maskable.svg",
+  productionDockerfile: "backend/Dockerfile.production",
+  stagingCompose: "backend/docker-compose.staging.yml",
+  backendDeploy: "backend/scripts/deploy-staging.sh",
+  frontendDeploy: "scripts/deploy-staging-frontend.sh",
 };
 
 const files = {};
@@ -58,7 +64,6 @@ gate(
 gate(
   "single_robots_source",
   !(await exists(paths.staticRobots)) &&
-    files.routeRobots?.includes("VITE_ALLOW_INDEXING") === false &&
     files.routeRobots?.includes("siteConfig.allowIndexing"),
   "only the environment-aware /robots.txt route may control crawler access",
 );
@@ -120,9 +125,10 @@ gate(
   "backend/composer.lock must be generated and committed before staging deployment",
 );
 
-const requiredGeneratedRoutes = [
+const requiredRoutes = [
   "/admin/content",
   "/admin/content-links",
+  "/admin/content-edit/$entryId",
   "/guides/$slug",
   "/origins/$slug",
   "/brew/$slug",
@@ -131,10 +137,26 @@ const requiredGeneratedRoutes = [
   "/compare/$slug",
   "/robots.txt",
 ];
+const activeRouteTree = files.phase17RouteTree ?? files.generatedRouteTree ?? "";
 gate(
-  "generated_route_tree_current",
-  requiredGeneratedRoutes.every((route) => files.routeTree?.includes(route)),
-  "the committed TanStack route tree must contain all current public and administrator routes",
+  "active_route_tree_current",
+  requiredRoutes.every((route) => activeRouteTree.includes(route)) &&
+    files.router?.includes('from "./routeTree.phase17"'),
+  "the active TanStack route tree must register every current public and administrator route",
+);
+
+gate(
+  "staging_deployment_is_guarded",
+  files.productionDockerfile?.includes("FROM php:8.3-fpm") &&
+    files.productionDockerfile?.includes("COPY composer.json composer.lock") &&
+    files.stagingCompose?.includes("worker:") &&
+    files.stagingCompose?.includes("scheduler:") &&
+    files.stagingCompose?.includes("internal: true") &&
+    files.backendDeploy?.includes("composer.lock is required") &&
+    files.backendDeploy?.includes("php artisan migrate --force") &&
+    files.frontendDeploy?.includes("bun run check") &&
+    files.frontendDeploy?.includes("VITE_ALLOW_INDEXING=false"),
+  "staging deployment must be deterministic, non-indexable and include API, queue and scheduler gates",
 );
 
 const failed = gates.filter((item) => !item.passed);
