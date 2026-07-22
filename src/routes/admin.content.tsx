@@ -227,7 +227,7 @@ function AdminContentDashboard() {
           مدیریت محتوا، انتشار و Redirect
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-8 text-[color:var(--light)]">
-          محتوای جدید ابتدا Draft است. برای ورود به Sitemap باید نویسنده فعال داشته باشد، بررسی شود و با وضعیت Published و Robots Index منتشر شود.
+          محتوای جدید ابتدا Draft است. برای ورود به Sitemap باید نویسنده فعال داشته باشد، وارد Review شود و سپس توسط ادمین منتشر شود.
         </p>
       </header>
 
@@ -620,7 +620,7 @@ function AdminContentDashboard() {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {entry.status !== "review" ? (
+                  {entry.status === "draft" ? (
                     <Button
                       variant="outline"
                       disabled={statusMutation.isPending}
@@ -631,7 +631,7 @@ function AdminContentDashboard() {
                       ارسال برای بررسی
                     </Button>
                   ) : null}
-                  {entry.status !== "published" ? (
+                  {entry.status === "review" ? (
                     <Button
                       disabled={statusMutation.isPending}
                       onClick={() =>
