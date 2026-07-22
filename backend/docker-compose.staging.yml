@@ -109,6 +109,8 @@ services:
   redis:
     image: redis:7.4-alpine
     restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in backend/.env.staging}
     command:
       [
         "redis-server",
