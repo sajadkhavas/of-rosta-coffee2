@@ -46,12 +46,17 @@ if [[ "${APP_DEBUG:-true}" != "false" ]]; then
 fi
 
 if [[ "${ROSTA_PAYMENT_ENABLED:-true}" != "false" ]]; then
-  echo "Payment must remain disabled until the real provider phase is complete." >&2
+  echo "Payment must remain disabled until the provider acceptance gate is complete." >&2
   exit 1
 fi
 
 if [[ "${ROSTA_SMS_ENABLED:-true}" != "false" ]]; then
-  echo "SMS must remain disabled until the real provider phase is complete." >&2
+  echo "SMS must remain disabled until the provider acceptance gate is complete." >&2
+  exit 1
+fi
+
+if [[ "${ROSTA_MEDIA_UPLOADS_ENABLED:-true}" != "false" ]]; then
+  echo "Media uploads must remain disabled until bucket CORS/CDN acceptance is complete." >&2
   exit 1
 fi
 
@@ -62,6 +67,7 @@ compose=(docker compose --env-file .env.staging -f docker-compose.staging.yml)
 "${compose[@]}" up -d --wait mysql redis
 "${compose[@]}" run --rm app php artisan migrate --force --no-interaction
 "${compose[@]}" up -d --wait app worker scheduler web
+"${compose[@]}" exec -T app php artisan rosta:readiness --json
 
 api_port="${ROSTA_API_PORT:-8080}"
 health_url="http://127.0.0.1:${api_port}/api/v1/health/ready"
