@@ -9,48 +9,41 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: frontend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.2.22
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
-      - name: Phase 6 security audit
-        run: bun run audit:phase6 2>&1 | tee phase6-audit.log
-      - name: Unit tests
-        run: bun run test:unit 2>&1 | tee unit-tests.log
-      - name: Typecheck
-        run: bun run typecheck 2>&1 | tee typecheck.log
-      - name: Lint
-        run: bun run lint 2>&1 | tee lint.log
-      - name: Build production worker
+
+      - name: Run complete frontend quality gate
         env:
           VITE_SITE_URL: https://rosta.shop
           VITE_API_URL: http://127.0.0.1:8000/api/v1
           VITE_PAYMENT_REDIRECT_HOSTS: 127.0.0.1:8000
           VITE_ALLOW_INDEXING: "false"
-        run: bun run build 2>&1 | tee build.log
-      - name: Bundle budget
-        run: bun run bundle:check 2>&1 | tee bundle.log
+        run: bun run check 2>&1 | tee frontend-check.log
+
       - name: Upload quality reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: quality-reports-${{ github.run_id }}
+          name: frontend-quality-${{ github.run_id }}
           path: |
-            phase6-audit.log
-            unit-tests.log
-            typecheck.log
-            lint.log
-            build.log
-            bundle.log
+            frontend-check.log
             bundle-report.json
           if-no-files-found: ignore
           retention-days: 14
