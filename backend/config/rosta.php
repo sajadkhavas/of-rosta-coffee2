@@ -7,6 +7,7 @@ $boolean = static fn (string $key, bool $default = false): bool => filter_var(
 
 $paymentEnabled = $boolean('ROSTA_PAYMENT_ENABLED');
 $smsEnabled = $boolean('ROSTA_SMS_ENABLED');
+$mediaUploadsEnabled = $boolean('ROSTA_MEDIA_UPLOADS_ENABLED');
 $zarinpalSandbox = $boolean('ZARINPAL_SANDBOX', true);
 
 return [
@@ -31,24 +32,9 @@ return [
         'zarinpal' => [
             'merchant_id' => env('PAYMENT_MERCHANT_ID'),
             'sandbox' => $zarinpalSandbox,
-            'request_url' => env(
-                'ZARINPAL_REQUEST_URL',
-                $zarinpalSandbox
-                    ? 'https://sandbox.zarinpal.com/pg/v4/payment/request.json'
-                    : 'https://api.zarinpal.com/pg/v4/payment/request.json',
-            ),
-            'verify_url' => env(
-                'ZARINPAL_VERIFY_URL',
-                $zarinpalSandbox
-                    ? 'https://sandbox.zarinpal.com/pg/v4/payment/verify.json'
-                    : 'https://api.zarinpal.com/pg/v4/payment/verify.json',
-            ),
-            'start_pay_url' => env(
-                'ZARINPAL_START_PAY_URL',
-                $zarinpalSandbox
-                    ? 'https://sandbox.zarinpal.com/pg/StartPay'
-                    : 'https://www.zarinpal.com/pg/StartPay',
-            ),
+            'request_url' => env('ZARINPAL_REQUEST_URL', $zarinpalSandbox ? 'https://sandbox.zarinpal.com/pg/v4/payment/request.json' : 'https://api.zarinpal.com/pg/v4/payment/request.json'),
+            'verify_url' => env('ZARINPAL_VERIFY_URL', $zarinpalSandbox ? 'https://sandbox.zarinpal.com/pg/v4/payment/verify.json' : 'https://api.zarinpal.com/pg/v4/payment/verify.json'),
+            'start_pay_url' => env('ZARINPAL_START_PAY_URL', $zarinpalSandbox ? 'https://sandbox.zarinpal.com/pg/StartPay' : 'https://www.zarinpal.com/pg/StartPay'),
         ],
     ],
     'notifications' => [
@@ -62,6 +48,13 @@ return [
             'sender' => env('KAVENEGAR_ORDER_SENDER'),
             'base_url' => env('KAVENEGAR_BASE_URL', 'https://api.kavenegar.com/v1'),
         ],
+    ],
+    'media_uploads' => [
+        'enabled' => $mediaUploadsEnabled,
+        'disk' => env('ROSTA_MEDIA_UPLOAD_DISK', 's3'),
+        'public_base_url' => env('ROSTA_MEDIA_PUBLIC_BASE_URL', ''),
+        'max_size_bytes' => max(1_000_000, min(50_000_000, (int) env('ROSTA_MEDIA_MAX_SIZE_BYTES', 12_000_000))),
+        'ttl_minutes' => max(3, min(60, (int) env('ROSTA_MEDIA_UPLOAD_TTL_MINUTES', 15))),
     ],
     'otp' => [
         'length' => 6,
