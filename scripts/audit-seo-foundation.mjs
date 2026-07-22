@@ -26,6 +26,7 @@ for (const route of [
   '"/search"',
   '"/auth"',
   '"/orders"',
+  '"/admin"',
 ]) {
   if (!rootRoute.includes(route)) {
     failures.push(`Noindex policy is missing route ${route}.`);
@@ -117,6 +118,25 @@ requireContains(
   "src/lib/seo.ts",
   'replace(/</g, "\\\\u003c")',
   "JSON-LD serialization must escape opening angle brackets.",
+);
+
+const adminContentRoute = read("src/routes/admin.content.tsx");
+for (const needle of [
+  'user.roles.includes("administrator")',
+  'entry.status === "draft"',
+  'status: "review"',
+  'entry.status === "review"',
+  'status: "published"',
+  'name: "robots", content: "noindex,nofollow"',
+]) {
+  if (!adminContentRoute.includes(needle)) {
+    failures.push(`Admin content workflow is missing boundary: ${needle}`);
+  }
+}
+requireContains(
+  "src/lib/api/admin-content.ts",
+  "contentSummarySchema",
+  "Administrator content responses must be runtime-validated.",
 );
 
 if (failures.length) {
