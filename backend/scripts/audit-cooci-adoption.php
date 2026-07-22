@@ -80,8 +80,7 @@ $gate(
         && str_contains($files['outbox_service'], 'stale_processing_recovered')
         && str_contains($files['outbox_service'], 'dispatchPending')
         && str_contains($files['observer'], "'order.paid'")
-        && str_contains($files['outbox_migration'], "unique()");
-    ,
+        && str_contains($files['outbox_migration'], "deduplication_key', 190)->nullable()->unique()"),
     'Order notifications must be transactionally queued, deduplicated and retried outside the business transaction.',
 );
 
@@ -103,7 +102,7 @@ $gate(
 
 $failed = array_values(array_filter($gates, static fn (array $gate): bool => ! $gate['passed']));
 $report = [
-    'generatedAt' => now()->toIso8601String(),
+    'generatedAt' => gmdate(DATE_ATOM),
     'marker' => 'cooci_adoption_package_a=ready',
     'passed' => $failed === [],
     'gates' => $gates,
