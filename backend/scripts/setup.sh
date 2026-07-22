@@ -50,7 +50,26 @@ for attempt in {1..60}; do
 done
 
 docker compose build api
-docker compose run --rm api composer install --no-interaction --prefer-dist --no-progress
+
+if [[ ! -s composer.lock ]]; then
+  echo "Generating backend/composer.lock with the PHP 8.3 container..."
+  docker compose run --rm api composer update \
+    --no-install \
+    --no-interaction \
+    --prefer-dist \
+    --no-progress \
+    --no-scripts
+fi
+
+if [[ ! -s composer.lock ]]; then
+  echo "Composer did not produce backend/composer.lock." >&2
+  exit 1
+fi
+
+docker compose run --rm api composer install \
+  --no-interaction \
+  --prefer-dist \
+  --no-progress
 
 if ! grep -Eq '^APP_KEY=base64:.+' .env; then
   docker compose run --rm api php artisan key:generate --force
@@ -86,3 +105,6 @@ echo "API:       http://localhost:8000"
 echo "Liveness:  http://localhost:8000/api/v1/health/live"
 echo "Readiness: http://localhost:8000/api/v1/health/ready"
 echo "Logs:      docker compose logs -f api worker scheduler"
+echo
+echo "Release artifact created: backend/composer.lock"
+echo "Review and commit the lockfile before staging deployment."
