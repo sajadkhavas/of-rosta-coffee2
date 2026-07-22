@@ -1,0 +1,83 @@
+name: Generate Backend Composer Lock
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: Existing branch that should receive backend/composer.lock
+        required: true
+        default: agent/phase-18f-validation-fixes
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: backend-lock-${{ inputs.target_branch }}
+  cancel-in-progress: false
+
+jobs:
+  generate-lock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Validate branch input
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          branch='${{ inputs.target_branch }}'
+          [[ "$branch" =~ ^[A-Za-z0-9._/-]+$ ]]
+          [[ "$branch" != -* ]]
+          [[ "$branch" != *..* ]]
+          [[ "$branch" != */.lock ]]
+
+      - name: Checkout requested branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_branch }}
+          fetch-depth: 0
+
+      - name: Setup PHP and Composer
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: bcmath, ctype, curl, dom, fileinfo, intl, json, mbstring, openssl, pcntl, pdo_mysql, posix, redis, simplexml, sockets, tokenizer, xml, xmlwriter, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Generate deterministic lock
+        working-directory: backend
+        run: |
+          set -Eeuo pipefail
+          composer validate --strict --no-check-lock
+          composer update --with-all-dependencies --no-interaction --prefer-dist --no-progress
+          composer validate --strict
+          composer install --no-interaction --prefer-dist --no-progress
+          composer audit --locked
+          test -s composer.lock
+
+      - name: Ensure only lockfile changed
+        run: |
+          set -Eeuo pipefail
+          changed="$(git status --short)"
+          printf '%s\n' "$changed"
+          unexpected="$(printf '%s\n' "$changed" | grep -vE '^([ MARC?]{2}) backend/composer\.lock$' || true)"
+          if [[ -n "$unexpected" ]]; then
+            echo "Unexpected files changed while generating Composer lock:" >&2
+            printf '%s\n' "$unexpected" >&2
+            exit 1
+          fi
+          test -s backend/composer.lock
+
+      - name: Commit lockfile
+        run: |
+          set -Eeuo pipefail
+          if git diff --quiet -- backend/composer.lock && git diff --cached --quiet; then
+            echo "backend/composer.lock is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/composer.lock
+          git commit -m "build(backend): lock Composer dependencies"
+          git push origin "HEAD:${{ inputs.target_branch }}"
