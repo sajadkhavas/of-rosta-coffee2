@@ -14,5 +14,6 @@ enum OrderStatus: string
     case Delivered = 'delivered';
     case PartiallyCancelled = 'partially_cancelled';
     case Cancelled = 'cancelled';
+    case RefundPending = 'refund_pending';
     case Refunded = 'refunded';
 }
