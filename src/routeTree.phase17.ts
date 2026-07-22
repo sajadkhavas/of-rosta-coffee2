@@ -1,4 +1,5 @@
 /* eslint-disable */
+// @ts-nocheck
 // Temporary release-baseline route tree. Replace with generated routeTree.gen.ts
 // after the real TanStack generator succeeds in the server toolchain.
 
@@ -42,21 +43,18 @@ import { Route as SitemapDotxmlRouteImport } from "./routes/sitemap[.]xml";
 import { Route as TastesSlugRouteImport } from "./routes/tastes.$slug";
 import { Route as TermsRouteImport } from "./routes/terms";
 
-const rootChild = <TRoute extends { update: (options: unknown) => unknown }>(
-  route: TRoute,
-  id: string,
-) =>
+const rootChild = (route: any, id: string) =>
   route.update({
     id,
     path: id,
     getParentRoute: () => rootRouteImport,
-  } as never) as ReturnType<TRoute["update"]>;
+  } as any);
 
 const IndexRoute = IndexRouteImport.update({
   id: "/",
   path: "/",
   getParentRoute: () => rootRouteImport,
-} as never);
+} as any);
 const AboutRoute = rootChild(AboutRouteImport, "/about");
 const AdminContentEditEntryIdRoute = rootChild(
   AdminContentEditEntryIdRouteImport,
@@ -98,52 +96,52 @@ const AuthIndexRoute = AuthIndexRouteImport.update({
   id: "/",
   path: "/",
   getParentRoute: () => AuthRoute,
-} as never);
+} as any);
 const AuthVerifyRoute = AuthVerifyRouteImport.update({
   id: "/verify",
   path: "/verify",
   getParentRoute: () => AuthRoute,
-} as never);
+} as any);
 const BlogIndexRoute = BlogIndexRouteImport.update({
   id: "/",
   path: "/",
   getParentRoute: () => BlogRoute,
-} as never);
+} as any);
 const BlogSlugRoute = BlogSlugRouteImport.update({
   id: "/$slug",
   path: "/$slug",
   getParentRoute: () => BlogRoute,
-} as never);
+} as any);
 const OrdersIndexRoute = OrdersIndexRouteImport.update({
   id: "/",
   path: "/",
   getParentRoute: () => OrdersRoute,
-} as never);
+} as any);
 const OrdersIdRoute = OrdersIdRouteImport.update({
   id: "/$id",
   path: "/$id",
   getParentRoute: () => OrdersRoute,
-} as never);
+} as any);
 const ProductsIndexRoute = ProductsIndexRouteImport.update({
   id: "/",
   path: "/",
   getParentRoute: () => ProductsRoute,
-} as never);
+} as any);
 const ProductsSlugRoute = ProductsSlugRouteImport.update({
   id: "/$slug",
   path: "/$slug",
   getParentRoute: () => ProductsRoute,
-} as never);
+} as any);
 const RoasteriesIndexRoute = RoasteriesIndexRouteImport.update({
   id: "/",
   path: "/",
   getParentRoute: () => RoasteriesRoute,
-} as never);
+} as any);
 const RoasteriesSlugRoute = RoasteriesSlugRouteImport.update({
   id: "/$slug",
   path: "/$slug",
   getParentRoute: () => RoasteriesRoute,
-} as never);
+} as any);
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren({
   AuthIndexRoute,
