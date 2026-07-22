@@ -8,17 +8,30 @@ $read = static function (string $relative) use ($root, &$failures): string {
     $content = is_file($path) ? file_get_contents($path) : false;
     if ($content === false) {
         $failures[] = 'Missing or unreadable file: '.$relative;
+
         return '';
     }
+
     return $content;
 };
 
-$require = static function (string $relative, string $needle, string $message) use ($read, &$failures): void {
-    if (! str_contains($read($relative), $needle)) $failures[] = $message;
+$require = static function (
+    string $relative,
+    string $needle,
+    string $message,
+) use ($read, &$failures): void {
+    if (! str_contains($read($relative), $needle)) {
+        $failures[] = $message;
+    }
 };
 
-$migration = $read('database/migrations/2026_07_22_010001_create_content_seo_tables.php');
-foreach (['content_authors', 'content_entries', 'content_relations', 'seo_redirects'] as $table) {
+$migration = $read(
+    'database/migrations/2026_07_22_010001_create_content_seo_tables.php',
+);
+foreach (
+    ['content_authors', 'content_entries', 'content_relations', 'seo_redirects']
+    as $table
+) {
     if (! str_contains($migration, "Schema::create('{$table}'")) {
         $failures[] = 'SEO/content table missing: '.$table;
     }
@@ -64,6 +77,16 @@ $require(
     'Transactional routes must be reserved from public SEO pages.',
 );
 $require(
+    'app/Support/SeoPath.php',
+    'rawurldecode(',
+    'Canonical paths must reject encoded traversal attempts.',
+);
+$require(
+    'app/Services/Content/SeoRedirectService.php',
+    "'source_path' => SeoPath::assertPublic(",
+    'Redirect sources must not overlap private or transactional routes.',
+);
+$require(
     'app/Services/Content/SeoRedirectService.php',
     'seo.redirect_loop',
     'Redirect loops must be rejected.',
@@ -91,7 +114,9 @@ $require(
 
 if ($failures !== []) {
     fwrite(STDERR, "SEO/content contract audit failed:\n");
-    foreach ($failures as $failure) fwrite(STDERR, '- '.$failure."\n");
+    foreach ($failures as $failure) {
+        fwrite(STDERR, '- '.$failure."\n");
+    }
     exit(1);
 }
 
