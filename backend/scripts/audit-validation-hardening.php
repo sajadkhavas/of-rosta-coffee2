@@ -10,9 +10,6 @@ $files = [
     'inquiry_migration' => file_get_contents($root.'/database/migrations/2026_07_22_210001_create_reviews_and_inquiries.php'),
     'media_migration' => file_get_contents($root.'/database/migrations/2026_07_22_220001_create_media_upload_intents.php'),
     'domain_exception' => file_get_contents($root.'/app/Exceptions/ApiDomainException.php'),
-    'frontend_schema' => file_get_contents(dirname($root).'/src/lib/api/schemas.ts'),
-    'frontend_contracts' => file_get_contents(dirname($root).'/src/lib/api/contracts.ts'),
-    'payment_security' => file_get_contents(dirname($root).'/src/lib/payment-security.ts'),
     'frontend_ci' => file_get_contents(dirname($root).'/.github/workflows/ci.yml'),
     'backend_ci' => file_get_contents(dirname($root).'/.github/workflows/backend-ci.yml'),
 ];
@@ -37,6 +34,14 @@ $gate(
         && str_contains($files['payment_controller'], "isset(\$parts['fragment'])")
         && str_contains($files['payment_controller'], 'allowed_payment_redirect_hosts'),
     'Payment callbacks may redirect only to explicitly approved, credential-free URLs.',
+);
+
+$gate(
+    'refund_pending_mapped_at_public_boundary',
+    str_contains($files['payment_controller'], 'OrderStatus::RefundPending')
+        && str_contains($files['payment_controller'], 'OrderStatus::Processing->value')
+        && str_contains($files['payment_controller'], 'publicOrderStatus'),
+    'Internal refund_pending truth must be mapped to the frozen public order contract at one backend boundary.',
 );
 
 $gate(
@@ -68,14 +73,6 @@ $gate(
     str_contains($files['domain_exception'], '?Throwable $previous = null')
         && str_contains($files['domain_exception'], 'parent::__construct($message, 0, $previous)'),
     'Infrastructure exceptions wrapped as domain failures must retain their original cause.',
-);
-
-$gate(
-    'refund_pending_contract_consistent',
-    str_contains($files['frontend_schema'], '"refund_pending"')
-        && str_contains($files['frontend_contracts'], '| "refund_pending"')
-        && str_contains($files['payment_security'], '"refund_pending"'),
-    'Backend financial truth and strict frontend payment/order contracts must agree on refund_pending.',
 );
 
 $gate(
