@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Enums\Role;
 use App\Models\ContentAuthor;
 use App\Models\ContentEntry;
-use App\Models\SeoRedirect;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\AuthenticatesRecordedSession;
@@ -19,14 +18,35 @@ final class ContentSeoTest extends TestCase
     public function test_public_content_only_exposes_published_entries_and_indexable_urls(): void
     {
         $author = $this->author();
-        $published = $this->entry($author, 'published-guide', '/guides/published-guide', 'published', true);
-        $this->entry($author, 'draft-guide', '/guides/draft-guide', 'draft', false);
-        $this->entry($author, 'noindex-guide', '/guides/noindex-guide', 'published', false);
+        $published = $this->entry(
+            $author,
+            'published-guide',
+            '/guides/published-guide',
+            'published',
+            true,
+        );
+        $this->entry(
+            $author,
+            'draft-guide',
+            '/guides/draft-guide',
+            'draft',
+            false,
+        );
+        $this->entry(
+            $author,
+            'noindex-guide',
+            '/guides/noindex-guide',
+            'published',
+            false,
+        );
 
         $this->getJson('/api/v1/content/published-guide')
             ->assertOk()
             ->assertJsonPath('data.id', $published->id)
-            ->assertJsonPath('data.seo.canonical_path', '/guides/published-guide')
+            ->assertJsonPath(
+                'data.seo.canonical_path',
+                '/guides/published-guide',
+            )
             ->assertJsonPath('data.seo.robots_index', true)
             ->assertJsonPath('data.body.0.type', 'paragraph');
 
@@ -35,10 +55,13 @@ final class ContentSeoTest extends TestCase
         $this->getJson('/api/v1/seo/indexable')
             ->assertOk()
             ->assertJsonCount(1, 'data.items')
-            ->assertJsonPath('data.items.0.path', '/guides/published-guide');
+            ->assertJsonPath(
+                'data.items.0.path',
+                '/guides/published-guide',
+            );
     }
 
-    public function test_admin_content_workflow_rejects_raw_blocks_and_returns_edits_to_review(): void
+    public function test_admin_content_workflow_rejects_raw_blocks_and_requires_review(): void
     {
         $administrator = User::factory()->create();
         $this->authenticateWithRole($administrator, Role::Administrator);
@@ -58,8 +81,15 @@ final class ContentSeoTest extends TestCase
             'canonical_path' => '/guides/test-guide',
             'excerpt' => 'توضیح منحصربه‌فرد برای تست انتشار محتوای رستا.',
             'body' => [
-                ['type' => 'paragraph', 'text' => 'پاراگراف اصلی راهنمای تست.'],
-                ['type' => 'heading', 'level' => 2, 'text' => 'بخش دوم'],
+                [
+                    'type' => 'paragraph',
+                    'text' => 'پاراگراف اصلی راهنمای تست.',
+                ],
+                [
+                    'type' => 'heading',
+                    'level' => 2,
+                    'text' => 'بخش دوم',
+                ],
             ],
             'seo_title' => 'راهنمای تست | رستا',
             'seo_description' => 'توضیح سئو برای راهنمای تست محتوای رستا.',
@@ -71,7 +101,10 @@ final class ContentSeoTest extends TestCase
             ...$base,
             'slug' => 'unsafe-guide',
             'canonical_path' => '/guides/unsafe-guide',
-            'body' => [['type' => 'html', 'html' => '<script>alert(1)</script>']],
+            'body' => [[
+                'type' => 'html',
+                'html' => '<script>alert(1)</script>',
+            ]],
         ])
             ->assertUnprocessable()
             ->assertJsonPath('error.code', 'content.block_invalid');
@@ -79,16 +112,28 @@ final class ContentSeoTest extends TestCase
         $entry = $this->postJson('/api/v1/admin/content', $base)
             ->assertOk()
             ->assertJsonPath('data.status', 'draft')
-            ->assertJsonPath('data.seo.robots_index', false)
+            ->assertJsonPath('data.seo.robots_index', true)
             ->json('data');
 
-        $this->patchJson('/api/v1/admin/content/'.$entry['id'], [
-            'robots_index' => true,
-        ])->assertOk();
+        $this->patchJson(
+            '/api/v1/admin/content/'.$entry['id'].'/status',
+            ['status' => 'published'],
+        )
+            ->assertConflict()
+            ->assertJsonPath('error.code', 'content.review_required');
 
-        $this->patchJson('/api/v1/admin/content/'.$entry['id'].'/status', [
-            'status' => 'published',
-        ])
+        $this->patchJson(
+            '/api/v1/admin/content/'.$entry['id'].'/status',
+            ['status' => 'review'],
+        )
+            ->assertOk()
+            ->assertJsonPath('data.status', 'review')
+            ->assertJsonPath('data.seo.robots_index', true);
+
+        $this->patchJson(
+            '/api/v1/admin/content/'.$entry['id'].'/status',
+            ['status' => 'published'],
+        )
             ->assertOk()
             ->assertJsonPath('data.status', 'published')
             ->assertJsonPath('data.seo.robots_index', true);
@@ -98,7 +143,7 @@ final class ContentSeoTest extends TestCase
         ])
             ->assertOk()
             ->assertJsonPath('data.status', 'review')
-            ->assertJsonPath('data.seo.robots_index', false);
+            ->assertJsonPath('data.seo.robots_index', true);
 
         $this->getJson('/api/v1/content/test-guide')->assertNotFound();
     }
@@ -114,10 +159,16 @@ final class ContentSeoTest extends TestCase
             'status_code' => 301,
         ])->assertOk()->json('data');
 
-        $this->getJson('/api/v1/seo/redirects/resolve?path='.urlencode('/old-guide'))
+        $this->getJson(
+            '/api/v1/seo/redirects/resolve?path='.urlencode('/old-guide'),
+        )
             ->assertOk()
             ->assertJsonPath('data.redirect.id', $redirect['id'])
-            ->assertJsonPath('data.redirect.destination_path', '/guides/new-guide');
+            ->assertJsonPath(
+                'data.redirect.destination_path',
+                '/guides/new-guide',
+            )
+            ->assertJsonPath('data.redirect.hits', 1);
 
         $this->assertDatabaseHas('seo_redirects', [
             'id' => $redirect['id'],
@@ -135,15 +186,38 @@ final class ContentSeoTest extends TestCase
         $this->postJson('/api/v1/admin/seo-redirects', [
             'source_path' => '/external',
             'destination_path' => 'https://example.com',
+        ])->assertUnprocessable();
+
+        $this->postJson('/api/v1/admin/seo-redirects', [
+            'source_path' => '/checkout',
+            'destination_path' => '/guides/new-guide',
         ])
-            ->assertUnprocessable();
+            ->assertUnprocessable()
+            ->assertJsonPath('error.code', 'seo.path_reserved');
+
+        $this->postJson('/api/v1/admin/content', [
+            'author_id' => $this->author()->id,
+            'type' => 'guide',
+            'title' => 'Traversal test',
+            'slug' => 'traversal-test',
+            'canonical_path' => '/guides/%252e%252e/private',
+            'excerpt' => 'توضیح تست مسیر رمزگذاری‌شده.',
+            'body' => [
+                ['type' => 'paragraph', 'text' => 'پاراگراف یک.'],
+                ['type' => 'paragraph', 'text' => 'پاراگراف دو.'],
+            ],
+            'seo_title' => 'Traversal test',
+            'seo_description' => 'توضیح تست مسیر رمزگذاری‌شده.',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonPath('error.code', 'seo.path_invalid');
     }
 
     private function author(): ContentAuthor
     {
         return ContentAuthor::query()->create([
-            'name' => 'تحریریه تست',
-            'slug' => 'test-editorial',
+            'name' => 'تحریریه تست '.str()->random(6),
+            'slug' => 'test-editorial-'.str()->lower(str()->random(8)),
             'bio' => null,
             'credentials' => [],
             'is_active' => true,
