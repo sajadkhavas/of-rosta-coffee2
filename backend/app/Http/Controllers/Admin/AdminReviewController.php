@@ -56,11 +56,12 @@ final class AdminReviewController extends Controller
         $user = $request->user();
         $access->assertAdministrator($user);
         $review = Review::query()->findOrFail($reviewId);
+        $reason = $request->validated('reason');
         $moderated = $reviews->moderate(
             $user,
             $review,
             ReviewStatus::from((string) $request->validated('status')),
-            $request->validated('reason'),
+            is_string($reason) ? $reason : null,
             $request,
         );
 
