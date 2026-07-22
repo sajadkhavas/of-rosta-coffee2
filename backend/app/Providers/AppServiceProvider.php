@@ -39,6 +39,9 @@ final class AppServiceProvider extends ServiceProvider
         Route::prefix('api/v1')
             ->middleware('api')
             ->group(base_path('routes/payments.php'));
+        Route::prefix('api/v1')
+            ->middleware('api')
+            ->group(base_path('routes/fulfillment.php'));
 
         RateLimiter::for('api', function (Request $request): Limit {
             $key = $request->user()?->getAuthIdentifier()
@@ -118,6 +121,18 @@ final class AppServiceProvider extends ServiceProvider
                 Limit::perMinute(30)->by('payment-callback:ip:'.$request->ip()),
                 Limit::perMinute(10)->by(
                     'payment-callback:id:'.hash('sha256', (string) $request->route('paymentId')),
+                ),
+            ];
+        });
+
+        RateLimiter::for('fulfillment-transition', function (Request $request): array {
+            $userId = (string) $request->user()?->getAuthIdentifier();
+            $orderId = (string) $request->route('orderId');
+
+            return [
+                Limit::perMinute(20)->by('fulfillment:user:'.$userId),
+                Limit::perMinute(6)->by(
+                    'fulfillment:order:'.hash('sha256', $orderId),
                 ),
             ];
         });
