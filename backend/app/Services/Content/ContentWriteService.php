@@ -3,6 +3,7 @@
 namespace App\Services\Content;
 
 use App\Enums\ContentStatus;
+use App\Exceptions\ApiDomainException;
 use App\Models\ContentEntry;
 use App\Models\User;
 use App\Services\AuditRecorder;
@@ -24,7 +25,7 @@ final class ContentWriteService
     {
         return DB::transaction(function () use ($data, $actor, $request): ContentEntry {
             $relations = $data['relations'] ?? [];
-            unset($data['relations']);
+            unset($data['relations'], $data['expected_content_hash']);
 
             $body = $this->blocks->validate($data['body']);
             $entry = ContentEntry::query()->create([
@@ -58,6 +59,17 @@ final class ContentWriteService
             $locked = ContentEntry::query()
                 ->lockForUpdate()
                 ->findOrFail($entry->id);
+
+            $expectedHash = (string) ($data['expected_content_hash'] ?? '');
+            unset($data['expected_content_hash']);
+            if (! hash_equals((string) $locked->content_hash, $expectedHash)) {
+                throw new ApiDomainException(
+                    'content.edit_conflict',
+                    'این محتوا پس از بازشدن ویرایش شده است. نسخه جدید را دریافت و تغییرات را دوباره اعمال کنید.',
+                    409,
+                );
+            }
+
             $relationsProvided = array_key_exists('relations', $data);
             $relations = $data['relations'] ?? [];
             unset($data['relations']);
@@ -67,6 +79,7 @@ final class ContentWriteService
                 : $locked->body;
 
             $wasPublished = $locked->status === ContentStatus::Published;
+            $previousHash = (string) $locked->content_hash;
             $locked->fill($this->normalizedData($data, $body));
             if ($wasPublished) {
                 $locked->status = ContentStatus::Review;
@@ -84,6 +97,8 @@ final class ContentWriteService
                 auditable: $locked,
                 metadata: [
                     'fields' => array_keys($data),
+                    'previous_content_hash' => $previousHash,
+                    'content_hash' => $locked->content_hash,
                     'returned_to_review' => $wasPublished,
                 ],
                 request: $request,
