@@ -4,14 +4,15 @@ on:
   pull_request:
     paths:
       - "backend/**"
-      - "docs/openapi/rosta-v1-phase6.yaml"
+      - "docs/openapi/**"
       - ".github/workflows/backend-ci.yml"
   push:
     branches: [main]
     paths:
       - "backend/**"
-      - "docs/openapi/rosta-v1-phase6.yaml"
+      - "docs/openapi/**"
       - ".github/workflows/backend-ci.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -74,6 +75,7 @@ jobs:
       QUEUE_CONNECTION: redis
       ROSTA_PAYMENT_ENABLED: "false"
       ROSTA_SMS_ENABLED: "false"
+      ROSTA_MEDIA_UPLOADS_ENABLED: "false"
 
     steps:
       - name: Checkout
@@ -111,6 +113,7 @@ jobs:
       - name: Validate frozen contract marker
         run: |
           test -s ../docs/openapi/rosta-v1-phase6.yaml
+          test -s ../docs/openapi/rosta-v1-commerce-additions.yaml
           grep -q '^ROSTA_CONTRACT_VERSION=2026-07-21-phase-6$' .env.example
           grep -q '"laravel/framework": "^13.8"' composer.json
 
@@ -119,3 +122,14 @@ jobs:
 
       - name: Run backend quality gate
         run: composer check
+
+      - name: Upload backend reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-quality-${{ github.run_id }}
+          path: |
+            backend/*-audit.json
+            backend/storage/logs/*.log
+          if-no-files-found: ignore
+          retention-days: 14
