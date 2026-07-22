@@ -151,8 +151,12 @@ final class PaymentService
         }, 3);
 
         if (! $prepared['dispatch']) {
+            /** @var PaymentAttempt $replayedAttempt */
+            $replayedAttempt = $prepared['attempt'];
+            $replayedAttempt->refresh();
+
             return [
-                'attempt' => $prepared['attempt']->fresh(),
+                'attempt' => $replayedAttempt,
                 'replayed' => true,
             ];
         }
@@ -170,6 +174,7 @@ final class PaymentService
                 'payment.provider_unavailable',
                 'اتصال به درگاه پرداخت انجام نشد.',
                 503,
+                previous: $exception,
             );
         }
 
@@ -208,7 +213,9 @@ final class PaymentService
             return $locked;
         }, 3);
 
-        return ['attempt' => $attempt->fresh(), 'replayed' => false];
+        $attempt->refresh();
+
+        return ['attempt' => $attempt, 'replayed' => false];
     }
 
     public function verifyForUser(
@@ -276,7 +283,8 @@ final class PaymentService
         ?string $callbackStatus,
         Request $request,
     ): PaymentAttempt {
-        $attempt->refresh()->load('order');
+        $attempt->refresh();
+        $attempt->load('order');
         if ($attempt->status->isTerminal()) {
             return $attempt;
         }
@@ -294,6 +302,7 @@ final class PaymentService
                 'payment.verification_unavailable',
                 'امکان استعلام پرداخت از درگاه وجود ندارد.',
                 503,
+                previous: $exception,
             );
         }
 
