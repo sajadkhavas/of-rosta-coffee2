@@ -21,7 +21,9 @@ function safeJson(value: unknown): string {
 export function seoHead(input: SeoHeadInput) {
   const canonical = absoluteUrl(input.path);
   const description = input.description?.trim() || siteConfig.description;
-  const image = input.image ? absoluteUrl(input.image) : absoluteUrl(siteConfig.socialImagePath);
+  const image = input.image
+    ? absoluteUrl(input.image)
+    : absoluteUrl(siteConfig.socialImagePath);
   const index = input.index ?? siteConfig.allowIndexing;
   const follow = input.follow ?? true;
 
@@ -29,7 +31,10 @@ export function seoHead(input: SeoHeadInput) {
     meta: [
       { title: input.title },
       { name: "description", content: description },
-      { name: "robots", content: `${index ? "index" : "noindex"},${follow ? "follow" : "nofollow"}` },
+      {
+        name: "robots",
+        content: `${index ? "index" : "noindex"},${follow ? "follow" : "nofollow"}`,
+      },
       { property: "og:site_name", content: siteConfig.name },
       { property: "og:type", content: input.type ?? "website" },
       { property: "og:locale", content: siteConfig.locale },
@@ -72,14 +77,16 @@ export function contentSeoHead(entry: ContentEntry) {
         ? {
             "@type": "Person",
             name: entry.author.name,
-            url: absoluteUrl(`/authors/${entry.author.slug}`),
           }
         : undefined,
       publisher: {
         "@type": "Organization",
         name: siteConfig.name,
         url: siteConfig.siteUrl,
-        logo: { "@type": "ImageObject", url: absoluteUrl("/icon-512.png") },
+        logo: {
+          "@type": "ImageObject",
+          url: absoluteUrl("/icon-512.png"),
+        },
       },
       keywords: entry.keywords.join(", ") || undefined,
       image: entry.seo.og_media_url ?? undefined,
@@ -88,14 +95,26 @@ export function contentSeoHead(entry: ContentEntry) {
       "@context": "https://schema.org",
       "@type": "BreadcrumbList",
       itemListElement: [
-        { "@type": "ListItem", position: 1, name: "خانه", item: absoluteUrl("/") },
-        { "@type": "ListItem", position: 2, name: entry.title, item: absoluteUrl(entry.seo.canonical_path) },
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "خانه",
+          item: absoluteUrl("/"),
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: entry.title,
+          item: absoluteUrl(entry.seo.canonical_path),
+        },
       ],
     },
   ];
 
   const faqBlocks = entry.body.filter((block) => block.type === "faq");
-  const faqItems = faqBlocks.flatMap((block) => (block.type === "faq" ? block.items : []));
+  const faqItems = faqBlocks.flatMap((block) =>
+    block.type === "faq" ? block.items : [],
+  );
   if (faqItems.length) {
     jsonLd.push({
       "@context": "https://schema.org",
