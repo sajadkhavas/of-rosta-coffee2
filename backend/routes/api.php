@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminContentAuthorController;
 use App\Http\Controllers\Admin\AdminContentController;
+use App\Http\Controllers\Admin\AdminContentLinkReportController;
 use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminOriginController;
 use App\Http\Controllers\Admin\AdminProductController;
@@ -217,6 +218,8 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
                     ->where('authorId', '[A-Za-z0-9._:-]+')
                     ->name('api.v1.admin.content_authors.update');
 
+                Route::get('/content-link-report', AdminContentLinkReportController::class)
+                    ->name('api.v1.admin.content_link_report');
                 Route::get('/content', [AdminContentController::class, 'index'])
                     ->name('api.v1.admin.content.index');
                 Route::post('/content', [AdminContentController::class, 'store'])
