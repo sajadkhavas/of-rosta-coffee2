@@ -82,6 +82,11 @@ final class Order extends Model
         return $this->hasMany(PaymentAttempt::class);
     }
 
+    public function internalNotes(): HasMany
+    {
+        return $this->hasMany(OrderInternalNote::class);
+    }
+
     public function idempotencyKeys(): HasMany
     {
         return $this->hasMany(OrderIdempotencyKey::class);
