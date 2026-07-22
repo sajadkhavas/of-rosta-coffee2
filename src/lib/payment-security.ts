@@ -29,6 +29,7 @@ const PAID_ORDER_STATUSES = new Set<OrderStatus>([
   "partially_delivered",
   "delivered",
   "partially_cancelled",
+  "refund_pending",
 ]);
 
 export function isConsistentVerifiedPaid(
