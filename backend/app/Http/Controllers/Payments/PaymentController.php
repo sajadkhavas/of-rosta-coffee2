@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Payments;
 
+use App\Enums\OrderStatus;
 use App\Enums\PaymentAttemptStatus;
 use App\Exceptions\ApiDomainException;
 use App\Http\Controllers\Controller;
@@ -86,7 +87,7 @@ final class PaymentController extends Controller
             'payment_id' => $attempt->id,
             'status' => $this->publicStatus($attempt),
             'order_id' => $attempt->order_id,
-            'order_status' => $attempt->order->status->value,
+            'order_status' => $this->publicOrderStatus($attempt),
             'amount' => $attempt->amount,
             'currency' => $attempt->currency,
             'verified_at' => $attempt->verified_at?->toIso8601String(),
@@ -102,6 +103,13 @@ final class PaymentController extends Controller
             PaymentAttemptStatus::Refunded => 'refunded',
             default => 'pending',
         };
+    }
+
+    private function publicOrderStatus(PaymentAttempt $attempt): string
+    {
+        return $attempt->order->status === OrderStatus::RefundPending
+            ? OrderStatus::Processing->value
+            : $attempt->order->status->value;
     }
 
     private function frontendCallbackUrl(PaymentAttempt $attempt): string
