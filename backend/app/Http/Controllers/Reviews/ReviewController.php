@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Reviews;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Reviews\CreateReviewRequest;
+use App\Models\User;
 use App\Services\Reviews\ReviewService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -14,8 +15,10 @@ final class ReviewController extends Controller
         CreateReviewRequest $request,
         ReviewService $reviews,
     ): JsonResponse {
+        /** @var User $user */
+        $user = $request->user();
         $review = $reviews->create(
-            $request->user(),
+            $user,
             $request->validated(),
             $request,
         );
