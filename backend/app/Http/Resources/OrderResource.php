@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\OrderStatus;
 use App\Models\OrderItem;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -38,11 +39,14 @@ final class OrderResource extends JsonResource
             ->values()
             ->all();
         $shipment = $subOrder->shipment;
+        $publicOrderStatus = $this->status === OrderStatus::RefundPending
+            ? OrderStatus::Processing->value
+            : $this->status->value;
 
         return [
             'id' => $this->id,
             'order_number' => $this->order_number,
-            'status' => $this->status->value,
+            'status' => $publicOrderStatus,
             'placed_at' => $this->placed_at?->toIso8601String(),
             'grand_total' => $this->grand_total,
             'currency' => $this->currency,
