@@ -51,6 +51,18 @@ return [
             ),
         ],
     ],
+    'notifications' => [
+        'enabled' => $smsEnabled,
+        'sms_provider' => env('ORDER_SMS_PROVIDER', 'disabled'),
+        'max_attempts' => max(1, min(20, (int) env('NOTIFICATION_MAX_ATTEMPTS', 5))),
+        'retry_seconds' => max(30, min(3600, (int) env('NOTIFICATION_RETRY_SECONDS', 60))),
+        'timeout_seconds' => max(1, min(60, (int) env('NOTIFICATION_TIMEOUT_SECONDS', 8))),
+        'kavenegar' => [
+            'api_key' => env('KAVENEGAR_API_KEY'),
+            'sender' => env('KAVENEGAR_ORDER_SENDER'),
+            'base_url' => env('KAVENEGAR_BASE_URL', 'https://api.kavenegar.com/v1'),
+        ],
+    ],
     'otp' => [
         'length' => 6,
         'ttl_seconds' => max(30, min(900, (int) env('ROSTA_OTP_TTL_SECONDS', 120))),
