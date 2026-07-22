@@ -170,7 +170,6 @@ export type OrderStatus =
   | "delivered"
   | "partially_cancelled"
   | "cancelled"
-  | "refund_pending"
   | "refunded";
 
 export type SubOrderStatus =
