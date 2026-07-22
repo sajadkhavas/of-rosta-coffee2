@@ -1,5 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  Navigate,
+  useNavigate,
+} from "@tanstack/react-router";
 import { AccountGuard } from "@/components/account/AccountGuard";
 import { ContentLinkReportPanel } from "@/components/admin/ContentLinkReportPanel";
 import { Breadcrumb } from "@/components/Breadcrumb";
@@ -46,6 +51,7 @@ function AdminContentLinksPage() {
 
 function ContentLinksWorkspace() {
   const reportQuery = useQuery(contentLinkReportQueryOptions());
+  const navigate = useNavigate();
 
   return (
     <div className="mt-8 space-y-5">
@@ -70,7 +76,10 @@ function ContentLinksWorkspace() {
           void reportQuery.refetch();
         }}
         onEditEntry={(entryId) => {
-          window.location.assign(`/admin/content?edit=${encodeURIComponent(entryId)}`);
+          void navigate({
+            to: "/admin/content-edit/$entryId",
+            params: { entryId },
+          });
         }}
       />
     </div>
