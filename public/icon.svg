@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">رستا</title>
+  <desc id="desc">نشان دانه کامل قهوه رستا</desc>
+  <rect width="512" height="512" rx="112" fill="#0A0400"/>
+  <ellipse cx="256" cy="238" rx="150" ry="118" fill="#C8965A" transform="rotate(-16 256 238)"/>
+  <path d="M205 126c-28 64-24 154 19 226 13 22 29 41 48 57" fill="none" stroke="#F7F0E6" stroke-width="20" stroke-linecap="round"/>
+  <text x="256" y="454" text-anchor="middle" font-family="system-ui,sans-serif" font-size="72" font-weight="700" fill="#F7F0E6">R</text>
+</svg>
