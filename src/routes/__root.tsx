@@ -22,6 +22,28 @@ import { queryKeys } from "../lib/api/query-keys";
 import { ToastProvider } from "../components/system";
 import { absoluteUrl, siteConfig } from "../config/site";
 
+const NOINDEX_PATHS = new Set([
+  "/cart",
+  "/checkout",
+  "/design-system",
+  "/forbidden",
+  "/profile",
+  "/quiz",
+  "/search",
+]);
+
+const NOINDEX_PREFIXES = ["/admin", "/auth", "/orders", "/panel"];
+
+function routeShouldNoIndex(pathname: string): boolean {
+  return (
+    !siteConfig.allowIndexing ||
+    NOINDEX_PATHS.has(pathname) ||
+    NOINDEX_PREFIXES.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    )
+  );
+}
+
 function NotFoundComponent() {
   return (
     <main className="grid min-h-screen place-items-center px-4">
@@ -97,7 +119,7 @@ function ErrorComponent({
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
 }>()({
-  head: () => ({
+  head: ({ location }) => ({
     meta: [
       { charSet: "utf-8" },
       {
@@ -129,7 +151,9 @@ export const Route = createRootRouteWithContext<{
       { name: "apple-mobile-web-app-title", content: siteConfig.name },
       {
         name: "robots",
-        content: siteConfig.allowIndexing ? "index,follow" : "noindex,nofollow",
+        content: routeShouldNoIndex(location.pathname)
+          ? "noindex,follow"
+          : "index,follow",
       },
     ],
     links: [
