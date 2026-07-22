@@ -3,6 +3,7 @@
 namespace App\Exceptions;
 
 use RuntimeException;
+use Throwable;
 
 final class ApiDomainException extends RuntimeException
 {
@@ -16,7 +17,8 @@ final class ApiDomainException extends RuntimeException
         public readonly int $status,
         public readonly array $fields = [],
         public readonly array $headers = [],
+        ?Throwable $previous = null,
     ) {
-        parent::__construct($message);
+        parent::__construct($message, 0, $previous);
     }
 }
