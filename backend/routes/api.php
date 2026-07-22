@@ -1,9 +1,12 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminContentAuthorController;
+use App\Http\Controllers\Admin\AdminContentController;
 use App\Http\Controllers\Admin\AdminOrderController;
 use App\Http\Controllers\Admin\AdminOriginController;
 use App\Http\Controllers\Admin\AdminProductController;
 use App\Http\Controllers\Admin\AdminRoasteryController;
+use App\Http\Controllers\Admin\AdminSeoRedirectController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\RequestOtpController;
 use App\Http\Controllers\Auth\VerifyOtpController;
@@ -13,6 +16,8 @@ use App\Http\Controllers\Catalog\SearchController;
 use App\Http\Controllers\Checkout\CartController;
 use App\Http\Controllers\Checkout\CheckoutQuoteController;
 use App\Http\Controllers\Checkout\OrderController;
+use App\Http\Controllers\Content\ContentController;
+use App\Http\Controllers\Content\SeoController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\Profile\AddressController;
 use App\Http\Controllers\Profile\MeController;
@@ -58,6 +63,19 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
 
     Route::get('/search', SearchController::class)
         ->name('api.v1.search');
+
+    Route::get('/content', [ContentController::class, 'index'])
+        ->name('api.v1.content.index');
+    Route::get('/content/resolve', [ContentController::class, 'resolve'])
+        ->name('api.v1.content.resolve');
+    Route::get('/content/{slug}', [ContentController::class, 'show'])
+        ->where('slug', '[A-Za-z0-9\p{Arabic}_-]+')
+        ->name('api.v1.content.show');
+
+    Route::get('/seo/indexable', [SeoController::class, 'indexable'])
+        ->name('api.v1.seo.indexable');
+    Route::get('/seo/redirects/resolve', [SeoController::class, 'redirect'])
+        ->name('api.v1.seo.redirects.resolve');
 
     Route::post('/cart/validate', CartController::class)
         ->middleware('throttle:cart-validate')
@@ -190,6 +208,36 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
                 Route::get('/orders/{orderId}', [AdminOrderController::class, 'show'])
                     ->where('orderId', '[A-Za-z0-9._:-]+')
                     ->name('api.v1.admin.orders.show');
+
+                Route::get('/content-authors', [AdminContentAuthorController::class, 'index'])
+                    ->name('api.v1.admin.content_authors.index');
+                Route::post('/content-authors', [AdminContentAuthorController::class, 'store'])
+                    ->name('api.v1.admin.content_authors.store');
+                Route::patch('/content-authors/{authorId}', [AdminContentAuthorController::class, 'update'])
+                    ->where('authorId', '[A-Za-z0-9._:-]+')
+                    ->name('api.v1.admin.content_authors.update');
+
+                Route::get('/content', [AdminContentController::class, 'index'])
+                    ->name('api.v1.admin.content.index');
+                Route::post('/content', [AdminContentController::class, 'store'])
+                    ->name('api.v1.admin.content.store');
+                Route::get('/content/{entryId}', [AdminContentController::class, 'show'])
+                    ->where('entryId', '[A-Za-z0-9._:-]+')
+                    ->name('api.v1.admin.content.show');
+                Route::patch('/content/{entryId}', [AdminContentController::class, 'update'])
+                    ->where('entryId', '[A-Za-z0-9._:-]+')
+                    ->name('api.v1.admin.content.update');
+                Route::patch('/content/{entryId}/status', [AdminContentController::class, 'setStatus'])
+                    ->where('entryId', '[A-Za-z0-9._:-]+')
+                    ->name('api.v1.admin.content.status');
+
+                Route::get('/seo-redirects', [AdminSeoRedirectController::class, 'index'])
+                    ->name('api.v1.admin.seo_redirects.index');
+                Route::post('/seo-redirects', [AdminSeoRedirectController::class, 'store'])
+                    ->name('api.v1.admin.seo_redirects.store');
+                Route::patch('/seo-redirects/{redirectId}', [AdminSeoRedirectController::class, 'update'])
+                    ->where('redirectId', '[A-Za-z0-9._:-]+')
+                    ->name('api.v1.admin.seo_redirects.update');
             });
     });
 });
