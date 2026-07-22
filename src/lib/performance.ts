@@ -54,6 +54,26 @@ const THRESHOLDS: Record<WebVitalName, readonly [number, number]> = {
   TTFB: [800, 1800],
 };
 
+const CURSOR_POLICY_ID = "rosta-native-cursor-fallback";
+
+function ensureNativeCursorFallback(): void {
+  if (typeof document === "undefined") return;
+  if (document.getElementById(CURSOR_POLICY_ID)) return;
+
+  const style = document.createElement("style");
+  style.id = CURSOR_POLICY_ID;
+  style.textContent = `
+    @media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+      html:not(.cursor-enhanced),
+      html:not(.cursor-enhanced) body,
+      html:not(.cursor-enhanced) * {
+        cursor: auto !important;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 export function classifyPerformanceTier(
   signals: PerformanceSignals,
 ): PerformanceTier {
@@ -91,6 +111,8 @@ export function getBrowserPerformanceTier(): PerformanceTier {
   if (typeof window === "undefined" || typeof navigator === "undefined") {
     return "minimal";
   }
+
+  ensureNativeCursorFallback();
 
   const browserNavigator = navigator as NavigatorWithPerformanceHints;
   return classifyPerformanceTier({
