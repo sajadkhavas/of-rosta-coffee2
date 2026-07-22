@@ -27,6 +27,7 @@ final class Order extends Model
         'grand_total',
         'currency',
         'placed_at',
+        'paid_at',
         'cancelled_at',
         'cancellation_reason',
     ];
@@ -41,6 +42,7 @@ final class Order extends Model
             'discount_total' => 'integer',
             'grand_total' => 'integer',
             'placed_at' => 'immutable_datetime',
+            'paid_at' => 'immutable_datetime',
             'cancelled_at' => 'immutable_datetime',
         ];
     }
@@ -73,6 +75,11 @@ final class Order extends Model
     public function reservations(): HasMany
     {
         return $this->hasMany(InventoryReservation::class);
+    }
+
+    public function paymentAttempts(): HasMany
+    {
+        return $this->hasMany(PaymentAttempt::class);
     }
 
     public function idempotencyKeys(): HasMany
