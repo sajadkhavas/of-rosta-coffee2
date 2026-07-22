@@ -19,7 +19,10 @@ final class SeoRedirectService
     {
         return DB::transaction(function () use ($data, $actor, $request): SeoRedirect {
             $normalized = $this->normalize($data);
-            $this->assertNoLoop($normalized['source_path'], $normalized['destination_path']);
+            $this->assertNoLoop(
+                $normalized['source_path'],
+                $normalized['destination_path'],
+            );
 
             $redirect = SeoRedirect::query()->create([
                 ...$normalized,
@@ -50,7 +53,9 @@ final class SeoRedirectService
         Request $request,
     ): SeoRedirect {
         return DB::transaction(function () use ($redirect, $data, $actor, $request): SeoRedirect {
-            $locked = SeoRedirect::query()->lockForUpdate()->findOrFail($redirect->id);
+            $locked = SeoRedirect::query()
+                ->lockForUpdate()
+                ->findOrFail($redirect->id);
             $normalized = $this->normalize([
                 'source_path' => $data['source_path'] ?? $locked->source_path,
                 'destination_path' => $data['destination_path'] ?? $locked->destination_path,
@@ -78,13 +83,15 @@ final class SeoRedirectService
 
     public function resolve(string $path): ?SeoRedirect
     {
-        $normalized = SeoPath::normalize($path);
+        $normalized = SeoPath::assertPublic($path);
         $redirect = SeoRedirect::query()
             ->where('source_path', $normalized)
             ->where('is_active', true)
             ->first();
 
-        if (! $redirect instanceof SeoRedirect) return null;
+        if (! $redirect instanceof SeoRedirect) {
+            return null;
+        }
 
         SeoRedirect::query()
             ->whereKey($redirect->id)
@@ -93,15 +100,22 @@ final class SeoRedirectService
                 'last_hit_at' => now(),
             ]);
 
-        return $redirect;
+        return $redirect->forceFill([
+            'hits' => $redirect->hits + 1,
+            'last_hit_at' => now(),
+        ]);
     }
 
     /** @param array<string, mixed> $data */
     private function normalize(array $data): array
     {
         return [
-            'source_path' => SeoPath::normalize((string) $data['source_path']),
-            'destination_path' => SeoPath::assertPublic((string) $data['destination_path']),
+            'source_path' => SeoPath::assertPublic(
+                (string) $data['source_path'],
+            ),
+            'destination_path' => SeoPath::assertPublic(
+                (string) $data['destination_path'],
+            ),
             'status_code' => (int) ($data['status_code'] ?? 301),
             'is_active' => (bool) ($data['is_active'] ?? true),
         ];
@@ -113,26 +127,42 @@ final class SeoRedirectService
         ?string $ignoreId = null,
     ): void {
         if ($source === $destination) {
-            throw new ApiDomainException('seo.redirect_loop', 'مبدأ و مقصد Redirect یکسان است.', 422);
+            throw new ApiDomainException(
+                'seo.redirect_loop',
+                'مبدأ و مقصد Redirect یکسان است.',
+                422,
+            );
         }
 
         $visited = [$source => true];
         $cursor = $destination;
         for ($depth = 0; $depth < 12; $depth++) {
             if (isset($visited[$cursor])) {
-                throw new ApiDomainException('seo.redirect_loop', 'زنجیره Redirect حلقه ایجاد می‌کند.', 422);
+                throw new ApiDomainException(
+                    'seo.redirect_loop',
+                    'زنجیره Redirect حلقه ایجاد می‌کند.',
+                    422,
+                );
             }
             $visited[$cursor] = true;
 
             $query = SeoRedirect::query()
                 ->where('source_path', $cursor)
                 ->where('is_active', true);
-            if ($ignoreId !== null) $query->whereKeyNot($ignoreId);
+            if ($ignoreId !== null) {
+                $query->where('id', '!=', $ignoreId);
+            }
             $next = $query->first();
-            if (! $next instanceof SeoRedirect) return;
+            if (! $next instanceof SeoRedirect) {
+                return;
+            }
             $cursor = $next->destination_path;
         }
 
-        throw new ApiDomainException('seo.redirect_chain_too_long', 'زنجیره Redirect بیش از حد طولانی است.', 422);
+        throw new ApiDomainException(
+            'seo.redirect_chain_too_long',
+            'زنجیره Redirect بیش از حد طولانی است.',
+            422,
+        );
     }
 }
