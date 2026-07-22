@@ -14,8 +14,7 @@ RUN composer install \
 
 COPY . .
 RUN composer dump-autoload --no-dev --classmap-authoritative --no-interaction \
-    && php artisan package:discover --ansi \
-    && php artisan storage:link --relative || true
+    && (php artisan storage:link --relative || true)
 
 FROM php:8.3-fpm-bookworm AS app
 
