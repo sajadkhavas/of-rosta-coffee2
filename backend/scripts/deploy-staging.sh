@@ -35,8 +35,23 @@ for name in "${required[@]}"; do
   fi
 done
 
+if [[ "${APP_ENV:-}" != "staging" ]]; then
+  echo "APP_ENV must be staging." >&2
+  exit 1
+fi
+
 if [[ "${APP_DEBUG:-true}" != "false" ]]; then
   echo "APP_DEBUG must be false on staging." >&2
+  exit 1
+fi
+
+if [[ "${ROSTA_PAYMENT_ENABLED:-true}" != "false" ]]; then
+  echo "Payment must remain disabled until the real provider phase is complete." >&2
+  exit 1
+fi
+
+if [[ "${ROSTA_SMS_ENABLED:-true}" != "false" ]]; then
+  echo "SMS must remain disabled until the real provider phase is complete." >&2
   exit 1
 fi
 
@@ -47,7 +62,6 @@ compose=(docker compose --env-file .env.staging -f docker-compose.staging.yml)
 "${compose[@]}" up -d --wait mysql redis
 "${compose[@]}" run --rm app php artisan migrate --force --no-interaction
 "${compose[@]}" up -d --wait app worker scheduler web
-"${compose[@]}" run --rm app php artisan optimize --no-interaction
 
 api_port="${ROSTA_API_PORT:-8080}"
 health_url="http://127.0.0.1:${api_port}/api/v1/health/ready"
