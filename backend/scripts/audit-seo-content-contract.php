@@ -57,6 +57,16 @@ $require(
     'Published content edits must return to review.',
 );
 $require(
+    'app/Services/Content/ContentWriteService.php',
+    'content.edit_conflict',
+    'Concurrent editorial updates must fail instead of silently overwriting data.',
+);
+$require(
+    'app/Http/Requests/Content/UpsertContentEntryRequest.php',
+    "'expected_content_hash'",
+    'Content updates must require an optimistic-lock hash.',
+);
+$require(
     'app/Services/Content/ContentPublicationService.php',
     'content.review_required',
     'Draft content must not bypass the review state.',
@@ -106,6 +116,25 @@ $require(
     'seo.redirect_chain_too_long',
     'Long redirect chains must be rejected.',
 );
+
+foreach ([
+    'broken_relations',
+    'orphaned_entries',
+    'weak_outbound_entries',
+    'MAX_RELATIONS',
+] as $needle) {
+    $require(
+        'app/Services/Content/ContentLinkReportService.php',
+        $needle,
+        'Content link report is missing required boundary: '.$needle,
+    );
+}
+$require(
+    'app/Http/Controllers/Admin/AdminContentLinkReportController.php',
+    'ContentLinkReportService',
+    'Internal-link health must be exposed through an administrator controller.',
+);
+
 $require(
     'routes/api.php',
     "Route::get('/seo/indexable'",
@@ -120,6 +149,11 @@ $require(
     'routes/api.php',
     "Route::post('/seo-redirects'",
     'SEO redirects must be managed through administrator routes.',
+);
+$require(
+    'routes/api.php',
+    "Route::get('/content-link-report'",
+    'Administrator content operations must expose internal-link health.',
 );
 
 if ($failures !== []) {
