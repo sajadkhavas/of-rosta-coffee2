@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { Mail, MessageCircle, Clock } from "lucide-react";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
+import { Clock, Mail, MessageCircle } from "lucide-react";
 import { Breadcrumb, breadcrumbJsonLd } from "@/components/Breadcrumb";
+import { Footer } from "@/components/Footer";
+import { Navbar } from "@/components/Navbar";
+import { absoluteUrl } from "@/config/site";
 
 const CRUMBS = [
   { label: "خانه", to: "/" },
@@ -14,11 +14,11 @@ const contactJsonLd = {
   "@context": "https://schema.org",
   "@type": "ContactPage",
   name: "تماس با رستا",
-  url: "https://rosta.coffee/contact",
+  url: absoluteUrl("/contact"),
   publisher: {
     "@type": "Organization",
     name: "رستا",
-    url: "https://rosta.coffee",
+    url: absoluteUrl("/"),
     contactPoint: [
       {
         "@type": "ContactPoint",
@@ -37,11 +37,14 @@ export const Route = createFileRoute("/contact")({
       { title: "تماس با ما | رستا" },
       { name: "description", content: "راه‌های ارتباط با تیم پشتیبانی رستا." },
       { property: "og:title", content: "تماس با ما | رستا" },
-      { property: "og:description", content: "راه‌های ارتباط با تیم پشتیبانی رستا." },
-      { property: "og:url", content: "/contact" },
+      {
+        property: "og:description",
+        content: "راه‌های ارتباط با تیم پشتیبانی رستا.",
+      },
+      { property: "og:url", content: absoluteUrl("/contact") },
       { property: "og:type", content: "website" },
     ],
-    links: [{ rel: "canonical", href: "/contact" }],
+    links: [{ rel: "canonical", href: absoluteUrl("/contact") }],
     scripts: [
       {
         type: "application/ld+json",
@@ -70,12 +73,16 @@ function InfoCard({
       </div>
       <div>
         <div className="text-xs text-[color:var(--light)]">{label}</div>
-        <div className="mt-1 text-sm font-medium text-[color:var(--steam)]" dir="ltr">
+        <div
+          className="mt-1 text-sm font-medium text-[color:var(--steam)]"
+          dir="ltr"
+        >
           {value}
         </div>
       </div>
     </div>
   );
+
   return href ? (
     <a href={href} className="block transition hover:opacity-90">
       {inner}
@@ -86,23 +93,23 @@ function InfoCard({
 }
 
 function ContactPage() {
-  const [sent, setSent] = useState(false);
-
   return (
     <>
       <Navbar />
       <main className="mx-auto max-w-lg px-4 py-8">
         <Breadcrumb items={CRUMBS} />
-        <h1 className="text-3xl font-bold text-[color:var(--steam)]">تماس با ما</h1>
+        <h1 className="text-3xl font-bold text-[color:var(--steam)]">
+          تماس با ما
+        </h1>
         <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">
-          برای هرگونه سوال درباره سفارش، همکاری با رستا به‌عنوان روستری، یا پیشنهادات خود،
-          از راه‌های زیر با ما در ارتباط باشید.
+          برای پرسش درباره سفارش، همکاری روستری یا گزارش مشکل، از مسیرهای
+          تأییدشده زیر استفاده کنید.
         </p>
 
         <div className="mt-6 space-y-3">
           <InfoCard
             icon={<Mail size={18} />}
-            label="ایمیل"
+            label="ایمیل پشتیبانی"
             value="support@rosta.shop"
             href="mailto:support@rosta.shop"
           />
@@ -118,55 +125,21 @@ function ContactPage() {
           />
         </div>
 
-        <form
-          className="mt-8 space-y-3 rounded-xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            // TODO: wire to real endpoint when backend ready
-            setSent(true);
-          }}
-        >
-          <h2 className="text-lg font-bold text-[color:var(--steam)]">ارسال پیام</h2>
-          <div>
-            <label htmlFor="c-name" className="block text-xs text-[color:var(--light)]">نام</label>
-            <input
-              id="c-name"
-              type="text"
-              required
-              className="mt-1 w-full rounded-lg border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2 text-sm text-[color:var(--steam)] outline-none focus:border-[color:var(--roast)]"
-            />
-          </div>
-          <div>
-            <label htmlFor="c-phone" className="block text-xs text-[color:var(--light)]">شماره تماس</label>
-            <input
-              id="c-phone"
-              type="tel"
-              required
-              inputMode="tel"
-              className="mt-1 w-full rounded-lg border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2 text-sm text-[color:var(--steam)] outline-none focus:border-[color:var(--roast)]"
-            />
-          </div>
-          <div>
-            <label htmlFor="c-msg" className="block text-xs text-[color:var(--light)]">پیام</label>
-            <textarea
-              id="c-msg"
-              required
-              rows={4}
-              className="mt-1 w-full rounded-lg border border-[color:var(--mid)] bg-[color:var(--night)] px-3 py-2 text-sm text-[color:var(--steam)] outline-none focus:border-[color:var(--roast)]"
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full rounded-lg bg-[color:var(--roast)] px-4 py-2 text-sm font-bold text-[color:var(--night)] transition hover:opacity-90"
+        <section className="mt-8 rounded-xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5">
+          <h2 className="text-lg font-bold text-[color:var(--steam)]">
+            ارسال درخواست پشتیبانی
+          </h2>
+          <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">
+            فرم تیکت آنلاین پس از اتصال سرویس پشتیبانی فعال می‌شود. تا آن زمان،
+            ایمیل مسیر رسمی ثبت و پیگیری درخواست است.
+          </p>
+          <a
+            href="mailto:support@rosta.shop?subject=درخواست%20پشتیبانی%20رستا"
+            className="mt-5 inline-flex min-h-11 items-center rounded-lg bg-[color:var(--roast)] px-5 text-sm font-bold text-[color:var(--night)] transition hover:opacity-90"
           >
-            ارسال پیام
-          </button>
-          {sent && (
-            <p role="status" className="text-center text-sm text-[color:var(--roast)]">
-              پیام شما ارسال شد، به‌زودی پاسخ می‌دهیم.
-            </p>
-          )}
-        </form>
+            ارسال ایمیل به پشتیبانی
+          </a>
+        </section>
       </main>
       <Footer />
     </>
