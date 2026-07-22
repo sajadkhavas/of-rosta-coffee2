@@ -12,6 +12,7 @@ use App\Models\Origin;
 use App\Models\Product;
 use App\Models\Roastery;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 final class ContentLinkReportService
 {
@@ -31,7 +32,8 @@ final class ContentLinkReportService
 
         $truncated = $relations->count() > self::MAX_RELATIONS;
         if ($truncated) {
-            $relations = $relations->take(self::MAX_RELATIONS);
+            /** @var Collection<int, ContentRelation> $relations */
+            $relations = new Collection($relations->take(self::MAX_RELATIONS)->all());
         }
 
         $targetMaps = $this->targetMaps($relations);
@@ -85,12 +87,12 @@ final class ContentLinkReportService
 
         $weakOutbound = ContentEntry::query()
             ->published()
+            ->has('relations', '<', 2)
             ->withCount('relations')
-            ->having('relations_count', '<', 2)
             ->orderBy('relations_count')
             ->orderByDesc('updated_at')
             ->limit(self::MAX_ISSUES)
-            ->get(['id', 'title', 'slug', 'canonical_path', 'updated_at'])
+            ->get()
             ->map(static fn (ContentEntry $entry): array => [
                 'id' => $entry->id,
                 'title' => $entry->title,
