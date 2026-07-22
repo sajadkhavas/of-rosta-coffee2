@@ -9,6 +9,7 @@ use App\Support\IranMobile;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
 final class AppServiceProvider extends ServiceProvider
@@ -31,6 +32,10 @@ final class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Route::prefix('api/v1')
+            ->middleware('api')
+            ->group(base_path('routes/payments.php'));
+
         RateLimiter::for('api', function (Request $request): Limit {
             $key = $request->user()?->getAuthIdentifier()
                 ? 'user:'.$request->user()->getAuthIdentifier()
@@ -83,6 +88,33 @@ final class AppServiceProvider extends ServiceProvider
             return [
                 Limit::perMinute(10)->by('order-create:user:'.$userId),
                 Limit::perHour(60)->by('order-create-hour:user:'.$userId),
+            ];
+        });
+
+        RateLimiter::for('payment-request', function (Request $request): array {
+            $userId = (string) $request->user()?->getAuthIdentifier();
+
+            return [
+                Limit::perMinute(8)->by('payment-request:user:'.$userId),
+                Limit::perHour(40)->by('payment-request-hour:user:'.$userId),
+            ];
+        });
+
+        RateLimiter::for('payment-verify', function (Request $request): array {
+            $userId = (string) $request->user()?->getAuthIdentifier();
+
+            return [
+                Limit::perMinute(15)->by('payment-verify:user:'.$userId),
+                Limit::perHour(100)->by('payment-verify-hour:user:'.$userId),
+            ];
+        });
+
+        RateLimiter::for('payment-callback', function (Request $request): array {
+            return [
+                Limit::perMinute(30)->by('payment-callback:ip:'.$request->ip()),
+                Limit::perMinute(10)->by(
+                    'payment-callback:id:'.hash('sha256', (string) $request->route('paymentId')),
+                ),
             ];
         });
     }
