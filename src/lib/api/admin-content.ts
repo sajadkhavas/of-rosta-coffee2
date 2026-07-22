@@ -13,6 +13,7 @@ import { apiFetch } from "./client";
 const identifier = z.string().trim().min(1).max(240);
 const nullableText = (max: number) =>
   z.string().trim().max(max).nullable().optional();
+const nullableDate = z.string().nullable().optional();
 
 const contentSummarySchema = z
   .object({
@@ -32,8 +33,8 @@ const contentSummarySchema = z
     canonical_path: z.string().startsWith("/").max(500),
     excerpt: nullableText(1000),
     status: z.enum(["draft", "review", "published", "archived"]),
-    published_at: z.string().nullable().optional(),
-    updated_at: z.string().nullable().optional(),
+    published_at: nullableDate,
+    updated_at: nullableDate,
     author: contentAuthorSchema.nullable(),
     seo: contentSeoSchema,
     keywords: z.array(z.string().trim().min(1).max(120)).max(30),
@@ -48,9 +49,90 @@ const redirectSchema = z
     status_code: z.union([z.literal(301), z.literal(308)]),
     is_active: z.boolean(),
     hits: z.number().int().nonnegative(),
-    last_hit_at: z.string().nullable().optional(),
+    last_hit_at: nullableDate,
   })
   .strict();
+
+const linkReportEntrySchema = z
+  .object({
+    id: identifier,
+    title: z.string().trim().min(1).max(240),
+    slug: identifier,
+    canonical_path: z.string().startsWith("/").max(500),
+    updated_at: nullableDate,
+  })
+  .strict();
+
+const weakLinkReportEntrySchema = linkReportEntrySchema.extend({
+  relations_count: z.number().int().nonnegative(),
+});
+
+const brokenRelationSchema = z
+  .object({
+    relation_id: identifier,
+    source: z
+      .object({
+        id: identifier.nullable(),
+        title: z.string().nullable(),
+        slug: z.string().nullable(),
+        canonical_path: z.string().nullable(),
+        status: z.enum(["draft", "review", "published", "archived"]).nullable(),
+      })
+      .strict(),
+    relation_type: z.enum([
+      "related",
+      "mentions",
+      "recommends",
+      "compares",
+      "primary_topic",
+    ]),
+    target_type: z.enum([
+      "content",
+      "product",
+      "roastery",
+      "origin",
+      "brew_method",
+      "taste",
+    ]),
+    target_key: identifier,
+    anchor_text: nullableText(300),
+    reason: z.enum([
+      "missing_target",
+      "unpublished_target",
+      "wrong_content_type",
+    ]),
+  })
+  .strict();
+
+const contentLinkReportSchema = z
+  .object({
+    data: z
+      .object({
+        generated_at: z.string(),
+        summary: z
+          .object({
+            entries_by_status: z
+              .object({
+                draft: z.number().int().nonnegative(),
+                review: z.number().int().nonnegative(),
+                published: z.number().int().nonnegative(),
+                archived: z.number().int().nonnegative(),
+              })
+              .strict(),
+            total_relations_scanned: z.number().int().nonnegative(),
+            relations_truncated: z.boolean(),
+            broken_relations: z.number().int().nonnegative(),
+            orphaned_entries: z.number().int().nonnegative(),
+            weak_outbound_entries: z.number().int().nonnegative(),
+          })
+          .strict(),
+        broken_relations: z.array(brokenRelationSchema).max(250),
+        orphaned_entries: z.array(linkReportEntrySchema).max(250),
+        weak_outbound_entries: z.array(weakLinkReportEntrySchema).max(250),
+      })
+      .strict(),
+  })
+  .passthrough();
 
 function collectionSchema<T extends z.ZodTypeAny>(item: T) {
   return z
@@ -75,9 +157,6 @@ const redirectCollectionSchema = collectionSchema(redirectSchema);
 const authorResourceSchema = z
   .object({ data: contentAuthorSchema })
   .passthrough();
-const contentSummaryResourceSchema = z
-  .object({ data: contentSummarySchema })
-  .passthrough();
 const contentDetailResourceSchema = z
   .object({ data: contentEntrySchema })
   .passthrough();
@@ -87,6 +166,9 @@ export type AdminContentAuthor = z.infer<typeof contentAuthorSchema>;
 export type AdminContentSummary = z.infer<typeof contentSummarySchema>;
 export type AdminContentDetail = ContentEntry;
 export type AdminSeoRedirect = z.infer<typeof redirectSchema>;
+export type AdminContentLinkReport = z.infer<
+  typeof contentLinkReportSchema
+>["data"];
 export type AdminContentStatus = AdminContentSummary["status"];
 export type AdminContentType = AdminContentSummary["type"];
 export type AdminSchemaType = AdminContentDetail["seo"]["schema_type"];
@@ -150,6 +232,12 @@ export async function getAdminContent(entryId: string): Promise<AdminContentDeta
     await apiFetch<unknown>(`/admin/content/${encodeURIComponent(entryId)}`),
   );
   return payload.data;
+}
+
+export async function getContentLinkReport(): Promise<AdminContentLinkReport> {
+  return contentLinkReportSchema.parse(
+    await apiFetch<unknown>("/admin/content-link-report"),
+  ).data;
 }
 
 export async function listContentAuthors(): Promise<AdminContentAuthor[]> {
@@ -245,6 +333,14 @@ export function adminContentDetailQueryOptions(entryId: string) {
     queryFn: () => getAdminContent(entryId),
     staleTime: 0,
     enabled: Boolean(entryId),
+  });
+}
+
+export function contentLinkReportQueryOptions() {
+  return queryOptions({
+    queryKey: ["admin", "content-link-report"],
+    queryFn: getContentLinkReport,
+    staleTime: 30_000,
   });
 }
 
