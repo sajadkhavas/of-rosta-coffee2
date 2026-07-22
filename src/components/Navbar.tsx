@@ -3,12 +3,23 @@ import { Search, ShoppingBag, User } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { toFa } from "@/lib/persian";
 
+const adminNavBase =
+  "whitespace-nowrap rounded-lg border px-3 py-2 transition";
+const adminNavIdle =
+  "border-[color:var(--mid)] text-[color:var(--light)] hover:border-[color:var(--roast)] hover:text-[color:var(--roast)]";
+const adminNavActive =
+  "border-[color:var(--roast)] bg-[color:var(--roast)] text-[color:var(--night)]";
+
 export function Navbar() {
   const { itemCount } = useCart();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
   const isAdminRoute = pathname.startsWith("/admin");
+  const isEditorialActive =
+    pathname === "/admin/content" ||
+    pathname.startsWith("/admin/content-edit/");
+  const isLinkReportActive = pathname === "/admin/content-links";
 
   return (
     <header className="sticky top-0 z-40 border-b border-[color:var(--mid)]/60 bg-[color:var(--night)]/85 backdrop-blur-xl">
@@ -123,21 +134,15 @@ export function Navbar() {
           <div className="mx-auto flex max-w-6xl gap-2 overflow-x-auto px-4 py-2 text-xs font-bold">
             <Link
               to="/admin/content"
-              className="whitespace-nowrap rounded-lg border border-[color:var(--mid)] px-3 py-2 text-[color:var(--light)] transition hover:border-[color:var(--roast)] hover:text-[color:var(--roast)]"
-              activeProps={{
-                className:
-                  "whitespace-nowrap rounded-lg border border-[color:var(--roast)] bg-[color:var(--roast)] px-3 py-2 text-[color:var(--night)]",
-              }}
+              aria-current={isEditorialActive ? "page" : undefined}
+              className={`${adminNavBase} ${isEditorialActive ? adminNavActive : adminNavIdle}`}
             >
               تحریریه
             </Link>
             <Link
               to="/admin/content-links"
-              className="whitespace-nowrap rounded-lg border border-[color:var(--mid)] px-3 py-2 text-[color:var(--light)] transition hover:border-[color:var(--roast)] hover:text-[color:var(--roast)]"
-              activeProps={{
-                className:
-                  "whitespace-nowrap rounded-lg border border-[color:var(--roast)] bg-[color:var(--roast)] px-3 py-2 text-[color:var(--night)]",
-              }}
+              aria-current={isLinkReportActive ? "page" : undefined}
+              className={`${adminNavBase} ${isLinkReportActive ? adminNavActive : adminNavIdle}`}
             >
               سلامت لینک‌ها
             </Link>
