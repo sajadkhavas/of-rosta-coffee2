@@ -20,6 +20,7 @@ final class InventoryReservation extends Model
         'status',
         'expires_at',
         'released_at',
+        'consumed_at',
     ];
 
     protected function casts(): array
@@ -29,6 +30,7 @@ final class InventoryReservation extends Model
             'status' => ReservationStatus::class,
             'expires_at' => 'immutable_datetime',
             'released_at' => 'immutable_datetime',
+            'consumed_at' => 'immutable_datetime',
         ];
     }
 
