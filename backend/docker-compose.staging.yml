@@ -14,7 +14,6 @@ x-rosta-app: &rosta-app
       condition: service_healthy
   volumes:
     - rosta_storage:/var/www/html/storage
-    - rosta_cache:/var/www/html/bootstrap/cache
   networks:
     - backend
   security_opt:
@@ -145,4 +144,3 @@ volumes:
   rosta_mysql:
   rosta_redis:
   rosta_storage:
-  rosta_cache:
