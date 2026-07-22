@@ -49,6 +49,10 @@ final class InquiryService
             'message' => trim($input['message']),
             'ip_hmac' => $ipHmac,
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        $deduplicationKey = hash(
+            'sha256',
+            $duplicateHash.'|'.intdiv(now()->getTimestamp(), 600),
+        );
 
         return DB::transaction(function () use (
             $user,
@@ -60,6 +64,7 @@ final class InquiryService
             $ipHmac,
             $userAgent,
             $duplicateHash,
+            $deduplicationKey,
         ): array {
             $existing = Inquiry::query()
                 ->where('duplicate_hash', $duplicateHash)
@@ -70,19 +75,26 @@ final class InquiryService
                 return ['inquiry' => $existing, 'replayed' => true];
             }
 
-            $inquiry = Inquiry::query()->create([
-                'user_id' => $user?->id,
-                'type' => $input['type'],
-                'name' => trim($input['name']),
-                'mobile' => $mobile,
-                'email' => $email,
-                'order_number' => $orderNumber,
-                'message' => trim($input['message']),
-                'status' => InquiryStatus::New,
-                'ip_hmac' => $ipHmac,
-                'user_agent_hash' => $userAgent === '' ? null : hash('sha256', $userAgent),
-                'duplicate_hash' => $duplicateHash,
-            ]);
+            $inquiry = Inquiry::query()->createOrFirst(
+                ['deduplication_key' => $deduplicationKey],
+                [
+                    'user_id' => $user?->id,
+                    'type' => $input['type'],
+                    'name' => trim($input['name']),
+                    'mobile' => $mobile,
+                    'email' => $email,
+                    'order_number' => $orderNumber,
+                    'message' => trim($input['message']),
+                    'status' => InquiryStatus::New,
+                    'ip_hmac' => $ipHmac,
+                    'user_agent_hash' => $userAgent === '' ? null : hash('sha256', $userAgent),
+                    'duplicate_hash' => $duplicateHash,
+                ],
+            );
+
+            if (! $inquiry->wasRecentlyCreated) {
+                return ['inquiry' => $inquiry, 'replayed' => true];
+            }
 
             $this->audit->record(
                 'inquiry.created',
@@ -131,7 +143,9 @@ final class InquiryService
                 request: $request,
             );
 
-            return $locked->fresh(['user', 'assignee']) ?? $locked;
+            $locked->load(['user', 'assignee']);
+
+            return $locked;
         }, 3);
     }
 
