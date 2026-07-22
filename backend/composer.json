@@ -51,6 +51,7 @@
     ],
     "audit:business": "@php scripts/audit-business-contract.php",
     "audit:checkout": "@php scripts/audit-checkout-contract.php",
+    "audit:seo": "@php scripts/audit-seo-content-contract.php",
     "test": [
       "@php artisan config:clear --ansi @no_additional_args",
       "@php artisan test"
@@ -62,6 +63,7 @@
       "@composer audit --locked",
       "@audit:business",
       "@audit:checkout",
+      "@audit:seo",
       "@php artisan test",
       "@php vendor/bin/phpstan analyse --memory-limit=1G",
       "@php vendor/bin/pint --parallel --test"
