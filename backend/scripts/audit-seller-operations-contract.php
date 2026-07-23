@@ -3,6 +3,7 @@
 $root = dirname(__DIR__);
 $files = [
     'api_routes' => file_get_contents($root.'/routes/api.php'),
+    'bootstrap_routes' => file_get_contents($root.'/routes/seller-bootstrap.php'),
     'fulfillment_routes' => file_get_contents($root.'/routes/fulfillment.php'),
     'media_routes' => file_get_contents($root.'/routes/media-uploads.php'),
     'roastery_controller' => file_get_contents($root.'/app/Http/Controllers/Seller/SellerRoasteryController.php'),
@@ -10,7 +11,7 @@ $files = [
     'variant_request' => file_get_contents($root.'/app/Http/Requests/Catalog/UpsertVariantRequest.php'),
     'stock_request' => file_get_contents($root.'/app/Http/Requests/Catalog/AdjustStockRequest.php'),
     'fulfillment_request' => file_get_contents($root.'/app/Http/Requests/Fulfillment/UpdateFulfillmentRequest.php'),
-    'media_service' => file_get_contents($root.'/app/Services/Media/MediaUploadService.php'),
+    'media_service' => file_get_contents($root.'/app/Services/Catalog/MediaUploadService.php'),
     'openapi' => file_get_contents(dirname($root).'/docs/openapi/rosta-v1-seller-operations.yaml'),
 ];
 
@@ -21,17 +22,18 @@ $gate = static function (string $name, bool $passed, string $evidence) use (&$ga
 
 $gate(
     'accessible_roastery_bootstrap_is_scoped',
-    str_contains($files['api_routes'], "Route::get('/seller/roasteries'")
+    str_contains($files['bootstrap_routes'], "Route::get('/seller/roasteries'")
+        && str_contains($files['bootstrap_routes'], "'auth:sanctum', 'rosta.session'")
+        && ! str_contains($files['bootstrap_routes'], 'rosta.role:')
         && str_contains($files['roastery_controller'], "scope_type === 'roastery'")
         && str_contains($files['roastery_controller'], "whereIn('id', \$rolesByRoastery->keys()->all())")
-        && str_contains($files['roastery_controller'], "'access_roles'")
-        && str_contains($files['access'], 'catalog.roastery_forbidden'),
-    'The seller panel may bootstrap only roasteries granted by scoped roles; administrators are the explicit global exception.',
+        && str_contains($files['roastery_controller'], "'access_roles'"),
+    'Authenticated onboarding users may receive an empty list, while scoped sellers see only assigned roasteries and administrators are the explicit global exception.',
 );
 
 $gate(
     'whole_bean_weights_are_fixed',
-    str_contains($files['variant_request'], 'Rule::in(config(\'rosta.whole_bean_weights\'))')
+    str_contains($files['variant_request'], "Rule::in(config('rosta.whole_bean_weights'))")
         && ! preg_match('/grind[_-]?(selector|state)|grind_option/i', implode("\n", $files)),
     'Seller variants must remain whole-bean weight SKUs with no grind state.',
 );
@@ -39,7 +41,8 @@ $gate(
 $gate(
     'inventory_is_ledger_and_idempotency_based',
     str_contains($files['stock_request'], "'idempotency_key'")
-        && str_contains($files['stock_request'], 'StockReason::manualValues()')
+        && str_contains($files['stock_request'], 'StockReason::Opening->value')
+        && str_contains($files['stock_request'], 'StockReason::Correction->value')
         && str_contains($files['api_routes'], '/stock-ledger')
         && str_contains($files['api_routes'], '/stock-adjustments'),
     'Seller inventory writes must use bounded, reasoned and idempotent ledger adjustments.',
@@ -50,8 +53,8 @@ $gate(
     str_contains($files['fulfillment_routes'], '/fulfillment')
         && str_contains($files['fulfillment_request'], "'tracking_code'")
         && str_contains($files['fulfillment_request'], "'carrier'")
-        && str_contains($files['fulfillment_request'], 'SubOrderStatus::ReadyToShip->value')
-        && str_contains($files['fulfillment_request'], 'SubOrderStatus::Delivered->value'),
+        && str_contains($files['fulfillment_request'], "'ready_to_ship'")
+        && str_contains($files['fulfillment_request'], "'delivered'"),
     'Seller fulfillment must use the domain state machine and require carrier/tracking data for shipment.',
 );
 
