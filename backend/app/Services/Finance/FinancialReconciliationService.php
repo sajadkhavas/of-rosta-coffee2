@@ -123,8 +123,12 @@ final class FinancialReconciliationService
         ?PaymentAttempt $payment = null,
         ?RefundAttempt $refund = null,
     ): FinancialReconciliationCase {
+        $safeKind = mb_substr(trim($kind), 0, 80);
+        if ($safeKind === '') {
+            $safeKind = 'financial_review_required';
+        }
         $deduplicationKey = hash('sha256', implode('|', [
-            $kind,
+            $safeKind,
             $order->id,
             $payment?->id ?? '-',
             $refund?->id ?? '-',
@@ -137,7 +141,7 @@ final class FinancialReconciliationService
                 'payment_attempt_id' => $payment?->id,
                 'refund_attempt_id' => $refund?->id,
                 'opened_by' => $actor?->id,
-                'kind' => $kind,
+                'kind' => $safeKind,
                 'status' => ReconciliationStatus::Open,
                 'severity' => in_array($severity, ['low', 'medium', 'high', 'critical'], true)
                     ? $severity
