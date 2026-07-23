@@ -55,13 +55,17 @@ final class SellerVariantController
             ->where('product_id', $product->id)
             ->findOrFail($variantId);
 
-        $variant->fill($request->validated())->save();
+        $data = $request->validated();
+        // Public availability also depends on authoritative stock. A client must not
+        // convert an out-of-stock active SKU into a disabled SKU by echoing is_available.
+        unset($data['is_active']);
+        $variant->fill($data)->save();
 
         $audit->record(
             'catalog.variant.updated',
             actor: $user,
             auditable: $variant,
-            metadata: ['fields' => array_keys($request->validated())],
+            metadata: ['fields' => array_keys($data)],
             request: $request,
         );
 
