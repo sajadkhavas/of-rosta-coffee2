@@ -62,6 +62,7 @@
     "audit:finance": "@php scripts/audit-finance-contract.php",
     "audit:seller-operations": "@php scripts/audit-seller-operations-contract.php",
     "audit:admin-operations": "@php scripts/audit-admin-operations-contract.php",
+    "audit:live-public": "@php scripts/audit-live-public-contract.php",
     "readiness": "@php artisan rosta:readiness --json",
     "test": [
       "@php artisan config:clear --ansi @no_additional_args",
@@ -84,6 +85,7 @@
       "@audit:finance",
       "@audit:seller-operations",
       "@audit:admin-operations",
+      "@audit:live-public",
       "@php artisan test",
       "@php vendor/bin/phpstan analyse --memory-limit=1G",
       "@php vendor/bin/pint --parallel --test"
