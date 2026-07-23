@@ -39,13 +39,10 @@ export async function listPublishedContent(type?: PublicContentSummary["type"], 
 export const blogIndexQueryOptions = () => queryOptions({
   queryKey: ["public", "content", "blog-index"],
   queryFn: async () => {
-    const [articles, guides] = await Promise.all([
-      listPublishedContent("article", 50),
-      listPublishedContent("guide", 50),
-    ]);
-    return [...articles.items, ...guides.items]
-      .sort((a, b) => Date.parse(b.published_at || "") - Date.parse(a.published_at || ""))
-      .slice(0, 60);
+    const articles = await listPublishedContent("article", 60);
+    return articles.items
+      .filter((entry) => entry.canonical_path.startsWith("/blog/"))
+      .sort((a, b) => Date.parse(b.published_at || "") - Date.parse(a.published_at || ""));
   },
   staleTime: 5 * 60_000,
 });
