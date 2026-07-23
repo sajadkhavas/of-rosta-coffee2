@@ -29,6 +29,7 @@ import { Route as OrdersRouteImport } from "./routes/orders";
 import { Route as OrdersIdRouteImport } from "./routes/orders.$id";
 import { Route as OrdersIndexRouteImport } from "./routes/orders.index";
 import { Route as OriginsSlugRouteImport } from "./routes/origins.$slug";
+import { Route as PanelRouteImport } from "./routes/panel";
 import { Route as PrivacyRouteImport } from "./routes/privacy";
 import { Route as ProductsRouteImport } from "./routes/products";
 import { Route as ProductsSlugRouteImport } from "./routes/products.$slug";
@@ -83,6 +84,7 @@ const ForbiddenRoute = rootChild(ForbiddenRouteImport, "/forbidden");
 const GuidesSlugRoute = rootChild(GuidesSlugRouteImport, "/guides/$slug");
 const OrdersRoute = rootChild(OrdersRouteImport, "/orders");
 const OriginsSlugRoute = rootChild(OriginsSlugRouteImport, "/origins/$slug");
+const PanelRoute = rootChild(PanelRouteImport, "/panel");
 const PrivacyRoute = rootChild(PrivacyRouteImport, "/privacy");
 const ProductsRoute = rootChild(ProductsRouteImport, "/products");
 const ProfileRoute = rootChild(ProfileRouteImport, "/profile");
@@ -186,6 +188,7 @@ export const routeTree = rootRouteImport._addFileChildren({
   GuidesSlugRoute,
   OrdersRoute: OrdersRouteWithChildren,
   OriginsSlugRoute,
+  PanelRoute,
   PrivacyRoute,
   ProductsRoute: ProductsRouteWithChildren,
   ProfileRoute,
@@ -226,6 +229,13 @@ declare module "@tanstack/react-router" {
       path: "/admin/finance";
       fullPath: "/admin/finance";
       preLoaderRoute: typeof AdminFinanceRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/panel": {
+      id: "/panel";
+      path: "/panel";
+      fullPath: "/panel";
+      preLoaderRoute: typeof PanelRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/brew/$slug": {
