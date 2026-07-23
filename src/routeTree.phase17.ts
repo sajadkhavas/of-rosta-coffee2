@@ -30,6 +30,7 @@ import { Route as OrdersRouteImport } from "./routes/orders";
 import { Route as OrdersIdRouteImport } from "./routes/orders.$id";
 import { Route as OrdersIndexRouteImport } from "./routes/orders.index";
 import { Route as OriginsSlugRouteImport } from "./routes/origins.$slug";
+import { Route as PanelManageRouteImport } from "./routes/panel.manage";
 import { Route as PanelRouteImport } from "./routes/panel";
 import { Route as PrivacyRouteImport } from "./routes/privacy";
 import { Route as ProductsRouteImport } from "./routes/products";
@@ -75,10 +76,7 @@ const BlogRoute = rootChild(BlogRouteImport, "/blog");
 const BrewSlugRoute = rootChild(BrewSlugRouteImport, "/brew/$slug");
 const CartRoute = rootChild(CartRouteImport, "/cart");
 const CheckoutRoute = rootChild(CheckoutRouteImport, "/checkout");
-const CollectionsSlugRoute = rootChild(
-  CollectionsSlugRouteImport,
-  "/collections/$slug",
-);
+const CollectionsSlugRoute = rootChild(CollectionsSlugRouteImport, "/collections/$slug");
 const CompareSlugRoute = rootChild(CompareSlugRouteImport, "/compare/$slug");
 const ContactRoute = rootChild(ContactRouteImport, "/contact");
 const DesignSystemRoute = rootChild(DesignSystemRouteImport, "/design-system");
@@ -86,6 +84,7 @@ const ForbiddenRoute = rootChild(ForbiddenRouteImport, "/forbidden");
 const GuidesSlugRoute = rootChild(GuidesSlugRouteImport, "/guides/$slug");
 const OrdersRoute = rootChild(OrdersRouteImport, "/orders");
 const OriginsSlugRoute = rootChild(OriginsSlugRouteImport, "/origins/$slug");
+const PanelManageRoute = rootChild(PanelManageRouteImport, "/panel/manage");
 const PanelRoute = rootChild(PanelRouteImport, "/panel");
 const PrivacyRoute = rootChild(PrivacyRouteImport, "/privacy");
 const ProductsRoute = rootChild(ProductsRouteImport, "/products");
@@ -98,77 +97,22 @@ const SitemapDotxmlRoute = rootChild(SitemapDotxmlRouteImport, "/sitemap.xml");
 const TastesSlugRoute = rootChild(TastesSlugRouteImport, "/tastes/$slug");
 const TermsRoute = rootChild(TermsRouteImport, "/terms");
 
-const AuthIndexRoute = AuthIndexRouteImport.update({
-  id: "/",
-  path: "/",
-  getParentRoute: () => AuthRoute,
-} as any);
-const AuthVerifyRoute = AuthVerifyRouteImport.update({
-  id: "/verify",
-  path: "/verify",
-  getParentRoute: () => AuthRoute,
-} as any);
-const BlogIndexRoute = BlogIndexRouteImport.update({
-  id: "/",
-  path: "/",
-  getParentRoute: () => BlogRoute,
-} as any);
-const BlogSlugRoute = BlogSlugRouteImport.update({
-  id: "/$slug",
-  path: "/$slug",
-  getParentRoute: () => BlogRoute,
-} as any);
-const OrdersIndexRoute = OrdersIndexRouteImport.update({
-  id: "/",
-  path: "/",
-  getParentRoute: () => OrdersRoute,
-} as any);
-const OrdersIdRoute = OrdersIdRouteImport.update({
-  id: "/$id",
-  path: "/$id",
-  getParentRoute: () => OrdersRoute,
-} as any);
-const ProductsIndexRoute = ProductsIndexRouteImport.update({
-  id: "/",
-  path: "/",
-  getParentRoute: () => ProductsRoute,
-} as any);
-const ProductsSlugRoute = ProductsSlugRouteImport.update({
-  id: "/$slug",
-  path: "/$slug",
-  getParentRoute: () => ProductsRoute,
-} as any);
-const RoasteriesIndexRoute = RoasteriesIndexRouteImport.update({
-  id: "/",
-  path: "/",
-  getParentRoute: () => RoasteriesRoute,
-} as any);
-const RoasteriesSlugRoute = RoasteriesSlugRouteImport.update({
-  id: "/$slug",
-  path: "/$slug",
-  getParentRoute: () => RoasteriesRoute,
-} as any);
+const AuthIndexRoute = AuthIndexRouteImport.update({ id: "/", path: "/", getParentRoute: () => AuthRoute } as any);
+const AuthVerifyRoute = AuthVerifyRouteImport.update({ id: "/verify", path: "/verify", getParentRoute: () => AuthRoute } as any);
+const BlogIndexRoute = BlogIndexRouteImport.update({ id: "/", path: "/", getParentRoute: () => BlogRoute } as any);
+const BlogSlugRoute = BlogSlugRouteImport.update({ id: "/$slug", path: "/$slug", getParentRoute: () => BlogRoute } as any);
+const OrdersIndexRoute = OrdersIndexRouteImport.update({ id: "/", path: "/", getParentRoute: () => OrdersRoute } as any);
+const OrdersIdRoute = OrdersIdRouteImport.update({ id: "/$id", path: "/$id", getParentRoute: () => OrdersRoute } as any);
+const ProductsIndexRoute = ProductsIndexRouteImport.update({ id: "/", path: "/", getParentRoute: () => ProductsRoute } as any);
+const ProductsSlugRoute = ProductsSlugRouteImport.update({ id: "/$slug", path: "/$slug", getParentRoute: () => ProductsRoute } as any);
+const RoasteriesIndexRoute = RoasteriesIndexRouteImport.update({ id: "/", path: "/", getParentRoute: () => RoasteriesRoute } as any);
+const RoasteriesSlugRoute = RoasteriesSlugRouteImport.update({ id: "/$slug", path: "/$slug", getParentRoute: () => RoasteriesRoute } as any);
 
-const AuthRouteWithChildren = AuthRoute._addFileChildren({
-  AuthIndexRoute,
-  AuthVerifyRoute,
-});
-const BlogRouteWithChildren = BlogRoute._addFileChildren({
-  BlogIndexRoute,
-  BlogSlugRoute,
-});
-const OrdersRouteWithChildren = OrdersRoute._addFileChildren({
-  OrdersIndexRoute,
-  OrdersIdRoute,
-});
-const ProductsRouteWithChildren = ProductsRoute._addFileChildren({
-  ProductsIndexRoute,
-  ProductsSlugRoute,
-});
-const RoasteriesRouteWithChildren = RoasteriesRoute._addFileChildren({
-  RoasteriesIndexRoute,
-  RoasteriesSlugRoute,
-});
+const AuthRouteWithChildren = AuthRoute._addFileChildren({ AuthIndexRoute, AuthVerifyRoute });
+const BlogRouteWithChildren = BlogRoute._addFileChildren({ BlogIndexRoute, BlogSlugRoute });
+const OrdersRouteWithChildren = OrdersRoute._addFileChildren({ OrdersIndexRoute, OrdersIdRoute });
+const ProductsRouteWithChildren = ProductsRoute._addFileChildren({ ProductsIndexRoute, ProductsSlugRoute });
+const RoasteriesRouteWithChildren = RoasteriesRoute._addFileChildren({ RoasteriesIndexRoute, RoasteriesSlugRoute });
 
 export const routeTree = rootRouteImport._addFileChildren({
   IndexRoute,
@@ -191,6 +135,7 @@ export const routeTree = rootRouteImport._addFileChildren({
   GuidesSlugRoute,
   OrdersRoute: OrdersRouteWithChildren,
   OriginsSlugRoute,
+  PanelManageRoute,
   PanelRoute,
   PrivacyRoute,
   ProductsRoute: ProductsRouteWithChildren,
@@ -206,96 +151,19 @@ export const routeTree = rootRouteImport._addFileChildren({
 
 declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
-    "/admin/content-edit/$entryId": {
-      id: "/admin/content-edit/$entryId";
-      path: "/admin/content-edit/$entryId";
-      fullPath: "/admin/content-edit/$entryId";
-      preLoaderRoute: typeof AdminContentEditEntryIdRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/admin/content-links": {
-      id: "/admin/content-links";
-      path: "/admin/content-links";
-      fullPath: "/admin/content-links";
-      preLoaderRoute: typeof AdminContentLinksRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/admin/content": {
-      id: "/admin/content";
-      path: "/admin/content";
-      fullPath: "/admin/content";
-      preLoaderRoute: typeof AdminContentRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/admin/finance": {
-      id: "/admin/finance";
-      path: "/admin/finance";
-      fullPath: "/admin/finance";
-      preLoaderRoute: typeof AdminFinanceRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/admin/operations": {
-      id: "/admin/operations";
-      path: "/admin/operations";
-      fullPath: "/admin/operations";
-      preLoaderRoute: typeof AdminOperationsRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/panel": {
-      id: "/panel";
-      path: "/panel";
-      fullPath: "/panel";
-      preLoaderRoute: typeof PanelRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/brew/$slug": {
-      id: "/brew/$slug";
-      path: "/brew/$slug";
-      fullPath: "/brew/$slug";
-      preLoaderRoute: typeof BrewSlugRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/collections/$slug": {
-      id: "/collections/$slug";
-      path: "/collections/$slug";
-      fullPath: "/collections/$slug";
-      preLoaderRoute: typeof CollectionsSlugRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/compare/$slug": {
-      id: "/compare/$slug";
-      path: "/compare/$slug";
-      fullPath: "/compare/$slug";
-      preLoaderRoute: typeof CompareSlugRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/guides/$slug": {
-      id: "/guides/$slug";
-      path: "/guides/$slug";
-      fullPath: "/guides/$slug";
-      preLoaderRoute: typeof GuidesSlugRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/origins/$slug": {
-      id: "/origins/$slug";
-      path: "/origins/$slug";
-      fullPath: "/origins/$slug";
-      preLoaderRoute: typeof OriginsSlugRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/robots.txt": {
-      id: "/robots.txt";
-      path: "/robots.txt";
-      fullPath: "/robots.txt";
-      preLoaderRoute: typeof RobotsDottxtRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
-    "/tastes/$slug": {
-      id: "/tastes/$slug";
-      path: "/tastes/$slug";
-      fullPath: "/tastes/$slug";
-      preLoaderRoute: typeof TastesSlugRouteImport;
-      parentRoute: typeof rootRouteImport;
-    };
+    "/admin/content-edit/$entryId": { id: "/admin/content-edit/$entryId"; path: "/admin/content-edit/$entryId"; fullPath: "/admin/content-edit/$entryId"; preLoaderRoute: typeof AdminContentEditEntryIdRouteImport; parentRoute: typeof rootRouteImport };
+    "/admin/content-links": { id: "/admin/content-links"; path: "/admin/content-links"; fullPath: "/admin/content-links"; preLoaderRoute: typeof AdminContentLinksRouteImport; parentRoute: typeof rootRouteImport };
+    "/admin/content": { id: "/admin/content"; path: "/admin/content"; fullPath: "/admin/content"; preLoaderRoute: typeof AdminContentRouteImport; parentRoute: typeof rootRouteImport };
+    "/admin/finance": { id: "/admin/finance"; path: "/admin/finance"; fullPath: "/admin/finance"; preLoaderRoute: typeof AdminFinanceRouteImport; parentRoute: typeof rootRouteImport };
+    "/admin/operations": { id: "/admin/operations"; path: "/admin/operations"; fullPath: "/admin/operations"; preLoaderRoute: typeof AdminOperationsRouteImport; parentRoute: typeof rootRouteImport };
+    "/panel/manage": { id: "/panel/manage"; path: "/panel/manage"; fullPath: "/panel/manage"; preLoaderRoute: typeof PanelManageRouteImport; parentRoute: typeof rootRouteImport };
+    "/panel": { id: "/panel"; path: "/panel"; fullPath: "/panel"; preLoaderRoute: typeof PanelRouteImport; parentRoute: typeof rootRouteImport };
+    "/brew/$slug": { id: "/brew/$slug"; path: "/brew/$slug"; fullPath: "/brew/$slug"; preLoaderRoute: typeof BrewSlugRouteImport; parentRoute: typeof rootRouteImport };
+    "/collections/$slug": { id: "/collections/$slug"; path: "/collections/$slug"; fullPath: "/collections/$slug"; preLoaderRoute: typeof CollectionsSlugRouteImport; parentRoute: typeof rootRouteImport };
+    "/compare/$slug": { id: "/compare/$slug"; path: "/compare/$slug"; fullPath: "/compare/$slug"; preLoaderRoute: typeof CompareSlugRouteImport; parentRoute: typeof rootRouteImport };
+    "/guides/$slug": { id: "/guides/$slug"; path: "/guides/$slug"; fullPath: "/guides/$slug"; preLoaderRoute: typeof GuidesSlugRouteImport; parentRoute: typeof rootRouteImport };
+    "/origins/$slug": { id: "/origins/$slug"; path: "/origins/$slug"; fullPath: "/origins/$slug"; preLoaderRoute: typeof OriginsSlugRouteImport; parentRoute: typeof rootRouteImport };
+    "/robots.txt": { id: "/robots.txt"; path: "/robots.txt"; fullPath: "/robots.txt"; preLoaderRoute: typeof RobotsDottxtRouteImport; parentRoute: typeof rootRouteImport };
+    "/tastes/$slug": { id: "/tastes/$slug"; path: "/tastes/$slug"; fullPath: "/tastes/$slug"; preLoaderRoute: typeof TastesSlugRouteImport; parentRoute: typeof rootRouteImport };
   }
 }
