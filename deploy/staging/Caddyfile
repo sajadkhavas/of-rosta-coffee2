@@ -30,9 +30,6 @@
   @immutable path /assets/* /_build/*
   header @immutable Cache-Control "public, max-age=31536000, immutable"
 
-  @dynamic not path /assets/* /_build/*
-  header @dynamic Cache-Control "no-cache"
-
   @edge_health path /_edge/health
   respond @edge_health 200
 
