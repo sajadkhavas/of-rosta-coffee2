@@ -34,6 +34,9 @@ jobs:
           fetch-depth: 0
           clean: true
 
+      - name: Resolve immutable checked-out release
+        run: echo "ROSTA_RELEASE_TAG=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
       - name: Protect deployment scripts
         run: chmod +x deploy/staging/*.sh
 
@@ -50,22 +53,22 @@ jobs:
           ROSTA_FRONTEND_ENV_PATH: /etc/rosta/staging/frontend.env
           ROSTA_BACKEND_ENV_PATH: /etc/rosta/staging/backend.env
           ROSTA_STATE_DIR: /var/lib/rosta/staging
-          ROSTA_RELEASE_TAG: ${{ github.sha }}
         run: deploy/staging/deploy.sh
 
       - name: Collect redacted acceptance evidence
         if: always()
+        env:
+          ROSTA_FRONTEND_ENV_PATH: /etc/rosta/staging/frontend.env
+          ROSTA_BACKEND_ENV_PATH: /etc/rosta/staging/backend.env
+          ROSTA_STATE_DIR: /var/lib/rosta/staging
         run: |
           mkdir -p .staging-artifacts
           if [ -f /var/lib/rosta/staging/reports/latest.json ]; then
             cp /var/lib/rosta/staging/reports/latest.json .staging-artifacts/acceptance.json
             cp /var/lib/rosta/staging/reports/latest.json.sha256 .staging-artifacts/acceptance.json.sha256
           fi
-          docker compose \
-            --project-name rosta-staging \
-            --env-file /etc/rosta/staging/frontend.env \
-            -f deploy/staging/docker-compose.yml \
-            ps > .staging-artifacts/compose-ps.txt || true
+          bash -c 'source deploy/staging/lib.sh; load_staging_environment; rosta_compose ps' \
+            > .staging-artifacts/compose-ps.txt || true
 
       - name: Upload acceptance evidence
         if: always()
