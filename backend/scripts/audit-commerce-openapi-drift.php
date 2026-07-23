@@ -1,10 +1,13 @@
 <?php
 
 $root = dirname(__DIR__);
-$openApi = file_get_contents(dirname($root).'/docs/openapi/rosta-v1-commerce-additions.yaml');
+$openApi = implode("\n", [
+    file_get_contents(dirname($root).'/docs/openapi/rosta-v1-commerce-additions.yaml'),
+    file_get_contents(dirname($root).'/docs/openapi/rosta-v1-finance.yaml'),
+]);
 $routeSources = implode("\n", array_map(
     static fn (string $file): string => file_get_contents($root.'/routes/'.$file),
-    ['payments.php', 'fulfillment.php', 'reviews-support.php', 'media-uploads.php'],
+    ['payments.php', 'fulfillment.php', 'reviews-support.php', 'media-uploads.php', 'finance.php'],
 ));
 
 $contracts = [
@@ -19,6 +22,13 @@ $contracts = [
     '/admin/inquiries/{inquiryId}',
     '/seller/roasteries/{roasteryId}/media/uploads',
     '/seller/roasteries/{roasteryId}/media/uploads/{uploadId}/complete',
+    '/admin/finance/refunds',
+    '/admin/finance/reconciliation',
+    '/admin/orders/{orderId}/refunds',
+    '/admin/refunds/{refundId}/approve',
+    '/admin/refunds/{refundId}/dispatch',
+    '/admin/refunds/{refundId}/resolve',
+    '/admin/finance/reconciliation/{caseId}',
 ];
 
 $missingRoutes = [];
