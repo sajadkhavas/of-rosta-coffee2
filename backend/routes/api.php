@@ -122,6 +122,9 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
             ->middleware('rosta.role:roastery_owner,roastery_manager,roastery_staff,administrator')
             ->name('api.v1.seller.origins.index');
 
+        Route::get('/seller/roasteries', [SellerRoasteryController::class, 'index'])
+            ->middleware('rosta.role:roastery_owner,roastery_manager,roastery_staff,administrator')
+            ->name('api.v1.seller.roasteries.index');
         Route::post('/seller/roasteries', [SellerRoasteryController::class, 'store'])
             ->name('api.v1.seller.roasteries.store');
 
