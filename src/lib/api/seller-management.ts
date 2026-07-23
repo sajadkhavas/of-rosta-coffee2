@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import type { MediaAsset, RoasteryDetail } from "./contracts";
+import type { RoasteryDetail } from "./contracts";
 import { parseContract, parseOptionalMedia, resourceSchema, roasteryDetailWireSchema, type RoasteryDetailWire } from "./schemas";
 
 export interface UpdateSellerRoasteryInput {
@@ -58,6 +58,6 @@ export async function updateSellerRoastery(
   return mapRoastery(response.data);
 }
 
-export function mediaUrl(media?: MediaAsset | null): string | null {
-  return media?.sources[0]?.url ?? null;
+export function mediaUrl(media?: { sources?: Array<{ url: string }> } | null): string | null {
+  return media?.sources?.[0]?.url ?? null;
 }
