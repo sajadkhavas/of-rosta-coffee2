@@ -6,6 +6,7 @@ $boolean = static fn (string $key, bool $default = false): bool => filter_var(
 );
 
 $paymentEnabled = $boolean('ROSTA_PAYMENT_ENABLED');
+$refundEnabled = $boolean('ROSTA_REFUND_ENABLED');
 $smsEnabled = $boolean('ROSTA_SMS_ENABLED');
 $mediaUploadsEnabled = $boolean('ROSTA_MEDIA_UPLOADS_ENABLED');
 $zarinpalSandbox = $boolean('ZARINPAL_SANDBOX', true);
@@ -16,6 +17,7 @@ return [
     'whole_bean_weights' => [50, 100, 250, 500, 1000],
     'single_roastery_orders' => true,
     'payment_enabled' => $paymentEnabled,
+    'refund_enabled' => $refundEnabled,
     'sms_enabled' => $smsEnabled,
     'allowed_payment_redirect_hosts' => array_values(array_filter(array_map(
         static fn (string $host): string => strtolower(trim($host)),
@@ -36,6 +38,11 @@ return [
             'verify_url' => env('ZARINPAL_VERIFY_URL', $zarinpalSandbox ? 'https://sandbox.zarinpal.com/pg/v4/payment/verify.json' : 'https://api.zarinpal.com/pg/v4/payment/verify.json'),
             'start_pay_url' => env('ZARINPAL_START_PAY_URL', $zarinpalSandbox ? 'https://sandbox.zarinpal.com/pg/StartPay' : 'https://www.zarinpal.com/pg/StartPay'),
         ],
+    ],
+    'refund' => [
+        'enabled' => $refundEnabled,
+        'provider' => env('REFUND_DRIVER', 'disabled'),
+        'require_dual_control' => $boolean('ROSTA_REFUND_DUAL_CONTROL', true),
     ],
     'notifications' => [
         'enabled' => $smsEnabled,
