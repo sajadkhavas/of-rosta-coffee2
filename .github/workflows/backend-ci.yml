@@ -74,6 +74,7 @@ jobs:
       SESSION_DRIVER: redis
       QUEUE_CONNECTION: redis
       ROSTA_PAYMENT_ENABLED: "false"
+      ROSTA_REFUND_ENABLED: "false"
       ROSTA_SMS_ENABLED: "false"
       ROSTA_MEDIA_UPLOADS_ENABLED: "false"
 
@@ -114,6 +115,7 @@ jobs:
         run: |
           test -s ../docs/openapi/rosta-v1-phase6.yaml
           test -s ../docs/openapi/rosta-v1-commerce-additions.yaml
+          test -s ../docs/openapi/rosta-v1-finance.yaml
           grep -q '^ROSTA_CONTRACT_VERSION=2026-07-21-phase-6$' .env.example
           grep -q '"laravel/framework": "^13.8"' composer.json
 
