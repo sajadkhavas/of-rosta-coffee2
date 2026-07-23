@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Search, ShoppingBag, User, WalletCards } from "lucide-react";
+import { Search, ShoppingBag, Store, User, WalletCards } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { toFa } from "@/lib/persian";
 
@@ -104,6 +104,13 @@ export function Navbar() {
             className="grid h-9 w-9 place-items-center rounded-full text-[color:var(--light)] transition hover:bg-[color:var(--dark)] hover:text-[color:var(--roast)]"
           >
             <Search size={18} />
+          </Link>
+          <Link
+            to="/panel"
+            aria-label="پنل روستری"
+            className="grid h-9 w-9 place-items-center rounded-full text-[color:var(--light)] transition hover:bg-[color:var(--dark)] hover:text-[color:var(--roast)]"
+          >
+            <Store size={18} />
           </Link>
           <Link
             to="/cart"
