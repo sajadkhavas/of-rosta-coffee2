@@ -3,8 +3,8 @@ set -Eeuo pipefail
 
 ROSTA_ROOT_DIR="${ROSTA_ROOT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 ROSTA_COMPOSE_FILE="${ROSTA_COMPOSE_FILE:-$ROSTA_ROOT_DIR/deploy/staging/docker-compose.yml}"
-ROSTA_FRONTEND_ENV_FILE="${ROSTA_FRONTEND_ENV_FILE:-$ROSTA_ROOT_DIR/.env.staging}"
-ROSTA_BACKEND_ENV_FILE="${ROSTA_BACKEND_ENV_FILE:-$ROSTA_ROOT_DIR/backend/.env.staging}"
+ROSTA_FRONTEND_ENV_PATH="${ROSTA_FRONTEND_ENV_PATH:-${ROSTA_FRONTEND_ENV_FILE:-$ROSTA_ROOT_DIR/.env.staging}}"
+ROSTA_BACKEND_ENV_PATH="${ROSTA_BACKEND_ENV_PATH:-${ROSTA_BACKEND_ENV_FILE:-$ROSTA_ROOT_DIR/backend/.env.staging}}"
 ROSTA_STATE_DIR="${ROSTA_STATE_DIR:-$ROSTA_ROOT_DIR/.staging-state}"
 ROSTA_BACKUP_DIR="${ROSTA_BACKUP_DIR:-$ROSTA_STATE_DIR/backups}"
 
@@ -26,22 +26,26 @@ require_file() {
 }
 
 load_staging_environment() {
-  require_file "$ROSTA_FRONTEND_ENV_FILE"
-  require_file "$ROSTA_BACKEND_ENV_FILE"
+  require_file "$ROSTA_FRONTEND_ENV_PATH"
+  require_file "$ROSTA_BACKEND_ENV_PATH"
 
   set -a
   # shellcheck disable=SC1090
-  source "$ROSTA_FRONTEND_ENV_FILE"
+  source "$ROSTA_FRONTEND_ENV_PATH"
   # shellcheck disable=SC1090
-  source "$ROSTA_BACKEND_ENV_FILE"
+  source "$ROSTA_BACKEND_ENV_PATH"
   set +a
 
-  export ROSTA_ROOT_DIR ROSTA_COMPOSE_FILE ROSTA_FRONTEND_ENV_FILE
-  export ROSTA_BACKEND_ENV_FILE ROSTA_STATE_DIR ROSTA_BACKUP_DIR
+  # Never trust a path value sourced from an environment file. Compose receives
+  # the already-resolved host paths captured before sourcing any secrets.
+  export ROSTA_FRONTEND_ENV_FILE="$ROSTA_FRONTEND_ENV_PATH"
+  export ROSTA_BACKEND_ENV_FILE="$ROSTA_BACKEND_ENV_PATH"
+  export ROSTA_ROOT_DIR ROSTA_COMPOSE_FILE ROSTA_STATE_DIR ROSTA_BACKUP_DIR
   export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-rosta-staging}"
   export ROSTA_IMAGE_TAG="${ROSTA_IMAGE_TAG:-$(git -C "$ROSTA_ROOT_DIR" rev-parse --short=12 HEAD 2>/dev/null || date -u +%Y%m%d%H%M%S)}"
 
   mkdir -p "$ROSTA_STATE_DIR" "$ROSTA_BACKUP_DIR" "$ROSTA_STATE_DIR/reports"
+  chmod 700 "$ROSTA_STATE_DIR" "$ROSTA_BACKUP_DIR" "$ROSTA_STATE_DIR/reports"
 }
 
 require_secret() {
@@ -61,6 +65,8 @@ assert_staging_contract() {
   [[ "${ROSTA_MEDIA_UPLOADS_ENABLED:-}" == "true" ]] || fail "R2 media uploads must be enabled for phase 22 acceptance"
   [[ "${ROSTA_MEDIA_UPLOAD_DISK:-}" == "s3" ]] || fail "ROSTA_MEDIA_UPLOAD_DISK must be s3"
   [[ "${SESSION_SECURE_COOKIE:-}" == "true" ]] || fail "Secure session cookies are required"
+  [[ "${SESSION_ENCRYPT:-}" == "true" ]] || fail "Encrypted sessions are required"
+  [[ "${SESSION_SAME_SITE:-}" == "lax" ]] || fail "SESSION_SAME_SITE must be lax"
 
   local required=(
     APP_KEY
@@ -77,6 +83,7 @@ assert_staging_contract() {
     ACME_EMAIL
     STAGING_SITE_DOMAIN
     STAGING_API_DOMAIN
+    STAGING_MEDIA_DOMAIN
   )
   local name
   for name in "${required[@]}"; do
@@ -89,6 +96,10 @@ assert_staging_contract() {
     || fail "VITE_API_URL must match STAGING_API_DOMAIN"
   [[ "${APP_URL:-}" == "https://${STAGING_API_DOMAIN}" ]] \
     || fail "APP_URL must match STAGING_API_DOMAIN"
+  [[ "${S3_PUBLIC_URL:-}" == "https://${STAGING_MEDIA_DOMAIN}" ]] \
+    || fail "S3_PUBLIC_URL must match STAGING_MEDIA_DOMAIN"
+  [[ "${ROSTA_MEDIA_PUBLIC_BASE_URL:-}" == "https://${STAGING_MEDIA_DOMAIN}" ]] \
+    || fail "ROSTA_MEDIA_PUBLIC_BASE_URL must match STAGING_MEDIA_DOMAIN"
 }
 
 rosta_compose() {
@@ -140,6 +151,7 @@ backup_database() {
       --set-gtid-purged=OFF \
       "$DB_DATABASE" | gzip -9 > "$output"
   test -s "$output" || fail "Database backup is empty"
+  gzip -t "$output" || fail "Database backup gzip validation failed"
   sha256sum "$output" > "$output.sha256"
 
   find "$ROSTA_BACKUP_DIR" -type f \
