@@ -1,7 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 import { isApiError } from "./client";
 import { listProducts, listRoasteries } from "./catalog";
-import { getContentByPath, type ContentEntry } from "./content";
+import { getContentByPath, type ContentBlock, type ContentEntry } from "./content";
 
 export interface HomeFaq {
   question: string;
@@ -17,6 +17,8 @@ export interface HomepageData {
   editorial: ContentEntry | null;
 }
 
+type FaqBlock = Extract<ContentBlock, { type: "faq" }>;
+
 async function optionalHomepageContent(): Promise<ContentEntry | null> {
   try {
     return await getContentByPath("/");
@@ -29,7 +31,7 @@ async function optionalHomepageContent(): Promise<ContentEntry | null> {
 function extractFaqs(entry: ContentEntry | null): HomeFaq[] {
   if (!entry) return [];
   return entry.body
-    .filter((block): block is Extract<typeof block, { type: "faq" }> => block.type === "faq")
+    .filter((block): block is FaqBlock => block.type === "faq")
     .flatMap((block) => block.items)
     .slice(0, 12)
     .map((item) => ({ question: item.question, answer: item.answer }));
