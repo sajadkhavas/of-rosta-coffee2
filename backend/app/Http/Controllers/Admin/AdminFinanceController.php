@@ -14,6 +14,7 @@ use App\Models\RefundAttempt;
 use App\Models\User;
 use App\Services\Catalog\CatalogAccess;
 use App\Services\Finance\FinancialReconciliationService;
+use App\Services\Refunds\RefundRequestService;
 use App\Services\Refunds\RefundService;
 use App\Support\ApiResponse;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -76,7 +77,7 @@ final class AdminFinanceController extends Controller
         CreateRefundRequest $request,
         string $orderId,
         CatalogAccess $access,
-        RefundService $refunds,
+        RefundRequestService $refunds,
     ): JsonResponse {
         /** @var User $user */
         $user = $request->user();
