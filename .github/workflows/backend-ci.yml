@@ -116,6 +116,8 @@ jobs:
           test -s ../docs/openapi/rosta-v1-phase6.yaml
           test -s ../docs/openapi/rosta-v1-commerce-additions.yaml
           test -s ../docs/openapi/rosta-v1-finance.yaml
+          test -s ../docs/openapi/rosta-v1-seller-operations.yaml
+          test -s ../docs/openapi/rosta-v1-admin-operations.yaml
           grep -q '^ROSTA_CONTRACT_VERSION=2026-07-21-phase-6$' .env.example
           grep -q '"laravel/framework": "^13.8"' composer.json
 
