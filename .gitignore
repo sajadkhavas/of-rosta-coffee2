@@ -7,6 +7,13 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Local and staging secrets
+.env
+.env.*
+!.env.example
+!.env.staging.example
+.staging-state/
+
 node_modules
 dist
 dist-ssr
@@ -15,6 +22,10 @@ dist-ssr
 .tanstack/**
 .nitro
 *.local
+
+# Generated audit and acceptance outputs
+frontend-*-audit.json
+release-manifest.json
 
 # Wrangler / Cloudflare
 .wrangler/
