@@ -33,7 +33,15 @@ final class AppServiceProvider extends ServiceProvider
     {
         Order::observe(OrderObserver::class);
 
-        foreach (['payments.php', 'fulfillment.php', 'reviews-support.php', 'media-uploads.php', 'finance.php'] as $routes) {
+        foreach ([
+            'payments.php',
+            'fulfillment.php',
+            'reviews-support.php',
+            'media-uploads.php',
+            'finance.php',
+            'admin-operations.php',
+            'seller-bootstrap.php',
+        ] as $routes) {
             Route::prefix('api/v1')
                 ->middleware('api')
                 ->group(base_path('routes/'.$routes));
