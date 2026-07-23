@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=deploy/staging/lib.sh
 source "$SCRIPT_DIR/lib.sh"
 
-for command in bash curl docker getent git grep gzip openssl python3 sha256sum stat; do
+for command in bash curl df docker getent git grep gzip openssl python3 sha256sum stat; do
   require_command "$command"
 done
 
@@ -55,16 +55,11 @@ else
   reject "Docker Compose plugin is unavailable"
 fi
 
-if [[ "$(stat -f -c '%a*%S' "$ROSTA_ROOT_DIR" | bc 2>/dev/null || echo 0)" -gt 10737418240 ]]; then
+available_kb="$(df -Pk "$ROSTA_ROOT_DIR" | awk 'NR==2 {print $4}')"
+if [[ "${available_kb:-0}" -ge 10485760 ]]; then
   pass "Repository filesystem has more than 10 GiB free"
 else
-  # bc is intentionally optional; use df as the authoritative fallback.
-  available_kb="$(df -Pk "$ROSTA_ROOT_DIR" | awk 'NR==2 {print $4}')"
-  if [[ "${available_kb:-0}" -ge 10485760 ]]; then
-    pass "Repository filesystem has more than 10 GiB free"
-  else
-    reject "At least 10 GiB free disk is required"
-  fi
+  reject "At least 10 GiB free disk is required"
 fi
 
 memory_kb="$(awk '/MemTotal:/ {print $2}' /proc/meminfo)"
@@ -101,8 +96,11 @@ else
   reject "Caddy configuration validation failed"
 fi
 
+host_uid="$(id -u)"
+host_gid="$(id -g)"
 if docker run --rm \
-  -v "$ROSTA_ROOT_DIR:/repo:ro" \
+  --user "$host_uid:$host_gid" \
+  -v "$ROSTA_ROOT_DIR:/repo" \
   -w /repo \
   oven/bun:1.2.22-alpine \
   bun run audit:phase22 >/dev/null; then
@@ -112,7 +110,8 @@ else
 fi
 
 if docker run --rm \
-  -v "$ROSTA_ROOT_DIR:/repo:ro" \
+  --user "$host_uid:$host_gid" \
+  -v "$ROSTA_ROOT_DIR:/repo" \
   -w /repo/backend \
   php:8.3-cli \
   php scripts/audit-staging-deployment-contract.php >/dev/null; then
