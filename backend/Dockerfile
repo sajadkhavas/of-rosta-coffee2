@@ -10,6 +10,7 @@ RUN apt-get update \
         unzip \
         libicu-dev \
         libonig-dev \
+        libsqlite3-dev \
         libxml2-dev \
         libzip-dev \
     && docker-php-ext-install -j"$(nproc)" \
@@ -20,6 +21,7 @@ RUN apt-get update \
         opcache \
         pcntl \
         pdo_mysql \
+        pdo_sqlite \
         posix \
         simplexml \
         sockets \
