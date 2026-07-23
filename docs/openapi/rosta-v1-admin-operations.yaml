@@ -1,0 +1,85 @@
+openapi: 3.1.0
+info:
+  title: Rosta Administrator Operations API
+  version: 2026-07-23-phase-20
+  description: Private administrator moderation, support, notification-health and audit visibility contracts.
+servers:
+  - url: /api/v1
+paths:
+  /admin/roasteries:
+    get:
+      summary: List private roastery moderation queue
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [pending, verified, suspended, rejected] } }
+      responses:
+        '200': { description: Filtered private roastery queue }
+  /admin/roasteries/{roasteryId}/status:
+    patch:
+      summary: Set roastery moderation status
+      parameters:
+        - { name: roasteryId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Updated roastery }
+  /admin/products:
+    get:
+      summary: List private product moderation queue
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [draft, review, published, archived] } }
+      responses:
+        '200': { description: Filtered private product queue }
+  /admin/products/{productId}/status:
+    patch:
+      summary: Set product publication status
+      parameters:
+        - { name: productId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Updated product }
+  /admin/reviews:
+    get:
+      summary: List review moderation queue
+      responses:
+        '200': { description: Review items and pagination }
+  /admin/reviews/{reviewId}:
+    patch:
+      summary: Approve or reject a verified-purchase review
+      parameters:
+        - { name: reviewId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Moderated review }
+  /admin/inquiries:
+    get:
+      summary: List support inquiries
+      responses:
+        '200': { description: Inquiry items and pagination }
+  /admin/inquiries/{inquiryId}:
+    get:
+      summary: Read one support inquiry
+      parameters:
+        - { name: inquiryId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Inquiry record }
+    patch:
+      summary: Change inquiry lifecycle status
+      parameters:
+        - { name: inquiryId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Updated inquiry }
+  /admin/operations/notifications:
+    get:
+      summary: List redacted notification outbox health records
+      description: Full destinations and encrypted payloads are never returned.
+      responses:
+        '200': { description: Redacted outbox items and pagination }
+  /admin/operations/audits:
+    get:
+      summary: List append-only audit records with recursive metadata redaction
+      responses:
+        '200': { description: Read-only audit items and pagination }
+components:
+  securitySchemes:
+    sanctumSession:
+      type: apiKey
+      in: cookie
+      name: laravel_session
+security:
+  - sanctumSession: []
