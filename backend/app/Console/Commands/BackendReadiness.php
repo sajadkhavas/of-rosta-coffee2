@@ -4,10 +4,15 @@ namespace App\Console\Commands;
 
 use App\Enums\NotificationStatus;
 use App\Enums\PaymentAttemptStatus;
+use App\Enums\ReconciliationStatus;
+use App\Enums\RefundStatus;
+use App\Models\FinancialReconciliationCase;
 use App\Models\NotificationOutbox;
 use App\Models\PaymentAttempt;
+use App\Models\RefundAttempt;
 use App\Services\Notifications\SmsProviderManager;
 use App\Services\Payments\PaymentProviderManager;
+use App\Services\Refunds\RefundProviderManager;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
@@ -22,6 +27,7 @@ final class BackendReadiness extends Command
 
     public function handle(
         PaymentProviderManager $payments,
+        RefundProviderManager $refunds,
         SmsProviderManager $sms,
     ): int {
         $checks = [];
@@ -65,6 +71,8 @@ final class BackendReadiness extends Command
             'sub_orders',
             'inventory_reservations',
             'payment_attempts',
+            'refund_attempts',
+            'financial_reconciliation_cases',
             'notification_outbox',
             'shipments',
             'reviews',
@@ -99,6 +107,15 @@ final class BackendReadiness extends Command
                 ? 'Enabled payment provider is configured'
                 : 'Payment is intentionally disabled',
         );
+        $refundEnabled = (bool) config('rosta.refund.enabled', false);
+        $this->check(
+            $checks,
+            'refund_activation',
+            ! $refundEnabled || $refunds->ready(),
+            $refundEnabled
+                ? 'Enabled refund provider is configured'
+                : 'Refund execution is intentionally disabled',
+        );
         $smsEnabled = (bool) config('rosta.notifications.enabled', false);
         $this->check(
             $checks,
@@ -129,6 +146,30 @@ final class BackendReadiness extends Command
                     'code' => 'payments_require_review',
                     'count' => $reviewCount,
                     'message' => 'Payment attempts require financial reconciliation.',
+                ];
+            }
+        }
+        if ($checks['database']['passed'] && Schema::hasTable('refund_attempts')) {
+            $refundReviewCount = RefundAttempt::query()
+                ->whereIn('status', [RefundStatus::Failed->value, RefundStatus::RequiresReview->value])
+                ->count();
+            if ($refundReviewCount > 0) {
+                $warnings[] = [
+                    'code' => 'refunds_require_review',
+                    'count' => $refundReviewCount,
+                    'message' => 'Refund attempts failed or have an unknown provider outcome.',
+                ];
+            }
+        }
+        if ($checks['database']['passed'] && Schema::hasTable('financial_reconciliation_cases')) {
+            $openCases = FinancialReconciliationCase::query()
+                ->whereIn('status', [ReconciliationStatus::Open->value, ReconciliationStatus::Investigating->value])
+                ->count();
+            if ($openCases > 0) {
+                $warnings[] = [
+                    'code' => 'financial_reconciliation_open',
+                    'count' => $openCases,
+                    'message' => 'Financial reconciliation cases remain open.',
                 ];
             }
         }
