@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Search, ShoppingBag, User } from "lucide-react";
+import { Search, ShoppingBag, User, WalletCards } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { toFa } from "@/lib/persian";
 
@@ -20,6 +20,7 @@ export function Navbar() {
     pathname === "/admin/content" ||
     pathname.startsWith("/admin/content-edit/");
   const isLinkReportActive = pathname === "/admin/content-links";
+  const isFinanceActive = pathname === "/admin/finance";
 
   return (
     <header className="sticky top-0 z-40 border-b border-[color:var(--mid)]/60 bg-[color:var(--night)]/85 backdrop-blur-xl">
@@ -145,6 +146,16 @@ export function Navbar() {
               className={`${adminNavBase} ${isLinkReportActive ? adminNavActive : adminNavIdle}`}
             >
               سلامت لینک‌ها
+            </Link>
+            <Link
+              to="/admin/finance"
+              aria-current={isFinanceActive ? "page" : undefined}
+              className={`${adminNavBase} ${isFinanceActive ? adminNavActive : adminNavIdle}`}
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <WalletCards size={14} />
+                عملیات مالی
+              </span>
             </Link>
           </div>
         </nav>
