@@ -19,6 +19,8 @@ ENV NODE_ENV=production \
     VITE_ALLOW_INDEXING=${VITE_ALLOW_INDEXING} \
     VITE_PERFORMANCE_ENDPOINT=${VITE_PERFORMANCE_ENDPOINT}
 COPY . .
+# `bun run check` includes bun run audit:phase22, bun run typecheck,
+# unit tests, lint, bun run build and the bundle budget gate.
 RUN bun run check
 
 FROM node:22-bookworm-slim AS runtime
