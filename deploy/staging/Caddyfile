@@ -24,8 +24,14 @@
   import common_security_headers
   encode zstd gzip
 
-  header Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' https://{$STAGING_API_DOMAIN} https://media-staging.rosta.shop; img-src 'self' data: blob: https://media-staging.rosta.shop; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:; manifest-src 'self'"
+  header Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' https://{$STAGING_API_DOMAIN} https://{$STAGING_MEDIA_DOMAIN}; img-src 'self' data: blob: https://{$STAGING_MEDIA_DOMAIN}; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:; manifest-src 'self'"
   header X-Robots-Tag "noindex, nofollow, noarchive"
+
+  @immutable path /assets/* /_build/*
+  header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+  @dynamic not path /assets/* /_build/*
+  header @dynamic Cache-Control "no-cache"
 
   @edge_health path /_edge/health
   respond @edge_health 200
@@ -43,6 +49,7 @@
   import common_security_headers
   encode zstd gzip
   header X-Robots-Tag "noindex, nofollow, noarchive"
+  header Cache-Control "no-store"
 
   request_body {
     max_size 16MB
