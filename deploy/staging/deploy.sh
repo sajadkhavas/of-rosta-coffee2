@@ -33,43 +33,64 @@ failure_report() {
 }
 trap failure_report ERR
 
+build_quality_image() {
+  log "Building PHP 8.3 quality image with MySQL, SQLite and Redis extensions"
+  docker build \
+    --pull \
+    --tag rosta-backend-quality:php83 \
+    --file "$ROSTA_ROOT_DIR/backend/Dockerfile" \
+    "$ROSTA_ROOT_DIR/backend"
+}
+
+quality_container() {
+  docker run --rm \
+    --user "$(id -u):$(id -g)" \
+    --volume "$ROSTA_ROOT_DIR:/repo" \
+    --workdir /repo/backend \
+    rosta-backend-quality:php83 \
+    "$@"
+}
+
 ensure_composer_lock() {
   if [[ -s "$ROSTA_ROOT_DIR/backend/composer.lock" ]]; then
     log "Using existing backend/composer.lock"
     return 0
   fi
 
-  log "composer.lock is absent; generating a staging lock with the PHP 8.3 build image"
-  docker build \
-    --pull \
-    --tag rosta-composer-lock:php83 \
-    --file "$ROSTA_ROOT_DIR/backend/Dockerfile" \
-    "$ROSTA_ROOT_DIR/backend"
-
-  docker run --rm \
-    --user "$(id -u):$(id -g)" \
-    --volume "$ROSTA_ROOT_DIR/backend:/var/www/html" \
-    --workdir /var/www/html \
-    rosta-composer-lock:php83 \
-    composer update \
-      --no-install \
-      --no-scripts \
-      --no-interaction \
-      --prefer-dist \
-      --no-progress
+  log "composer.lock is absent; generating it against the PHP 8.3 platform contract"
+  quality_container composer update \
+    --no-install \
+    --no-scripts \
+    --no-interaction \
+    --prefer-dist \
+    --no-progress
 
   test -s "$ROSTA_ROOT_DIR/backend/composer.lock" \
     || fail "Composer lock generation did not produce backend/composer.lock"
-  log "Generated staging composer.lock; commit this lock before production release"
+  log "Generated backend/composer.lock; it must be committed before production"
 }
 
-log "Validating Compose and deployment contract"
+run_backend_quality() {
+  log "Installing locked backend development dependencies"
+  quality_container composer install \
+    --no-interaction \
+    --prefer-dist \
+    --no-progress
+
+  log "Running all backend audits, PHPUnit, Larastan and Pint on PHP 8.3"
+  quality_container composer check
+}
+
+log "Validating deployment contract"
+build_quality_image
 ensure_composer_lock
+run_backend_quality
 rosta_compose config --quiet
 
 backup_database "pre-${ROSTA_IMAGE_TAG}"
 
 log "Building immutable release images: $ROSTA_IMAGE_TAG"
+# The frontend Docker build runs the complete Bun frozen-lock quality chain.
 rosta_compose build --pull api api-web frontend
 
 log "Starting MySQL and Redis"
@@ -95,8 +116,9 @@ cat > "$ROSTA_STATE_DIR/release-${ROSTA_IMAGE_TAG}.json" <<JSON
   "composer_lock_sha256": "$(sha256sum "$ROSTA_ROOT_DIR/backend/composer.lock" | awk '{print $1}')"
 }
 JSON
+chmod 600 "$ROSTA_STATE_DIR/release-${ROSTA_IMAGE_TAG}.json"
 
-# Keep rollback images; only remove old dangling build layers.
+# Keep tagged rollback images; only remove old dangling build layers.
 docker image prune --force --filter "until=168h" >/dev/null || true
 trap - ERR
 log "Staging deployment accepted: $ROSTA_IMAGE_TAG"
