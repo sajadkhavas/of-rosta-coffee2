@@ -8,6 +8,7 @@ import { Route as AboutRouteImport } from "./routes/about";
 import { Route as AdminContentEditEntryIdRouteImport } from "./routes/admin.content-edit.$entryId";
 import { Route as AdminContentLinksRouteImport } from "./routes/admin.content-links";
 import { Route as AdminContentRouteImport } from "./routes/admin.content";
+import { Route as AdminFinanceRouteImport } from "./routes/admin.finance";
 import { Route as AuthRouteImport } from "./routes/auth";
 import { Route as AuthIndexRouteImport } from "./routes/auth.index";
 import { Route as AuthVerifyRouteImport } from "./routes/auth.verify";
@@ -65,6 +66,7 @@ const AdminContentLinksRoute = rootChild(
   "/admin/content-links",
 );
 const AdminContentRoute = rootChild(AdminContentRouteImport, "/admin/content");
+const AdminFinanceRoute = rootChild(AdminFinanceRouteImport, "/admin/finance");
 const AuthRoute = rootChild(AuthRouteImport, "/auth");
 const BlogRoute = rootChild(BlogRouteImport, "/blog");
 const BrewSlugRoute = rootChild(BrewSlugRouteImport, "/brew/$slug");
@@ -170,6 +172,7 @@ export const routeTree = rootRouteImport._addFileChildren({
   AdminContentEditEntryIdRoute,
   AdminContentLinksRoute,
   AdminContentRoute,
+  AdminFinanceRoute,
   AuthRoute: AuthRouteWithChildren,
   BlogRoute: BlogRouteWithChildren,
   BrewSlugRoute,
@@ -216,6 +219,13 @@ declare module "@tanstack/react-router" {
       path: "/admin/content";
       fullPath: "/admin/content";
       preLoaderRoute: typeof AdminContentRouteImport;
+      parentRoute: typeof rootRouteImport;
+    };
+    "/admin/finance": {
+      id: "/admin/finance";
+      path: "/admin/finance";
+      fullPath: "/admin/finance";
+      preLoaderRoute: typeof AdminFinanceRouteImport;
       parentRoute: typeof rootRouteImport;
     };
     "/brew/$slug": {
