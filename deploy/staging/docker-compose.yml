@@ -13,7 +13,7 @@ x-backend-app: &backend-app
     dockerfile: Dockerfile.production
     target: app
   env_file:
-    - ${ROSTA_BACKEND_ENV_FILE:-../../backend/.env.staging}
+    - ${ROSTA_BACKEND_ENV_FILE:?ROSTA_BACKEND_ENV_FILE is required}
   environment:
     APP_ENV: staging
     APP_DEBUG: "false"
@@ -186,8 +186,9 @@ services:
         condition: service_healthy
     environment:
       ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL is required}
-      STAGING_SITE_DOMAIN: ${STAGING_SITE_DOMAIN:-staging.rosta.shop}
-      STAGING_API_DOMAIN: ${STAGING_API_DOMAIN:-api-staging.rosta.shop}
+      STAGING_SITE_DOMAIN: ${STAGING_SITE_DOMAIN:?STAGING_SITE_DOMAIN is required}
+      STAGING_API_DOMAIN: ${STAGING_API_DOMAIN:?STAGING_API_DOMAIN is required}
+      STAGING_MEDIA_DOMAIN: ${STAGING_MEDIA_DOMAIN:?STAGING_MEDIA_DOMAIN is required}
     ports:
       - "80:80"
       - "443:443"
