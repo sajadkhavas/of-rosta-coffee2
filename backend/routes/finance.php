@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminDispatchRefundController;
 use App\Http\Controllers\Admin\AdminFinanceController;
 use Illuminate\Support\Facades\Route;
 
@@ -20,7 +21,7 @@ Route::middleware([
     Route::post('/admin/refunds/{refundId}/approve', [AdminFinanceController::class, 'approveRefund'])
         ->where('refundId', '[A-Za-z0-9._:-]+')
         ->name('api.v1.admin.refunds.approve');
-    Route::post('/admin/refunds/{refundId}/dispatch', [AdminFinanceController::class, 'dispatchRefund'])
+    Route::post('/admin/refunds/{refundId}/dispatch', AdminDispatchRefundController::class)
         ->where('refundId', '[A-Za-z0-9._:-]+')
         ->name('api.v1.admin.refunds.dispatch');
     Route::post('/admin/refunds/{refundId}/resolve', [AdminFinanceController::class, 'resolveRefund'])
