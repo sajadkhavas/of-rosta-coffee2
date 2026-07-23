@@ -19,6 +19,7 @@ const paths = {
   home: "src/routes/index.tsx",
   blog: "src/routes/blog.$slug.tsx",
   contact: "src/routes/contact.tsx",
+  inquiries: "src/lib/api/inquiries.ts",
   frontendStaging: ".env.staging.example",
   backendStaging: "backend/.env.staging.example",
   composerLock: "backend/composer.lock",
@@ -105,9 +106,12 @@ gate(
 gate(
   "honest_contact_state",
   !files.contact?.includes("setSent(true)") &&
-    !files.contact?.includes("wire to real endpoint") &&
-    files.contact?.includes("mailto:support@rosta.shop"),
-  "the contact page must not claim a server submission that never happened",
+    files.contact?.includes("createInquiry") &&
+    files.contact?.includes("setReceipt(result)") &&
+    files.contact?.includes("شناسه پیگیری") &&
+    files.inquiries?.includes('apiFetch("/inquiries"') &&
+    files.inquiries?.includes("reference_id"),
+  "the contact page may claim success only after the inquiry API returns a persisted reference ID",
 );
 
 gate(
@@ -129,6 +133,7 @@ const requiredRoutes = [
   "/admin/content",
   "/admin/content-links",
   "/admin/content-edit/$entryId",
+  "/admin/finance",
   "/guides/$slug",
   "/origins/$slug",
   "/brew/$slug",
