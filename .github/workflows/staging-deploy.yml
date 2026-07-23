@@ -1,0 +1,77 @@
+name: Staging Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_ref:
+        description: Branch, tag or commit to deploy
+        required: true
+        default: agent/phase-22-staging-deployment-acceptance
+      run_preflight:
+        description: Run full host preflight before deploy
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rosta-staging-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy-and-accept
+    runs-on: [self-hosted, linux, x64, rosta-staging]
+    timeout-minutes: 90
+    environment: staging
+    steps:
+      - name: Checkout selected release
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_ref }}
+          fetch-depth: 0
+          clean: true
+
+      - name: Protect deployment scripts
+        run: chmod +x deploy/staging/*.sh
+
+      - name: Run host preflight
+        if: ${{ inputs.run_preflight }}
+        env:
+          ROSTA_FRONTEND_ENV_PATH: /etc/rosta/staging/frontend.env
+          ROSTA_BACKEND_ENV_PATH: /etc/rosta/staging/backend.env
+          ROSTA_STATE_DIR: /var/lib/rosta/staging
+        run: deploy/staging/preflight.sh
+
+      - name: Deploy immutable release and execute acceptance
+        env:
+          ROSTA_FRONTEND_ENV_PATH: /etc/rosta/staging/frontend.env
+          ROSTA_BACKEND_ENV_PATH: /etc/rosta/staging/backend.env
+          ROSTA_STATE_DIR: /var/lib/rosta/staging
+          ROSTA_RELEASE_TAG: ${{ github.sha }}
+        run: deploy/staging/deploy.sh
+
+      - name: Collect redacted acceptance evidence
+        if: always()
+        run: |
+          mkdir -p .staging-artifacts
+          if [ -f /var/lib/rosta/staging/reports/latest.json ]; then
+            cp /var/lib/rosta/staging/reports/latest.json .staging-artifacts/acceptance.json
+            cp /var/lib/rosta/staging/reports/latest.json.sha256 .staging-artifacts/acceptance.json.sha256
+          fi
+          docker compose \
+            --project-name rosta-staging \
+            --env-file /etc/rosta/staging/frontend.env \
+            -f deploy/staging/docker-compose.yml \
+            ps > .staging-artifacts/compose-ps.txt || true
+
+      - name: Upload acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-acceptance-${{ github.run_id }}
+          path: .staging-artifacts
+          if-no-files-found: warn
+          retention-days: 30
