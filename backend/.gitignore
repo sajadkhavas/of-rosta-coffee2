@@ -3,8 +3,9 @@
 /.php-cs-fixer.cache
 /.phpstan.cache
 /.env
-/.env.backup
-/.env.production
+/.env.*
+!/.env.example
+!/.env.staging.example
 /auth.json
 /node_modules
 /public/build
@@ -20,3 +21,4 @@ yarn-error.log
 /.idea
 /.vscode
 .DS_Store
+/staging-deployment-contract-audit.json
