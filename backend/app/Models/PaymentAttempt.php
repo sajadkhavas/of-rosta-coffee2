@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 final class PaymentAttempt extends Model
 {
@@ -65,6 +66,16 @@ final class PaymentAttempt extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function refundAttempts(): HasMany
+    {
+        return $this->hasMany(RefundAttempt::class);
+    }
+
+    public function reconciliationCases(): HasMany
+    {
+        return $this->hasMany(FinancialReconciliationCase::class);
     }
 
     public function scopeOwnedBy(Builder $query, User $user): Builder
