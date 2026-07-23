@@ -13,12 +13,71 @@ use App\Models\User;
 use App\Models\UserRole;
 use App\Services\AuditRecorder;
 use App\Services\Catalog\CatalogAccess;
+use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 final class SellerRoasteryController
 {
+    public function index(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $user->loadMissing('roleAssignments');
+        $administrator = $user->hasRole(Role::Administrator);
+        $sellerRoles = [
+            Role::RoasteryOwner->value,
+            Role::RoasteryManager->value,
+            Role::RoasteryStaff->value,
+        ];
+
+        $rolesByRoastery = $user->roleAssignments
+            ->filter(static fn (UserRole $assignment): bool =>
+                $assignment->scope_type === 'roastery'
+                && is_string($assignment->scope_id)
+                && in_array($assignment->role->value, $sellerRoles, true)
+            )
+            ->groupBy('scope_id')
+            ->map(static fn ($assignments): array => $assignments
+                ->pluck('role')
+                ->map(static fn (Role|string $role): string => $role instanceof Role ? $role->value : $role)
+                ->unique()
+                ->sort()
+                ->values()
+                ->all()
+            );
+
+        if (! $administrator && $rolesByRoastery->isEmpty()) {
+            return ApiResponse::success(['items' => []]);
+        }
+
+        $query = Roastery::query()
+            ->with(['logo', 'cover'])
+            ->orderBy('name');
+        if (! $administrator) {
+            $query->whereIn('id', $rolesByRoastery->keys()->all());
+        }
+
+        $items = $query->get()->map(function (Roastery $roastery) use (
+            $request,
+            $administrator,
+            $rolesByRoastery,
+        ): array {
+            $resource = (new RoasteryDetailResource($roastery))->resolve($request);
+
+            return [
+                ...$resource,
+                'status' => $roastery->status->value,
+                'access_roles' => $administrator
+                    ? [Role::Administrator->value]
+                    : ($rolesByRoastery->get($roastery->id) ?? []),
+            ];
+        })->values()->all();
+
+        return ApiResponse::success(['items' => $items]);
+    }
+
     public function store(
         StoreRoasteryRequest $request,
         AuditRecorder $audit,
