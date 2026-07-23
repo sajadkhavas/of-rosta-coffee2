@@ -16,6 +16,7 @@ use App\Services\Catalog\CatalogAccess;
 use App\Services\Finance\FinancialReconciliationService;
 use App\Services\Refunds\RefundService;
 use App\Support\ApiResponse;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -102,26 +103,6 @@ final class AdminFinanceController extends Controller
         $user = $request->user();
         $access->assertAdministrator($user);
         $refund = $refunds->approve(
-            $user,
-            RefundAttempt::query()->findOrFail($refundId),
-            $request,
-        );
-
-        return ApiResponse::success($this->refundPayload($refund->load([
-            'order', 'paymentAttempt', 'requester', 'approver', 'resolver',
-        ])));
-    }
-
-    public function dispatchRefund(
-        Request $request,
-        string $refundId,
-        CatalogAccess $access,
-        RefundService $refunds,
-    ): JsonResponse {
-        /** @var User $user */
-        $user = $request->user();
-        $access->assertAdministrator($user);
-        $refund = $refunds->dispatch(
             $user,
             RefundAttempt::query()->findOrFail($refundId),
             $request,
@@ -228,7 +209,7 @@ final class AdminFinanceController extends Controller
     }
 
     /** @return array<string, int> */
-    private function pagination(object $page): array
+    private function pagination(LengthAwarePaginator $page): array
     {
         return [
             'current_page' => $page->currentPage(),
