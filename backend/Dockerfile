@@ -8,6 +8,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         git \
         unzip \
+        libcurl4-openssl-dev \
         libicu-dev \
         libonig-dev \
         libsqlite3-dev \
@@ -15,6 +16,7 @@ RUN apt-get update \
         libzip-dev \
     && docker-php-ext-install -j"$(nproc)" \
         bcmath \
+        curl \
         dom \
         intl \
         mbstring \
