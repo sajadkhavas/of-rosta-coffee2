@@ -60,6 +60,8 @@
     "audit:openapi": "@php scripts/audit-commerce-openapi-drift.php",
     "audit:validation": "@php scripts/audit-validation-hardening.php",
     "audit:finance": "@php scripts/audit-finance-contract.php",
+    "audit:seller-operations": "@php scripts/audit-seller-operations-contract.php",
+    "audit:admin-operations": "@php scripts/audit-admin-operations-contract.php",
     "readiness": "@php artisan rosta:readiness --json",
     "test": [
       "@php artisan config:clear --ansi @no_additional_args",
@@ -80,6 +82,8 @@
       "@audit:openapi",
       "@audit:validation",
       "@audit:finance",
+      "@audit:seller-operations",
+      "@audit:admin-operations",
       "@php artisan test",
       "@php vendor/bin/phpstan analyse --memory-limit=1G",
       "@php vendor/bin/pint --parallel --test"
