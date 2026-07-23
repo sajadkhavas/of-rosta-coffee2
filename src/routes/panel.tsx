@@ -1,4 +1,4 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { AccountGuard } from "@/components/account/AccountGuard";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { Footer } from "@/components/Footer";
@@ -15,13 +15,6 @@ export const Route = createFileRoute("/panel")({
   component: SellerPanelPage,
 });
 
-const sellerRoles = new Set([
-  "roastery_owner",
-  "roastery_manager",
-  "roastery_staff",
-  "administrator",
-]);
-
 function SellerPanelPage() {
   return (
     <>
@@ -34,13 +27,7 @@ function SellerPanelPage() {
           ]}
         />
         <AccountGuard>
-          {(user) =>
-            user.roles.some((role) => sellerRoles.has(role)) ? (
-              <SellerOperationsDashboard user={user} />
-            ) : (
-              <Navigate to="/forbidden" replace />
-            )
-          }
+          {(user) => <SellerOperationsDashboard user={user} />}
         </AccountGuard>
       </main>
       <Footer />
