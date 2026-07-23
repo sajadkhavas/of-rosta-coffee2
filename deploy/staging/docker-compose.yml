@@ -27,6 +27,7 @@ x-backend-app: &backend-app
     - app-storage:/var/www/html/storage
   networks:
     - backend
+    - egress
   security_opt:
     - no-new-privileges:true
   logging: *default-logging
@@ -211,6 +212,7 @@ services:
 
 networks:
   edge:
+  egress:
   backend:
     internal: true
 
