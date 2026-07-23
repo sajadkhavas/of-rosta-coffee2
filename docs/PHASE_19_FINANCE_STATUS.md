@@ -1,0 +1,127 @@
+# Phase 19 — Refunds and Financial Reconciliation
+
+## Status
+
+The code-level refund and reconciliation foundation is implemented on `agent/phase-19-refunds-reconciliation`, stacked on Phase 18F. It remains disabled by default and must not be merged to `main` or activated with real funds before the server gates in this document pass.
+
+## Provider decision
+
+Rosta does not invent a Zarinpal refund endpoint. The currently available payment integration proves request and verify operations, but an approved refund API contract has not been established for this account and integration.
+
+The refund provider layer therefore supports:
+
+- `disabled`: fail-closed default.
+- `manual`: records that an administrator must execute the refund in the provider's official panel and then register the authoritative outcome in Rosta.
+- `testing`: deterministic successful refunds for automated tests; forbidden in Production.
+
+A real provider adapter may be added only after receiving official access, endpoint documentation, authentication requirements, idempotency behavior and reconciliation rules.
+
+## Financial invariants
+
+- Refunds require a verified payment belonging to the order.
+- Every request has an order-scoped idempotency key and a request hash.
+- Reusing a key with a different amount or reason is rejected.
+- Requested, approved, processing, succeeded and requires-review amounts reserve the refundable balance.
+- Failed and cancelled attempts release their amount for a later retry.
+- The total reserved/succeeded amount cannot exceed the verified payment amount.
+- Omitting `amount` requests the current remaining refundable balance.
+- Approval uses dual control by default: the requester cannot approve the same refund.
+- Provider dispatch is serialized per refund with a distributed cache lock.
+- A provider timeout or unknown result never becomes a fake failure or success; it becomes `requires_review`.
+- Provider request/response payloads and reconciliation details are encrypted at rest.
+- A full refund updates refund, payment, order and sub-order truth in one database transaction.
+- A partial refund leaves the order in `refund_pending` and opens a reconciliation case for the remaining balance.
+
+## Refund lifecycle
+
+```text
+requested
+  -> approved
+  -> processing
+  -> succeeded | failed | requires_review
+
+processing | requires_review
+  -> succeeded | failed | cancelled   (manual authoritative resolution)
+```
+
+## Reconciliation lifecycle
+
+```text
+open -> investigating -> resolved | dismissed
+```
+
+Payment attempts that enter `requires_review` automatically open a deduplicated reconciliation case. Failed, partial or unknown-outcome refunds also open cases.
+
+## Administrator API
+
+- `GET /api/v1/admin/finance/refunds`
+- `GET /api/v1/admin/finance/reconciliation`
+- `POST /api/v1/admin/orders/{orderId}/refunds`
+- `POST /api/v1/admin/refunds/{refundId}/approve`
+- `POST /api/v1/admin/refunds/{refundId}/dispatch`
+- `POST /api/v1/admin/refunds/{refundId}/resolve`
+- `PATCH /api/v1/admin/finance/reconciliation/{caseId}`
+
+All routes require a valid Sanctum session, an active Rosta session record and the `administrator` role.
+
+## Environment contract
+
+The safe defaults are:
+
+```env
+ROSTA_REFUND_ENABLED=false
+REFUND_DRIVER=disabled
+ROSTA_REFUND_DUAL_CONTROL=true
+```
+
+Staging may temporarily use:
+
+```env
+ROSTA_REFUND_ENABLED=true
+REFUND_DRIVER=testing
+ROSTA_REFUND_DUAL_CONTROL=true
+```
+
+`testing` is rejected in Production even if environment configuration is incorrect.
+
+For a controlled manual acceptance drill:
+
+```env
+ROSTA_REFUND_ENABLED=true
+REFUND_DRIVER=manual
+ROSTA_REFUND_DUAL_CONTROL=true
+```
+
+## Permanent gates added
+
+- Feature coverage for full refund, replay, partial refund, over-refund rejection and payment reconciliation.
+- Unit coverage forbidding the testing provider in Production.
+- `audit:finance` protects the financial invariants.
+- Finance routes are added to OpenAPI drift detection.
+- Backend readiness checks the new tables, provider activation, failed/review refunds and open cases.
+
+## Server-only gates still open
+
+The following results are not claimable until a healthy Docker/server environment is available:
+
+1. Generate and commit `backend/composer.lock`.
+2. Install Composer dependencies from the lockfile.
+3. Run all MySQL migrations from an empty database and from the current staging schema.
+4. Run PHPUnit, Larastan and Pint.
+5. Run `composer check` and `php artisan rosta:readiness --json --strict`.
+6. Test Redis-backed refund dispatch locking with concurrent requests.
+7. Test manual-provider reconciliation using non-production payment records.
+8. Confirm encrypted payload sizes against realistic provider responses.
+9. Verify backup and restore of refund/reconciliation records.
+10. Keep refund execution disabled until these gates and administrator UI acceptance pass.
+
+## Deliberately outside this phase
+
+- A fabricated or undocumented Zarinpal refund adapter.
+- Provider credentials.
+- Production fund movement.
+- Seller permission to create or approve refunds.
+- Automatic refund based only on a seller rejection without administrator financial control.
+- The administrator finance user interface; this belongs to Phase 20.
+
+The permanent whole-bean boundary remains unchanged. Refund and reconciliation records contain no grind selector, grind option or grind state.
