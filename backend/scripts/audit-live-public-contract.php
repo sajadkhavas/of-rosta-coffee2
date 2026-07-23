@@ -5,7 +5,7 @@ $frontend = dirname($root).'/src';
 $files = [
     'providers' => file_get_contents($root.'/bootstrap/providers.php'),
     'safety' => file_get_contents($root.'/app/Providers/ProductionSafetyServiceProvider.php'),
-    'catalog' => file_get_contents($root.'/app/Http/Controllers/Catalog/ProductController.php'),
+    'catalog' => file_get_contents($root.'/app/Services/Catalog/PublicCatalogService.php'),
     'content' => file_get_contents($root.'/app/Http/Controllers/Content/ContentController.php'),
     'reviews' => file_get_contents($root.'/app/Services/Reviews/ReviewService.php'),
     'public_reviews' => file_get_contents($root.'/app/Http/Controllers/Reviews/PublicReviewController.php'),
@@ -32,16 +32,16 @@ $gate(
 
 $gate(
     'public_catalog_is_published_only',
-    str_contains($files['catalog'], 'published')
-        || str_contains($files['catalog'], 'ProductStatus::Published'),
-    'Public catalog responses must only expose published products.',
+    str_contains($files['catalog'], 'publicProductQuery')
+        && str_contains($files['catalog'], '->published()')
+        && str_contains($files['catalog'], "variants->where('is_active', true)"),
+    'Public catalog responses must only expose published products and active whole-bean variants.',
 );
 
 $gate(
     'public_content_is_published_only',
-    str_contains($files['content'], "ContentStatus::Published")
-        && str_contains($files['content'], "where('status'"),
-    'Public editorial responses must only expose published CMS entries.',
+    substr_count($files['content'], '->published()') >= 3,
+    'Public editorial list, slug and canonical-path resolution must only expose published CMS entries.',
 );
 
 $gate(
