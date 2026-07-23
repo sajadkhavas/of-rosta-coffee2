@@ -1,0 +1,146 @@
+openapi: 3.1.0
+info:
+  title: Rosta Refund and Financial Reconciliation API
+  version: 2026-07-23
+  description: Administrator-only, provider-neutral refund ledger and financial reconciliation workflows.
+servers:
+  - url: https://api-staging.rosta.shop/api/v1
+security:
+  - sanctumSession: []
+paths:
+  /admin/finance/refunds:
+    get:
+      operationId: listRefundAttempts
+      responses:
+        '200': { description: Paginated refund attempts }
+        '403': { description: Administrator role required }
+  /admin/finance/reconciliation:
+    get:
+      operationId: listFinancialReconciliationCases
+      responses:
+        '200': { description: Paginated financial reconciliation cases }
+        '403': { description: Administrator role required }
+  /admin/orders/{orderId}/refunds:
+    post:
+      operationId: requestOrderRefund
+      parameters:
+        - $ref: '#/components/parameters/OrderId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRefundRequest'
+      responses:
+        '201': { description: Refund request persisted or idempotently replayed }
+        '409': { description: No verified payment, idempotency conflict or amount exceeds refundable balance }
+  /admin/refunds/{refundId}/approve:
+    post:
+      operationId: approveRefund
+      parameters:
+        - $ref: '#/components/parameters/RefundId'
+      responses:
+        '200': { description: Refund approved under dual-control policy }
+        '409': { description: Invalid state or dual-control violation }
+  /admin/refunds/{refundId}/dispatch:
+    post:
+      operationId: dispatchRefund
+      parameters:
+        - $ref: '#/components/parameters/RefundId'
+      responses:
+        '200': { description: Provider dispatch completed, pending or safely replayed }
+        '503': { description: Refund provider disabled or unavailable }
+  /admin/refunds/{refundId}/resolve:
+    post:
+      operationId: resolveManualRefund
+      parameters:
+        - $ref: '#/components/parameters/RefundId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveRefundRequest'
+      responses:
+        '200': { description: Manual provider outcome recorded }
+        '409': { description: Refund is not awaiting manual resolution }
+  /admin/finance/reconciliation/{caseId}:
+    patch:
+      operationId: resolveFinancialReconciliationCase
+      parameters:
+        - $ref: '#/components/parameters/CaseId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveCaseRequest'
+      responses:
+        '200': { description: Reconciliation case resolved or dismissed }
+components:
+  securitySchemes:
+    sanctumSession:
+      type: apiKey
+      in: cookie
+      name: rosta_session
+  parameters:
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      schema: { type: string }
+    RefundId:
+      name: refundId
+      in: path
+      required: true
+      schema: { type: string }
+    CaseId:
+      name: caseId
+      in: path
+      required: true
+      schema: { type: string }
+  schemas:
+    CreateRefundRequest:
+      type: object
+      additionalProperties: false
+      required: [reason, idempotency_key]
+      properties:
+        amount:
+          type: integer
+          minimum: 1
+          description: IRR amount; omitted means the full remaining refundable amount.
+        reason:
+          type: string
+          maxLength: 2000
+        idempotency_key:
+          type: string
+          minLength: 16
+          maxLength: 160
+    ResolveRefundRequest:
+      type: object
+      additionalProperties: false
+      required: [outcome]
+      properties:
+        outcome:
+          type: string
+          enum: [succeeded, failed, cancelled]
+        provider_reference:
+          type: [string, 'null']
+          maxLength: 190
+        failure_code:
+          type: [string, 'null']
+          maxLength: 160
+        message:
+          type: [string, 'null']
+          maxLength: 2000
+    ResolveCaseRequest:
+      type: object
+      additionalProperties: false
+      required: [status, resolution]
+      properties:
+        status:
+          type: string
+          enum: [resolved, dismissed]
+        resolution:
+          type: string
+          maxLength: 5000
