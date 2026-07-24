@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/r1b-batch1.yml
       - .github/scripts/r1b-batch1.py
+      - .github/scripts/r1b-batch1-followup.py
   workflow_dispatch:
 
 permissions:
@@ -66,26 +67,17 @@ jobs:
         run: |
           set -Eeuo pipefail
           git show origin/automation/r1a-executor:.github/scripts/r1b-batch1.py > /tmp/r1b-batch1.py
+          git show origin/automation/r1a-executor:.github/scripts/r1b-batch1-followup.py > /tmp/r1b-batch1-followup.py
           python /tmp/r1b-batch1.py
+          python /tmp/r1b-batch1-followup.py
           git diff --check
 
       - name: TypeScript and focused gates
         shell: bash
         run: |
           set -Eeuo pipefail
-          set +e
-          bun run typecheck > "$EVIDENCE_DIR/typecheck-after.log" 2>&1
-          after_status=$?
-          set -e
-          after_count="$(grep -c 'error TS[0-9]' "$EVIDENCE_DIR/typecheck-after.log" || true)"
-          printf 'status=%s\ncount=%s\n' "$after_status" "$after_count" | tee "$EVIDENCE_DIR/after.txt"
-          test "$after_count" -lt 92
-          ! grep -q "@/data/seed" "$EVIDENCE_DIR/typecheck-after.log"
-          ! grep -q "@/data/blog-posts" "$EVIDENCE_DIR/typecheck-after.log"
-          ! grep -q 'src/lib/api/content.ts(95' "$EVIDENCE_DIR/typecheck-after.log"
-          ! grep -q 'src/lib/api/inquiries.ts' "$EVIDENCE_DIR/typecheck-after.log"
-          ! grep -q 'src/components/ui/calendar.tsx' "$EVIDENCE_DIR/typecheck-after.log"
-          ! grep -q 'src/components/ui/resizable.tsx' "$EVIDENCE_DIR/typecheck-after.log"
+          bun run typecheck 2>&1 | tee "$EVIDENCE_DIR/typecheck-after.log"
+          test "$(grep -c 'error TS[0-9]' "$EVIDENCE_DIR/typecheck-after.log" || true)" -eq 0
           bun run audit:phase21 2>&1 | tee "$EVIDENCE_DIR/audit-phase21.log"
           bun run audit:phase22 2>&1 | tee "$EVIDENCE_DIR/audit-phase22.log"
           bun run test:unit 2>&1 | tee "$EVIDENCE_DIR/unit.log"
@@ -94,7 +86,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          expected=$'src/components/RoastLevelBadge.tsx\nsrc/components/WeightSelector.tsx\nsrc/components/seller/SellerOperationsDashboard.tsx\nsrc/lib/api/content.ts\nsrc/lib/api/inquiries.ts\nsrc/routes/__root.tsx\nsrc/routes/auth.index.tsx\nsrc/routes/brew.$slug.tsx\nsrc/routes/collections.$slug.tsx\nsrc/routes/compare.$slug.tsx\nsrc/routes/guides.$slug.tsx\nsrc/routes/origins.$slug.tsx\nsrc/routes/panel.manage.tsx\nsrc/routes/products.$slug.tsx\nsrc/routes/products.index.tsx\nsrc/routes/roasteries.$slug.tsx\nsrc/routes/sitemap[.]xml.ts\nsrc/routes/tastes.$slug.tsx'
+          expected=$'src/components/RoastLevelBadge.tsx\nsrc/components/WeightSelector.tsx\nsrc/components/seller/SellerOperationsDashboard.tsx\nsrc/lib/api/content.ts\nsrc/lib/api/inquiries.ts\nsrc/routes/__root.tsx\nsrc/routes/auth.index.tsx\nsrc/routes/blog.$slug.tsx\nsrc/routes/blog.index.tsx\nsrc/routes/brew.$slug.tsx\nsrc/routes/collections.$slug.tsx\nsrc/routes/compare.$slug.tsx\nsrc/routes/guides.$slug.tsx\nsrc/routes/index.tsx\nsrc/routes/origins.$slug.tsx\nsrc/routes/panel.manage.tsx\nsrc/routes/products.$slug.tsx\nsrc/routes/products.index.tsx\nsrc/routes/roasteries.$slug.tsx\nsrc/routes/sitemap[.]xml.ts\nsrc/routes/tastes.$slug.tsx'
           changed="$(git diff --name-only | sort)"
           printf '%s\n' "$changed" | tee "$EVIDENCE_DIR/changed-files.txt"
           test "$changed" = "$expected"
@@ -102,9 +94,10 @@ jobs:
           git config user.name 'Rosta Program Automation'
           git config user.email 'actions@users.noreply.github.com'
           git add src
-          git commit -m 'fix(frontend): repair content and route TypeScript contracts'
+          git commit -m 'fix(frontend): repair TypeScript source contracts'
           git push origin HEAD:"$TARGET_BRANCH"
           git rev-parse HEAD | tee "$EVIDENCE_DIR/result-commit.txt"
+          echo 'ROSTA_R1B_TYPESCRIPT_COMPLETE' | tee "$EVIDENCE_DIR/result.txt"
 
       - name: Upload evidence
         if: always()
