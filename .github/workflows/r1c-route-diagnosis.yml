@@ -1,0 +1,79 @@
+name: Rosta R1C Route Diagnosis
+
+on:
+  pull_request:
+    branches:
+      - integration/rosta-r-program
+    paths:
+      - .github/workflows/r1c-route-diagnosis.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      EVIDENCE_DIR: /tmp/rosta-r1c-diagnosis
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+    steps:
+      - name: Checkout R1C branch
+        uses: actions/checkout@v4
+        with:
+          ref: program/r1c-route-generation
+          fetch-depth: 0
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Bun 1.2.22
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.22
+
+      - name: Inspect local generator and route state
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          {
+            echo "head=$(git rev-parse HEAD)"
+            echo "tree=$(git rev-parse 'HEAD^{tree}')"
+            echo "node=$(node --version)"
+            echo "bun=$(bun --version)"
+            git status --short --branch
+          } | tee "$EVIDENCE_DIR/snapshot.txt"
+          rm -rf node_modules
+          bun install --frozen-lockfile 2>&1 | tee "$EVIDENCE_DIR/install.log"
+          find node_modules/.bin -maxdepth 1 -type l -o -type f | sort > "$EVIDENCE_DIR/local-binaries.txt"
+          cat node_modules/@tanstack/router-cli/package.json > "$EVIDENCE_DIR/router-cli-package.json"
+          if [ -f node_modules/@tanstack/router-plugin/package.json ]; then
+            cat node_modules/@tanstack/router-plugin/package.json > "$EVIDENCE_DIR/router-plugin-package.json"
+          fi
+          ./node_modules/.bin/tsr --help > "$EVIDENCE_DIR/tsr-help.txt" 2>&1
+          ./node_modules/.bin/tsr generate --help > "$EVIDENCE_DIR/tsr-generate-help.txt" 2>&1
+          find src/routes -maxdepth 2 -type f -print | sort > "$EVIDENCE_DIR/route-files.txt"
+          {
+            echo '=== routeTree references ==='
+            grep -RIn --exclude-dir=node_modules --exclude='bun.lock' 'routeTree\.phase17\|routeTree\.gen' . || true
+            echo '=== generator config tokens ==='
+            grep -RIn --exclude-dir=node_modules --exclude='bun.lock' 'routesDirectory\|generatedRouteTree\|routeFileIgnore\|autoCodeSplitting\|TanStackRouter' . || true
+            echo '=== current router ==='
+            sed -n '1,100p' src/router.tsx
+            echo '=== temporary tree header ==='
+            sed -n '1,80p' src/routeTree.phase17.ts
+            echo '=== generated tree header ==='
+            sed -n '1,80p' src/routeTree.gen.ts
+          } > "$EVIDENCE_DIR/route-state.txt"
+
+      - name: Upload diagnosis
+        uses: actions/upload-artifact@v4
+        with:
+          name: rosta-r1c-diagnosis-${{ github.run_id }}
+          path: /tmp/rosta-r1c-diagnosis
+          if-no-files-found: error
+          retention-days: 14
