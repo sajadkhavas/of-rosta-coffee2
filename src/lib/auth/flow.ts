@@ -35,7 +35,8 @@ export function clearPendingOtp(): void {
 }
 
 export function safeRedirect(value: unknown, fallback = "/profile"): string {
-  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) return fallback;
+  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//"))
+    return fallback;
   if (value.startsWith("/auth")) return fallback;
   return value;
 }

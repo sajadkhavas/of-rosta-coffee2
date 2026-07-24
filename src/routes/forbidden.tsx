@@ -5,10 +5,7 @@ import { absoluteUrl } from "@/config/site";
 
 export const Route = createFileRoute("/forbidden")({
   head: () => ({
-    meta: [
-      { title: "دسترسی مجاز نیست | رستا" },
-      { name: "robots", content: "noindex,nofollow" },
-    ],
+    meta: [{ title: "دسترسی مجاز نیست | رستا" }, { name: "robots", content: "noindex,nofollow" }],
     links: [{ rel: "canonical", href: absoluteUrl("/forbidden") }],
   }),
   component: ForbiddenPage,

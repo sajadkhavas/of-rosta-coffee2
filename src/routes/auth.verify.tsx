@@ -94,7 +94,10 @@ function VerifyOtpPage() {
 
   if (!hydrated) {
     return (
-      <div className="rounded-3xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-8 text-center" role="status">
+      <div
+        className="rounded-3xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-8 text-center"
+        role="status"
+      >
         <div className="mx-auto size-8 animate-spin rounded-full border-2 border-[color:var(--roast)] border-t-transparent" />
         <p className="mt-4 text-sm text-[color:var(--light)]">در حال آماده‌سازی تأیید…</p>
       </div>
@@ -127,13 +130,15 @@ function VerifyOtpPage() {
       <p className="text-xs font-bold tracking-[0.2em] text-[color:var(--roast)]">OTP VERIFY</p>
       <h1 className="mt-2 text-2xl font-bold">تأیید شماره موبایل</h1>
       <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">
-        کد ارسال‌شده به <span dir="ltr" className="font-mono text-[color:var(--steam)]">{flow.mobile}</span> را وارد کنید.
+        کد ارسال‌شده به{" "}
+        <span dir="ltr" className="font-mono text-[color:var(--steam)]">
+          {flow.mobile}
+        </span>{" "}
+        را وارد کنید.
       </p>
 
       <form onSubmit={submit} className="mt-6 grid gap-5" noValidate>
-        <FormSummary
-          errors={codeError ? [{ fieldId: "otp-code", message: codeError }] : []}
-        />
+        <FormSummary errors={codeError ? [{ fieldId: "otp-code", message: codeError }] : []} />
         {verifyMutation.isError ? (
           <Alert variant="danger" title="تأیید کد انجام نشد">
             {isApiError(verifyMutation.error)
@@ -172,9 +177,7 @@ function VerifyOtpPage() {
           <button
             type="button"
             disabled={resendIn > 0 || resendMutation.isPending}
-            onClick={() =>
-              resendMutation.mutate({ mobile: flow.mobile, purpose: flow.purpose })
-            }
+            onClick={() => resendMutation.mutate({ mobile: flow.mobile, purpose: flow.purpose })}
             className="font-bold text-[color:var(--roast)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {resendMutation.isPending

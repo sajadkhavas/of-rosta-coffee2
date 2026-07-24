@@ -22,11 +22,7 @@ import { CartProvider } from "../lib/cart-context";
 import { queryKeys } from "../lib/api/query-keys";
 import { ToastProvider } from "../components/system";
 import { absoluteUrl, siteConfig } from "../config/site";
-import {
-  getBrowserPerformanceTier,
-  scheduleIdleTask,
-  startWebVitals,
-} from "../lib/performance";
+import { getBrowserPerformanceTier, scheduleIdleTask, startWebVitals } from "../lib/performance";
 
 const NOINDEX_PATHS = new Set([
   "/cart",
@@ -53,9 +49,7 @@ function routeShouldNoIndex(pathname: string): boolean {
   return (
     !siteConfig.allowIndexing ||
     NOINDEX_PATHS.has(pathname) ||
-    NOINDEX_PREFIXES.some(
-      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-    )
+    NOINDEX_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
   );
 }
 
@@ -70,9 +64,7 @@ function NotFoundComponent() {
   return (
     <main className="grid min-h-screen place-items-center px-4">
       <section className="max-w-md text-center">
-        <p className="font-mono text-7xl font-bold text-[color:var(--roast)]">
-          ۴۰۴
-        </p>
+        <p className="font-mono text-7xl font-bold text-[color:var(--roast)]">۴۰۴</p>
         <h1 className="mt-4 text-2xl font-bold">صفحه پیدا نشد</h1>
         <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">
           صفحه‌ای که به دنبال آن هستید وجود ندارد یا جابه‌جا شده است.
@@ -96,13 +88,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({
-  error,
-  reset,
-}: {
-  error: Error;
-  reset: () => void;
-}) {
+function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
@@ -175,9 +161,7 @@ export const Route = createRootRouteWithContext<{
           content: "black-translucent",
         },
         { name: "apple-mobile-web-app-title", content: siteConfig.name },
-        ...(noIndex
-          ? [{ name: "robots", content: "noindex,follow" }]
-          : []),
+        ...(noIndex ? [{ name: "robots", content: "noindex,follow" }] : []),
       ],
       links: [
         { rel: "stylesheet", href: appCss },
@@ -259,8 +243,7 @@ function RootComponent() {
     };
 
     window.addEventListener("rosta:session-expired", handleSessionExpired);
-    return () =>
-      window.removeEventListener("rosta:session-expired", handleSessionExpired);
+    return () => window.removeEventListener("rosta:session-expired", handleSessionExpired);
   }, [queryClient, router]);
 
   useEffect(() => startWebVitals(), []);

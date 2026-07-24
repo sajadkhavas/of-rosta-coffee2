@@ -144,11 +144,7 @@ function itemsPayload(items: CartApiItem[]) {
     if (!variantId || uniqueVariants.has(variantId)) {
       throw new Error("Variant تکراری یا نامعتبر در سبد وجود دارد.");
     }
-    if (
-      !Number.isInteger(item.quantity) ||
-      item.quantity < 1 ||
-      item.quantity > 20
-    ) {
+    if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 20) {
       throw new Error("تعداد هر Variant باید بین ۱ تا ۲۰ باشد.");
     }
     uniqueVariants.add(variantId);
@@ -169,9 +165,7 @@ export function createIdempotencyKey(scope: string): string {
   }
   if (cryptoApi?.getRandomValues) {
     const bytes = cryptoApi.getRandomValues(new Uint8Array(24));
-    const entropy = Array.from(bytes, (byte) =>
-      byte.toString(16).padStart(2, "0"),
-    ).join("");
+    const entropy = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
     return `rosta-${normalizedScope}-${entropy}`;
   }
   throw new Error("مرورگر امکان تولید کلید امن را ندارد.");
@@ -263,11 +257,7 @@ export async function requestPayment(input: {
     method: "POST",
     body: { order_id: orderId, idempotency_key: idempotencyKey },
   });
-  const response = parseContract(
-    resourceSchema(paymentRequestWireSchema),
-    raw,
-    "شروع پرداخت",
-  );
+  const response = parseContract(resourceSchema(paymentRequestWireSchema), raw, "شروع پرداخت");
   return {
     paymentId: response.data.payment_id,
     redirectUrl: assertApprovedPaymentRedirect(response.data.redirect_url),
@@ -276,22 +266,15 @@ export async function requestPayment(input: {
 
 export async function verifyPayment(
   paymentId: string,
-  expectation: PaymentExpectationShape | null = readPaymentExpectation(
-    paymentId,
-  ),
+  expectation: PaymentExpectationShape | null = readPaymentExpectation(paymentId),
 ): Promise<VerifiedPaymentResult> {
   const normalizedPaymentId = paymentId.trim();
   if (!normalizedPaymentId) throw new Error("شناسه پرداخت معتبر نیست.");
 
-  const raw = await apiFetch(
-    `/payments/${encodeURIComponent(normalizedPaymentId)}/verify`,
-    { method: "POST" },
-  );
-  const response = parseContract(
-    resourceSchema(verifiedPaymentWireSchema),
-    raw,
-    "تأیید پرداخت",
-  );
+  const raw = await apiFetch(`/payments/${encodeURIComponent(normalizedPaymentId)}/verify`, {
+    method: "POST",
+  });
+  const response = parseContract(resourceSchema(verifiedPaymentWireSchema), raw, "تأیید پرداخت");
   const result: VerifiedPaymentResult = {
     paymentId: response.data.payment_id,
     status: response.data.status,
@@ -305,13 +288,8 @@ export async function verifyPayment(
   if (result.paymentId !== normalizedPaymentId) {
     throw new Error("پاسخ Verify متعلق به Payment مورد انتظار نیست.");
   }
-  if (
-    result.status === "paid" &&
-    !isConsistentVerifiedPaid(result, expectation)
-  ) {
-    throw new Error(
-      "پاسخ پرداخت با سفارش، مبلغ یا Intent این مرورگر سازگار نیست.",
-    );
+  if (result.status === "paid" && !isConsistentVerifiedPaid(result, expectation)) {
+    throw new Error("پاسخ پرداخت با سفارش، مبلغ یا Intent این مرورگر سازگار نیست.");
   }
 
   return result;

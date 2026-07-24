@@ -39,8 +39,7 @@ for (const [key, path] of Object.entries(paths)) {
 
 const packageJson = files.package ? JSON.parse(files.package) : {};
 const gates = [];
-const gate = (name, passed, evidence) =>
-  gates.push({ name, passed: Boolean(passed), evidence });
+const gate = (name, passed, evidence) => gates.push({ name, passed: Boolean(passed), evidence });
 const hasAll = (source, tokens) =>
   typeof source === "string" && tokens.every((token) => source.includes(token));
 
@@ -56,8 +55,7 @@ gate(
 
 gate(
   "permanent_phase22_gate",
-  packageJson.scripts?.["audit:phase22"] ===
-    "node scripts/audit-phase22-staging.mjs" &&
+  packageJson.scripts?.["audit:phase22"] === "node scripts/audit-phase22-staging.mjs" &&
     packageJson.scripts?.check?.includes("audit:phase22"),
   "Phase 22 audit must stay in the default frontend check chain.",
 );
@@ -78,13 +76,7 @@ gate(
 
 gate(
   "docker_context_excludes_secrets",
-  hasAll(files.dockerignore, [
-    ".env",
-    ".env.*",
-    "backend/.env",
-    ".staging-state",
-    ".git",
-  ]),
+  hasAll(files.dockerignore, [".env", ".env.*", "backend/.env", ".staging-state", ".git"]),
   "Docker build context must exclude host secrets, state, VCS metadata and generated dependencies.",
 );
 
@@ -232,9 +224,7 @@ gate(
 
 gate(
   "whole_bean_boundary_preserved",
-  !/grind[_-]?(selector|state)|grind_option/i.test(
-    Object.values(files).join("\n"),
-  ),
+  !/grind[_-]?(selector|state)|grind_option/i.test(Object.values(files).join("\n")),
   "Staging infrastructure must not introduce a grind selector, option or state.",
 );
 
@@ -245,10 +235,7 @@ const report = {
   passed: failed.length === 0,
   gates,
 };
-await writeFile(
-  "frontend-phase22-audit.json",
-  `${JSON.stringify(report, null, 2)}\n`,
-);
+await writeFile("frontend-phase22-audit.json", `${JSON.stringify(report, null, 2)}\n`);
 
 if (failed.length > 0) {
   console.error("Phase 22 staging audit failed:");

@@ -74,31 +74,21 @@ function ensureNativeCursorFallback(): void {
   document.head.appendChild(style);
 }
 
-export function classifyPerformanceTier(
-  signals: PerformanceSignals,
-): PerformanceTier {
+export function classifyPerformanceTier(signals: PerformanceSignals): PerformanceTier {
   const effectiveType = signals.effectiveType?.toLowerCase();
-  const constrainedConnection =
-    effectiveType === "slow-2g" || effectiveType === "2g";
+  const constrainedConnection = effectiveType === "slow-2g" || effectiveType === "2g";
   const constrainedDevice =
     (typeof signals.deviceMemory === "number" && signals.deviceMemory <= 2) ||
-    (typeof signals.hardwareConcurrency === "number" &&
-      signals.hardwareConcurrency <= 2);
+    (typeof signals.hardwareConcurrency === "number" && signals.hardwareConcurrency <= 2);
 
-  if (
-    signals.reducedMotion ||
-    signals.saveData ||
-    constrainedConnection ||
-    constrainedDevice
-  ) {
+  if (signals.reducedMotion || signals.saveData || constrainedConnection || constrainedDevice) {
     return "minimal";
   }
 
   const moderateConnection = effectiveType === "3g";
   const moderateDevice =
     (typeof signals.deviceMemory === "number" && signals.deviceMemory <= 4) ||
-    (typeof signals.hardwareConcurrency === "number" &&
-      signals.hardwareConcurrency <= 4);
+    (typeof signals.hardwareConcurrency === "number" && signals.hardwareConcurrency <= 4);
 
   if (moderateConnection || moderateDevice || !signals.pointerFine) {
     return "balanced";
@@ -116,35 +106,24 @@ export function getBrowserPerformanceTier(): PerformanceTier {
 
   const browserNavigator = navigator as NavigatorWithPerformanceHints;
   return classifyPerformanceTier({
-    reducedMotion: window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches,
+    reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     saveData: browserNavigator.connection?.saveData === true,
     effectiveType: browserNavigator.connection?.effectiveType,
     deviceMemory: browserNavigator.deviceMemory,
     hardwareConcurrency: browserNavigator.hardwareConcurrency,
-    pointerFine: window.matchMedia("(hover: hover) and (pointer: fine)")
-      .matches,
+    pointerFine: window.matchMedia("(hover: hover) and (pointer: fine)").matches,
   });
 }
 
-export function shouldEnableEnhancedMotion(
-  tier = getBrowserPerformanceTier(),
-): boolean {
+export function shouldEnableEnhancedMotion(tier = getBrowserPerformanceTier()): boolean {
   return tier === "full";
 }
 
-export function scheduleIdleTask(
-  task: () => void,
-  timeout = 1200,
-): () => void {
+export function scheduleIdleTask(task: () => void, timeout = 1200): () => void {
   if (typeof window === "undefined") return () => undefined;
 
   const idleWindow = window as Window & {
-    requestIdleCallback?: (
-      callback: IdleRequestCallback,
-      options?: IdleRequestOptions,
-    ) => number;
+    requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
     cancelIdleCallback?: (handle: number) => void;
   };
 
@@ -157,48 +136,32 @@ export function scheduleIdleTask(
   return () => window.clearTimeout(handle);
 }
 
-export function rateWebVital(
-  name: WebVitalName,
-  value: number,
-): WebVitalRating {
+export function rateWebVital(name: WebVitalName, value: number): WebVitalRating {
   const [good, poor] = THRESHOLDS[name];
   if (value <= good) return "good";
   if (value <= poor) return "needs-improvement";
   return "poor";
 }
 
-function createMetric(
-  name: WebVitalName,
-  value: number,
-  previousValue = 0,
-): WebVitalMetric {
+function createMetric(name: WebVitalName, value: number, previousValue = 0): WebVitalMetric {
   return {
     name,
     value,
     delta: Math.max(0, value - previousValue),
     rating: rateWebVital(name, value),
-    id: `rosta-${name.toLowerCase()}-${Date.now()}-${Math.random()
-      .toString(36)
-      .slice(2, 9)}`,
+    id: `rosta-${name.toLowerCase()}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     path: typeof window === "undefined" ? "/" : window.location.pathname,
   };
 }
 
-function publishMetric(
-  metric: WebVitalMetric,
-  onMetric?: (metric: WebVitalMetric) => void,
-) {
+function publishMetric(metric: WebVitalMetric, onMetric?: (metric: WebVitalMetric) => void) {
   onMetric?.(metric);
 
   if (typeof window !== "undefined") {
-    window.dispatchEvent(
-      new CustomEvent<WebVitalMetric>("rosta:web-vital", { detail: metric }),
-    );
+    window.dispatchEvent(new CustomEvent<WebVitalMetric>("rosta:web-vital", { detail: metric }));
   }
 
-  const endpoint = import.meta.env.VITE_PERFORMANCE_ENDPOINT as
-    | string
-    | undefined;
+  const endpoint = import.meta.env.VITE_PERFORMANCE_ENDPOINT as string | undefined;
   if (!endpoint || typeof navigator === "undefined") return;
 
   try {
@@ -257,9 +220,9 @@ export function startWebVitals(options?: {
     publishMetric(createMetric(name, value, previousValue), options?.onMetric);
   };
 
-  const navigation = performance.getEntriesByType(
-    "navigation",
-  )[0] as PerformanceNavigationTiming | undefined;
+  const navigation = performance.getEntriesByType("navigation")[0] as
+    | PerformanceNavigationTiming
+    | undefined;
   if (navigation?.responseStart) publish("TTFB", navigation.responseStart);
 
   const paintObserver = observe("paint", (list) => {

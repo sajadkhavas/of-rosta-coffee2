@@ -53,9 +53,7 @@ const assets = await Promise.all(
 assets.sort((a, b) => b.bytes - a.bytes);
 const javascriptAssets = assets.filter((asset) => [".js", ".mjs"].includes(extname(asset.file)));
 const oversized = javascriptAssets.filter(
-  (asset) =>
-    asset.bytes > MAX_CLIENT_CHUNK_BYTES ||
-    asset.gzipBytes > MAX_CLIENT_CHUNK_GZIP_BYTES,
+  (asset) => asset.bytes > MAX_CLIENT_CHUNK_BYTES || asset.gzipBytes > MAX_CLIENT_CHUNK_GZIP_BYTES,
 );
 const totals = assets.reduce(
   (result, asset) => ({

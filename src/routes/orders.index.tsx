@@ -10,11 +10,7 @@ import { Alert, Button, EmptyState, Skeleton } from "@/components/system";
 import { ordersQueryOptions } from "@/lib/api/orders";
 import { isApiError } from "@/lib/api/client";
 import type { OrderStatus } from "@/lib/api/contracts";
-import {
-  formatAccountDate,
-  orderStatusLabels,
-  statusBadgeClass,
-} from "@/lib/account-format";
+import { formatAccountDate, orderStatusLabels, statusBadgeClass } from "@/lib/account-format";
 import { formatIrr } from "@/lib/catalog-format";
 import { absoluteUrl } from "@/config/site";
 
@@ -92,7 +88,11 @@ function OrdersContent() {
         </p>
       </header>
 
-      <div className="mt-6 flex gap-2 overflow-x-auto border-b border-[color:var(--mid)]" role="tablist" aria-label="فیلتر وضعیت سفارش">
+      <div
+        className="mt-6 flex gap-2 overflow-x-auto border-b border-[color:var(--mid)]"
+        role="tablist"
+        aria-label="فیلتر وضعیت سفارش"
+      >
         {tabs.map((tab) => (
           <button
             key={tab.value}
@@ -120,9 +120,7 @@ function OrdersContent() {
       ) : query.isError ? (
         <section className="mt-7">
           <Alert variant="danger" title="سفارش‌ها دریافت نشدند">
-            {isApiError(query.error)
-              ? query.error.message
-              : "ارتباط با سرویس سفارش‌ها برقرار نشد."}
+            {isApiError(query.error) ? query.error.message : "ارتباط با سرویس سفارش‌ها برقرار نشد."}
           </Alert>
           <Button className="mt-4" variant="outline" onClick={() => query.refetch()}>
             تلاش مجدد
@@ -179,7 +177,8 @@ function OrdersContent() {
                   </p>
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--mid)] pt-4 text-xs">
                     <span className="text-[color:var(--light)]">
-                      {itemCount.toLocaleString("fa-IR")} قلم · {order.subOrders.length.toLocaleString("fa-IR")} زیرسفارش
+                      {itemCount.toLocaleString("fa-IR")} قلم ·{" "}
+                      {order.subOrders.length.toLocaleString("fa-IR")} زیرسفارش
                     </span>
                     <span className="font-mono font-bold text-[color:var(--roast)]">
                       {formatIrr(order.grandTotal)}
@@ -193,7 +192,10 @@ function OrdersContent() {
       )}
 
       {lastPage > 1 ? (
-        <nav aria-label="صفحه‌بندی سفارش‌ها" className="mt-8 flex items-center justify-center gap-3">
+        <nav
+          aria-label="صفحه‌بندی سفارش‌ها"
+          className="mt-8 flex items-center justify-center gap-3"
+        >
           <button
             type="button"
             disabled={currentPage <= 1}

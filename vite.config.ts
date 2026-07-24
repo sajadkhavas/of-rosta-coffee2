@@ -22,7 +22,7 @@ export default defineConfig({
         output: {
           manualChunks(id) {
             if (!id.includes("node_modules")) return undefined;
-            if (id.includes("/gsap/") || id.includes("/@studio-freight/lenis/")) {
+            if (id.includes("/gsap/") || id.includes("/lenis/")) {
               return "motion";
             }
             if (id.includes("/three/")) return "three";

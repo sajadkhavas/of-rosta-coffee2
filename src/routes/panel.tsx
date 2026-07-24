@@ -7,10 +7,7 @@ import { SellerOperationsDashboard } from "@/components/seller/SellerOperationsD
 
 export const Route = createFileRoute("/panel")({
   head: () => ({
-    meta: [
-      { title: "پنل عملیات روستری | رستا" },
-      { name: "robots", content: "noindex,nofollow" },
-    ],
+    meta: [{ title: "پنل عملیات روستری | رستا" }, { name: "robots", content: "noindex,nofollow" }],
   }),
   component: SellerPanelPage,
 });
@@ -21,12 +18,7 @@ function SellerPanelPage() {
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 py-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Breadcrumb
-            items={[
-              { label: "خانه", to: "/" },
-              { label: "پنل روستری" },
-            ]}
-          />
+          <Breadcrumb items={[{ label: "خانه", to: "/" }, { label: "پنل روستری" }]} />
           <Link
             to="/panel/manage"
             className="inline-flex min-h-11 items-center rounded-xl border border-[color:var(--roast)] px-4 text-sm font-bold text-[color:var(--roast)] transition hover:bg-[color:var(--roast)] hover:text-[color:var(--night)]"
@@ -34,9 +26,7 @@ function SellerPanelPage() {
             ویرایش اطلاعات و کاتالوگ
           </Link>
         </div>
-        <AccountGuard>
-          {(user) => <SellerOperationsDashboard user={user} />}
-        </AccountGuard>
+        <AccountGuard>{(user) => <SellerOperationsDashboard user={user} />}</AccountGuard>
       </main>
       <Footer />
     </>

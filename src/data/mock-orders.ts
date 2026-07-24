@@ -1,10 +1,5 @@
 // TODO: replace with real API call when backend ready.
-export type OrderStatus =
-  | "pending"
-  | "confirmed"
-  | "roasting"
-  | "shipped"
-  | "delivered";
+export type OrderStatus = "pending" | "confirmed" | "roasting" | "shipped" | "delivered";
 
 export interface MockOrderItem {
   productName: string;
@@ -51,9 +46,7 @@ export const mockOrders: MockOrder[] = [
   {
     id: "10219",
     roasteryName: "اسکارو",
-    items: [
-      { productName: "بلند اسپرسو اسکارو", weight: 500, qty: 1, price: 820000 },
-    ],
+    items: [{ productName: "بلند اسپرسو اسکارو", weight: 500, qty: 1, price: 820000 }],
     total: 820000,
     status: "roasting",
     createdAt: "۱۴۰۴/۰۹/۱۸",
@@ -62,9 +55,7 @@ export const mockOrders: MockOrder[] = [
   {
     id: "10204",
     roasteryName: "هوفر کافی",
-    items: [
-      { productName: "سیدامو اتیوپی", weight: 250, qty: 1, price: 640000 },
-    ],
+    items: [{ productName: "سیدامو اتیوپی", weight: 250, qty: 1, price: 640000 }],
     total: 640000,
     status: "confirmed",
     createdAt: "۱۴۰۴/۰۹/۱۹",

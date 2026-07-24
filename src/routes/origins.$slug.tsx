@@ -5,9 +5,7 @@ import { contentSeoHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/origins/$slug")({
   loader: ({ params, context }) =>
-    context.queryClient.ensureQueryData(
-      contentPathQueryOptions(`/origins/${params.slug}`),
-    ),
+    context.queryClient.ensureQueryData(contentPathQueryOptions(`/origins/${params.slug}`)),
   head: ({ loaderData }) => (loaderData ? contentSeoHead(loaderData) : {}),
   component: OriginContentPage,
 });

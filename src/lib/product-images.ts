@@ -37,9 +37,7 @@ export function productImage(slug: string, w = 800): string {
 
 export function productThumbnails(slug: string, w = 200): string[] {
   const base = hashSlug(slug);
-  return [1, 2, 3].map((k) =>
-    unsplash(PRODUCT_PHOTOS[(base + k) % PRODUCT_PHOTOS.length], w),
-  );
+  return [1, 2, 3].map((k) => unsplash(PRODUCT_PHOTOS[(base + k) % PRODUCT_PHOTOS.length], w));
 }
 
 export function roasteryImage(_slug: string, w = 800): string {

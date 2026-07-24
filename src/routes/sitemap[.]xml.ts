@@ -72,7 +72,10 @@ async function structuredContentEntries(): Promise<SitemapEntry[]> {
       ...result.items.map((item) => ({
         path: item.path,
         priority: item.type === "landing" || item.type === "collection" ? "0.8" : "0.7",
-        changefreq: item.type === "landing" || item.type === "collection" ? "weekly" as const : "monthly" as const,
+        changefreq:
+          item.type === "landing" || item.type === "collection"
+            ? ("weekly" as const)
+            : ("monthly" as const),
         lastmod: item.last_modified_at ?? null,
       })),
     );
@@ -91,9 +94,7 @@ async function dynamicEntries(): Promise<SitemapEntry[]> {
     structuredContentEntries(),
   ]);
 
-  return results.flatMap((result) =>
-    result.status === "fulfilled" ? result.value : [],
-  );
+  return results.flatMap((result) => (result.status === "fulfilled" ? result.value : []));
 }
 
 export const Route = createFileRoute("/sitemap.xml")({
@@ -111,10 +112,7 @@ export const Route = createFileRoute("/sitemap.xml")({
           { path: "/privacy", priority: "0.3", changefreq: "monthly" },
         ];
 
-        const entries = [
-          ...staticEntries,
-          ...(await dynamicEntries()),
-        ];
+        const entries = [...staticEntries, ...(await dynamicEntries())];
         const uniqueEntries = Array.from(
           new Map(entries.map((entry) => [entry.path, entry])).values(),
         );
@@ -122,9 +120,10 @@ export const Route = createFileRoute("/sitemap.xml")({
         const urls = uniqueEntries
           .map((entry) => {
             const timestamp = entry.lastmod ? new Date(entry.lastmod) : null;
-            const lastmod = timestamp && Number.isFinite(timestamp.getTime())
-              ? `<lastmod>${xmlEscape(timestamp.toISOString())}</lastmod>`
-              : "";
+            const lastmod =
+              timestamp && Number.isFinite(timestamp.getTime())
+                ? `<lastmod>${xmlEscape(timestamp.toISOString())}</lastmod>`
+                : "";
             return `  <url><loc>${xmlEscape(absoluteUrl(entry.path))}</loc>${lastmod}<changefreq>${entry.changefreq}</changefreq><priority>${entry.priority}</priority></url>`;
           })
           .join("\n");

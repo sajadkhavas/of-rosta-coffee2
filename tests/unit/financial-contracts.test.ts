@@ -136,12 +136,8 @@ function orderFixture() {
 
 describe("authoritative financial contracts", () => {
   test("accepts internally consistent single-roastery quote and order", () => {
-    expect(authoritativeQuoteWireSchema.parse(quoteFixture()).id).toBe(
-      "quote-1",
-    );
-    expect(authoritativeOrderDetailWireSchema.parse(orderFixture()).id).toBe(
-      "order-1",
-    );
+    expect(authoritativeQuoteWireSchema.parse(quoteFixture()).id).toBe("quote-1");
+    expect(authoritativeOrderDetailWireSchema.parse(orderFixture()).id).toBe("order-1");
   });
 
   test("rejects a quote whose line total or shipping does not reconcile", () => {
@@ -157,14 +153,10 @@ describe("authoritative financial contracts", () => {
   test("rejects an order with invalid whole-bean weight or inconsistent snapshot totals", () => {
     const invalidWeight = orderFixture();
     invalidWeight.sub_orders[0].items[0].variant.weight_grams = 333;
-    expect(() =>
-      authoritativeOrderDetailWireSchema.parse(invalidWeight),
-    ).toThrow();
+    expect(() => authoritativeOrderDetailWireSchema.parse(invalidWeight)).toThrow();
 
     const invalidSubtotal = orderFixture();
     invalidSubtotal.sub_orders[0].subtotal += 1;
-    expect(() =>
-      authoritativeOrderDetailWireSchema.parse(invalidSubtotal),
-    ).toThrow();
+    expect(() => authoritativeOrderDetailWireSchema.parse(invalidSubtotal)).toThrow();
   });
 });

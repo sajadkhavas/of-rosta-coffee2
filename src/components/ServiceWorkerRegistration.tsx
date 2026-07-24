@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-type BrowserServiceWorkerRegistration = Awaited<
-  ReturnType<ServiceWorkerContainer["register"]>
->;
+type BrowserServiceWorkerRegistration = Awaited<ReturnType<ServiceWorkerContainer["register"]>>;
 
 const UPDATE_INTERVAL_MS = 60 * 60 * 1000;
 
@@ -32,11 +30,7 @@ export function ServiceWorkerRegistration() {
     let interval: number | undefined;
 
     const revealWaitingWorker = () => {
-      if (
-        !cancelled &&
-        registration?.waiting &&
-        navigator.serviceWorker.controller
-      ) {
+      if (!cancelled && registration?.waiting && navigator.serviceWorker.controller) {
         setDismissed(false);
         setWaitingWorker(registration.waiting);
       }
@@ -90,11 +84,9 @@ export function ServiceWorkerRegistration() {
   const activateUpdate = () => {
     if (!waitingWorker || reloadRequested.current) return;
     reloadRequested.current = true;
-    navigator.serviceWorker.addEventListener(
-      "controllerchange",
-      () => window.location.reload(),
-      { once: true },
-    );
+    navigator.serviceWorker.addEventListener("controllerchange", () => window.location.reload(), {
+      once: true,
+    });
     waitingWorker.postMessage({ type: "ROSTA_SKIP_WAITING" });
   };
 

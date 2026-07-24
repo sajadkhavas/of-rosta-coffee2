@@ -5,9 +5,7 @@ import { contentSeoHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/brew/$slug")({
   loader: ({ params, context }) =>
-    context.queryClient.ensureQueryData(
-      contentPathQueryOptions(`/brew/${params.slug}`),
-    ),
+    context.queryClient.ensureQueryData(contentPathQueryOptions(`/brew/${params.slug}`)),
   head: ({ loaderData }) => (loaderData ? contentSeoHead(loaderData) : {}),
   component: BrewContentPage,
 });

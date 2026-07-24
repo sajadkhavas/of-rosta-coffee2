@@ -1,51 +1,45 @@
 import { z } from "zod";
 import type { MediaAsset } from "./contracts";
 
-const CONTROL_OR_BACKSLASH = /[\\\u0000-\u001f\u007f]/;
+function hasControlOrBackslash(value: string): boolean {
+  for (const character of value) {
+    const code = character.charCodeAt(0);
+    if (character === "\\" || code <= 0x1f || code === 0x7f) return true;
+  }
+  return false;
+}
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 function isSafeAssetUrl(value: string): boolean {
-  if (CONTROL_OR_BACKSLASH.test(value) || value.startsWith("//")) return false;
+  if (hasControlOrBackslash(value) || value.startsWith("//")) return false;
   if (value.startsWith("/")) return true;
 
   try {
     const url = new URL(value);
-    return (
-      url.protocol === "https:" ||
-      (url.protocol === "http:" && LOCAL_HOSTS.has(url.hostname))
-    );
+    return url.protocol === "https:" || (url.protocol === "http:" && LOCAL_HOSTS.has(url.hostname));
   } catch {
     return false;
   }
 }
 
 const boundedText = (max = 500) => z.string().trim().min(1).max(max);
-const nullableText = (max = 500) =>
-  z.string().trim().max(max).nullable().optional();
+const nullableText = (max = 500) => z.string().trim().max(max).nullable().optional();
 const identifierSchema = boundedText(200).refine(
-  (value) => !CONTROL_OR_BACKSLASH.test(value),
+  (value) => !hasControlOrBackslash(value),
   "شناسه نامعتبر است.",
 );
 const slugSchema = boundedText(180).refine(
   (value) =>
-    !CONTROL_OR_BACKSLASH.test(value) &&
-    !value.includes("/") &&
-    value !== "." &&
-    value !== "..",
+    !hasControlOrBackslash(value) && !value.includes("/") && value !== "." && value !== "..",
   "Slug نامعتبر است.",
 );
 const isoDateTimeSchema = z
   .string()
-  .refine(
-    (value) => Number.isFinite(Date.parse(value)),
-    "زمان ISO نامعتبر است.",
-  );
+  .refine((value) => Number.isFinite(Date.parse(value)), "زمان ISO نامعتبر است.");
 const moneySchema = z.number().int().nonnegative().safe();
 const currencySchema = z.literal("IRR");
 const mobileSchema = z.string().regex(/^09\d{9}$/);
-const safeHttpUrlSchema = z
-  .string()
-  .refine(isSafeAssetUrl, "URL رسانه ناامن است.");
+const safeHttpUrlSchema = z.string().refine(isSafeAssetUrl, "URL رسانه ناامن است.");
 
 export class ApiContractError extends Error {
   readonly context: string;
@@ -61,11 +55,7 @@ export class ApiContractError extends Error {
   }
 }
 
-export function parseContract<T>(
-  schema: z.ZodType<T>,
-  value: unknown,
-  context: string,
-): T {
+export function parseContract<T>(schema: z.ZodType<T>, value: unknown, context: string): T {
   const result = schema.safeParse(value);
   if (!result.success) throw new ApiContractError(context, result.error);
   return result.data;
@@ -196,10 +186,7 @@ export const roasterySummaryWireSchema = z
         max_hours: z.number().int().nonnegative().max(720),
       })
       .strict()
-      .refine(
-        (value) => value.max_hours >= value.min_hours,
-        "بازه آماده‌سازی نامعتبر است.",
-      )
+      .refine((value) => value.max_hours >= value.min_hours, "بازه آماده‌سازی نامعتبر است.")
       .nullable()
       .optional(),
     rating: z
@@ -233,13 +220,7 @@ export const productVariantWireSchema = z
     compare_at_price: moneySchema.nullable().optional(),
     currency: currencySchema,
     is_available: z.boolean(),
-    available_quantity: z
-      .number()
-      .int()
-      .nonnegative()
-      .max(1_000_000)
-      .nullable()
-      .optional(),
+    available_quantity: z.number().int().nonnegative().max(1_000_000).nullable().optional(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -306,15 +287,10 @@ export const productDetailWireSchema = z
     description: z.string().trim().max(50_000),
     gallery: z.array(z.unknown()).max(30),
     brewing_suggestions: z.array(boundedText(500)).max(30),
-    seo: z
-      .object({ title: nullableText(180), description: nullableText(500) })
-      .strict(),
+    seo: z.object({ title: nullableText(180), description: nullableText(500) }).strict(),
   })
   .strict()
-  .refine(
-    (value) => value.status === "published",
-    "محصول عمومی باید published باشد.",
-  );
+  .refine((value) => value.status === "published", "محصول عمومی باید published باشد.");
 
 export const searchResultWireSchema = z
   .object({
@@ -334,8 +310,7 @@ export const cartLineWireSchema = z
   })
   .strict()
   .refine(
-    (value) =>
-      value.product.variants.some((variant) => variant.id === value.variant.id),
+    (value) => value.product.variants.some((variant) => variant.id === value.variant.id),
     "Variant داخل محصول Quote وجود ندارد.",
   );
 
@@ -386,17 +361,14 @@ export const quoteWireSchema = z
         message: "روستری Quote ناسازگار است.",
       });
     }
-    if (
-      group.items.some((item) => item.product.roastery.id !== groupRoasteryId)
-    ) {
+    if (group.items.some((item) => item.product.roastery.id !== groupRoasteryId)) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["groups"],
         message: "Quote شامل چند روستری است.",
       });
     }
-    const expectedGrandTotal =
-      value.subtotal + value.shipping_total - value.discount_total;
+    const expectedGrandTotal = value.subtotal + value.shipping_total - value.discount_total;
     if (expectedGrandTotal !== value.grand_total) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
@@ -508,9 +480,7 @@ export const orderDetailWireSchema = z
   })
   .strict()
   .refine(
-    (value) =>
-      value.subtotal + value.shipping_total - value.discount_total ===
-      value.grand_total,
+    (value) => value.subtotal + value.shipping_total - value.discount_total === value.grand_total,
     "جمع سفارش ناسازگار است.",
   );
 
@@ -530,9 +500,7 @@ export const createdOrderWireSchema = z
   })
   .strict()
   .refine(
-    (value) =>
-      value.subtotal + value.shipping_total - value.discount_total ===
-      value.grand_total,
+    (value) => value.subtotal + value.shipping_total - value.discount_total === value.grand_total,
     "جمع سفارش ایجادشده ناسازگار است.",
   );
 

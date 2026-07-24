@@ -19,11 +19,7 @@ function shouldRetryQuery(failureCount: number, error: unknown): boolean {
     return true;
   }
 
-  return (
-    candidate.status === 408 ||
-    candidate.status === 429 ||
-    candidate.status >= 500
-  );
+  return candidate.status === 408 || candidate.status === 429 || candidate.status >= 500;
 }
 
 export const getRouter = () => {

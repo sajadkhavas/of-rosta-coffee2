@@ -5,16 +5,9 @@ import { Breadcrumb, breadcrumbJsonLd } from "@/components/Breadcrumb";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import { absoluteUrl } from "@/config/site";
-import {
-  createInquiry,
-  type InquiryReceipt,
-  type InquiryType,
-} from "@/lib/api/inquiries";
+import { createInquiry, type InquiryReceipt, type InquiryType } from "@/lib/api/inquiries";
 
-const CRUMBS = [
-  { label: "خانه", to: "/" },
-  { label: "تماس با ما" },
-];
+const CRUMBS = [{ label: "خانه", to: "/" }, { label: "تماس با ما" }];
 
 const contactJsonLd = {
   "@context": "https://schema.org",
@@ -88,10 +81,7 @@ function InfoCard({
       </div>
       <div>
         <div className="text-xs text-[color:var(--light)]">{label}</div>
-        <div
-          className="mt-1 text-sm font-medium text-[color:var(--steam)]"
-          dir="ltr"
-        >
+        <div className="mt-1 text-sm font-medium text-[color:var(--steam)]" dir="ltr">
           {value}
         </div>
       </div>
@@ -141,9 +131,7 @@ function ContactPage() {
       setOrderNumber("");
     } catch (caught) {
       setError(
-        caught instanceof Error
-          ? caught.message
-          : "ثبت درخواست انجام نشد. دوباره تلاش کنید.",
+        caught instanceof Error ? caught.message : "ثبت درخواست انجام نشد. دوباره تلاش کنید.",
       );
     } finally {
       setSubmitting(false);
@@ -155,12 +143,10 @@ function ContactPage() {
       <Navbar />
       <main className="mx-auto max-w-2xl px-4 py-8">
         <Breadcrumb items={CRUMBS} />
-        <h1 className="text-3xl font-bold text-[color:var(--steam)]">
-          تماس با ما
-        </h1>
+        <h1 className="text-3xl font-bold text-[color:var(--steam)]">تماس با ما</h1>
         <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">
-          برای پرسش درباره سفارش، همکاری روستری یا گزارش مشکل، درخواست خود را
-          ثبت کنید. پس از ذخیره موفق، یک شناسه پیگیری دریافت می‌کنید.
+          برای پرسش درباره سفارش، همکاری روستری یا گزارش مشکل، درخواست خود را ثبت کنید. پس از ذخیره
+          موفق، یک شناسه پیگیری دریافت می‌کنید.
         </p>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -183,17 +169,13 @@ function ContactPage() {
         </div>
 
         <section className="mt-8 rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5 sm:p-7">
-          <h2 className="text-lg font-bold text-[color:var(--steam)]">
-            ثبت درخواست پشتیبانی
-          </h2>
+          <h2 className="text-lg font-bold text-[color:var(--steam)]">ثبت درخواست پشتیبانی</h2>
           <form className="mt-6 space-y-5" onSubmit={submit}>
             <label className="block text-sm text-[color:var(--light)]">
               موضوع درخواست
               <select
                 value={type}
-                onChange={(event) =>
-                  setType(event.target.value as InquiryType)
-                }
+                onChange={(event) => setType(event.target.value as InquiryType)}
                 className="mt-2 min-h-11 w-full rounded-lg border border-[color:var(--mid)] bg-[color:var(--night)] px-3 text-[color:var(--steam)]"
               >
                 {Object.entries(inquiryLabels).map(([value, label]) => (
@@ -268,7 +250,10 @@ function ContactPage() {
               />
             </label>
 
-            <div className="absolute -left-[10000px] top-auto h-px w-px overflow-hidden" aria-hidden="true">
+            <div
+              className="absolute -left-[10000px] top-auto h-px w-px overflow-hidden"
+              aria-hidden="true"
+            >
               <label>
                 وب‌سایت
                 <input
@@ -281,12 +266,18 @@ function ContactPage() {
             </div>
 
             {error ? (
-              <p role="alert" className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">
+              <p
+                role="alert"
+                className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200"
+              >
                 {error}
               </p>
             ) : null}
             {receipt ? (
-              <p role="status" className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-100">
+              <p
+                role="status"
+                className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-100"
+              >
                 درخواست ثبت شد. شناسه پیگیری: <b dir="ltr">{receipt.referenceId}</b>
               </p>
             ) : null}

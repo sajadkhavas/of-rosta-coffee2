@@ -37,9 +37,7 @@ const inquiryReceiptWireSchema = z
   })
   .strict();
 
-export async function createInquiry(
-  input: CreateInquiryInput,
-): Promise<InquiryReceipt> {
+export async function createInquiry(input: CreateInquiryInput): Promise<InquiryReceipt> {
   const name = input.name.trim();
   const mobile = input.mobile?.trim() || undefined;
   const email = input.email?.trim().toLowerCase() || undefined;

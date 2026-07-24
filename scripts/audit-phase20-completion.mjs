@@ -13,11 +13,14 @@ const paths = {
   adminController: "backend/app/Http/Controllers/Admin/AdminOperationsController.php",
 };
 const files = Object.fromEntries(
-  await Promise.all(Object.entries(paths).map(async ([key, path]) => [key, await readFile(path, "utf8")])),
+  await Promise.all(
+    Object.entries(paths).map(async ([key, path]) => [key, await readFile(path, "utf8")]),
+  ),
 );
 const packageJson = JSON.parse(files.package);
 const gates = [];
-const gate = (name, condition, evidence) => gates.push({ name, passed: Boolean(condition), evidence });
+const gate = (name, condition, evidence) =>
+  gates.push({ name, passed: Boolean(condition), evidence });
 
 gate(
   "permanent_phase20_completion_gate",
@@ -86,7 +89,10 @@ gate(
 );
 
 const failed = gates.filter((item) => !item.passed);
-await writeFile("frontend-phase20-audit.json", `${JSON.stringify({ generatedAt: new Date().toISOString(), marker: "phase20_workspaces=complete", passed: failed.length === 0, gates }, null, 2)}\n`);
+await writeFile(
+  "frontend-phase20-audit.json",
+  `${JSON.stringify({ generatedAt: new Date().toISOString(), marker: "phase20_workspaces=complete", passed: failed.length === 0, gates }, null, 2)}\n`,
+);
 if (failed.length) {
   console.error("Phase 20 completion audit failed:");
   failed.forEach((item) => console.error(`- ${item.name}: ${item.evidence}`));

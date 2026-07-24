@@ -16,10 +16,7 @@ const paths = {
 
 const files = Object.fromEntries(
   await Promise.all(
-    Object.entries(paths).map(async ([name, path]) => [
-      name,
-      await readFile(path, "utf8"),
-    ]),
+    Object.entries(paths).map(async ([name, path]) => [name, await readFile(path, "utf8")]),
   ),
 );
 const packageJson = JSON.parse(files.package);
@@ -31,8 +28,7 @@ function gate(name, condition, evidence) {
 
 gate(
   "permanent_seller_workspace_gate",
-  packageJson.scripts?.["audit:seller-operations"] ===
-    "node scripts/audit-seller-operations.mjs" &&
+  packageJson.scripts?.["audit:seller-operations"] === "node scripts/audit-seller-operations.mjs" &&
     packageJson.scripts?.check?.includes("audit:seller-operations"),
   "The seller operations audit must remain in the permanent frontend check chain.",
 );
@@ -130,10 +126,7 @@ const report = {
   gates,
 };
 
-await writeFile(
-  "frontend-seller-operations-audit.json",
-  `${JSON.stringify(report, null, 2)}\n`,
-);
+await writeFile("frontend-seller-operations-audit.json", `${JSON.stringify(report, null, 2)}\n`);
 
 if (failed.length > 0) {
   console.error("Seller operations workspace audit failed:");

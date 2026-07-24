@@ -9,9 +9,7 @@ export function StructuredContentPage({ entry }: { entry: ContentEntry }) {
     <>
       <Navbar />
       <main className="mx-auto max-w-4xl px-4 py-8">
-        <Breadcrumb
-          items={[{ label: "خانه", to: "/" }, { label: entry.title }]}
-        />
+        <Breadcrumb items={[{ label: "خانه", to: "/" }, { label: entry.title }]} />
         <article className="mt-8">
           <header className="border-b border-[color:var(--mid)] pb-8">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-[color:var(--roast)]">
@@ -33,25 +31,18 @@ export function StructuredContentPage({ entry }: { entry: ContentEntry }) {
                 </time>
               ) : null}
               {entry.updated_at ? (
-                <span>
-                  به‌روزرسانی: {new Date(entry.updated_at).toLocaleDateString("fa-IR")}
-                </span>
+                <span>به‌روزرسانی: {new Date(entry.updated_at).toLocaleDateString("fa-IR")}</span>
               ) : null}
             </div>
           </header>
 
           <div className="mt-8">
-            <StructuredContentBlocks
-              blocks={entry.body}
-              contentHash={entry.content_hash}
-            />
+            <StructuredContentBlocks blocks={entry.body} contentHash={entry.content_hash} />
           </div>
 
           {entry.author ? (
             <aside className="mt-12 rounded-2xl border border-[color:var(--mid)] p-5">
-              <h2 className="font-bold text-[color:var(--steam)]">
-                درباره {entry.author.name}
-              </h2>
+              <h2 className="font-bold text-[color:var(--steam)]">درباره {entry.author.name}</h2>
               {entry.author.bio ? (
                 <p className="mt-3 text-sm leading-8 text-[color:var(--light)]">
                   {entry.author.bio}

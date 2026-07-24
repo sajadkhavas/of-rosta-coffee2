@@ -11,8 +11,7 @@ type Cleanup = () => void;
 
 function prefersReducedMotion(): boolean {
   return (
-    typeof window !== "undefined" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
   );
 }
 
@@ -66,13 +65,11 @@ export function splitTextReveal(selector: string, delay = 0): Cleanup {
     words.forEach((word, index) => {
       const wrapper = document.createElement("span");
       wrapper.className = "word-wrap";
-      wrapper.style.cssText =
-        "display:inline-block;overflow:hidden;vertical-align:top";
+      wrapper.style.cssText = "display:inline-block;overflow:hidden;vertical-align:top";
 
       const inner = document.createElement("span");
       inner.className = "word-inner";
-      inner.style.cssText =
-        "display:inline-block;transform:translateY(110%);will-change:transform";
+      inner.style.cssText = "display:inline-block;transform:translateY(110%);will-change:transform";
       inner.textContent = word;
       wrapper.appendChild(inner);
       fragment.appendChild(wrapper);
@@ -102,10 +99,7 @@ export function splitTextReveal(selector: string, delay = 0): Cleanup {
   };
 }
 
-export function fadeUpStagger(
-  selector: string,
-  staggerDelay = 0.1,
-): Cleanup {
+export function fadeUpStagger(selector: string, staggerDelay = 0.1): Cleanup {
   const elements = Array.from(document.querySelectorAll<HTMLElement>(selector));
   if (elements.length === 0) return () => undefined;
   if (prefersReducedMotion()) {
@@ -130,11 +124,7 @@ export function fadeUpStagger(
   return () => tween.kill();
 }
 
-export function animateCounter(
-  element: Element,
-  target: number,
-  suffix = "",
-): Cleanup {
+export function animateCounter(element: Element, target: number, suffix = ""): Cleanup {
   if (prefersReducedMotion()) {
     element.textContent = target.toLocaleString("fa-IR") + suffix;
     return () => undefined;
@@ -147,8 +137,7 @@ export function animateCounter(
     ease: "power2.out",
     scrollTrigger: { trigger: element, start: "top 88%", once: true },
     onUpdate: () => {
-      element.textContent =
-        Math.round(value.current).toLocaleString("fa-IR") + suffix;
+      element.textContent = Math.round(value.current).toLocaleString("fa-IR") + suffix;
     },
   });
 
@@ -276,9 +265,7 @@ export function initCursor(): Cleanup {
   };
 }
 
-export function initPageAnimations(options: {
-  tier: PerformanceTier;
-}): Cleanup {
+export function initPageAnimations(options: { tier: PerformanceTier }): Cleanup {
   const { tier } = options;
   if (tier === "minimal" || prefersReducedMotion()) {
     revealWithoutMotion("[data-split-text], [data-fade-up], .r-card");
@@ -295,9 +282,7 @@ export function initPageAnimations(options: {
   document.querySelectorAll<HTMLElement>("[data-counter]").forEach((element) => {
     const target = Number.parseInt(element.dataset.counter ?? "0", 10);
     if (Number.isFinite(target)) {
-      cleanups.push(
-        animateCounter(element, target, element.dataset.suffix ?? ""),
-      );
+      cleanups.push(animateCounter(element, target, element.dataset.suffix ?? ""));
     }
   });
 

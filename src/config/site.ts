@@ -1,7 +1,13 @@
 const DEFAULT_SITE_URL = "https://rosta.shop";
 const DEFAULT_API_URL = "http://localhost:8000/api/v1";
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
-const CONTROL_OR_BACKSLASH = /[\\\u0000-\u001f\u007f]/;
+function hasControlOrBackslash(value: string): boolean {
+  for (const character of value) {
+    const code = character.charCodeAt(0);
+    if (character === "\\" || code <= 0x1f || code === 0x7f) return true;
+  }
+  return false;
+}
 const INTERNAL_HOSTNAME = /^[a-z0-9.-]+$/i;
 
 function isLocalHostname(hostname: string): boolean {
@@ -10,7 +16,7 @@ function isLocalHostname(hostname: string): boolean {
 
 function normalizeConfiguredUrl(value: string, label: string): string {
   const candidate = value.trim();
-  if (!candidate || CONTROL_OR_BACKSLASH.test(candidate)) {
+  if (!candidate || hasControlOrBackslash(candidate)) {
     throw new Error(`${label} معتبر نیست.`);
   }
 
@@ -22,9 +28,7 @@ function normalizeConfiguredUrl(value: string, label: string): string {
   }
 
   if (url.username || url.password || url.search || url.hash) {
-    throw new Error(
-      `${label} نباید شامل اطلاعات ورود، Query یا Fragment باشد.`,
-    );
+    throw new Error(`${label} نباید شامل اطلاعات ورود، Query یا Fragment باشد.`);
   }
 
   const localHttp = url.protocol === "http:" && isLocalHostname(url.hostname);
@@ -37,7 +41,7 @@ function normalizeConfiguredUrl(value: string, label: string): string {
 
 function normalizeInternalApiUrl(value: string): string {
   const candidate = value.trim();
-  if (!candidate || CONTROL_OR_BACKSLASH.test(candidate)) {
+  if (!candidate || hasControlOrBackslash(candidate)) {
     throw new Error("ROSTA_INTERNAL_API_URL معتبر نیست.");
   }
 
@@ -82,11 +86,7 @@ function runtimeApiBase(): string {
   return siteConfig.apiUrl;
 }
 
-function parsePaymentRedirectHosts(
-  value: string | undefined,
-  siteUrl: string,
-  apiBaseUrl: string,
-) {
+function parsePaymentRedirectHosts(value: string | undefined, siteUrl: string, apiBaseUrl: string) {
   const hosts = new Set<string>([
     new URL(siteUrl).host.toLowerCase(),
     new URL(apiBaseUrl).host.toLowerCase(),
@@ -96,14 +96,12 @@ function parsePaymentRedirectHosts(
     const host = rawHost.trim().toLowerCase();
     if (!host) continue;
     if (
-      CONTROL_OR_BACKSLASH.test(host) ||
+      hasControlOrBackslash(host) ||
       host.includes("://") ||
       host.includes("/") ||
       host.includes("@")
     ) {
-      throw new Error(
-        "VITE_PAYMENT_REDIRECT_HOSTS باید فقط شامل Hostهای جداشده با ویرگول باشد.",
-      );
+      throw new Error("VITE_PAYMENT_REDIRECT_HOSTS باید فقط شامل Hostهای جداشده با ویرگول باشد.");
     }
     hosts.add(host);
   }
@@ -122,8 +120,7 @@ const configuredApiUrl = normalizeConfiguredUrl(
 
 export const siteConfig = {
   name: "رستا",
-  description:
-    "پلتفرم در حال توسعه برای کشف و مقایسه ساختاریافته دانه کامل قهوه.",
+  description: "پلتفرم در حال توسعه برای کشف و مقایسه ساختاریافته دانه کامل قهوه.",
   siteUrl: configuredSiteUrl,
   apiUrl: configuredApiUrl,
   paymentRedirectHosts: parsePaymentRedirectHosts(
@@ -142,7 +139,7 @@ export const siteConfig = {
 
 export function absoluteUrl(path = "/"): string {
   if (/^https?:\/\//i.test(path)) return new URL(path).toString();
-  if (CONTROL_OR_BACKSLASH.test(path) || path.startsWith("//")) {
+  if (hasControlOrBackslash(path) || path.startsWith("//")) {
     throw new Error("مسیر عمومی نامعتبر است.");
   }
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
@@ -153,7 +150,7 @@ export function apiUrl(path = "/"): string {
   const candidate = path.trim();
   if (
     !candidate ||
-    CONTROL_OR_BACKSLASH.test(candidate) ||
+    hasControlOrBackslash(candidate) ||
     candidate.startsWith("//") ||
     /^[a-z][a-z\d+.-]*:/i.test(candidate) ||
     candidate.includes("#")
@@ -173,9 +170,7 @@ export function apiUrl(path = "/"): string {
     throw new Error("مسیر API اجازه خروج از محدوده تعریف‌شده را ندارد.");
   }
 
-  const normalizedPath = candidate.startsWith("/")
-    ? candidate
-    : `/${candidate}`;
+  const normalizedPath = candidate.startsWith("/") ? candidate : `/${candidate}`;
   return `${runtimeApiBase()}${normalizedPath}`;
 }
 
@@ -189,9 +184,7 @@ export function assertApprovedPaymentRedirect(value: string): string {
 
   const localHttp = url.protocol === "http:" && isLocalHostname(url.hostname);
   const secureProtocol = url.protocol === "https:" || localHttp;
-  const approvedHost = siteConfig.paymentRedirectHosts.includes(
-    url.host.toLowerCase(),
-  );
+  const approvedHost = siteConfig.paymentRedirectHosts.includes(url.host.toLowerCase());
 
   if (!secureProtocol || !approvedHost || url.username || url.password) {
     throw new Error("آدرس انتقال درگاه خارج از فهرست مجاز است.");

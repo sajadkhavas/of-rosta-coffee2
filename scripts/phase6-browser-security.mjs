@@ -68,10 +68,8 @@ async function mockApi(context, verifyPayload) {
         headers: {
           "Access-Control-Allow-Origin": baseURL,
           "Access-Control-Allow-Credentials": "true",
-          "Access-Control-Allow-Headers":
-            "Content-Type, X-Requested-With, X-XSRF-TOKEN",
-          "Access-Control-Allow-Methods":
-            "GET,POST,PATCH,DELETE,OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, X-Requested-With, X-XSRF-TOKEN",
+          "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
         },
       });
     }
@@ -107,10 +105,7 @@ async function runScenario(browser, scenario) {
     ({ cartKey, cart, expectationKey, paymentExpectation }) => {
       localStorage.setItem(cartKey, JSON.stringify(cart));
       if (paymentExpectation) {
-        sessionStorage.setItem(
-          expectationKey,
-          JSON.stringify(paymentExpectation),
-        );
+        sessionStorage.setItem(expectationKey, JSON.stringify(paymentExpectation));
       } else {
         sessionStorage.removeItem(expectationKey);
       }
@@ -127,13 +122,10 @@ async function runScenario(browser, scenario) {
   const page = await context.newPage();
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto(
-    `${baseURL}/checkout?payment_id=${paymentId}&status=paid&order_id=${orderId}`,
-    {
-      waitUntil: "domcontentloaded",
-      timeout: 30_000,
-    },
-  );
+  await page.goto(`${baseURL}/checkout?payment_id=${paymentId}&status=paid&order_id=${orderId}`, {
+    waitUntil: "domcontentloaded",
+    timeout: 30_000,
+  });
   await page.waitForTimeout(1_000);
 
   const visibleText = await page.locator("main").innerText();
@@ -141,9 +133,7 @@ async function runScenario(browser, scenario) {
     const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : null;
   }, CART_KEY);
-  const cartCount = Array.isArray(storedCart?.items)
-    ? storedCart.items.length
-    : -1;
+  const cartCount = Array.isArray(storedCart?.items) ? storedCart.items.length : -1;
   const expectedTextFound = visibleText.includes(scenario.expectedText);
   const cartMatches = cartCount === scenario.expectedCartCount;
   const passed = expectedTextFound && cartMatches && errors.length === 0;

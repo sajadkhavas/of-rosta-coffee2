@@ -18,7 +18,10 @@ export function Breadcrumb({ items }: { items: Crumb[] }) {
                   {c.label}
                 </Link>
               ) : (
-                <span aria-current={isLast ? "page" : undefined} className="text-[color:var(--rosta-primary)]">
+                <span
+                  aria-current={isLast ? "page" : undefined}
+                  className="text-[color:var(--rosta-primary)]"
+                >
                   {c.label}
                 </span>
               )}

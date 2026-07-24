@@ -23,11 +23,7 @@ export function Particles({ count = 30 }: { count?: number }) {
   }, [count]);
 
   return (
-    <div
-      ref={ref}
-      aria-hidden
-      className="pointer-events-none absolute inset-0 overflow-hidden"
-    />
+    <div ref={ref} aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden" />
   );
 }
 
@@ -39,7 +35,10 @@ export function CoffeeBean3D() {
       style={{ perspective: "800px", width: "min(340px, 70vw)", height: "min(340px, 70vw)" }}
     >
       <div className="bean-3d absolute inset-0 grid place-items-center">
-        <svg viewBox="0 0 200 200" className="h-full w-full drop-shadow-[0_20px_40px_rgba(200,150,90,0.35)]">
+        <svg
+          viewBox="0 0 200 200"
+          className="h-full w-full drop-shadow-[0_20px_40px_rgba(200,150,90,0.35)]"
+        >
           <defs>
             <radialGradient id="beanGrad" cx="35%" cy="30%" r="75%">
               <stop offset="0%" stopColor="#e8b876" />

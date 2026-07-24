@@ -66,15 +66,11 @@ describe("transaction intents", () => {
 
   test("rotates the key when the checkout payload changes", () => {
     const storage = new MemoryStorage();
-    const first = getOrCreateTransactionIntent(
-      "order",
-      buildOrderFingerprint(orderInput),
-      {
-        storage,
-        now: 1_000,
-        keyFactory: () => "ORD-aaaaaaaaaaaaaaaaaaaaaaaa",
-      },
-    );
+    const first = getOrCreateTransactionIntent("order", buildOrderFingerprint(orderInput), {
+      storage,
+      now: 1_000,
+      keyFactory: () => "ORD-aaaaaaaaaaaaaaaaaaaaaaaa",
+    });
     const second = getOrCreateTransactionIntent(
       "order",
       buildOrderFingerprint({ ...orderInput, addressId: "address-2" }),
@@ -132,9 +128,7 @@ describe("transaction intents", () => {
       amount: 1_030_000,
       currency: "IRR",
     });
-    expect(
-      readPaymentExpectation("payment-2", { storage, now: 11_000 }),
-    ).toBeNull();
+    expect(readPaymentExpectation("payment-2", { storage, now: 11_000 })).toBeNull();
     expect(
       readPaymentExpectation("payment-1", {
         storage,
@@ -156,9 +150,7 @@ describe("transaction intents", () => {
         createdAt: new Date(10_000).toISOString(),
       }),
     );
-    expect(
-      readPaymentExpectation("payment-1", { storage, now: 11_000 }),
-    ).toBeNull();
+    expect(readPaymentExpectation("payment-1", { storage, now: 11_000 })).toBeNull();
   });
 
   test("rejects non-positive payment expectations", () => {

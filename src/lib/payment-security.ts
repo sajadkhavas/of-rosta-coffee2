@@ -1,8 +1,4 @@
-import type {
-  CurrencyCode,
-  OrderStatus,
-  PaymentStatus,
-} from "@/lib/api/contracts";
+import type { CurrencyCode, OrderStatus, PaymentStatus } from "@/lib/api/contracts";
 
 export interface PaymentExpectationShape {
   paymentId: string;

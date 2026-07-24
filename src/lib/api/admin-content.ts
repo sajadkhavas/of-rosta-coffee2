@@ -11,8 +11,7 @@ import {
 import { apiFetch } from "./client";
 
 const identifier = z.string().trim().min(1).max(240);
-const nullableText = (max: number) =>
-  z.string().trim().max(max).nullable().optional();
+const nullableText = (max: number) => z.string().trim().max(max).nullable().optional();
 const nullableDate = z.string().nullable().optional();
 
 const contentSummarySchema = z
@@ -79,28 +78,11 @@ const brokenRelationSchema = z
         status: z.enum(["draft", "review", "published", "archived"]).nullable(),
       })
       .strict(),
-    relation_type: z.enum([
-      "related",
-      "mentions",
-      "recommends",
-      "compares",
-      "primary_topic",
-    ]),
-    target_type: z.enum([
-      "content",
-      "product",
-      "roastery",
-      "origin",
-      "brew_method",
-      "taste",
-    ]),
+    relation_type: z.enum(["related", "mentions", "recommends", "compares", "primary_topic"]),
+    target_type: z.enum(["content", "product", "roastery", "origin", "brew_method", "taste"]),
     target_key: identifier,
     anchor_text: nullableText(300),
-    reason: z.enum([
-      "missing_target",
-      "unpublished_target",
-      "wrong_content_type",
-    ]),
+    reason: z.enum(["missing_target", "unpublished_target", "wrong_content_type"]),
   })
   .strict();
 
@@ -154,21 +136,15 @@ function collectionSchema<T extends z.ZodTypeAny>(item: T) {
 const authorCollectionSchema = collectionSchema(contentAuthorSchema);
 const contentCollectionSchema = collectionSchema(contentSummarySchema);
 const redirectCollectionSchema = collectionSchema(redirectSchema);
-const authorResourceSchema = z
-  .object({ data: contentAuthorSchema })
-  .passthrough();
-const contentDetailResourceSchema = z
-  .object({ data: contentEntrySchema })
-  .passthrough();
+const authorResourceSchema = z.object({ data: contentAuthorSchema }).passthrough();
+const contentDetailResourceSchema = z.object({ data: contentEntrySchema }).passthrough();
 const redirectResourceSchema = z.object({ data: redirectSchema }).passthrough();
 
 export type AdminContentAuthor = z.infer<typeof contentAuthorSchema>;
 export type AdminContentSummary = z.infer<typeof contentSummarySchema>;
 export type AdminContentDetail = ContentEntry;
 export type AdminSeoRedirect = z.infer<typeof redirectSchema>;
-export type AdminContentLinkReport = z.infer<
-  typeof contentLinkReportSchema
->["data"];
+export type AdminContentLinkReport = z.infer<typeof contentLinkReportSchema>["data"];
 export type AdminContentStatus = AdminContentSummary["status"];
 export type AdminContentType = AdminContentSummary["type"];
 export type AdminSchemaType = AdminContentDetail["seo"]["schema_type"];
@@ -208,8 +184,9 @@ export interface CreateContentEntryInput {
   relations?: ContentRelationInput[];
 }
 
-export interface UpdateContentEntryInput
-  extends Partial<Omit<CreateContentEntryInput, "author_id">> {
+export interface UpdateContentEntryInput extends Partial<
+  Omit<CreateContentEntryInput, "author_id">
+> {
   expected_content_hash: string;
   author_id?: string | null;
 }
@@ -235,9 +212,7 @@ export async function getAdminContent(entryId: string): Promise<AdminContentDeta
 }
 
 export async function getContentLinkReport(): Promise<AdminContentLinkReport> {
-  return contentLinkReportSchema.parse(
-    await apiFetch<unknown>("/admin/content-link-report"),
-  ).data;
+  return contentLinkReportSchema.parse(await apiFetch<unknown>("/admin/content-link-report")).data;
 }
 
 export async function listContentAuthors(): Promise<AdminContentAuthor[]> {
@@ -296,20 +271,15 @@ export async function setContentStatus(
   status: AdminContentStatus,
 ): Promise<AdminContentDetail> {
   const payload = contentDetailResourceSchema.parse(
-    await apiFetch<unknown>(
-      `/admin/content/${encodeURIComponent(entryId)}/status`,
-      {
-        method: "PATCH",
-        body: { status },
-      },
-    ),
+    await apiFetch<unknown>(`/admin/content/${encodeURIComponent(entryId)}/status`, {
+      method: "PATCH",
+      body: { status },
+    }),
   );
   return payload.data;
 }
 
-export async function createSeoRedirect(
-  input: CreateSeoRedirectInput,
-): Promise<AdminSeoRedirect> {
+export async function createSeoRedirect(input: CreateSeoRedirectInput): Promise<AdminSeoRedirect> {
   const payload = redirectResourceSchema.parse(
     await apiFetch<unknown>("/admin/seo-redirects", {
       method: "POST",

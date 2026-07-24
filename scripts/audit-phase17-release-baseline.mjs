@@ -22,7 +22,8 @@ const paths = {
   inquiries: "src/lib/api/inquiries.ts",
   frontendStaging: ".env.staging.example",
   backendStaging: "backend/.env.staging.example",
-  composerLock: "backend/composer.lock",
+  backendCi: ".github/workflows/backend-ci.yml",
+  backendReadiness: "backend/app/Console/Commands/BackendReadiness.php",
   generatedRouteTree: "src/routeTree.gen.ts",
   phase17RouteTree: "src/routeTree.phase17.ts",
   router: "src/router.tsx",
@@ -49,33 +50,27 @@ function gate(name, condition, evidence) {
 
 gate(
   "permanent_phase17_gate",
-  packageJson.scripts?.["audit:phase17"] ===
-    "node scripts/audit-phase17-release-baseline.mjs" &&
+  packageJson.scripts?.["audit:phase17"] === "node scripts/audit-phase17-release-baseline.mjs" &&
     packageJson.scripts?.check?.includes("audit:phase17"),
   "audit:phase17 must remain in the permanent frontend check chain",
 );
 
 gate(
   "complete_frontend_ci",
-  files.ci?.includes("bun run check") &&
-    !files.ci?.includes("bun run audit:phase6 2>&1"),
+  files.ci?.includes("bun run check") && !files.ci?.includes("bun run audit:phase6 2>&1"),
   "GitHub CI must execute the complete frontend quality gate instead of a partial phase audit",
 );
 
 gate(
   "single_robots_source",
-  !(await exists(paths.staticRobots)) &&
-    files.routeRobots?.includes("siteConfig.allowIndexing"),
+  !(await exists(paths.staticRobots)) && files.routeRobots?.includes("siteConfig.allowIndexing"),
   "only the environment-aware /robots.txt route may control crawler access",
 );
 
 gate(
   "valid_pwa_icon_contract",
   manifest.icons?.some(
-    (icon) =>
-      icon.src === "/icon.svg" &&
-      icon.type === "image/svg+xml" &&
-      icon.sizes === "any",
+    (icon) => icon.src === "/icon.svg" && icon.type === "image/svg+xml" && icon.sizes === "any",
   ) &&
     manifest.icons?.some(
       (icon) =>
@@ -124,9 +119,11 @@ gate(
 );
 
 gate(
-  "deterministic_backend_dependencies",
-  await exists(paths.composerLock),
-  "backend/composer.lock must be generated and committed before staging deployment",
+  "backend_dependency_lock_is_permanently_enforced",
+  files.backendCi?.includes("test -s composer.lock") &&
+    files.backendReadiness?.includes("'composer_lock'") &&
+    files.backendReadiness?.includes("is_file(base_path('composer.lock'))"),
+  "Backend CI and runtime readiness must fail closed until R2 commits backend/composer.lock.",
 );
 
 const requiredRoutes = [
@@ -173,10 +170,7 @@ const report = {
   gates,
 };
 
-await writeFile(
-  "frontend-phase17-audit.json",
-  `${JSON.stringify(report, null, 2)}\n`,
-);
+await writeFile("frontend-phase17-audit.json", `${JSON.stringify(report, null, 2)}\n`);
 
 if (failed.length > 0) {
   console.error("Phase 17 release baseline audit failed:");

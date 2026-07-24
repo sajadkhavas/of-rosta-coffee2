@@ -1,12 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Navigate } from "@tanstack/react-router";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  RefreshCw,
-  ShieldCheck,
-  WalletCards,
-} from "lucide-react";
+import { AlertTriangle, CheckCircle2, RefreshCw, ShieldCheck, WalletCards } from "lucide-react";
 import { useRef, useState, type FormEvent } from "react";
 import { AccountGuard } from "@/components/account/AccountGuard";
 import { Breadcrumb } from "@/components/Breadcrumb";
@@ -84,12 +78,7 @@ function AdminFinancePage() {
     <>
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 py-8">
-        <Breadcrumb
-          items={[
-            { label: "خانه", to: "/" },
-            { label: "عملیات مالی" },
-          ]}
-        />
+        <Breadcrumb items={[{ label: "خانه", to: "/" }, { label: "عملیات مالی" }]} />
         <AccountGuard>
           {(user) =>
             user.roles.includes("administrator") ? (
@@ -109,15 +98,10 @@ function AdminFinanceDashboard({ currentUserId }: { currentUserId: string }) {
   const queryClient = useQueryClient();
   const { pushToast } = useToast();
   const idempotencyKey = useRef("");
-  const [refundStatus, setRefundStatus] = useState<AdminRefundStatus | "all">(
-    "all",
-  );
-  const [caseStatus, setCaseStatus] = useState<AdminReconciliationStatus>(
-    "open",
-  );
+  const [refundStatus, setRefundStatus] = useState<AdminRefundStatus | "all">("all");
+  const [caseStatus, setCaseStatus] = useState<AdminReconciliationStatus>("open");
   const [selectedRefund, setSelectedRefund] = useState<AdminRefund | null>(null);
-  const [selectedCase, setSelectedCase] =
-    useState<AdminReconciliationCase | null>(null);
+  const [selectedCase, setSelectedCase] = useState<AdminReconciliationCase | null>(null);
   const [resolveRefundOpen, setResolveRefundOpen] = useState(false);
   const [resolveCaseOpen, setResolveCaseOpen] = useState(false);
   const [refundForm, setRefundForm] = useState({
@@ -271,8 +255,8 @@ function AdminFinanceDashboard({ currentUserId }: { currentUserId: string }) {
       />
 
       <Alert variant="warning" title="مرز اجرای پول واقعی">
-        این صفحه قرارداد مالی را مدیریت می‌کند، اما Provider تا پایان Acceptance سرور باید
-        غیرفعال یا Manual باقی بماند. Testing Provider در Production پذیرفته نمی‌شود.
+        این صفحه قرارداد مالی را مدیریت می‌کند، اما Provider تا پایان Acceptance سرور باید غیرفعال
+        یا Manual باقی بماند. Testing Provider در Production پذیرفته نمی‌شود.
       </Alert>
 
       {initialError ? (
@@ -342,11 +326,7 @@ function AdminFinanceDashboard({ currentUserId }: { currentUserId: string }) {
               {errorMessage(createMutation.error)}
             </p>
           ) : null}
-          <Button
-            type="submit"
-            className="mt-5 w-full"
-            loading={createMutation.isPending}
-          >
+          <Button type="submit" className="mt-5 w-full" loading={createMutation.isPending}>
             ثبت درخواست با کنترل دو‌نفره
           </Button>
         </form>
@@ -364,9 +344,7 @@ function AdminFinanceDashboard({ currentUserId }: { currentUserId: string }) {
               <select
                 value={refundStatus}
                 onChange={(event) =>
-                  setRefundStatus(
-                    event.target.value as AdminRefundStatus | "all",
-                  )
+                  setRefundStatus(event.target.value as AdminRefundStatus | "all")
                 }
                 className={fieldClass}
               >
@@ -382,9 +360,7 @@ function AdminFinanceDashboard({ currentUserId }: { currentUserId: string }) {
 
           <div className="mt-5 grid gap-3">
             {refundsQuery.isLoading ? (
-              Array.from({ length: 4 }).map((_, index) => (
-                <Skeleton key={index} className="h-28" />
-              ))
+              Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-28" />)
             ) : refundsQuery.data?.items.length ? (
               refundsQuery.data.items.map((refund) => (
                 <button
@@ -431,9 +407,7 @@ function AdminFinanceDashboard({ currentUserId }: { currentUserId: string }) {
           onResolve={() => setResolveRefundOpen(true)}
           approving={approveMutation.isPending}
           dispatching={dispatchMutation.isPending}
-          error={
-            approveMutation.error || dispatchMutation.error || undefined
-          }
+          error={approveMutation.error || dispatchMutation.error || undefined}
         />
       ) : null}
 
@@ -452,9 +426,7 @@ function AdminFinanceDashboard({ currentUserId }: { currentUserId: string }) {
             وضعیت پرونده
             <select
               value={caseStatus}
-              onChange={(event) =>
-                setCaseStatus(event.target.value as AdminReconciliationStatus)
-              }
+              onChange={(event) => setCaseStatus(event.target.value as AdminReconciliationStatus)}
               className={fieldClass}
             >
               {Object.entries(caseLabels).map(([value, label]) => (
@@ -468,9 +440,7 @@ function AdminFinanceDashboard({ currentUserId }: { currentUserId: string }) {
 
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           {casesQuery.isLoading ? (
-            Array.from({ length: 4 }).map((_, index) => (
-              <Skeleton key={index} className="h-36" />
-            ))
+            Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-36" />)
           ) : casesQuery.data?.items.length ? (
             casesQuery.data.items.map((financeCase) => (
               <button
@@ -508,10 +478,7 @@ function AdminFinanceDashboard({ currentUserId }: { currentUserId: string }) {
       </div>
 
       {selectedCase ? (
-        <CaseDetail
-          financeCase={selectedCase}
-          onResolve={() => setResolveCaseOpen(true)}
-        />
+        <CaseDetail financeCase={selectedCase} onResolve={() => setResolveCaseOpen(true)} />
       ) : null}
 
       <Dialog
@@ -528,10 +495,7 @@ function AdminFinanceDashboard({ currentUserId }: { currentUserId: string }) {
               onChange={(event) =>
                 setRefundResolution((current) => ({
                   ...current,
-                  outcome: event.target.value as
-                    | "succeeded"
-                    | "failed"
-                    | "cancelled",
+                  outcome: event.target.value as "succeeded" | "failed" | "cancelled",
                 }))
               }
               className={fieldClass}
@@ -662,15 +626,11 @@ function RefundDetail({
     <article className="rounded-2xl border border-[color:var(--roast)]/40 bg-[color:var(--dark)] p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-bold text-[color:var(--roast)]">
-            REFUND DETAIL
-          </p>
+          <p className="text-xs font-bold text-[color:var(--roast)]">REFUND DETAIL</p>
           <h2 className="mt-2 text-xl font-bold">
             سفارش {refund.order_number || shortId(refund.order_id)}
           </h2>
-          <p className="mt-2 text-sm text-[color:var(--light)]">
-            {refund.reason}
-          </p>
+          <p className="mt-2 text-sm text-[color:var(--light)]">{refund.reason}</p>
         </div>
         <StatusBadge status={refund.status} />
       </div>
@@ -678,16 +638,8 @@ function RefundDetail({
       <dl className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Metric label="مبلغ" value={formatIrr(refund.amount)} />
         <Metric label="Provider" value={refund.provider} dir="ltr" />
-        <Metric
-          label="مرجع پرداخت"
-          value={refund.payment_reference_id || "ثبت نشده"}
-          dir="ltr"
-        />
-        <Metric
-          label="مرجع بازپرداخت"
-          value={refund.provider_reference || "ثبت نشده"}
-          dir="ltr"
-        />
+        <Metric label="مرجع پرداخت" value={refund.payment_reference_id || "ثبت نشده"} dir="ltr" />
+        <Metric label="مرجع بازپرداخت" value={refund.provider_reference || "ثبت نشده"} dir="ltr" />
       </dl>
 
       {refund.failure_message ? (
@@ -711,9 +663,7 @@ function RefundDetail({
             loading={approving}
             disabled={sameRequester}
             title={
-              sameRequester
-                ? "ثبت‌کننده درخواست نمی‌تواند همان بازپرداخت را تأیید کند."
-                : undefined
+              sameRequester ? "ثبت‌کننده درخواست نمی‌تواند همان بازپرداخت را تأیید کند." : undefined
             }
           >
             <ShieldCheck size={16} />
@@ -791,23 +741,13 @@ function CaseDetail({
 
 function StatusBadge({ status }: { status: AdminRefundStatus }) {
   return (
-    <span
-      className={`rounded-full border px-3 py-1 text-xs font-bold ${statusClasses[status]}`}
-    >
+    <span className={`rounded-full border px-3 py-1 text-xs font-bold ${statusClasses[status]}`}>
       {refundLabels[status]}
     </span>
   );
 }
 
-function Metric({
-  label,
-  value,
-  dir,
-}: {
-  label: string;
-  value: string;
-  dir?: "ltr" | "rtl";
-}) {
+function Metric({ label, value, dir }: { label: string; value: string; dir?: "ltr" | "rtl" }) {
   return (
     <div className="rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] p-3">
       <dt className="text-[10px] text-[color:var(--light)]">{label}</dt>
@@ -868,7 +808,7 @@ function displayDetail(value: unknown): string {
 }
 
 function newIdempotencyKey(): string {
-  const random = globalThis.crypto?.randomUUID?.() ??
-    `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const random =
+    globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   return `refund:admin:${random}`;
 }

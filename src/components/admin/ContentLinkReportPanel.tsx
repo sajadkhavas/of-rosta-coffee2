@@ -11,14 +11,12 @@ interface ContentLinkReportPanelProps {
   onEditEntry: (entryId: string) => void;
 }
 
-const REASON_LABELS: Record<
-  AdminContentLinkReport["broken_relations"][number]["reason"],
-  string
-> = {
-  missing_target: "مقصد وجود ندارد",
-  unpublished_target: "مقصد عمومی یا منتشرشده نیست",
-  wrong_content_type: "نوع مقصد با رابطه سازگار نیست",
-};
+const REASON_LABELS: Record<AdminContentLinkReport["broken_relations"][number]["reason"], string> =
+  {
+    missing_target: "مقصد وجود ندارد",
+    unpublished_target: "مقصد عمومی یا منتشرشده نیست",
+    wrong_content_type: "نوع مقصد با رابطه سازگار نیست",
+  };
 
 const TARGET_LABELS: Record<
   AdminContentLinkReport["broken_relations"][number]["target_type"],
@@ -71,7 +69,8 @@ export function ContentLinkReportPanel({
             سلامت لینک‌سازی داخلی
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-8 text-[color:var(--light)]">
-            روابط شکسته، صفحات منتشرشده بدون لینک ورودی و صفحاتی که کمتر از دو رابطه خروجی دارند در این بخش نمایش داده می‌شوند.
+            روابط شکسته، صفحات منتشرشده بدون لینک ورودی و صفحاتی که کمتر از دو رابطه خروجی دارند در
+            این بخش نمایش داده می‌شوند.
           </p>
         </div>
         <Button
@@ -119,9 +118,7 @@ export function ContentLinkReportPanel({
                 key={String(label)}
                 className="rounded-2xl border border-[color:var(--mid)] bg-[color:var(--night)] p-4"
               >
-                <p className="text-xs leading-6 text-[color:var(--light)]">
-                  {label}
-                </p>
+                <p className="text-xs leading-6 text-[color:var(--light)]">{label}</p>
                 <p className="mt-2 text-2xl font-bold text-[color:var(--roast)]">
                   {Number(value).toLocaleString("fa-IR")}
                 </p>
@@ -132,7 +129,8 @@ export function ContentLinkReportPanel({
           {report.summary.relations_truncated ? (
             <div className="mt-4">
               <Alert variant="warning" title="گزارش محدود شده است">
-                تعداد روابط از سقف بررسی یک‌باره بیشتر است. گزارش برای جلوگیری از فشار روی پنل به اولین ۵٬۰۰۰ رابطه محدود شده است.
+                تعداد روابط از سقف بررسی یک‌باره بیشتر است. گزارش برای جلوگیری از فشار روی پنل به
+                اولین ۵٬۰۰۰ رابطه محدود شده است.
               </Alert>
             </div>
           ) : null}
@@ -157,7 +155,10 @@ export function ContentLinkReportPanel({
                       <p className="font-bold leading-7 text-[color:var(--steam)]">
                         {relation.source.title ?? "منبع حذف‌شده"}
                       </p>
-                      <p className="mt-2 break-all text-xs leading-6 text-[color:var(--light)]" dir="ltr">
+                      <p
+                        className="mt-2 break-all text-xs leading-6 text-[color:var(--light)]"
+                        dir="ltr"
+                      >
                         {relation.source.canonical_path ?? "—"}
                       </p>
                       <dl className="mt-3 grid gap-2 text-xs text-[color:var(--light)]">
@@ -208,10 +209,11 @@ export function ContentLinkReportPanel({
                       key={entry.id}
                       className="rounded-2xl border border-amber-300/30 bg-amber-950/10 p-4"
                     >
-                      <p className="font-bold leading-7 text-[color:var(--steam)]">
-                        {entry.title}
-                      </p>
-                      <p className="mt-2 break-all text-xs leading-6 text-[color:var(--light)]" dir="ltr">
+                      <p className="font-bold leading-7 text-[color:var(--steam)]">{entry.title}</p>
+                      <p
+                        className="mt-2 break-all text-xs leading-6 text-[color:var(--light)]"
+                        dir="ltr"
+                      >
                         {entry.canonical_path}
                       </p>
                       <p className="mt-3 text-xs leading-6 text-amber-100">
@@ -249,10 +251,11 @@ export function ContentLinkReportPanel({
                       key={entry.id}
                       className="rounded-2xl border border-[color:var(--mid)] bg-[color:var(--night)] p-4"
                     >
-                      <p className="font-bold leading-7 text-[color:var(--steam)]">
-                        {entry.title}
-                      </p>
-                      <p className="mt-2 break-all text-xs leading-6 text-[color:var(--light)]" dir="ltr">
+                      <p className="font-bold leading-7 text-[color:var(--steam)]">{entry.title}</p>
+                      <p
+                        className="mt-2 break-all text-xs leading-6 text-[color:var(--light)]"
+                        dir="ltr"
+                      >
                         {entry.canonical_path}
                       </p>
                       <p className="mt-3 text-xs leading-6 text-[color:var(--light)]">

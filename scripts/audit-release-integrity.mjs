@@ -26,9 +26,8 @@ function gate(name, passed, evidence) {
 
 gate(
   "release_manifest_is_permanent",
-  packageJson.scripts?.["release:manifest"]?.includes(
-    "create-release-manifest.mjs",
-  ) && packageJson.scripts?.["release:verify"]?.includes("release:manifest"),
+  packageJson.scripts?.["release:manifest"]?.includes("create-release-manifest.mjs") &&
+    packageJson.scripts?.["release:verify"]?.includes("release:manifest"),
   "Frontend release verification must create a hashed manifest.",
 );
 gate(
@@ -58,9 +57,7 @@ gate(
 );
 gate(
   "commerce_openapi_gate",
-  backendComposer.scripts?.["audit:openapi"]?.includes(
-    "audit-commerce-openapi-drift.php",
-  ) &&
+  backendComposer.scripts?.["audit:openapi"]?.includes("audit-commerce-openapi-drift.php") &&
     backendComposer.scripts?.check?.includes("@audit:openapi") &&
     files.openApi.includes("/payments/request:") &&
     files.openApi.includes("/inquiries:") &&
@@ -90,9 +87,7 @@ gate(
 );
 gate(
   "whole_bean_boundary",
-  !Object.values(files).some((content) =>
-    /grind[_-]?(selector|state)|grind_option/i.test(content),
-  ),
+  !Object.values(files).some((content) => /grind[_-]?(selector|state)|grind_option/i.test(content)),
   "Release integrity work must not introduce grind selection or grind state.",
 );
 
