@@ -23,16 +23,6 @@ RESOURCE_MODELS = {
     "StockLedgerEntryResource.php": "StockLedgerEntry",
 }
 
-RELATION_TYPES = {
-    "BelongsTo",
-    "HasMany",
-    "HasOne",
-    "BelongsToMany",
-    "MorphTo",
-    "MorphMany",
-    "MorphOne",
-}
-
 NON_NULL_DATES = {
     "expires_at",
     "resend_available_at",
@@ -73,11 +63,11 @@ NULLABLE_DATE_PARTS = (
 
 
 def relation_methods(source: str):
-    methods = []
     pattern = re.compile(
         r"(?m)^    public function (\w+)\(\):\s*"
         r"(BelongsTo|HasMany|HasOne|BelongsToMany|MorphTo|MorphMany|MorphOne)\s*\{"
     )
+    methods = []
     for match in pattern.finditer(source):
         brace = source.find("{", match.start())
         depth = 0
@@ -156,15 +146,12 @@ for filename, model in RESOURCE_MODELS.items():
     source = path.read_text()
     if "@mixin" in source:
         raise RuntimeError(f"Resource already has a mixin: {filename}")
-    updated, count = re.subn(
-        r"(?m)^(final\s+class|class)\s+",
-        f"/** @mixin \\App\\Models\\{model} */\n\\1 ",
-        source,
-        count=1,
-    )
-    if count != 1:
+    pattern = re.compile(r"(?m)^(final\s+class|class)\s+")
+    match = pattern.search(source)
+    if match is None:
         raise RuntimeError(f"Could not annotate resource: {filename}")
-    path.write_text(updated)
+    annotation = f"/** @mixin \\App\\Models\\{model} */\n{match.group(1)} "
+    path.write_text(source[: match.start()] + annotation + source[match.end() :])
 
 
 for path in sorted((ROOT / "app/Models").glob("*.php")):
@@ -172,14 +159,13 @@ for path in sorted((ROOT / "app/Models").glob("*.php")):
     class_match = re.search(r"(?m)^(final\s+class|class)\s+(\w+)", source)
     if class_match is None:
         continue
-    if "@property" in source[class_match.start() - 500 : class_match.start()]:
+    if "@property" in source[max(0, class_match.start() - 500) : class_match.start()]:
         raise RuntimeError(f"Model already contains property metadata: {path.name}")
 
     imports = {
         imported.split("\\")[-1]: imported
         for imported in re.findall(r"^use\s+([^;]+);", source, re.MULTILINE)
     }
-
     fillable_match = re.search(r"protected \$fillable = \[(.*?)\];", source, re.DOTALL)
     fillable = re.findall(r"'([^']+)'", fillable_match.group(1)) if fillable_match else []
 
@@ -224,9 +210,7 @@ for path in sorted((ROOT / "app/Models").glob("*.php")):
     for name, relation_type, body in relation_methods(source):
         target = target_from_body(body, relation_type, imports)
         if relation_type in {"HasMany", "BelongsToMany", "MorphMany"}:
-            property_type = (
-                "\\Illuminate\\Database\\Eloquent\\Collection<int, " + target + ">"
-            )
+            property_type = "\\Illuminate\\Database\\Eloquent\\Collection<int, " + target + ">"
         else:
             property_type = target + "|null"
         relations.append((name, relation_type, target, property_type))
