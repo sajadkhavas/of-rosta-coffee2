@@ -24,7 +24,7 @@ concurrency:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
 
     services:
       mysql:
@@ -56,6 +56,7 @@ jobs:
         working-directory: backend
 
     env:
+      EVIDENCE_DIR: /tmp/rosta-r2-evidence/${{ github.run_id }}/r2d
       APP_ENV: testing
       APP_DEBUG: "false"
       APP_URL: http://localhost:8000
@@ -79,10 +80,14 @@ jobs:
       ROSTA_REFUND_ENABLED: "false"
       ROSTA_SMS_ENABLED: "false"
       ROSTA_MEDIA_UPLOADS_ENABLED: "false"
+      COMPOSER_NO_INTERACTION: "1"
+      COMPOSER_PROCESS_TIMEOUT: "900"
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -92,14 +97,22 @@ jobs:
           coverage: none
           tools: composer:v2
 
-      - name: Create ephemeral application key
+      - name: Freeze exact R2D snapshot
         shell: bash
         run: |
           set -Eeuo pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          test -s composer.lock
+          test -z "$(git status --porcelain)"
+          php -r 'exit(PHP_MAJOR_VERSION === 8 && PHP_MINOR_VERSION === 3 ? 0 : 1);'
           echo "APP_KEY=base64:$(php -r 'echo base64_encode(random_bytes(32));')" >> "$GITHUB_ENV"
-
-      - name: Require deterministic dependency lock
-        run: test -s composer.lock
+          {
+            echo "head=$(git rev-parse HEAD)"
+            echo "tree=$(git rev-parse 'HEAD^{tree}')"
+            echo "php=$(php --version | head -n 1)"
+            echo "composer=$(composer --version 2>&1 | head -n 1)"
+          } | tee "$EVIDENCE_DIR/snapshot.txt"
+          sha256sum composer.json composer.lock | tee "$EVIDENCE_DIR/composer-before.sha256"
 
       - name: Cache Composer downloads
         uses: actions/cache@v4
@@ -108,16 +121,35 @@ jobs:
           key: composer-${{ runner.os }}-${{ hashFiles('backend/composer.lock') }}
           restore-keys: composer-${{ runner.os }}-
 
-      - name: Prepare environment
+      - name: Prepare isolated environment
+        shell: bash
         run: |
+          set -Eeuo pipefail
           cp .env.example .env
           mkdir -p bootstrap/cache storage/app/private storage/app/public storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
 
-      - name: Install locked dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
-
-      - name: Validate frozen contract marker
+      - name: First clean locked install
+        shell: bash
         run: |
+          set -Eeuo pipefail
+          rm -rf vendor
+          composer install --no-interaction --prefer-dist --no-progress 2>&1 | tee "$EVIDENCE_DIR/composer-install-1.log"
+          php artisan about 2>&1 | tee "$EVIDENCE_DIR/artisan-about-1.log"
+
+      - name: Second clean locked install
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rm -rf vendor
+          composer install --no-interaction --prefer-dist --no-progress 2>&1 | tee "$EVIDENCE_DIR/composer-install-2.log"
+          php artisan about 2>&1 | tee "$EVIDENCE_DIR/artisan-about-2.log"
+          sha256sum composer.json composer.lock | tee "$EVIDENCE_DIR/composer-after-installs.sha256"
+          cmp "$EVIDENCE_DIR/composer-before.sha256" "$EVIDENCE_DIR/composer-after-installs.sha256"
+
+      - name: Validate frozen application contract
+        shell: bash
+        run: |
+          set -Eeuo pipefail
           test -s ../docs/openapi/rosta-v1-phase6.yaml
           test -s ../docs/openapi/rosta-v1-commerce-additions.yaml
           test -s ../docs/openapi/rosta-v1-finance.yaml
@@ -125,39 +157,83 @@ jobs:
           test -s ../docs/openapi/rosta-v1-admin-operations.yaml
           grep -q '^ROSTA_CONTRACT_VERSION=2026-07-21-phase-6$' .env.example
           grep -q '"laravel/framework": "^13.8"' composer.json
+          test "$ROSTA_PAYMENT_ENABLED" = "false"
+          test "$ROSTA_REFUND_ENABLED" = "false"
+          test "$ROSTA_SMS_ENABLED" = "false"
+          test "$ROSTA_MEDIA_UPLOADS_ENABLED" = "false"
 
-      - name: Run MySQL migrations
-        run: php artisan migrate --force
-
-      - name: Verify MySQL and Redis readiness
+      - name: Run clean MySQL migrations
         shell: bash
         run: |
           set -o pipefail
-          php artisan rosta:readiness --strict --json 2>&1 | tee backend-readiness.json
+          php artisan migrate:fresh --force 2>&1 | tee "$EVIDENCE_DIR/mysql-migrations.log"
 
-      - name: Exercise Redis cache session and queue contracts
+      - name: Verify strict readiness
         shell: bash
         run: |
           set -o pipefail
-          composer acceptance:infrastructure 2>&1 | tee infrastructure-acceptance.json
-          grep -q 'ROSTA_R2C_INFRASTRUCTURE_COMPLETE' infrastructure-acceptance.json
+          php artisan rosta:readiness --strict --json 2>&1 | tee "$EVIDENCE_DIR/backend-readiness.json"
 
-      - name: Run backend quality gate
+      - name: Exercise Redis runtime contracts
         shell: bash
         run: |
           set -o pipefail
-          composer check 2>&1 | tee backend-quality.log
+          composer acceptance:infrastructure 2>&1 | tee "$EVIDENCE_DIR/infrastructure-acceptance.json"
+          grep -q 'ROSTA_R2C_INFRASTRUCTURE_COMPLETE' "$EVIDENCE_DIR/infrastructure-acceptance.json"
 
-      - name: Upload backend reports
+      - name: Run every backend audit independently
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          composer validate --strict 2>&1 | tee "$EVIDENCE_DIR/composer-validate.log"
+          composer audit --locked 2>&1 | tee "$EVIDENCE_DIR/composer-audit.log"
+          for gate in business checkout seo cooci-adoption fulfillment reviews-support media-storage openapi validation finance seller-operations admin-operations live-public staging encrypted-storage; do
+            composer "audit:$gate" 2>&1 | tee "$EVIDENCE_DIR/audit-$gate.log"
+          done
+
+      - name: Run tests independently
+        shell: bash
+        run: |
+          set -o pipefail
+          php artisan test 2>&1 | tee "$EVIDENCE_DIR/tests.log"
+
+      - name: Run PHPStan independently
+        shell: bash
+        run: |
+          set -o pipefail
+          php vendor/bin/phpstan analyse --memory-limit=1G --error-format=table 2>&1 | tee "$EVIDENCE_DIR/phpstan.log"
+
+      - name: Run Pint independently
+        shell: bash
+        run: |
+          set -o pipefail
+          php vendor/bin/pint --parallel --test 2>&1 | tee "$EVIDENCE_DIR/pint.log"
+
+      - name: Run aggregate Composer gate once
+        shell: bash
+        run: |
+          set -o pipefail
+          composer check 2>&1 | tee "$EVIDENCE_DIR/composer-check.log"
+
+      - name: Enforce clean scope and emit backend marker
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cp storage/logs/*.log "$EVIDENCE_DIR/" 2>/dev/null || true
+          rm -f .env *-audit.json
+          rm -rf storage/framework/testing storage/framework/cache/phpstan
+          sha256sum composer.json composer.lock | tee "$EVIDENCE_DIR/composer-final.sha256"
+          cmp "$EVIDENCE_DIR/composer-before.sha256" "$EVIDENCE_DIR/composer-final.sha256"
+          git diff --check
+          git status --short --untracked-files=all | tee "$EVIDENCE_DIR/git-status-final.txt"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          echo "backend_foundation=ready" | tee "$EVIDENCE_DIR/result.txt"
+
+      - name: Upload R2D evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: backend-quality-${{ github.run_id }}
-          path: |
-            backend/*-audit.json
-            backend/backend-readiness.json
-            backend/infrastructure-acceptance.json
-            backend/backend-quality.log
-            backend/storage/logs/*.log
-          if-no-files-found: ignore
+          name: rosta-r2d-backend-${{ github.run_id }}
+          path: /tmp/rosta-r2-evidence/${{ github.run_id }}/r2d
+          if-no-files-found: warn
           retention-days: 14
