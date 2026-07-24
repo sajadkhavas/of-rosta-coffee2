@@ -174,15 +174,23 @@ jobs:
           sha256sum backend/composer.json backend/composer.lock | tee "$EVIDENCE_DIR/composer-after.sha256"
           cmp "$EVIDENCE_DIR/composer-before.sha256" "$EVIDENCE_DIR/composer-after.sha256"
           git diff --check
-          changed="$(git diff --name-only | sort)"
-          expected=$'.github/workflows/backend-ci.yml\nbackend/config/database.php'
-          printf '%s\n' "$changed" | tee "$EVIDENCE_DIR/changed-files.txt"
-          test "$changed" = "$expected"
-          test -z "$(git ls-files --others --exclude-standard)"
+          tracked="$(git diff --name-only | sort)"
+          untracked="$(git ls-files --others --exclude-standard | sort)"
+          expected_tracked=$'.github/workflows/backend-ci.yml\nbackend/config/database.php'
+          expected_untracked='backend/app/Http/Controllers/Controller.php'
+          printf '%s\n' "$tracked" | tee "$EVIDENCE_DIR/tracked-files.txt"
+          printf '%s\n' "$untracked" | tee "$EVIDENCE_DIR/untracked-files.txt"
+          test "$tracked" = "$expected_tracked"
+          test "$untracked" = "$expected_untracked"
           git diff --stat | tee "$EVIDENCE_DIR/diff-stat.txt"
           git config user.name "Rosta Program Automation"
           git config user.email "actions@users.noreply.github.com"
-          git add .github/workflows/backend-ci.yml backend/config/database.php
+          git add .github/workflows/backend-ci.yml backend/config/database.php backend/app/Http/Controllers/Controller.php
+          staged="$(git diff --cached --name-only | sort)"
+          expected_staged=$'.github/workflows/backend-ci.yml\nbackend/app/Http/Controllers/Controller.php\nbackend/config/database.php'
+          printf '%s\n' "$staged" | tee "$EVIDENCE_DIR/staged-files.txt"
+          test "$staged" = "$expected_staged"
+          git diff --cached --check
           git commit -m "fix(backend): restore deterministic PHP boot and CI key handling"
           git push origin HEAD:"$TARGET_BRANCH"
           git rev-parse HEAD | tee "$EVIDENCE_DIR/result-commit.txt"
