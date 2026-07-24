@@ -15,14 +15,14 @@ jobs:
     timeout-minutes: 15
     env:
       TARGET_BRANCH: program/r2b-php-quality
-      EXPECTED_HEAD: 42620fe43c3ba73a40c7dd508a3df3bba4f0f512
+      EXPECTED_HEAD: e340b91c33a977ea6d17e024cddb161c281c1b7d
       EVIDENCE_DIR: /tmp/rosta-r2-evidence/${{ github.run_id }}/r2b1-push
     steps:
       - uses: actions/checkout@v4
         with:
           ref: program/r2b-php-quality
           fetch-depth: 0
-      - name: Reproduce previously accepted tree
+      - name: Reproduce previously accepted backend tree
         shell: bash
         run: |
           set -Eeuxo pipefail
@@ -36,7 +36,10 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           path = Path('/tmp/r2b-known-repairs.py')
-          path.write_text(path.read_text().replace('pull_request:\\n', 'pull_request:\\\\n'))
+          source = path.read_text().replace('pull_request:\\n', 'pull_request:\\\\n')
+          start = source.index('# CI must provide an ephemeral process-level application key')
+          end = source.index('# Shared runtime route-contract support.')
+          path.write_text(source[:start] + source[end:])
           PY
           for script in r2b-known-repairs.py r2b-feature-repairs.py r2b-feature-repairs-2.py r2b-feature-repairs-3.py r2b-feature-repairs-4.py r2b1-final-session-repair.py; do
             python "/tmp/$script"
@@ -50,13 +53,13 @@ jobs:
           tracked="$(git diff --name-only | sort)"
           untracked="$(git ls-files --others --exclude-standard | sort)"
           printf 'TRACKED\n%s\nUNTRACKED\n%s\n' "$tracked" "$untracked"
-          test "$(printf '%s\n' "$tracked" | wc -l)" -eq 22
+          test "$(printf '%s\n' "$tracked" | wc -l)" -eq 21
           test "$(printf '%s\n' "$untracked" | wc -l)" -eq 3
-          test -z "$(printf '%s\n' "$tracked" | grep -Ev '^(\.github/workflows/backend-ci\.yml|backend/config/database\.php|backend/(app|scripts|tests)/)' || true)"
+          test -z "$(printf '%s\n' "$tracked" | grep -Ev '^(backend/config/database\.php|backend/(app|scripts|tests)/)' || true)"
           test -z "$(printf '%s\n' "$untracked" | grep -Ev '^backend/(app|scripts)/' || true)"
           git config user.name "Rosta Program Automation"
           git config user.email "actions@users.noreply.github.com"
-          git add .github/workflows/backend-ci.yml backend/app backend/config/database.php backend/scripts backend/tests
+          git add backend/app backend/config/database.php backend/scripts backend/tests
           git diff --cached --check
           git status --short
           git diff --cached --stat
