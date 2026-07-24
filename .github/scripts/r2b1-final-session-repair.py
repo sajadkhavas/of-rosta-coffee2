@@ -15,6 +15,7 @@ old = '''        $this->flushSession();
         ]);
 '''
 new = '''        $this->actingAs($user, 'web');
+        Auth::guard('sanctum')->forgetUser();
         $guard = Auth::guard('web');
         $passwordHash = method_exists($guard, 'hashPasswordForCookie')
             ? $guard->hashPasswordForCookie($user->getAuthPassword())
