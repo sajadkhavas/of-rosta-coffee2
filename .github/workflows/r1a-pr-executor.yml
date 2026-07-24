@@ -29,15 +29,6 @@ jobs:
           ref: program/r1a-dependency-contract
           fetch-depth: 0
 
-      - name: Checkout automation scripts
-        uses: actions/checkout@v4
-        with:
-          ref: automation/r1a-executor
-          path: .r1a-automation
-          sparse-checkout: |
-            .github/scripts/r1a-execute.sh
-          sparse-checkout-cone-mode: false
-
       - name: Setup Node 22
         uses: actions/setup-node@v4
         with:
@@ -48,9 +39,13 @@ jobs:
         with:
           bun-version: 1.2.22
 
-      - name: Execute bounded R1A gate
+      - name: Load and execute bounded R1A gate
         shell: bash
-        run: bash .r1a-automation/.github/scripts/r1a-execute.sh
+        run: |
+          set -Eeuo pipefail
+          git show origin/automation/r1a-executor:.github/scripts/r1a-execute.sh > /tmp/r1a-execute.sh
+          chmod +x /tmp/r1a-execute.sh
+          bash /tmp/r1a-execute.sh
 
       - name: Upload R1A evidence
         if: always()
