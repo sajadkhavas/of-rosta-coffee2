@@ -1,0 +1,198 @@
+name: Rosta R2B PHP Quality Executor
+
+on:
+  pull_request:
+    branches:
+      - integration/rosta-r-program
+    paths:
+      - .github/workflows/r2b-php-quality.yml
+      - .github/scripts/r2b-known-repairs.py
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rosta-r2b-php-quality
+  cancel-in-progress: false
+
+jobs:
+  repair-diagnose-and-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      TARGET_BRANCH: program/r2b-php-quality
+      EXPECTED_HEAD: 42620fe43c3ba73a40c7dd508a3df3bba4f0f512
+      EVIDENCE_DIR: /tmp/rosta-r2-evidence/${{ github.run_id }}/r2b
+      APP_ENV: testing
+      APP_DEBUG: "false"
+      LOG_CHANNEL: stack
+      LOG_STACK: single
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ":memory:"
+      ROSTA_PAYMENT_ENABLED: "false"
+      ROSTA_REFUND_ENABLED: "false"
+      ROSTA_SMS_ENABLED: "false"
+      ROSTA_MEDIA_UPLOADS_ENABLED: "false"
+      COMPOSER_NO_INTERACTION: "1"
+      COMPOSER_PROCESS_TIMEOUT: "900"
+    steps:
+      - name: Checkout R2B product branch
+        uses: actions/checkout@v4
+        with:
+          ref: program/r2b-php-quality
+          fetch-depth: 0
+
+      - name: Setup PHP 8.3 and Composer 2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: bcmath, ctype, curl, dom, fileinfo, intl, json, mbstring, openssl, pcntl, pdo_mysql, pdo_sqlite, posix, redis, simplexml, sockets, sqlite3, tokenizer, xml, xmlwriter, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Verify exact R2B baseline
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          {
+            echo "head=$(git rev-parse HEAD)"
+            echo "tree=$(git rev-parse 'HEAD^{tree}')"
+            echo "php=$(php --version | head -n 1)"
+            echo "composer=$(composer --version 2>&1 | head -n 1)"
+            git status --short --branch
+          } | tee "$EVIDENCE_DIR/snapshot.txt"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          php -r 'exit(PHP_MAJOR_VERSION === 8 && PHP_MINOR_VERSION === 3 ? 0 : 1);'
+          test -s backend/composer.lock
+          test -z "$(git status --porcelain)"
+          sha256sum backend/composer.json backend/composer.lock | tee "$EVIDENCE_DIR/composer-before.sha256"
+
+      - name: Create ephemeral process application key
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          echo "APP_KEY=base64:$(php -r 'echo base64_encode(random_bytes(32));')" >> "$GITHUB_ENV"
+          echo "ephemeral_app_key=present" | tee "$EVIDENCE_DIR/app-key.txt"
+
+      - name: Apply reviewed boot repairs
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git show origin/automation/r2b-executor:.github/scripts/r2b-known-repairs.py > /tmp/r2b-known-repairs.py
+          python /tmp/r2b-known-repairs.py
+          git diff --check
+
+      - name: Prepare application and install locked dependencies
+        shell: bash
+        working-directory: backend
+        run: |
+          set -Eeuo pipefail
+          cp .env.example .env
+          mkdir -p bootstrap/cache storage/app/private storage/app/public storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
+          rm -rf vendor
+          composer install --no-interaction --prefer-dist --no-progress 2>&1 | tee "$EVIDENCE_DIR/composer-install.log"
+          php artisan about 2>&1 | tee "$EVIDENCE_DIR/artisan-about.log"
+
+      - name: Run all contract and dependency gates independently
+        shell: bash
+        working-directory: backend
+        run: |
+          set -Eeuo pipefail
+          failures=0
+          run_gate() {
+            local name="$1"
+            shift
+            set +e
+            "$@" > "$EVIDENCE_DIR/${name}.log" 2>&1
+            local status=$?
+            set -e
+            printf '%s=%s\n' "$name" "$status" | tee -a "$EVIDENCE_DIR/gate-statuses.txt"
+            if [ "$status" -ne 0 ]; then
+              failures=$((failures + 1))
+            fi
+          }
+
+          run_gate composer-validate composer validate --strict
+          run_gate composer-audit composer audit --locked
+          run_gate audit-business composer audit:business
+          run_gate audit-checkout composer audit:checkout
+          run_gate audit-seo composer audit:seo
+          run_gate audit-cooci-adoption composer audit:cooci-adoption
+          run_gate audit-fulfillment composer audit:fulfillment
+          run_gate audit-reviews-support composer audit:reviews-support
+          run_gate audit-media-storage composer audit:media-storage
+          run_gate audit-openapi composer audit:openapi
+          run_gate audit-validation composer audit:validation
+          run_gate audit-finance composer audit:finance
+          run_gate audit-seller-operations composer audit:seller-operations
+          run_gate audit-admin-operations composer audit:admin-operations
+          run_gate audit-live-public composer audit:live-public
+          run_gate audit-staging composer audit:staging
+
+          find . -maxdepth 1 -type f -name '*-audit.json' -print -exec cp {} "$EVIDENCE_DIR/" \;
+          echo "contract_gate_failures=$failures" | tee "$EVIDENCE_DIR/contract-summary.txt"
+          test "$failures" -eq 0
+
+      - name: Run tests static analysis and formatting independently
+        shell: bash
+        working-directory: backend
+        run: |
+          set -Eeuo pipefail
+          failures=0
+          run_gate() {
+            local name="$1"
+            shift
+            set +e
+            "$@" > "$EVIDENCE_DIR/${name}.log" 2>&1
+            local status=$?
+            set -e
+            printf '%s=%s\n' "$name" "$status" | tee -a "$EVIDENCE_DIR/quality-statuses.txt"
+            if [ "$status" -ne 0 ]; then
+              failures=$((failures + 1))
+            fi
+          }
+
+          run_gate tests-unit php artisan test --testsuite=Unit
+          run_gate tests-all php artisan test
+          run_gate phpstan php vendor/bin/phpstan analyse --memory-limit=1G
+          run_gate pint php vendor/bin/pint --parallel --test
+
+          echo "quality_gate_failures=$failures" | tee "$EVIDENCE_DIR/quality-summary.txt"
+          test "$failures" -eq 0
+
+      - name: Enforce R2B product scope and push
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rm -f backend/*-audit.json
+          rm -f backend/.env
+          sha256sum backend/composer.json backend/composer.lock | tee "$EVIDENCE_DIR/composer-after.sha256"
+          cmp "$EVIDENCE_DIR/composer-before.sha256" "$EVIDENCE_DIR/composer-after.sha256"
+          git diff --check
+          changed="$(git diff --name-only | sort)"
+          expected=$'.github/workflows/backend-ci.yml\nbackend/config/database.php'
+          printf '%s\n' "$changed" | tee "$EVIDENCE_DIR/changed-files.txt"
+          test "$changed" = "$expected"
+          test -z "$(git ls-files --others --exclude-standard)"
+          git diff --stat | tee "$EVIDENCE_DIR/diff-stat.txt"
+          git config user.name "Rosta Program Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add .github/workflows/backend-ci.yml backend/config/database.php
+          git commit -m "fix(backend): restore deterministic PHP boot and CI key handling"
+          git push origin HEAD:"$TARGET_BRANCH"
+          git rev-parse HEAD | tee "$EVIDENCE_DIR/result-commit.txt"
+          echo "ROSTA_R2B_PHP_QUALITY_COMPLETE" | tee "$EVIDENCE_DIR/result.txt"
+
+      - name: Upload R2B evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rosta-r2b-evidence-${{ github.run_id }}
+          path: /tmp/rosta-r2-evidence/${{ github.run_id }}/r2b
+          if-no-files-found: warn
+          retention-days: 14
