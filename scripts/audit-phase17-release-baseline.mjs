@@ -142,12 +142,13 @@ const requiredRoutes = [
   "/compare/$slug",
   "/robots.txt",
 ];
-const activeRouteTree = files.phase17RouteTree ?? files.generatedRouteTree ?? "";
+const activeRouteTree = files.generatedRouteTree ?? "";
 gate(
   "active_route_tree_current",
   requiredRoutes.every((route) => activeRouteTree.includes(route)) &&
-    files.router?.includes('from "./routeTree.phase17"'),
-  "the active TanStack route tree must register every current public and administrator route",
+    files.router?.includes('from "./routeTree.gen"') &&
+    !(await exists(paths.phase17RouteTree)),
+  "the generated TanStack route tree must register every current route and the temporary release tree must be absent",
 );
 
 gate(

@@ -5,7 +5,7 @@ const paths = {
   route: "src/routes/admin.finance.tsx",
   api: "src/lib/api/admin-finance.ts",
   navbar: "src/components/Navbar.tsx",
-  routeTree: "src/routeTree.phase17.ts",
+  routeTree: "src/routeTree.gen.ts",
   backendRoutes: "backend/routes/finance.php",
   dispatchController:
     "backend/app/Http/Controllers/Admin/AdminDispatchRefundController.php",
@@ -118,8 +118,8 @@ gate(
   files.navbar.includes('to="/admin/finance"') &&
     files.navbar.includes("isFinanceActive") &&
     files.routeTree.includes("AdminFinanceRouteImport") &&
-    files.routeTree.includes('"/admin/finance"'),
-  "The administrator finance route must be present in navigation and the active temporary route tree.",
+    /["']\/admin\/finance["']/.test(files.routeTree),
+  "The administrator finance route must be present in navigation and the generated route tree.",
 );
 
 gate(
