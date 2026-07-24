@@ -2,10 +2,24 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property string $id
+ * @property string|null $source_path
+ * @property string|null $destination_path
+ * @property int $status_code
+ * @property bool $is_active
+ * @property int $hits
+ * @property CarbonImmutable|null $last_hit_at
+ * @property string|null $created_by
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
+ * @property-read User|null $creator
+ */
 final class SeoRedirect extends Model
 {
     use HasUlids;
@@ -30,6 +44,7 @@ final class SeoRedirect extends Model
         ];
     }
 
+    /** @return BelongsTo<User, $this> */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');

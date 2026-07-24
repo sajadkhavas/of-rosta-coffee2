@@ -2,9 +2,11 @@
 
 namespace App\Http\Resources;
 
+use App\Models\RoastBatch;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/** @mixin RoastBatch */
 final class RoastBatchResource extends JsonResource
 {
     public function toArray(Request $request): array
@@ -12,7 +14,7 @@ final class RoastBatchResource extends JsonResource
         return [
             'id' => $this->id,
             'batch_code' => $this->batch_code,
-            'roasted_at' => $this->roasted_at?->toIso8601String(),
+            'roasted_at' => $this->roasted_at->toIso8601String(),
             'available_from' => $this->available_from?->toIso8601String(),
         ];
     }

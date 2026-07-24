@@ -48,7 +48,7 @@ $gate(
     'refund_pending_is_not_fake_cancellation',
     str_contains($files['service'], 'OrderStatus::RefundPending')
         && str_contains($files['service'], 'SubOrderStatus::RefundPending')
-        && ! str_contains($files['service'], "SubOrderStatus::Rejected => OrderStatus::Cancelled"),
+        && ! str_contains($files['service'], 'SubOrderStatus::Rejected => OrderStatus::Cancelled'),
     'A paid rejected order must remain financially pending until a real refund is recorded.',
 );
 

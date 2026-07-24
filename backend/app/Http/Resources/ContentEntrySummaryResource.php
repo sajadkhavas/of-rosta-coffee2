@@ -2,10 +2,11 @@
 
 namespace App\Http\Resources;
 
+use App\Models\ContentEntry;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
 
-class ContentEntrySummaryResource extends JsonResource
+/** @mixin ContentEntry */
+class ContentEntrySummaryResource extends OkJsonResource
 {
     public function toArray(Request $request): array
     {

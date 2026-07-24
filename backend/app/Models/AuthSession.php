@@ -2,10 +2,24 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property string $id
+ * @property string|null $user_id
+ * @property string|null $ip_hash
+ * @property string|null $user_agent_hash
+ * @property CarbonImmutable|null $last_seen_at
+ * @property CarbonImmutable $expires_at
+ * @property CarbonImmutable|null $revoked_at
+ * @property string|null $revoke_reason
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
+ * @property-read User|null $user
+ */
 final class AuthSession extends Model
 {
     use HasUlids;
@@ -29,6 +43,7 @@ final class AuthSession extends Model
         ];
     }
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

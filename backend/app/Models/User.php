@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\Role;
+use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,6 +12,23 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
+/**
+ * @property string $id
+ * @property string|null $mobile
+ * @property string|null $name
+ * @property string|null $email
+ * @property CarbonImmutable|null $mobile_verified_at
+ * @property CarbonImmutable|null $email_verified_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
+ * @property-read Collection<int, UserRole> $roleAssignments
+ * @property-read Collection<int, AuthSession> $authSessions
+ * @property-read Collection<int, Address> $addresses
+ * @property-read Collection<int, StockLedgerEntry> $stockLedgerEntries
+ * @property-read Collection<int, CheckoutQuote> $checkoutQuotes
+ * @property-read Collection<int, Order> $orders
+ * @property-read Collection<int, OrderIdempotencyKey> $orderIdempotencyKeys
+ */
 final class User extends Authenticatable
 {
     use HasApiTokens;
@@ -36,36 +55,43 @@ final class User extends Authenticatable
         ];
     }
 
+    /** @return HasMany<UserRole, $this> */
     public function roleAssignments(): HasMany
     {
         return $this->hasMany(UserRole::class);
     }
 
+    /** @return HasMany<AuthSession, $this> */
     public function authSessions(): HasMany
     {
         return $this->hasMany(AuthSession::class);
     }
 
+    /** @return HasMany<Address, $this> */
     public function addresses(): HasMany
     {
         return $this->hasMany(Address::class);
     }
 
+    /** @return HasMany<StockLedgerEntry, $this> */
     public function stockLedgerEntries(): HasMany
     {
         return $this->hasMany(StockLedgerEntry::class, 'actor_id');
     }
 
+    /** @return HasMany<CheckoutQuote, $this> */
     public function checkoutQuotes(): HasMany
     {
         return $this->hasMany(CheckoutQuote::class);
     }
 
+    /** @return HasMany<Order, $this> */
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
     }
 
+    /** @return HasMany<OrderIdempotencyKey, $this> */
     public function orderIdempotencyKeys(): HasMany
     {
         return $this->hasMany(OrderIdempotencyKey::class);

@@ -3,12 +3,47 @@
 namespace App\Models;
 
 use App\Enums\OrderStatus;
+use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @property string $id
+ * @property string|null $user_id
+ * @property string|null $roastery_id
+ * @property string|null $quote_id
+ * @property string|null $order_number
+ * @property OrderStatus $status
+ * @property array<mixed> $address_snapshot
+ * @property string|null $notes
+ * @property int $subtotal
+ * @property int $shipping_total
+ * @property int $discount_total
+ * @property int $grand_total
+ * @property string|null $currency
+ * @property CarbonImmutable|null $placed_at
+ * @property CarbonImmutable|null $paid_at
+ * @property CarbonImmutable|null $refunded_at
+ * @property CarbonImmutable|null $cancelled_at
+ * @property string|null $cancellation_reason
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
+ * @property-read User|null $user
+ * @property-read Roastery|null $roastery
+ * @property-read CheckoutQuote|null $quote
+ * @property-read SubOrder|null $subOrder
+ * @property-read Collection<int, OrderItem> $items
+ * @property-read Collection<int, InventoryReservation> $reservations
+ * @property-read Collection<int, PaymentAttempt> $paymentAttempts
+ * @property-read Collection<int, RefundAttempt> $refundAttempts
+ * @property-read Collection<int, FinancialReconciliationCase> $reconciliationCases
+ * @property-read Collection<int, OrderInternalNote> $internalNotes
+ * @property-read Collection<int, OrderIdempotencyKey> $idempotencyKeys
+ */
 final class Order extends Model
 {
     use HasUlids;
@@ -49,56 +84,67 @@ final class Order extends Model
         ];
     }
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /** @return BelongsTo<Roastery, $this> */
     public function roastery(): BelongsTo
     {
         return $this->belongsTo(Roastery::class);
     }
 
+    /** @return BelongsTo<CheckoutQuote, $this> */
     public function quote(): BelongsTo
     {
         return $this->belongsTo(CheckoutQuote::class, 'quote_id');
     }
 
+    /** @return HasOne<SubOrder, $this> */
     public function subOrder(): HasOne
     {
         return $this->hasOne(SubOrder::class);
     }
 
+    /** @return HasMany<OrderItem, $this> */
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
     }
 
+    /** @return HasMany<InventoryReservation, $this> */
     public function reservations(): HasMany
     {
         return $this->hasMany(InventoryReservation::class);
     }
 
+    /** @return HasMany<PaymentAttempt, $this> */
     public function paymentAttempts(): HasMany
     {
         return $this->hasMany(PaymentAttempt::class);
     }
 
+    /** @return HasMany<RefundAttempt, $this> */
     public function refundAttempts(): HasMany
     {
         return $this->hasMany(RefundAttempt::class);
     }
 
+    /** @return HasMany<FinancialReconciliationCase, $this> */
     public function reconciliationCases(): HasMany
     {
         return $this->hasMany(FinancialReconciliationCase::class);
     }
 
+    /** @return HasMany<OrderInternalNote, $this> */
     public function internalNotes(): HasMany
     {
         return $this->hasMany(OrderInternalNote::class);
     }
 
+    /** @return HasMany<OrderIdempotencyKey, $this> */
     public function idempotencyKeys(): HasMany
     {
         return $this->hasMany(OrderIdempotencyKey::class);

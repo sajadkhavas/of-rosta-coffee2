@@ -125,7 +125,7 @@ final class AppServiceProvider extends ServiceProvider
 
             return [
                 Limit::perMinute(20)->by('fulfillment:user:'.$userId),
-                Limit::perMinute(6)->by('fulfillment:order:'.hash('sha256', $orderId)),
+                Limit::perMinute(10)->by('fulfillment:order:'.hash('sha256', $orderId)),
             ];
         });
 

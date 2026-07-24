@@ -3,10 +3,12 @@
 namespace App\Http\Resources;
 
 use App\Enums\OrderStatus;
+use App\Models\Order;
 use App\Models\OrderItem;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/** @mixin Order */
 final class OrderResource extends JsonResource
 {
     public function toArray(Request $request): array

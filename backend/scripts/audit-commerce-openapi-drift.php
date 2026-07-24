@@ -7,19 +7,8 @@ $openApi = implode("\n", [
     file_get_contents(dirname($root).'/docs/openapi/rosta-v1-seller-operations.yaml'),
     file_get_contents(dirname($root).'/docs/openapi/rosta-v1-admin-operations.yaml'),
 ]);
-$routeSources = implode("\n", array_map(
-    static fn (string $file): string => file_get_contents($root.'/routes/'.$file),
-    [
-        'api.php',
-        'payments.php',
-        'fulfillment.php',
-        'reviews-support.php',
-        'media-uploads.php',
-        'finance.php',
-        'seller-bootstrap.php',
-        'admin-operations.php',
-    ],
-));
+require_once $root.'/scripts/route-contract-support.php';
+$routeContracts = rostaRouteContracts($root);
 
 $contracts = [
     '/payments/request',
@@ -57,7 +46,7 @@ $contracts = [
 $missingRoutes = [];
 $missingOpenApi = [];
 foreach ($contracts as $path) {
-    if (! str_contains($routeSources, $path)) {
+    if (! isset($routeContracts[$path])) {
         $missingRoutes[] = $path;
     }
     if (! str_contains($openApi, $path.':')) {

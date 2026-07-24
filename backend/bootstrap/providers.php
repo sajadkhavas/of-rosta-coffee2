@@ -1,7 +1,11 @@
 <?php
 
+use App\Providers\AppServiceProvider;
+use App\Providers\FinanceServiceProvider;
+use App\Providers\ProductionSafetyServiceProvider;
+
 return [
-    App\Providers\AppServiceProvider::class,
-    App\Providers\FinanceServiceProvider::class,
-    App\Providers\ProductionSafetyServiceProvider::class,
+    AppServiceProvider::class,
+    FinanceServiceProvider::class,
+    ProductionSafetyServiceProvider::class,
 ];

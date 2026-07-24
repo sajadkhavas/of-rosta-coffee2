@@ -19,7 +19,6 @@ final class ContentBlockValidator
     ];
 
     /**
-     * @param mixed $body
      * @return list<array<string, mixed>>
      */
     public function validate(mixed $body): array
@@ -52,16 +51,17 @@ final class ContentBlockValidator
     }
 
     /**
-     * @param list<array<string, mixed>> $body
+     * @param  list<array<string, mixed>>  $body
      */
     public function hash(array $body): string
     {
         $json = json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+
         return hash('sha256', $json);
     }
 
     /**
-     * @param array<string, mixed> $block
+     * @param  array<string, mixed>  $block
      * @return array<string, mixed>
      */
     private function validateBlock(int $index, string $type, array $block): array
@@ -98,6 +98,7 @@ final class ContentBlockValidator
                 'roastery_slug' => $this->slug($block['roastery_slug'] ?? null, $index),
             ],
             'comparison_table' => $this->comparisonTable($block, $index),
+            default => throw $this->invalid($index, 'نوع بلوک پشتیبانی نمی‌شود.'),
         };
     }
 
@@ -110,19 +111,26 @@ final class ContentBlockValidator
         if ($text === '' || mb_strlen($text) > $max || preg_match('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', $text) === 1) {
             throw $this->invalid($index, 'طول یا نویسه‌های متن بلوک معتبر نیست.');
         }
+
         return $text;
     }
 
     private function nullableText(mixed $value, int $max, int $index): ?string
     {
-        if ($value === null || $value === '') return null;
+        if ($value === null || $value === '') {
+            return null;
+        }
+
         return $this->text($value, $max, $index);
     }
 
     /** @param list<mixed> $allowed */
     private function enum(mixed $value, array $allowed, int $index): mixed
     {
-        if (! in_array($value, $allowed, true)) throw $this->invalid($index, 'مقدار بلوک خارج از فهرست مجاز است.');
+        if (! in_array($value, $allowed, true)) {
+            throw $this->invalid($index, 'مقدار بلوک خارج از فهرست مجاز است.');
+        }
+
         return $value;
     }
 
@@ -132,6 +140,7 @@ final class ContentBlockValidator
         if (! is_array($value) || ! array_is_list($value) || $value === [] || count($value) > $maxItems) {
             throw $this->invalid($index, 'فهرست بلوک معتبر نیست.');
         }
+
         return array_map(fn (mixed $item): string => $this->text($item, $maxLength, $index), $value);
     }
 
@@ -141,6 +150,7 @@ final class ContentBlockValidator
         if (! is_array($value) || ! array_is_list($value) || $value === [] || count($value) > $maxItems) {
             throw $this->invalid($index, 'فهرست Slug معتبر نیست.');
         }
+
         return array_values(array_unique(array_map(fn (mixed $slug): string => $this->slug($slug, $index), $value)));
     }
 
@@ -150,6 +160,7 @@ final class ContentBlockValidator
         if (preg_match('/^[A-Za-z0-9\x{0600}-\x{06FF}](?:[A-Za-z0-9\x{0600}-\x{06FF}_-]{0,178}[A-Za-z0-9\x{0600}-\x{06FF}])?$/u', $slug) !== 1) {
             throw $this->invalid($index, 'Slug بلوک معتبر نیست.');
         }
+
         return $slug;
     }
 
@@ -169,6 +180,7 @@ final class ContentBlockValidator
                 'answer' => $this->text($item['answer'] ?? null, 3000, $index),
             ];
         }
+
         return $items;
     }
 
@@ -183,9 +195,12 @@ final class ContentBlockValidator
         $normalizedRows = [];
         foreach ($rows as $row) {
             $cells = $this->textList($row, count($columns), 1000, $index);
-            if (count($cells) !== count($columns)) throw $this->invalid($index, 'تعداد سلول‌های جدول با ستون‌ها برابر نیست.');
+            if (count($cells) !== count($columns)) {
+                throw $this->invalid($index, 'تعداد سلول‌های جدول با ستون‌ها برابر نیست.');
+            }
             $normalizedRows[] = $cells;
         }
+
         return ['type' => 'comparison_table', 'columns' => $columns, 'rows' => $normalizedRows];
     }
 

@@ -2,10 +2,11 @@
 
 namespace App\Http\Resources;
 
+use App\Models\ContentAuthor;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
 
-final class ContentAuthorResource extends JsonResource
+/** @mixin ContentAuthor */
+final class ContentAuthorResource extends OkJsonResource
 {
     public function toArray(Request $request): array
     {

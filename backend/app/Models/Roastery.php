@@ -3,11 +3,40 @@
 namespace App\Models;
 
 use App\Enums\RoasteryStatus;
+use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property string $id
+ * @property string|null $name
+ * @property string|null $slug
+ * @property string|null $city
+ * @property string|null $description
+ * @property string|null $shipping_policy
+ * @property RoasteryStatus $status
+ * @property CarbonImmutable|null $verified_at
+ * @property int|null $preparation_min_hours
+ * @property int|null $preparation_max_hours
+ * @property float|null $rating_value
+ * @property int $rating_count
+ * @property string|null $logo_media_id
+ * @property string|null $cover_media_id
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
+ * @property-read Collection<int, Product> $products
+ * @property-read Collection<int, MediaAsset> $mediaAssets
+ * @property-read Collection<int, ShippingRule> $shippingRules
+ * @property-read Collection<int, Coupon> $coupons
+ * @property-read Collection<int, CheckoutQuote> $checkoutQuotes
+ * @property-read Collection<int, Order> $orders
+ * @property-read Collection<int, SubOrder> $subOrders
+ * @property-read MediaAsset|null $logo
+ * @property-read MediaAsset|null $cover
+ */
 final class Roastery extends Model
 {
     use HasUlids;
@@ -40,46 +69,55 @@ final class Roastery extends Model
         ];
     }
 
+    /** @return HasMany<Product, $this> */
     public function products(): HasMany
     {
         return $this->hasMany(Product::class);
     }
 
+    /** @return HasMany<MediaAsset, $this> */
     public function mediaAssets(): HasMany
     {
         return $this->hasMany(MediaAsset::class);
     }
 
+    /** @return HasMany<ShippingRule, $this> */
     public function shippingRules(): HasMany
     {
         return $this->hasMany(ShippingRule::class);
     }
 
+    /** @return HasMany<Coupon, $this> */
     public function coupons(): HasMany
     {
         return $this->hasMany(Coupon::class);
     }
 
+    /** @return HasMany<CheckoutQuote, $this> */
     public function checkoutQuotes(): HasMany
     {
         return $this->hasMany(CheckoutQuote::class);
     }
 
+    /** @return HasMany<Order, $this> */
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
     }
 
+    /** @return HasMany<SubOrder, $this> */
     public function subOrders(): HasMany
     {
         return $this->hasMany(SubOrder::class);
     }
 
+    /** @return BelongsTo<MediaAsset, $this> */
     public function logo(): BelongsTo
     {
         return $this->belongsTo(MediaAsset::class, 'logo_media_id');
     }
 
+    /** @return BelongsTo<MediaAsset, $this> */
     public function cover(): BelongsTo
     {
         return $this->belongsTo(MediaAsset::class, 'cover_media_id');

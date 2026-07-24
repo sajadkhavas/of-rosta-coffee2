@@ -501,7 +501,7 @@ final class PaymentService
         if (
             $attempt->status === PaymentAttemptStatus::Pending
             && $attempt->redirect_url
-            && (! $attempt->expires_at || $attempt->expires_at->isFuture())
+            && $attempt->expires_at->isFuture()
         ) {
             return [
                 'attempt' => $attempt,
@@ -545,8 +545,7 @@ final class PaymentService
     {
         return $reservations->isNotEmpty()
             && $reservations->every(
-                fn (InventoryReservation $reservation): bool =>
-                    $reservation->status === ReservationStatus::Active
+                fn (InventoryReservation $reservation): bool => $reservation->status === ReservationStatus::Active
                     && $reservation->expires_at->isFuture(),
             );
     }

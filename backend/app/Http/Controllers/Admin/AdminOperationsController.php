@@ -45,7 +45,7 @@ final class AdminOperationsController extends Controller
                 'auditable_id' => $log->auditable_id,
                 'request_id' => $log->request_id,
                 'metadata' => $this->redactMetadata($log->metadata ?? []),
-                'created_at' => $log->created_at?->toIso8601String(),
+                'created_at' => $log->created_at->toIso8601String(),
             ])->all(),
             'pagination' => $this->pagination($page),
         ]);
@@ -84,7 +84,7 @@ final class AdminOperationsController extends Controller
                 'last_error' => $item->last_error === null
                     ? null
                     : Str::limit((string) $item->last_error, 500),
-                'available_at' => $item->available_at?->toIso8601String(),
+                'available_at' => $item->available_at->toIso8601String(),
                 'processing_at' => $item->processing_at?->toIso8601String(),
                 'sent_at' => $item->sent_at?->toIso8601String(),
                 'failed_at' => $item->failed_at?->toIso8601String(),
@@ -104,6 +104,7 @@ final class AdminOperationsController extends Controller
             $normalized = strtolower((string) $key);
             if (collect($sensitive)->contains(fn (string $needle): bool => str_contains($normalized, $needle))) {
                 $safe[$key] = '[redacted]';
+
                 continue;
             }
 
@@ -127,6 +128,7 @@ final class AdminOperationsController extends Controller
         }
         if (str_contains($destination, '@')) {
             [$local, $domain] = array_pad(explode('@', $destination, 2), 2, '');
+
             return mb_substr($local, 0, 1).'***@'.$domain;
         }
 

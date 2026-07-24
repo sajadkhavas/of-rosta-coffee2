@@ -12,7 +12,6 @@ use App\Models\Origin;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Roastery;
-use App\Models\Shipment;
 use App\Models\StockLedgerEntry;
 use App\Models\SubOrder;
 use App\Models\SubOrderStatusHistory;
@@ -64,7 +63,10 @@ final class FulfillmentLifecycleTest extends TestCase
             ->assertJsonPath('data.sub_orders.0.status', 'ready_to_ship');
         $this->patchJson($endpoint, ['status' => 'shipped'])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['carrier', 'tracking_code']);
+            ->assertJsonPath('error.code', 'request.validation_failed')
+            ->assertJsonStructure([
+                'error' => ['fields' => ['carrier', 'tracking_code']],
+            ]);
         $this->patchJson($endpoint, [
             'status' => 'shipped',
             'carrier' => 'پست جمهوری اسلامی',

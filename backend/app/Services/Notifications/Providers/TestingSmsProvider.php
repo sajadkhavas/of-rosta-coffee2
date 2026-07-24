@@ -17,7 +17,7 @@ final class TestingSmsProvider implements SmsProvider
         string $destination,
         string $message,
         ?string $providerTemplate = null,
-    ): ?string {
+    ): string {
         $messageId = 'TEST-SMS-'.Str::upper(Str::random(20));
         Log::info('Rosta testing SMS dispatched.', [
             'message_id' => $messageId,

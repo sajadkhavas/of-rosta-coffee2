@@ -19,7 +19,7 @@ final class ContentWriteService
     ) {}
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public function create(array $data, User $actor, Request $request): ContentEntry
     {
@@ -32,6 +32,9 @@ final class ContentWriteService
                 ...$this->normalizedData($data, $body, true),
                 'status' => ContentStatus::Draft->value,
             ]);
+            $entry->forceFill([
+                'content_hash' => $this->documentHash($entry),
+            ])->save();
 
             $this->syncRelations($entry, $relations);
             $this->audit->record(
@@ -47,7 +50,7 @@ final class ContentWriteService
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public function update(
         ContentEntry $entry,
@@ -85,6 +88,7 @@ final class ContentWriteService
                 $locked->status = ContentStatus::Review;
                 $locked->published_at = null;
             }
+            $locked->content_hash = $this->documentHash($locked);
             $locked->save();
 
             if ($relationsProvided) {
@@ -109,8 +113,8 @@ final class ContentWriteService
     }
 
     /**
-     * @param array<string, mixed> $data
-     * @param list<array<string, mixed>> $body
+     * @param  array<string, mixed>  $data
+     * @param  list<array<string, mixed>>  $body
      * @return array<string, mixed>
      */
     private function normalizedData(
@@ -145,8 +149,39 @@ final class ContentWriteService
         return $data;
     }
 
+    private function documentHash(ContentEntry $entry): string
+    {
+        $attributes = $entry->getAttributes();
+        $document = [];
+        foreach ([
+            'author_id',
+            'type',
+            'title',
+            'slug',
+            'canonical_path',
+            'excerpt',
+            'body',
+            'seo_title',
+            'seo_description',
+            'robots_index',
+            'robots_follow',
+            'og_title',
+            'og_description',
+            'og_media_url',
+            'schema_type',
+            'keywords',
+        ] as $field) {
+            $document[$field] = $attributes[$field] ?? null;
+        }
+
+        return hash('sha256', json_encode(
+            $document,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR,
+        ));
+    }
+
     /**
-     * @param list<array<string, mixed>> $relations
+     * @param  list<array<string, mixed>>  $relations
      */
     private function syncRelations(ContentEntry $entry, array $relations): void
     {

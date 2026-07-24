@@ -41,11 +41,10 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions) use ($copyHeaders): void {
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request, \Throwable $exception): bool =>
-                $request->is('api/*') || $request->expectsJson(),
+            fn (Request $request, Throwable $exception): bool => $request->is('api/*') || $request->expectsJson(),
         );
 
-        $exceptions->render(function (\Throwable $exception, Request $request) use ($copyHeaders) {
+        $exceptions->render(function (Throwable $exception, Request $request) use ($copyHeaders) {
             if (! ($request->is('api/*') || $request->expectsJson())) {
                 return null;
             }

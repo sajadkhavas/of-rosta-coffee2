@@ -39,6 +39,7 @@ foreach (['app', 'config', 'database', 'routes'] as $directory) {
         $content = file_get_contents($file->getPathname());
         if ($content === false) {
             $failures[] = 'Unreadable file: '.$file->getPathname();
+
             continue;
         }
 
@@ -91,8 +92,8 @@ $checks = [
         "->where('user_id', \$user->id)" => 'Addresses must be owner scoped.',
     ],
     'app/Models/AuditLog.php' => [
-        'static::updating' => 'Audit records must reject updates.',
-        'static::deleting' => 'Audit records must reject deletes.',
+        '::updating' => 'Audit records must reject updates.',
+        '::deleting' => 'Audit records must reject deletes.',
     ],
     'app/Services/Catalog/CatalogAccess.php' => [
         "->where('scope_type', 'roastery')" => 'Seller access must be roastery scoped.',
@@ -106,8 +107,8 @@ $checks = [
         'inventory.reserved_stock_conflict' => 'Stock adjustments must preserve reservations.',
     ],
     'app/Models/StockLedgerEntry.php' => [
-        'static::updating' => 'Stock ledger entries must reject updates.',
-        'static::deleting' => 'Stock ledger entries must reject deletes.',
+        '::updating' => 'Stock ledger entries must reject updates.',
+        '::deleting' => 'Stock ledger entries must reject deletes.',
     ],
     'app/Models/Product.php' => [
         "->where('status', ProductStatus::Published->value)" => 'Public products must be published.',
@@ -122,7 +123,7 @@ $checks = [
     ],
     'app/Services/Catalog/MediaRegistrationService.php' => [
         "config('rosta.catalog.allowed_media_hosts'" => 'Media must use a server allowlist.',
-        "in_array(\$host, \$allowedHosts, true)" => 'Media hosts must be allowlisted.',
+        'in_array($host, $allowedHosts, true)' => 'Media hosts must be allowlisted.',
     ],
     'app/Services/Checkout/QuoteService.php' => [
         'cart.multiple_roasteries' => 'Cart validation must reject multiple roasteries.',
@@ -195,32 +196,37 @@ $requireContains(
     'Idempotency keys must be customer scoped.',
 );
 
-$routes = $read('routes/api.php');
+require_once $root.'/scripts/route-contract-support.php';
+$routeContracts = rostaRouteContracts($root);
+
 foreach ([
     '/seller/origins',
-    '/media',
-    'roast-batches',
-    'stock-ledger',
+    '/seller/roasteries/{roasteryId}/media',
+    '/seller/roasteries/{roasteryId}/products/{productId}/roast-batches',
+    '/seller/roasteries/{roasteryId}/variants/{variantId}/stock-ledger',
     '/admin/origins',
     '/cart/validate',
     '/checkout/quote',
     '/orders',
     '/orders/{orderId}/cancel',
-    'throttle:cart-validate',
-    'throttle:checkout-quote',
-    'throttle:order-create',
 ] as $routeBoundary) {
-    if (! str_contains($routes, $routeBoundary)) {
-        $failures[] = 'Missing route boundary: '.$routeBoundary;
+    if (! isset($routeContracts[$routeBoundary])) {
+        $failures[] = 'Missing registered route boundary: '.$routeBoundary;
     }
 }
+
 foreach ([
-    "['auth:sanctum', 'rosta.session']",
-    'rosta.role:roastery_owner,roastery_manager,roastery_staff,administrator',
-    'rosta.role:administrator',
-] as $middlewareBoundary) {
-    if (! str_contains($routes, $middlewareBoundary)) {
-        $failures[] = 'Missing middleware boundary: '.$middlewareBoundary;
+    '/cart/validate' => ['throttle:cart-validate'],
+    '/checkout/quote' => ['auth:sanctum', 'rosta.session', 'throttle:checkout-quote'],
+    '/orders' => ['auth:sanctum', 'rosta.session', 'throttle:order-create'],
+    '/seller/origins' => ['auth:sanctum', 'rosta.session', 'rosta.role:roastery_owner,roastery_manager,roastery_staff,administrator'],
+    '/admin/origins' => ['auth:sanctum', 'rosta.session', 'rosta.role:administrator'],
+] as $path => $requiredMiddleware) {
+    $registered = $routeContracts[$path]['middleware'] ?? [];
+    foreach ($requiredMiddleware as $middlewareBoundary) {
+        if (! in_array($middlewareBoundary, $registered, true)) {
+            $failures[] = 'Missing registered middleware '.$middlewareBoundary.' for '.$path;
+        }
     }
 }
 

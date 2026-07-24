@@ -192,7 +192,7 @@ final class SellerProductController
     }
 
     /**
-     * @param list<string> $galleryIds
+     * @param  list<string>  $galleryIds
      */
     private function assertMediaOwnership(
         Roastery $roastery,
@@ -219,7 +219,7 @@ final class SellerProductController
     }
 
     /**
-     * @param list<string> $ids
+     * @param  list<string>  $ids
      * @return array<string, array{position: int}>
      */
     private function gallerySync(array $ids): array

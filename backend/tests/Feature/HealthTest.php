@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Support\Facades\Redis;
+use RuntimeException;
 use Tests\TestCase;
 
 final class HealthTest extends TestCase
@@ -38,11 +40,17 @@ final class HealthTest extends TestCase
 
     public function test_readiness_never_claims_ready_when_a_dependency_is_missing(): void
     {
+        Redis::shouldReceive('connection')
+            ->once()
+            ->andThrow(new RuntimeException('Simulated Redis outage.'));
+
         $response = $this->getJson('/api/v1/health/ready');
 
         $response
             ->assertStatus(503)
             ->assertJsonPath('data.status', 'not_ready')
+            ->assertJsonPath('data.checks.database', true)
+            ->assertJsonPath('data.checks.redis', false)
             ->assertJsonStructure([
                 'data' => [
                     'status',

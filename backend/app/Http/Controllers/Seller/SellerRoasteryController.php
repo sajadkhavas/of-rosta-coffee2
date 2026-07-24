@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Seller;
 
-use App\Enums\Role;
 use App\Enums\RoasteryStatus;
+use App\Enums\Role;
 use App\Http\Requests\Catalog\StoreRoasteryRequest;
 use App\Http\Requests\Catalog\UpdateRoasteryRequest;
 use App\Http\Resources\RoasteryDetailResource;
@@ -33,8 +33,7 @@ final class SellerRoasteryController
         ];
 
         $rolesByRoastery = $user->roleAssignments
-            ->filter(static fn (UserRole $assignment): bool =>
-                $assignment->scope_type === 'roastery'
+            ->filter(static fn (UserRole $assignment): bool => $assignment->scope_type === 'roastery'
                 && is_string($assignment->scope_id)
                 && in_array($assignment->role->value, $sellerRoles, true)
             )

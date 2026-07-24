@@ -10,6 +10,7 @@ $files = [
     'reviews' => file_get_contents($root.'/app/Services/Reviews/ReviewService.php'),
     'public_reviews' => file_get_contents($root.'/app/Http/Controllers/Reviews/PublicReviewController.php'),
     'review_controller' => file_get_contents($root.'/app/Http/Controllers/Reviews/ReviewController.php'),
+    'review_request' => file_get_contents($root.'/app/Http/Requests/Reviews/CreateReviewRequest.php'),
     'home' => file_get_contents($frontend.'/routes/index.tsx'),
     'blog' => file_get_contents($frontend.'/routes/blog.$slug.tsx'),
     'quiz' => file_get_contents($frontend.'/routes/quiz.tsx'),
@@ -50,7 +51,11 @@ $gate(
         && str_contains($files['reviews'], "'is_verified_purchase' => true")
         && str_contains($files['reviews'], 'ReviewStatus::Approved')
         && str_contains($files['public_reviews'], 'publicForProduct')
-        && str_contains($files['review_controller'], 'order_item_id'),
+        && str_contains($files['review_controller'], 'CreateReviewRequest')
+        && str_contains($files['review_controller'], '$request->validated()')
+        && str_contains($files['review_request'], 'RejectsUnexpectedInput')
+        && str_contains($files['review_request'], "'order_item_id'")
+        && str_contains($files['review_request'], "'required', 'string'"),
     'Review submission must require a delivered owned order item and public listing must require approved verified purchase.',
 );
 

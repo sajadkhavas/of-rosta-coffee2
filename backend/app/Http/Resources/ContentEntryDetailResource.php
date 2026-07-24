@@ -2,8 +2,10 @@
 
 namespace App\Http\Resources;
 
+use App\Models\ContentEntry;
 use Illuminate\Http\Request;
 
+/** @mixin ContentEntry */
 final class ContentEntryDetailResource extends ContentEntrySummaryResource
 {
     public function toArray(Request $request): array

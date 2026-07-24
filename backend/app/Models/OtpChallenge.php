@@ -2,9 +2,26 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property string $id
+ * @property string|null $mobile
+ * @property string|null $purpose
+ * @property string|null $code_digest
+ * @property int $attempts
+ * @property int $max_attempts
+ * @property CarbonImmutable $expires_at
+ * @property CarbonImmutable $resend_available_at
+ * @property CarbonImmutable|null $consumed_at
+ * @property CarbonImmutable|null $locked_at
+ * @property string|null $requested_ip_hash
+ * @property string|null $user_agent_hash
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
+ */
 final class OtpChallenge extends Model
 {
     use HasUlids;

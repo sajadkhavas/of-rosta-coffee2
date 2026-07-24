@@ -2,12 +2,27 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use LogicException;
 
+/**
+ * @property string $id
+ * @property string|null $actor_id
+ * @property string|null $action
+ * @property string|null $auditable_type
+ * @property string|null $auditable_id
+ * @property string|null $request_id
+ * @property string|null $ip_hash
+ * @property array<mixed> $metadata
+ * @property CarbonImmutable $created_at
+ * @property CarbonImmutable|null $updated_at
+ * @property-read User|null $actor
+ * @property-read Model|null $auditable
+ */
 final class AuditLog extends Model
 {
     use HasUlids;
@@ -26,11 +41,11 @@ final class AuditLog extends Model
 
     protected static function booted(): void
     {
-        static::updating(static function (): never {
+        self::updating(static function (): never {
             throw new LogicException('Audit records are append-only and cannot be updated.');
         });
 
-        static::deleting(static function (): never {
+        self::deleting(static function (): never {
             throw new LogicException('Audit records are append-only and cannot be deleted.');
         });
     }
@@ -43,11 +58,13 @@ final class AuditLog extends Model
         ];
     }
 
+    /** @return BelongsTo<User, $this> */
     public function actor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'actor_id');
     }
 
+    /** @return MorphTo<Model, $this> */
     public function auditable(): MorphTo
     {
         return $this->morphTo();

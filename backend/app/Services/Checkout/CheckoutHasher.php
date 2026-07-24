@@ -5,7 +5,7 @@ namespace App\Services\Checkout;
 final class CheckoutHasher
 {
     /**
-     * @param array<string, mixed> $payload
+     * @param  array<string, mixed>  $payload
      */
     public function hash(array $payload): string
     {
@@ -16,7 +16,7 @@ final class CheckoutHasher
     }
 
     /**
-     * @param array<string, mixed> $value
+     * @param  array<string, mixed>  $value
      * @return array<string, mixed>
      */
     private function canonicalize(array $value): array

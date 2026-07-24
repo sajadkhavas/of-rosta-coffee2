@@ -204,7 +204,7 @@ final class AdminFinanceController extends Controller
             'resolution' => $case->resolution,
             'opened_by' => $case->opened_by,
             'resolved_by' => $case->resolved_by,
-            'opened_at' => $case->opened_at?->toIso8601String(),
+            'opened_at' => $case->opened_at->toIso8601String(),
             'resolved_at' => $case->resolved_at?->toIso8601String(),
         ];
     }

@@ -3,11 +3,12 @@
 namespace App\Http\Resources;
 
 use App\Enums\QuotePurpose;
+use App\Models\CheckoutQuote;
 use App\Models\CheckoutQuoteItem;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
 
-final class CheckoutQuoteResource extends JsonResource
+/** @mixin CheckoutQuote */
+final class CheckoutQuoteResource extends OkJsonResource
 {
     public function toArray(Request $request): array
     {
