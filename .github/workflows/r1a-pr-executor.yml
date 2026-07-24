@@ -1,0 +1,62 @@
+name: Rosta R1A Observable Executor
+
+on:
+  pull_request:
+    branches:
+      - integration/rosta-r-program
+    paths:
+      - .github/workflows/r1a-pr-executor.yml
+      - .github/scripts/r1a-execute.sh
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rosta-r1a-observable
+  cancel-in-progress: false
+
+jobs:
+  execute-r1a:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      EVIDENCE_DIR: /tmp/rosta-r1a-evidence
+    steps:
+      - name: Checkout R1A target branch
+        uses: actions/checkout@v4
+        with:
+          ref: program/r1a-dependency-contract
+          fetch-depth: 0
+
+      - name: Checkout automation scripts
+        uses: actions/checkout@v4
+        with:
+          ref: automation/r1a-executor
+          path: .r1a-automation
+          sparse-checkout: |
+            .github/scripts/r1a-execute.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Bun 1.2.22
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.22
+
+      - name: Execute bounded R1A gate
+        shell: bash
+        run: bash .r1a-automation/.github/scripts/r1a-execute.sh
+
+      - name: Upload R1A evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rosta-r1a-evidence-${{ github.run_id }}
+          path: /tmp/rosta-r1a-evidence
+          if-no-files-found: warn
+          retention-days: 14
