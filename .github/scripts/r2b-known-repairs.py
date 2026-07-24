@@ -18,6 +18,24 @@ replace(
     "PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),",
 )
 
+# The standard Laravel controller base class was missing even though every
+# HTTP controller imports and extends it. Restore the minimal framework
+# boundary rather than modifying every controller independently.
+controller = Path("backend/app/Http/Controllers/Controller.php")
+if controller.exists():
+    raise RuntimeError("Controller.php unexpectedly already exists")
+controller.write_text(
+    """<?php
+
+namespace App\\Http\\Controllers;
+
+abstract class Controller
+{
+    // Shared HTTP controller boundary for the Rosta API.
+}
+"""
+)
+
 # CI must provide an ephemeral process-level application key before Composer
 # scripts boot Laravel. It must not mutate .env through artisan key:generate.
 workflow = ".github/workflows/backend-ci.yml"
