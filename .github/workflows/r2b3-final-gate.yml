@@ -3,7 +3,9 @@ name: Rosta R2B3 Final PHP Gate
 on:
   pull_request:
     branches: [integration/rosta-r-program]
-    paths: [.github/workflows/r2b3-final-gate.yml]
+    paths:
+      - .github/workflows/r2b3-final-gate.yml
+      - .github/scripts/r2b3-audit-style-repairs.py
   workflow_dispatch:
 
 permissions:
@@ -70,8 +72,10 @@ jobs:
           sha256sum backend/composer.json backend/composer.lock | tee "$EVIDENCE_DIR/composer-before.sha256"
           git show origin/automation/r2b2-static-executor:.github/scripts/r2b2-model-resource-types.py > /tmp/r2b2-model-resource-types.py
           git show origin/automation/r2b2-static-executor:.github/scripts/r2b2-static-repairs.py > /tmp/r2b2-static-repairs.py
+          git show origin/automation/r2b3-final-executor:.github/scripts/r2b3-audit-style-repairs.py > /tmp/r2b3-audit-style-repairs.py
           python /tmp/r2b2-model-resource-types.py 2>&1 | tee "$EVIDENCE_DIR/type-metadata.log"
           python /tmp/r2b2-static-repairs.py 2>&1 | tee "$EVIDENCE_DIR/static-repairs.log"
+          python /tmp/r2b3-audit-style-repairs.py 2>&1 | tee "$EVIDENCE_DIR/audit-style-repairs.log"
           git diff --check
 
       - name: Install locked dependencies and boot Laravel
