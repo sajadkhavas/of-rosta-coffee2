@@ -1,0 +1,59 @@
+name: Rosta R1C Route Generation V2
+
+on:
+  pull_request:
+    branches:
+      - integration/rosta-r-program
+    paths:
+      - .github/workflows/r1c-route-generation-v2.yml
+      - .github/scripts/r1c-execute.sh
+      - .github/scripts/r1c-integrate-routes.py
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rosta-r1c-route-generation-v2
+  cancel-in-progress: false
+
+jobs:
+  generate-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      EVIDENCE_DIR: /tmp/rosta-r1c-evidence
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+    steps:
+      - name: Checkout R1C branch
+        uses: actions/checkout@v4
+        with:
+          ref: program/r1c-route-generation
+          fetch-depth: 0
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Bun 1.2.22
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.22
+
+      - name: Execute bounded R1C route migration
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git show origin/automation/r1a-executor:.github/scripts/r1c-execute.sh > /tmp/r1c-execute.sh
+          chmod +x /tmp/r1c-execute.sh
+          bash /tmp/r1c-execute.sh
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rosta-r1c-evidence-${{ github.run_id }}
+          path: /tmp/rosta-r1c-evidence
+          if-no-files-found: warn
+          retention-days: 14
