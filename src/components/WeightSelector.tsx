@@ -1,4 +1,5 @@
-import { WEIGHTS, type Weight } from "@/data/seed";
+const WEIGHTS = [50, 100, 250, 500, 1000] as const;
+type Weight = (typeof WEIGHTS)[number];
 import { formatWeight } from "@/lib/persian";
 
 interface Props {

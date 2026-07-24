@@ -8,7 +8,7 @@ export const Route = createFileRoute("/brew/$slug")({
     context.queryClient.ensureQueryData(
       contentPathQueryOptions(`/brew/${params.slug}`),
     ),
-  head: ({ loaderData }) => contentSeoHead(loaderData),
+  head: ({ loaderData }) => (loaderData ? contentSeoHead(loaderData) : {}),
   component: BrewContentPage,
 });
 

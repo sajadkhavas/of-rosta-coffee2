@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/system";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import { absoluteUrl } from "@/config/site";
-import { blogIndexQueryOptions } from "@/lib/api/public-content";
+import { blogIndexQueryOptions, type PublicContentSummary } from "@/lib/api/public-content";
 import { toFa } from "@/lib/persian";
 
 export const Route = createFileRoute("/blog/")({
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/blog/")({
 });
 
 function BlogIndex() {
-  const entries = Route.useLoaderData();
+  const entries: PublicContentSummary[] = Route.useLoaderData();
   return (
     <>
       <Navbar />

@@ -8,7 +8,7 @@ export const Route = createFileRoute("/compare/$slug")({
     context.queryClient.ensureQueryData(
       contentPathQueryOptions(`/compare/${params.slug}`),
     ),
-  head: ({ loaderData }) => contentSeoHead(loaderData),
+  head: ({ loaderData }) => (loaderData ? contentSeoHead(loaderData) : {}),
   component: ComparisonContentPage,
 });
 

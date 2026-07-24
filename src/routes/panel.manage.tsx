@@ -228,7 +228,7 @@ function ProductEditor({ roastery }: { roastery: SellerRoastery }) {
   );
 }
 
-function VariantEditors({ roasteryId, productId, variants, onSaved }: { roasteryId: string; productId: string; variants: Array<{ id: string; sku: string; weightGrams: number; price: number; compareAtPrice: number | null; isAvailable: boolean }>; onSaved: () => Promise<unknown> }) {
+function VariantEditors({ roasteryId, productId, variants, onSaved }: { roasteryId: string; productId: string; variants: Array<{ id: string; sku: string; weightGrams: number; price: number; compareAtPrice?: number | null; isAvailable: boolean }>; onSaved: () => Promise<unknown> }) {
   const [drafts, setDrafts] = useState<Record<string, { sku: string; price: string; compareAtPrice: string; isActive: boolean }>>({});
   useEffect(() => setDrafts(Object.fromEntries(variants.map((item) => [item.id, { sku: item.sku, price: String(item.price), compareAtPrice: item.compareAtPrice ? String(item.compareAtPrice) : "", isActive: item.isAvailable }]))), [variants]);
   const mutation = useMutation({ mutationFn: ({ id, value }: { id: string; value: { sku: string; price: string; compareAtPrice: string; isActive: boolean } }) => updateSellerVariant(roasteryId, productId, id, { sku: value.sku, price: Number(value.price), compareAtPrice: value.compareAtPrice ? Number(value.compareAtPrice) : null, isActive: value.isActive }), onSuccess: onSaved });

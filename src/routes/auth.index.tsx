@@ -49,7 +49,8 @@ function AuthStartPage() {
   const navigate = useNavigate({ from: "/auth/" });
   const [mobile, setMobile] = useState("");
   const [mobileError, setMobileError] = useState<string>();
-  const content = modeContent[search.mode];
+  const mode: AuthMode = search.mode;
+  const content = modeContent[mode];
 
   const mutation = useMutation({
     mutationFn: requestOtp,
@@ -59,8 +60,8 @@ function AuthStartPage() {
       savePendingOtp({
         requestId: result.requestId,
         mobile: normalizedMobile,
-        purpose: modeToPurpose(search.mode),
-        mode: search.mode,
+        purpose: modeToPurpose(mode),
+        mode,
         expiresAt: Date.now() + result.expiresIn * 1000,
         retryAt: Date.now() + result.retryAfter * 1000,
         redirect,
@@ -76,7 +77,7 @@ function AuthStartPage() {
       setMobileError("شماره موبایل ایران را به‌صورت ۰۹xxxxxxxxx وارد کنید.");
       return;
     }
-    mutation.mutate({ mobile, purpose: modeToPurpose(search.mode) });
+    mutation.mutate({ mobile, purpose: modeToPurpose(mode) });
   };
 
   const switchMode = (mode: AuthMode) =>

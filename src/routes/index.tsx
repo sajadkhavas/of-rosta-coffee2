@@ -6,13 +6,13 @@ import { Footer } from "@/components/Footer";
 import HeroBean from "@/components/HeroBean";
 import { Navbar } from "@/components/Navbar";
 import { absoluteUrl } from "@/config/site";
-import { homepageQueryOptions } from "@/lib/api/homepage";
+import { homepageQueryOptions, type HomepageData, type HomeFaq } from "@/lib/api/homepage";
 import { toFa } from "@/lib/persian";
 
 export const Route = createFileRoute("/")({
   loader: ({ context }) => context.queryClient.ensureQueryData(homepageQueryOptions()),
   head: ({ loaderData }) => {
-    const faqs = loaderData?.faqs ?? [];
+    const faqs: HomeFaq[] = loaderData?.faqs ?? [];
     return {
       meta: [
         { title: "رستا | خرید قهوه تازه مستقیم از روستری" },
@@ -62,7 +62,7 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
-  const data = Route.useLoaderData();
+  const data: HomepageData = Route.useLoaderData();
   return (
     <>
       <Navbar />

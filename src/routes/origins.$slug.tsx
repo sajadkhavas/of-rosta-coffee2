@@ -8,7 +8,7 @@ export const Route = createFileRoute("/origins/$slug")({
     context.queryClient.ensureQueryData(
       contentPathQueryOptions(`/origins/${params.slug}`),
     ),
-  head: ({ loaderData }) => contentSeoHead(loaderData),
+  head: ({ loaderData }) => (loaderData ? contentSeoHead(loaderData) : {}),
   component: OriginContentPage,
 });
 
