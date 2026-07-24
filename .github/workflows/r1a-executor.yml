@@ -1,0 +1,292 @@
+name: Rosta R1A Dependency Executor
+
+on:
+  push:
+    branches:
+      - automation/r1a-executor
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rosta-r1a-executor
+  cancel-in-progress: false
+
+jobs:
+  execute-r1a:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      EXPECTED_HEAD: cc2f0238e8ce7c09c0702b3095ac8ab75936318b
+      TARGET_BRANCH: program/r1a-dependency-contract
+      EVIDENCE_DIR: /tmp/rosta-r1a-evidence
+    steps:
+      - name: Checkout exact R1A branch
+        uses: actions/checkout@v4
+        with:
+          ref: program/r1a-dependency-contract
+          fetch-depth: 0
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Bun 1.2.22
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.22
+
+      - name: Verify starting state
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          {
+            echo "branch=$(git branch --show-current)"
+            echo "head=$(git rev-parse HEAD)"
+            echo "tree=$(git rev-parse 'HEAD^{tree}')"
+            echo "node=$(node --version)"
+            echo "bun=$(bun --version)"
+            git status --short --branch
+          } | tee "$EVIDENCE_DIR/starting-state.txt"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test "$(node -p 'process.versions.node.split(".")[0]')" = "22"
+          test "$(bun --version)" = "1.2.22"
+          test -z "$(git status --porcelain)"
+
+      - name: Clean install and baseline TypeScript diagnostics
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rm -rf node_modules
+          /usr/bin/time -f 'elapsed=%e' bun install --frozen-lockfile 2>&1 | tee "$EVIDENCE_DIR/initial-frozen-install.log"
+          set +e
+          bun run typecheck >"$EVIDENCE_DIR/typecheck-baseline.log" 2>&1
+          status=$?
+          set -e
+          echo "$status" > "$EVIDENCE_DIR/typecheck-baseline.exit"
+          grep -c 'error TS[0-9]' "$EVIDENCE_DIR/typecheck-baseline.log" > "$EVIDENCE_DIR/typecheck-baseline.count" || true
+          grep -oE '^([^:(]+\.(ts|tsx|js|jsx))' "$EVIDENCE_DIR/typecheck-baseline.log" | sort -u > "$EVIDENCE_DIR/typecheck-baseline.files" || true
+          echo "Baseline TypeScript exit=$status errors=$(cat "$EVIDENCE_DIR/typecheck-baseline.count")"
+
+      - name: Audit direct external imports
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cat > /tmp/r1a-import-audit.mjs <<'NODE'
+          import fs from 'node:fs';
+          import path from 'node:path';
+          import { builtinModules } from 'node:module';
+
+          const root = process.cwd();
+          const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+          const declared = new Set([
+            ...Object.keys(pkg.dependencies ?? {}),
+            ...Object.keys(pkg.devDependencies ?? {}),
+            ...Object.keys(pkg.optionalDependencies ?? {}),
+          ]);
+          const builtins = new Set([...builtinModules, ...builtinModules.map((name) => `node:${name}`)]);
+          const extensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']);
+          const roots = ['src', 'tests', 'scripts'];
+          const rootFiles = [
+            'vite.config.ts', 'vite.config.js', 'vite.config.mjs',
+            'eslint.config.js', 'eslint.config.mjs', 'eslint.config.cjs',
+            'postcss.config.js', 'tailwind.config.ts',
+          ];
+          const files = [];
+          function walk(dir) {
+            if (!fs.existsSync(dir)) return;
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) walk(full);
+              else if (extensions.has(path.extname(entry.name))) files.push(full);
+            }
+          }
+          for (const dir of roots) walk(path.join(root, dir));
+          for (const file of rootFiles) {
+            const full = path.join(root, file);
+            if (fs.existsSync(full)) files.push(full);
+          }
+
+          const specs = new Map();
+          const patterns = [
+            /(?:import|export)\s+(?:[^'"`]*?\s+from\s+)?["']([^"']+)["']/g,
+            /import\(\s*["']([^"']+)["']\s*\)/g,
+            /require\(\s*["']([^"']+)["']\s*\)/g,
+          ];
+          for (const file of files) {
+            const source = fs.readFileSync(file, 'utf8');
+            for (const pattern of patterns) {
+              pattern.lastIndex = 0;
+              for (const match of source.matchAll(pattern)) {
+                const spec = match[1];
+                if (!spec) continue;
+                if (spec.startsWith('.') || spec.startsWith('/') || spec.startsWith('@/') || spec.startsWith('virtual:') || spec.startsWith('#')) continue;
+                if (builtins.has(spec)) continue;
+                const top = spec.startsWith('@') ? spec.split('/').slice(0, 2).join('/') : spec.split('/')[0];
+                if (!specs.has(top)) specs.set(top, new Set());
+                specs.get(top).add(path.relative(root, file));
+              }
+            }
+          }
+
+          const imported = [...specs.keys()].sort();
+          const missing = imported.filter((name) => !declared.has(name));
+          const unused = [...declared].filter((name) => !specs.has(name)).sort();
+          const report = {
+            importedDeclared: imported.filter((name) => declared.has(name)),
+            importedUndeclared: missing,
+            declaredNotDirectlyImported: unused,
+            evidence: Object.fromEntries([...specs].map(([name, set]) => [name, [...set].sort()])),
+          };
+          fs.writeFileSync(process.env.EVIDENCE_DIR + '/direct-import-audit.json', JSON.stringify(report, null, 2) + '\n');
+          console.log(JSON.stringify(report, null, 2));
+          const expected = ['@tanstack/zod-adapter'];
+          if (JSON.stringify(missing) !== JSON.stringify(expected)) {
+            console.error(`Expected exactly ${JSON.stringify(expected)} as undeclared, found ${JSON.stringify(missing)}`);
+            process.exit(2);
+          }
+          NODE
+          node /tmp/r1a-import-audit.mjs
+
+      - name: Build and verify lock proposal
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          proposal=/tmp/rosta-r1a-lock-proposal
+          rm -rf "$proposal"
+          mkdir -p "$proposal"
+          cp package.json bun.lock "$proposal/"
+          if [ -f bunfig.toml ]; then cp bunfig.toml "$proposal/"; fi
+
+          node - "$proposal/package.json" <<'NODE'
+          const fs = require('node:fs');
+          const file = process.argv[2];
+          const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
+          pkg.dependencies['@tanstack/zod-adapter'] = '1.167.0';
+          pkg.dependencies['react-day-picker'] = '9.14.0';
+          pkg.dependencies['react-resizable-panels'] = '4.6.5';
+          const ordered = {};
+          for (const key of Object.keys(pkg.dependencies).sort()) ordered[key] = pkg.dependencies[key];
+          pkg.dependencies = ordered;
+          fs.writeFileSync(file, JSON.stringify(pkg, null, 2) + '\n');
+          NODE
+
+          cd "$proposal"
+          /usr/bin/time -f 'elapsed=%e' bun install --lockfile-only 2>&1 | tee "$EVIDENCE_DIR/lock-proposal.log"
+          rm -rf node_modules
+          bun install --frozen-lockfile 2>&1 | tee "$EVIDENCE_DIR/proposal-frozen-install.log"
+
+          node --input-type=module <<'NODE' | tee "$EVIDENCE_DIR/version-proof.json"
+          import fs from 'node:fs';
+          const read = (name) => JSON.parse(fs.readFileSync(`node_modules/${name}/package.json`, 'utf8'));
+          const dayPkg = read('react-day-picker');
+          const panelsPkg = read('react-resizable-panels');
+          const zodPkg = read('@tanstack/zod-adapter');
+          const routerPkg = read('@tanstack/react-router');
+          const zodCorePkg = read('zod');
+          const day = await import('react-day-picker');
+          const panels = await import('react-resizable-panels');
+          const adapter = await import('@tanstack/zod-adapter');
+          const checks = {
+            versions: {
+              'react-day-picker': dayPkg.version,
+              'react-resizable-panels': panelsPkg.version,
+              '@tanstack/zod-adapter': zodPkg.version,
+              '@tanstack/react-router': routerPkg.version,
+              zod: zodCorePkg.version,
+            },
+            peers: {
+              'react-day-picker': dayPkg.peerDependencies ?? {},
+              'react-resizable-panels': panelsPkg.peerDependencies ?? {},
+              '@tanstack/zod-adapter': zodPkg.peerDependencies ?? {},
+            },
+            exports: {
+              DayButton: typeof day.DayButton !== 'undefined',
+              DayPicker: typeof day.DayPicker !== 'undefined',
+              getDefaultClassNames: typeof day.getDefaultClassNames === 'function',
+              Group: typeof panels.Group !== 'undefined',
+              Panel: typeof panels.Panel !== 'undefined',
+              Separator: typeof panels.Separator !== 'undefined',
+              fallback: typeof adapter.fallback === 'function',
+              zodValidator: typeof adapter.zodValidator === 'function',
+            },
+          };
+          console.log(JSON.stringify(checks, null, 2));
+          if (checks.versions['react-day-picker'] !== '9.14.0') process.exit(11);
+          if (checks.versions['react-resizable-panels'] !== '4.6.5') process.exit(12);
+          if (checks.versions['@tanstack/zod-adapter'] !== '1.167.0') process.exit(13);
+          if (Object.values(checks.exports).some((value) => !value)) process.exit(14);
+          NODE
+
+          test "$(node -p "require('./package.json').dependencies['@tanstack/zod-adapter']")" = "1.167.0"
+          test "$(node -p "require('./package.json').dependencies['react-day-picker']")" = "9.14.0"
+          test "$(node -p "require('./package.json').dependencies['react-resizable-panels']")" = "4.6.5"
+
+          cd "$GITHUB_WORKSPACE"
+          cp "$proposal/package.json" package.json
+          cp "$proposal/bun.lock" bun.lock
+
+      - name: Prove frozen reproducibility twice
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          sha256sum package.json bun.lock | tee "$EVIDENCE_DIR/hashes-before-final-installs.txt"
+
+          rm -rf node_modules
+          /usr/bin/time -f 'elapsed=%e' bun install --frozen-lockfile 2>&1 | tee "$EVIDENCE_DIR/frozen-run-1.log"
+          sha256sum package.json bun.lock | tee "$EVIDENCE_DIR/hashes-after-run-1.txt"
+          test -z "$(git diff --name-only -- package.json bun.lock | grep -vE '^(package.json|bun.lock)$' || true)"
+
+          rm -rf node_modules
+          /usr/bin/time -f 'elapsed=%e' bun install --frozen-lockfile 2>&1 | tee "$EVIDENCE_DIR/frozen-run-2.log"
+          sha256sum package.json bun.lock | tee "$EVIDENCE_DIR/hashes-after-run-2.txt"
+          cmp "$EVIDENCE_DIR/hashes-after-run-1.txt" "$EVIDENCE_DIR/hashes-after-run-2.txt"
+
+      - name: Final TypeScript comparison and permanent audit
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +e
+          bun run typecheck >"$EVIDENCE_DIR/typecheck-final.log" 2>&1
+          final_status=$?
+          set -e
+          echo "$final_status" > "$EVIDENCE_DIR/typecheck-final.exit"
+          grep -c 'error TS[0-9]' "$EVIDENCE_DIR/typecheck-final.log" > "$EVIDENCE_DIR/typecheck-final.count" || true
+          baseline_count="$(cat "$EVIDENCE_DIR/typecheck-baseline.count")"
+          final_count="$(cat "$EVIDENCE_DIR/typecheck-final.count")"
+          echo "baseline=$baseline_count final=$final_count"
+          test "$final_count" -le "$baseline_count"
+          ! grep -q 'src/components/ui/calendar.tsx' "$EVIDENCE_DIR/typecheck-final.log"
+          ! grep -q 'src/components/ui/resizable.tsx' "$EVIDENCE_DIR/typecheck-final.log"
+          ! grep -q "Cannot find module '@tanstack/zod-adapter'" "$EVIDENCE_DIR/typecheck-final.log"
+          bun run audit:phase22 2>&1 | tee "$EVIDENCE_DIR/audit-phase22.log"
+
+      - name: Enforce scope and commit R1A
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git diff --check
+          changed="$(git diff --name-only | sort)"
+          printf '%s\n' "$changed" | tee "$EVIDENCE_DIR/changed-files.txt"
+          test "$changed" = $'bun.lock\npackage.json'
+          test -z "$(git diff --name-only -- src tests scripts backend deploy .github public 2>/dev/null || true)"
+          git diff --stat | tee "$EVIDENCE_DIR/diff-stat.txt"
+          git config user.name 'Rosta Program Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add package.json bun.lock
+          git commit -m 'chore(frontend): reconcile clean dependency contract'
+          git push origin HEAD:"$TARGET_BRANCH"
+          git rev-parse HEAD | tee "$EVIDENCE_DIR/result-commit.txt"
+          echo 'ROSTA_R1A_DEPENDENCY_CONTRACT_COMPLETE' | tee "$EVIDENCE_DIR/result.txt"
+
+      - name: Upload R1A evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rosta-r1a-evidence-${{ github.run_id }}
+          path: /tmp/rosta-r1a-evidence
+          if-no-files-found: warn
+          retention-days: 14
