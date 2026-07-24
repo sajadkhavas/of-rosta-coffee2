@@ -2,14 +2,19 @@ import { access, readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 async function exists(path) {
-  try { await access(path); return true; } catch { return false; }
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
 }
 async function walk(path) {
   const entries = await readdir(path, { withFileTypes: true });
   const files = [];
   for (const entry of entries) {
     const next = join(path, entry.name);
-    if (entry.isDirectory()) files.push(...await walk(next));
+    if (entry.isDirectory()) files.push(...(await walk(next)));
     else if (/\.(ts|tsx)$/.test(entry.name)) files.push(next);
   }
   return files;
@@ -32,16 +37,22 @@ const paths = {
   productionSafety: "backend/app/Providers/ProductionSafetyServiceProvider.php",
   providers: "backend/bootstrap/providers.php",
 };
-const files = Object.fromEntries(await Promise.all(Object.entries(paths).map(async ([key, path]) => [key, await readFile(path, "utf8")])));
+const files = Object.fromEntries(
+  await Promise.all(
+    Object.entries(paths).map(async ([key, path]) => [key, await readFile(path, "utf8")]),
+  ),
+);
 const sourceFiles = await walk("src");
 const source = (await Promise.all(sourceFiles.map((path) => readFile(path, "utf8")))).join("\n");
 const packageJson = JSON.parse(files.package);
 const gates = [];
-const gate = (name, condition, evidence) => gates.push({ name, passed: Boolean(condition), evidence });
+const gate = (name, condition, evidence) =>
+  gates.push({ name, passed: Boolean(condition), evidence });
 
 gate(
   "permanent_phase21_gate",
-  packageJson.scripts?.["audit:phase21"] === "node scripts/audit-phase21-live-public.mjs" && packageJson.scripts?.check?.includes("audit:phase21"),
+  packageJson.scripts?.["audit:phase21"] === "node scripts/audit-phase21-live-public.mjs" &&
+    packageJson.scripts?.check?.includes("audit:phase21"),
   "Phase 21 live-public audit must remain in bun run check.",
 );
 gate(
@@ -73,8 +84,8 @@ gate(
 );
 gate(
   "quiz_uses_live_available_catalog",
-  files.quiz.includes("ensureQueryData(productsQueryOptions") &&
-    files.quiz.includes('available: true') &&
+  /ensureQueryData\s*\(\s*productsQueryOptions\s*\(/.test(files.quiz) &&
+    /available\s*:\s*true/.test(files.quiz) &&
     files.quizLogic.includes("products: ProductSummary[]") &&
     files.quizLogic.includes('product.status === "published"') &&
     files.quizLogic.includes("variant.isAvailable") &&
@@ -84,9 +95,9 @@ gate(
 gate(
   "public_catalog_lists_are_ssr",
   files.products.includes("loaderDeps") &&
-    files.products.includes("ensureQueryData(productsQueryOptions") &&
+    /ensureQueryData\s*\(\s*productsQueryOptions\s*\(/.test(files.products) &&
     files.roasteries.includes("loaderDeps") &&
-    files.roasteries.includes("ensureQueryData(roasteriesQueryOptions") &&
+    /ensureQueryData\s*\(\s*roasteriesQueryOptions\s*\(/.test(files.roasteries) &&
     !files.products.includes("dangerouslySetInnerHTML") &&
     !files.roasteries.includes("dangerouslySetInnerHTML"),
   "Product and roastery directory HTML and ItemList metadata must be loader-backed.",
@@ -110,14 +121,19 @@ gate(
 );
 gate(
   "whole_bean_boundary_preserved",
-  !/grind[_-]?(selector|state)|grind_option/i.test([files.home, files.quiz, files.product, files.order].join("\n")) &&
+  !/grind[_-]?(selector|state)|grind_option/i.test(
+    [files.home, files.quiz, files.product, files.order].join("\n"),
+  ) &&
     files.product.includes("فقط دانه کامل") &&
     files.order.includes("دانه کامل"),
   "Live public and review surfaces must not introduce any grind state.",
 );
 
 const failed = gates.filter((item) => !item.passed);
-await writeFile("frontend-phase21-audit.json", `${JSON.stringify({ generatedAt: new Date().toISOString(), marker: "phase21_live_public=ready", passed: failed.length === 0, gates }, null, 2)}\n`);
+await writeFile(
+  "frontend-phase21-audit.json",
+  `${JSON.stringify({ generatedAt: new Date().toISOString(), marker: "phase21_live_public=ready", passed: failed.length === 0, gates }, null, 2)}\n`,
+);
 if (failed.length) {
   console.error("Phase 21 live-public audit failed:");
   failed.forEach((item) => console.error(`- ${item.name}: ${item.evidence}`));

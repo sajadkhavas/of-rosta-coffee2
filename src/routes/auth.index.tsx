@@ -93,11 +93,13 @@ function AuthStartPage() {
       <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">{content.description}</p>
 
       <div className="mt-6 grid grid-cols-3 gap-2" role="group" aria-label="نوع احراز هویت">
-        {([
-          ["login", "ورود"],
-          ["register", "ثبت‌نام"],
-          ["recover", "بازیابی"],
-        ] as const).map(([mode, label]) => (
+        {(
+          [
+            ["login", "ورود"],
+            ["register", "ثبت‌نام"],
+            ["recover", "بازیابی"],
+          ] as const
+        ).map(([mode, label]) => (
           <button
             key={mode}
             type="button"
@@ -145,8 +147,15 @@ function AuthStartPage() {
       </form>
 
       <p className="mt-5 text-center text-xs leading-6 text-[color:var(--light)]">
-        با ادامه، <Link to="/terms" className="text-[color:var(--roast)] underline">قوانین رستا</Link> و{" "}
-        <Link to="/privacy" className="text-[color:var(--roast)] underline">حریم خصوصی</Link> را می‌پذیرید.
+        با ادامه،{" "}
+        <Link to="/terms" className="text-[color:var(--roast)] underline">
+          قوانین رستا
+        </Link>{" "}
+        و{" "}
+        <Link to="/privacy" className="text-[color:var(--roast)] underline">
+          حریم خصوصی
+        </Link>{" "}
+        را می‌پذیرید.
       </p>
     </section>
   );

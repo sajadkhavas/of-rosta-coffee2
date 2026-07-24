@@ -5,10 +5,7 @@ import { CatalogProductCard } from "@/components/catalog/CatalogProductCard";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import { absoluteUrl, siteConfig } from "@/config/site";
-import {
-  productsQueryOptions,
-  roasteryQueryOptions,
-} from "@/lib/api/catalog";
+import { productsQueryOptions, roasteryQueryOptions } from "@/lib/api/catalog";
 import { isApiError } from "@/lib/api/client";
 import { bestMediaUrl } from "@/lib/catalog-format";
 import { seoHead } from "@/lib/seo";
@@ -16,9 +13,7 @@ import { seoHead } from "@/lib/seo";
 export const Route = createFileRoute("/roasteries/$slug")({
   loader: async ({ params, context }) => {
     try {
-      const roastery = await context.queryClient.ensureQueryData(
-        roasteryQueryOptions(params.slug),
-      );
+      const roastery = await context.queryClient.ensureQueryData(roasteryQueryOptions(params.slug));
       await context.queryClient.ensureQueryData(
         productsQueryOptions({
           roastery: [params.slug],
@@ -137,9 +132,7 @@ function RoasteryPage() {
                 )}
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-3">
-                    <h1 className="text-3xl font-bold sm:text-4xl">
-                      {roastery.name}
-                    </h1>
+                    <h1 className="text-3xl font-bold sm:text-4xl">{roastery.name}</h1>
                     {roastery.isVerified ? (
                       <span className="rounded-full bg-[color:var(--roast)] px-3 py-1 text-xs font-bold text-[color:var(--night)]">
                         تأییدشده
@@ -156,8 +149,7 @@ function RoasteryPage() {
                     ) : null}
                     {roastery.preparationTime ? (
                       <span>
-                        آماده‌سازی{" "}
-                        {roastery.preparationTime.minHours.toLocaleString("fa-IR")} تا{" "}
+                        آماده‌سازی {roastery.preparationTime.minHours.toLocaleString("fa-IR")} تا{" "}
                         {roastery.preparationTime.maxHours.toLocaleString("fa-IR")} ساعت
                       </span>
                     ) : null}
@@ -187,12 +179,8 @@ function RoasteryPage() {
         <section className="mt-12">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <p className="text-xs font-bold text-[color:var(--roast)]">
-                دانه‌های موجود
-              </p>
-              <h2 className="mt-1 text-2xl font-bold">
-                محصولات {roastery.name}
-              </h2>
+              <p className="text-xs font-bold text-[color:var(--roast)]">دانه‌های موجود</p>
+              <h2 className="mt-1 text-2xl font-bold">محصولات {roastery.name}</h2>
             </div>
             {productsQuery.data?.meta?.total !== undefined ? (
               <span className="text-sm text-[color:var(--light)]">
@@ -212,9 +200,7 @@ function RoasteryPage() {
             </div>
           ) : productsQuery.isError ? (
             <div className="mt-6 rounded-2xl border border-red-400/40 p-6 text-center">
-              <p className="text-sm text-[color:var(--light)]">
-                محصولات این روستری دریافت نشد.
-              </p>
+              <p className="text-sm text-[color:var(--light)]">محصولات این روستری دریافت نشد.</p>
               <button
                 type="button"
                 onClick={() => productsQuery.refetch()}

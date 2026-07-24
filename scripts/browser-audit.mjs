@@ -119,8 +119,7 @@ const product = {
 
 const productDetail = {
   ...product,
-  description:
-    "این قهوه تک‌خاستگاه با اسیدیته شفاف و شیرینی طبیعی برای دم‌آوری فیلتر مناسب است.",
+  description: "این قهوه تک‌خاستگاه با اسیدیته شفاف و شیرینی طبیعی برای دم‌آوری فیلتر مناسب است.",
   gallery: [
     media("product-1-main", "دانه قهوه اتیوپی یرگاچف"),
     media("product-1-detail", "نمای نزدیک دانه‌های قهوه"),
@@ -306,11 +305,7 @@ async function mockApi(context) {
     }
     if (path === "/auth/logout") return route.fulfill({ status: 204 });
 
-    return json(
-      route,
-      { error: { code: "not_found", message: "Mock endpoint not found" } },
-      404,
-    );
+    return json(route, { error: { code: "not_found", message: "Mock endpoint not found" } }, 404);
   });
 }
 
@@ -387,10 +382,7 @@ for (const viewport of viewports) {
             .map((element) => ({
               tag: element.tagName.toLowerCase(),
               id: element.id || null,
-              text: (element.textContent ?? "")
-                .trim()
-                .replace(/\s+/g, " ")
-                .slice(0, 100),
+              text: (element.textContent ?? "").trim().replace(/\s+/g, " ").slice(0, 100),
               rect: {
                 x: Math.round(element.getBoundingClientRect().x),
                 width: Math.round(element.getBoundingClientRect().width),
@@ -403,8 +395,7 @@ for (const viewport of viewports) {
             dir: document.documentElement.dir,
             h1Count: document.querySelectorAll("h1").length,
             mainCount: document.querySelectorAll("main").length,
-            horizontalOverflow:
-              document.documentElement.scrollWidth > window.innerWidth + 2,
+            horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth + 2,
             overflowElements,
           };
         });
@@ -434,10 +425,7 @@ for (const viewport of viewports) {
       const slug =
         routePath === "/"
           ? "home"
-          : routePath
-              .replace(/^\//, "")
-              .replaceAll("/", "--")
-              .replaceAll("?", "--");
+          : routePath.replace(/^\//, "").replaceAll("/", "--").replaceAll("?", "--");
       await page.screenshot({
         path: `${outputDir}/screenshots/${viewport.name}--${slug}.png`,
         fullPage: true,
@@ -502,9 +490,7 @@ for (const viewport of viewports) {
 
   const browserState = await page.evaluate(async () => {
     const registration =
-      "serviceWorker" in navigator
-        ? await navigator.serviceWorker.getRegistration()
-        : null;
+      "serviceWorker" in navigator ? await navigator.serviceWorker.getRegistration() : null;
     const manifestResponse = await fetch("/manifest.json");
     const manifest = manifestResponse.ok ? await manifestResponse.json() : null;
     const cachedRequests = [];
@@ -534,10 +520,7 @@ for (const viewport of viewports) {
     });
     offlineFallback = await page.evaluate(() => ({
       title: document.title,
-      bodyText: document.body.innerText
-        .trim()
-        .replace(/\s+/g, " ")
-        .slice(0, 300),
+      bodyText: document.body.innerText.trim().replace(/\s+/g, " ").slice(0, 300),
     }));
   } catch (error) {
     offlineFallback = {
@@ -561,9 +544,7 @@ const pageErrors = report.results.flatMap((item) =>
 );
 const hydrationWarnings = report.results.flatMap((item) =>
   item.consoleMessages
-    .filter((message) =>
-      /hydration|did not match|server rendered html/i.test(message.text),
-    )
+    .filter((message) => /hydration|did not match|server rendered html/i.test(message.text))
     .map((message) => ({
       viewport: item.viewport,
       route: item.route,
@@ -593,12 +574,10 @@ const privatePrefixes = [
   "/orders",
   "/forbidden",
 ];
-const privateCacheLeaks = (report.pwa?.browserState?.cachedRequests ?? []).filter(
-  (requestUrl) => {
-    const pathname = new URL(requestUrl).pathname;
-    return privatePrefixes.some((prefix) => pathname.startsWith(prefix));
-  },
-);
+const privateCacheLeaks = (report.pwa?.browserState?.cachedRequests ?? []).filter((requestUrl) => {
+  const pathname = new URL(requestUrl).pathname;
+  return privatePrefixes.some((prefix) => pathname.startsWith(prefix));
+});
 
 report.summary = {
   auditedCases: report.auditedCases,
@@ -611,39 +590,27 @@ report.summary = {
 };
 
 const failures = [];
-if (navigationFailures.length)
-  failures.push(`navigation failures: ${navigationFailures.length}`);
+if (navigationFailures.length) failures.push(`navigation failures: ${navigationFailures.length}`);
 if (pageErrors.length) failures.push(`page errors: ${pageErrors.length}`);
-if (hydrationWarnings.length)
-  failures.push(`hydration warnings: ${hydrationWarnings.length}`);
+if (hydrationWarnings.length) failures.push(`hydration warnings: ${hydrationWarnings.length}`);
 if (horizontalOverflow.length)
   failures.push(`horizontal overflow cases: ${horizontalOverflow.length}`);
-if (axeViolations.length)
-  failures.push(`serious/critical Axe findings: ${axeViolations.length}`);
-if (privateCacheLeaks.length)
-  failures.push(`private cache leaks: ${privateCacheLeaks.length}`);
-if (!report.pwa?.browserState?.serviceWorkerSupported)
-  failures.push("service worker unsupported");
+if (axeViolations.length) failures.push(`serious/critical Axe findings: ${axeViolations.length}`);
+if (privateCacheLeaks.length) failures.push(`private cache leaks: ${privateCacheLeaks.length}`);
+if (!report.pwa?.browserState?.serviceWorkerSupported) failures.push("service worker unsupported");
 if (!report.pwa?.browserState?.controllerPresent)
   failures.push("service worker controller missing");
 if (report.pwa?.browserState?.activeState !== "activated")
   failures.push("service worker not activated");
-if (report.pwa?.browserState?.manifestStatus !== 200)
-  failures.push("manifest not available");
+if (report.pwa?.browserState?.manifestStatus !== 200) failures.push("manifest not available");
 if (report.pwa?.offlineFallback?.error) failures.push("offline fallback failed");
-if (
-  report.reducedMotion?.customCursorPresent ||
-  report.reducedMotion?.cursorEnhanced
-) {
+if (report.reducedMotion?.customCursorPresent || report.reducedMotion?.cursorEnhanced) {
   failures.push("custom cursor active with reduced motion");
 }
 if ((report.reducedMotion?.canvasCount ?? 0) > 0)
   failures.push("canvas active with reduced motion");
 
-await writeFile(
-  `${outputDir}/report.json`,
-  `${JSON.stringify(report, null, 2)}\n`,
-);
+await writeFile(`${outputDir}/report.json`, `${JSON.stringify(report, null, 2)}\n`);
 await writeFile(
   `${outputDir}/summary.md`,
   `# Browser audit\n\n- Routes: ${routes.length}\n- Viewports: ${viewports.length}\n- Cases: ${report.auditedCases}\n- Navigation failures: ${navigationFailures.length}\n- Page errors: ${pageErrors.length}\n- Hydration warnings: ${hydrationWarnings.length}\n- Overflow cases: ${horizontalOverflow.length}\n- Serious/critical Axe findings: ${axeViolations.length}\n- Private cache leaks: ${privateCacheLeaks.length}\n- PWA controller: ${report.pwa?.browserState?.controllerPresent ? "yes" : "no"}\n- Offline fallback: ${report.pwa?.offlineFallback?.error ? "failed" : "passed"}\n`,
@@ -654,6 +621,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(
-  `Browser audit passed: ${report.auditedCases} cases, no critical failures.`,
-);
+console.log(`Browser audit passed: ${report.auditedCases} cases, no critical failures.`);

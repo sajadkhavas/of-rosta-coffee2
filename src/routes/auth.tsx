@@ -20,7 +20,9 @@ function AuthLayout() {
     <>
       <Navbar />
       <main className="mx-auto grid min-h-[65vh] max-w-6xl place-items-center px-4 py-10">
-        <div className="w-full max-w-md"><Outlet /></div>
+        <div className="w-full max-w-md">
+          <Outlet />
+        </div>
       </main>
       <Footer />
     </>

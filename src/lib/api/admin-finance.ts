@@ -4,8 +4,7 @@ import { apiFetch } from "./client";
 
 const identifier = z.string().trim().min(1).max(240);
 const nullableIdentifier = identifier.nullable().optional();
-const nullableText = (max: number) =>
-  z.string().trim().max(max).nullable().optional();
+const nullableText = (max: number) => z.string().trim().max(max).nullable().optional();
 const nullableDate = z
   .string()
   .refine((value) => Number.isFinite(Date.parse(value)), "زمان نامعتبر است.")
@@ -109,18 +108,12 @@ function itemResourceSchema<T extends z.ZodTypeAny>(item: T) {
 const refundListSchema = listResourceSchema(refundSchema);
 const reconciliationListSchema = listResourceSchema(reconciliationCaseSchema);
 const refundResourceSchema = itemResourceSchema(refundSchema);
-const reconciliationResourceSchema = itemResourceSchema(
-  reconciliationCaseSchema,
-);
+const reconciliationResourceSchema = itemResourceSchema(reconciliationCaseSchema);
 
 export type AdminRefundStatus = z.infer<typeof refundStatusSchema>;
 export type AdminRefund = z.infer<typeof refundSchema>;
-export type AdminReconciliationStatus = z.infer<
-  typeof reconciliationStatusSchema
->;
-export type AdminReconciliationCase = z.infer<
-  typeof reconciliationCaseSchema
->;
+export type AdminReconciliationStatus = z.infer<typeof reconciliationStatusSchema>;
+export type AdminReconciliationCase = z.infer<typeof reconciliationCaseSchema>;
 export type FinancePagination = z.infer<typeof paginationSchema>;
 
 export interface FinanceList<T> {
@@ -166,74 +159,56 @@ export async function listAdminReconciliationCases(
   const query = new URLSearchParams({ per_page: "100" });
   if (status && status !== "all") query.set("status", status);
   const payload = reconciliationListSchema.parse(
-    await apiFetch<unknown>(
-      `/admin/finance/reconciliation?${query.toString()}`,
-    ),
+    await apiFetch<unknown>(`/admin/finance/reconciliation?${query.toString()}`),
   );
   return payload.data;
 }
 
-export async function createAdminRefund(
-  input: CreateRefundInput,
-): Promise<AdminRefund> {
+export async function createAdminRefund(input: CreateRefundInput): Promise<AdminRefund> {
   const orderId = input.orderId.trim();
   if (!orderId) throw new Error("شناسه سفارش الزامی است.");
   const payload = refundResourceSchema.parse(
-    await apiFetch<unknown>(
-      `/admin/orders/${encodeURIComponent(orderId)}/refunds`,
-      {
-        method: "POST",
-        body: {
-          ...(input.amount ? { amount: input.amount } : {}),
-          reason: input.reason.trim(),
-          idempotency_key: input.idempotencyKey.trim(),
-        },
+    await apiFetch<unknown>(`/admin/orders/${encodeURIComponent(orderId)}/refunds`, {
+      method: "POST",
+      body: {
+        ...(input.amount ? { amount: input.amount } : {}),
+        reason: input.reason.trim(),
+        idempotency_key: input.idempotencyKey.trim(),
       },
-    ),
+    }),
   );
   return payload.data;
 }
 
-export async function approveAdminRefund(
-  refundId: string,
-): Promise<AdminRefund> {
+export async function approveAdminRefund(refundId: string): Promise<AdminRefund> {
   const payload = refundResourceSchema.parse(
-    await apiFetch<unknown>(
-      `/admin/refunds/${encodeURIComponent(refundId)}/approve`,
-      { method: "POST" },
-    ),
+    await apiFetch<unknown>(`/admin/refunds/${encodeURIComponent(refundId)}/approve`, {
+      method: "POST",
+    }),
   );
   return payload.data;
 }
 
-export async function dispatchAdminRefund(
-  refundId: string,
-): Promise<AdminRefund> {
+export async function dispatchAdminRefund(refundId: string): Promise<AdminRefund> {
   const payload = refundResourceSchema.parse(
-    await apiFetch<unknown>(
-      `/admin/refunds/${encodeURIComponent(refundId)}/dispatch`,
-      { method: "POST" },
-    ),
+    await apiFetch<unknown>(`/admin/refunds/${encodeURIComponent(refundId)}/dispatch`, {
+      method: "POST",
+    }),
   );
   return payload.data;
 }
 
-export async function resolveAdminRefund(
-  input: ResolveRefundInput,
-): Promise<AdminRefund> {
+export async function resolveAdminRefund(input: ResolveRefundInput): Promise<AdminRefund> {
   const payload = refundResourceSchema.parse(
-    await apiFetch<unknown>(
-      `/admin/refunds/${encodeURIComponent(input.refundId)}/resolve`,
-      {
-        method: "POST",
-        body: {
-          outcome: input.outcome,
-          provider_reference: input.providerReference?.trim() || null,
-          failure_code: input.failureCode?.trim() || null,
-          message: input.message?.trim() || null,
-        },
+    await apiFetch<unknown>(`/admin/refunds/${encodeURIComponent(input.refundId)}/resolve`, {
+      method: "POST",
+      body: {
+        outcome: input.outcome,
+        provider_reference: input.providerReference?.trim() || null,
+        failure_code: input.failureCode?.trim() || null,
+        message: input.message?.trim() || null,
       },
-    ),
+    }),
   );
   return payload.data;
 }
@@ -242,23 +217,18 @@ export async function resolveAdminReconciliationCase(
   input: ResolveReconciliationInput,
 ): Promise<AdminReconciliationCase> {
   const payload = reconciliationResourceSchema.parse(
-    await apiFetch<unknown>(
-      `/admin/finance/reconciliation/${encodeURIComponent(input.caseId)}`,
-      {
-        method: "PATCH",
-        body: {
-          status: input.status,
-          resolution: input.resolution.trim(),
-        },
+    await apiFetch<unknown>(`/admin/finance/reconciliation/${encodeURIComponent(input.caseId)}`, {
+      method: "PATCH",
+      body: {
+        status: input.status,
+        resolution: input.resolution.trim(),
       },
-    ),
+    }),
   );
   return payload.data;
 }
 
-export function adminRefundsQueryOptions(
-  status: AdminRefundStatus | "all" = "all",
-) {
+export function adminRefundsQueryOptions(status: AdminRefundStatus | "all" = "all") {
   return queryOptions({
     queryKey: ["admin", "finance", "refunds", status],
     queryFn: () => listAdminRefunds(status),

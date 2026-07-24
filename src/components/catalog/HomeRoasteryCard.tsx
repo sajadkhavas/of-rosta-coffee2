@@ -20,18 +20,28 @@ export function HomeRoasteryCard({ roastery }: { roastery: RoasterySummary }) {
             {roastery.name.slice(0, 1)}
           </div>
         )}
-        <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-[color:var(--night)] via-transparent to-transparent" />
+        <div
+          aria-hidden
+          className="absolute inset-0 bg-gradient-to-t from-[color:var(--night)] via-transparent to-transparent"
+        />
       </div>
       <div className="flex flex-1 flex-col p-5">
         <p className="text-xs text-[color:var(--roast)]">روستری تأییدشده</p>
-        <h3 className="mt-2 font-display text-xl font-bold text-[color:var(--steam)]">{roastery.name}</h3>
+        <h3 className="mt-2 font-display text-xl font-bold text-[color:var(--steam)]">
+          {roastery.name}
+        </h3>
         <div className="mt-2 flex flex-wrap gap-2 text-xs text-[color:var(--light)]">
           {roastery.city ? <span>📍 {roastery.city}</span> : null}
-          {roastery.rating ? <span>★ {toFa(roastery.rating.value.toFixed(1))} ({toFa(roastery.rating.count)})</span> : null}
+          {roastery.rating ? (
+            <span>
+              ★ {toFa(roastery.rating.value.toFixed(1))} ({toFa(roastery.rating.count)})
+            </span>
+          ) : null}
         </div>
         {roastery.preparationTime ? (
           <p className="mt-4 text-xs text-[color:var(--muted-gold)]">
-            آماده‌سازی {toFa(roastery.preparationTime.minHours)} تا {toFa(roastery.preparationTime.maxHours)} ساعت
+            آماده‌سازی {toFa(roastery.preparationTime.minHours)} تا{" "}
+            {toFa(roastery.preparationTime.maxHours)} ساعت
           </p>
         ) : null}
         <Link

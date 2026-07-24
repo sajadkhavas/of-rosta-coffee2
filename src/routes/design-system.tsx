@@ -20,10 +20,7 @@ import { absoluteUrl } from "@/config/site";
 
 export const Route = createFileRoute("/design-system")({
   head: () => ({
-    meta: [
-      { title: "Design System رستا" },
-      { name: "robots", content: "noindex,nofollow" },
-    ],
+    meta: [{ title: "Design System رستا" }, { name: "robots", content: "noindex,nofollow" }],
     links: [{ rel: "canonical", href: absoluteUrl("/design-system") }],
   }),
   component: DesignSystemPage,
@@ -63,7 +60,10 @@ function DesignSystemPage() {
                   ["Roast", "var(--roast)", "#C8965A"],
                   ["Steam", "var(--steam)", "#F7F0E6"],
                 ].map(([name, value, hex]) => (
-                  <div key={name} className="overflow-hidden rounded-2xl border border-[color:var(--mid)]">
+                  <div
+                    key={name}
+                    className="overflow-hidden rounded-2xl border border-[color:var(--mid)]"
+                  >
                     <div className="h-24" style={{ background: value }} />
                     <div className="bg-[color:var(--night)] p-3">
                       <p className="font-bold">{name}</p>
@@ -95,8 +95,15 @@ function DesignSystemPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <TextField label="نام کامل" placeholder="نام و نام خانوادگی" />
                 <TextField label="شماره موبایل" dir="ltr" placeholder="09123456789" />
-                <TextField label="Field خطادار" error="این مقدار معتبر نیست." defaultValue="مقدار اشتباه" />
-                <CheckboxField label="آدرس پیش‌فرض" description="در Checkout به‌صورت خودکار انتخاب شود." />
+                <TextField
+                  label="Field خطادار"
+                  error="این مقدار معتبر نیست."
+                  defaultValue="مقدار اشتباه"
+                />
+                <CheckboxField
+                  label="آدرس پیش‌فرض"
+                  description="در Checkout به‌صورت خودکار انتخاب شود."
+                />
                 <div className="md:col-span-2">
                   <TextareaField label="توضیحات" placeholder="متن توضیحات…" />
                 </div>
@@ -105,20 +112,49 @@ function DesignSystemPage() {
 
             <DemoSection title="بازخورد و Stateها">
               <div className="grid gap-4">
-                <Alert title="اطلاع" variant="info">اطلاعات تکمیلی برای کاربر.</Alert>
-                <Alert title="موفق" variant="success">عملیات با موفقیت انجام شد.</Alert>
-                <Alert title="هشدار" variant="warning">این بخش نیاز به بررسی دارد.</Alert>
-                <Alert title="خطا" variant="danger">ارتباط با سرویس برقرار نشد.</Alert>
-                <EmptyState title="داده‌ای وجود ندارد" description="پس از ایجاد اولین مورد، این بخش تکمیل می‌شود." action={<Button variant="outline">ایجاد مورد</Button>} />
-                <div className="grid grid-cols-3 gap-3"><Skeleton className="h-20" /><Skeleton className="h-20" /><Skeleton className="h-20" /></div>
+                <Alert title="اطلاع" variant="info">
+                  اطلاعات تکمیلی برای کاربر.
+                </Alert>
+                <Alert title="موفق" variant="success">
+                  عملیات با موفقیت انجام شد.
+                </Alert>
+                <Alert title="هشدار" variant="warning">
+                  این بخش نیاز به بررسی دارد.
+                </Alert>
+                <Alert title="خطا" variant="danger">
+                  ارتباط با سرویس برقرار نشد.
+                </Alert>
+                <EmptyState
+                  title="داده‌ای وجود ندارد"
+                  description="پس از ایجاد اولین مورد، این بخش تکمیل می‌شود."
+                  action={<Button variant="outline">ایجاد مورد</Button>}
+                />
+                <div className="grid grid-cols-3 gap-3">
+                  <Skeleton className="h-20" />
+                  <Skeleton className="h-20" />
+                  <Skeleton className="h-20" />
+                </div>
               </div>
             </DemoSection>
 
             <DemoSection title="Overlay و Toast">
               <div className="flex flex-wrap gap-3">
                 <Button onClick={() => setDialogOpen(true)}>بازکردن Dialog</Button>
-                <Button variant="secondary" onClick={() => setDrawerOpen(true)}>بازکردن Drawer</Button>
-                <Button variant="outline" onClick={() => pushToast({ title: "تغییرات ذخیره شد", description: "Toast از Live Region استفاده می‌کند.", variant: "success" })}>نمایش Toast</Button>
+                <Button variant="secondary" onClick={() => setDrawerOpen(true)}>
+                  بازکردن Drawer
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    pushToast({
+                      title: "تغییرات ذخیره شد",
+                      description: "Toast از Live Region استفاده می‌کند.",
+                      variant: "success",
+                    })
+                  }
+                >
+                  نمایش Toast
+                </Button>
               </div>
             </DemoSection>
           </div>
@@ -126,14 +162,32 @@ function DesignSystemPage() {
       </main>
       <Footer />
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen} title="Dialog نمونه" description="Escape، Backdrop و بازگشت Focus پشتیبانی می‌شوند.">
-        <p className="text-sm leading-7 text-[color:var(--light)]">این محتوای Dialog نمونه سیستم طراحی رستا است.</p>
-        <Button className="mt-5" onClick={() => setDialogOpen(false)}>بستن</Button>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        title="Dialog نمونه"
+        description="Escape، Backdrop و بازگشت Focus پشتیبانی می‌شوند."
+      >
+        <p className="text-sm leading-7 text-[color:var(--light)]">
+          این محتوای Dialog نمونه سیستم طراحی رستا است.
+        </p>
+        <Button className="mt-5" onClick={() => setDialogOpen(false)}>
+          بستن
+        </Button>
       </Dialog>
 
-      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen} title="Drawer نمونه" description="برای فرم‌های موبایل و جزئیات جانبی.">
-        <p className="text-sm leading-7 text-[color:var(--light)]">Drawer از سمت انتهای رابط RTL نمایش داده می‌شود.</p>
-        <Button className="mt-5" onClick={() => setDrawerOpen(false)}>بستن</Button>
+      <Drawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        title="Drawer نمونه"
+        description="برای فرم‌های موبایل و جزئیات جانبی."
+      >
+        <p className="text-sm leading-7 text-[color:var(--light)]">
+          Drawer از سمت انتهای رابط RTL نمایش داده می‌شود.
+        </p>
+        <Button className="mt-5" onClick={() => setDrawerOpen(false)}>
+          بستن
+        </Button>
       </Drawer>
     </>
   );

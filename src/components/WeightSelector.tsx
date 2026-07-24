@@ -9,8 +9,7 @@ interface Props {
 }
 
 export function WeightSelector({ value, onChange, size = "md" }: Props) {
-  const btn =
-    size === "sm" ? "px-2 py-1 text-[11px]" : "px-3 py-1.5 text-xs";
+  const btn = size === "sm" ? "px-2 py-1 text-[11px]" : "px-3 py-1.5 text-xs";
   return (
     <div role="radiogroup" aria-label="انتخاب وزن" className="flex flex-wrap gap-1.5">
       {WEIGHTS.map((w) => {

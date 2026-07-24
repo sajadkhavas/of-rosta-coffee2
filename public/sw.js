@@ -62,7 +62,9 @@ function mayCache(response) {
 async function trimCache(cacheName, maxEntries) {
   const cache = await caches.open(cacheName);
   const keys = await cache.keys();
-  await Promise.all(keys.slice(0, Math.max(0, keys.length - maxEntries)).map((key) => cache.delete(key)));
+  await Promise.all(
+    keys.slice(0, Math.max(0, keys.length - maxEntries)).map((key) => cache.delete(key)),
+  );
 }
 
 async function cacheFirst(request, cacheName) {

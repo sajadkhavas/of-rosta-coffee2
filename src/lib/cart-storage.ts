@@ -3,10 +3,7 @@ import type { ProductSummary, ProductVariant } from "@/lib/api/contracts";
 import { bestMediaUrl } from "@/lib/catalog-format";
 
 export const CART_STORAGE_KEY = "rosta_cart_v3";
-export const LEGACY_CART_STORAGE_KEYS = [
-  "rosta_cart",
-  "rosta_cart_v2",
-] as const;
+export const LEGACY_CART_STORAGE_KEYS = ["rosta_cart", "rosta_cart_v2"] as const;
 export const CART_STORAGE_VERSION = 3 as const;
 export const MAX_CART_ITEMS = 50;
 export const MAX_CART_QUANTITY = 20;
@@ -25,8 +22,7 @@ function isSafeImageUrl(value: string): boolean {
     const url = new URL(value);
     return (
       url.protocol === "https:" ||
-      (url.protocol === "http:" &&
-        LOCAL_HOSTS.has(url.hostname.toLowerCase()))
+      (url.protocol === "http:" && LOCAL_HOSTS.has(url.hostname.toLowerCase()))
     );
   } catch {
     return false;
@@ -35,8 +31,7 @@ function isSafeImageUrl(value: string): boolean {
 
 const idSchema = z.string().trim().regex(ID_PATTERN);
 const slugSchema = z.string().trim().regex(SLUG_PATTERN);
-const textSchema = (maximum: number) =>
-  z.string().trim().min(1).max(maximum);
+const textSchema = (maximum: number) => z.string().trim().min(1).max(maximum);
 const weightSchema = z.union([
   z.literal(50),
   z.literal(100),
@@ -51,21 +46,12 @@ export const cartItemSchema = z
     productId: idSchema,
     productSlug: slugSchema,
     productName: textSchema(240),
-    productImageUrl: z
-      .string()
-      .max(2_000)
-      .refine(isSafeImageUrl)
-      .nullable()
-      .optional(),
+    productImageUrl: z.string().max(2_000).refine(isSafeImageUrl).nullable().optional(),
     roasteryId: idSchema,
     roasteryName: textSchema(160),
     roasterySlug: slugSchema,
     weightGrams: weightSchema,
-    unitPriceSnapshot: z
-      .number()
-      .int()
-      .nonnegative()
-      .max(Number.MAX_SAFE_INTEGER),
+    unitPriceSnapshot: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
     quantity: z.number().int().min(1).max(MAX_CART_QUANTITY),
     addedAt: z.number().int().positive().max(4_102_444_800_000),
   })
@@ -161,10 +147,7 @@ export function parseStoredCart(raw: string | null): CartItem[] {
   }
 }
 
-export function serializeStoredCart(
-  items: CartItem[],
-  now = Date.now(),
-): string {
+export function serializeStoredCart(items: CartItem[], now = Date.now()): string {
   const envelope = cartEnvelopeSchema.parse({
     version: CART_STORAGE_VERSION,
     updatedAt: now,
@@ -195,10 +178,7 @@ export function readCartStorage(storage: StorageLike): CartItem[] {
   return [];
 }
 
-export function writeCartStorage(
-  storage: StorageLike,
-  items: CartItem[],
-): void {
+export function writeCartStorage(storage: StorageLike, items: CartItem[]): void {
   storage.setItem(CART_STORAGE_KEY, serializeStoredCart(items));
 }
 

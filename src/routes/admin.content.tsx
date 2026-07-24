@@ -54,10 +54,7 @@ const TYPE_LABELS: Record<AdminContentType, string> = {
   collection: "کالکشن",
 };
 
-const TYPE_DEFAULTS: Record<
-  AdminContentType,
-  { prefix: string; schema: AdminSchemaType }
-> = {
+const TYPE_DEFAULTS: Record<AdminContentType, { prefix: string; schema: AdminSchemaType }> = {
   article: { prefix: "/blog/", schema: "BlogPosting" },
   guide: { prefix: "/guides/", schema: "BlogPosting" },
   comparison: { prefix: "/compare/", schema: "Article" },
@@ -84,7 +81,14 @@ function errorMessage(error: unknown): string {
 }
 
 function splitComma(value: string): string[] {
-  return [...new Set(value.split(/[،,]/).map((item) => item.trim()).filter(Boolean))];
+  return [
+    ...new Set(
+      value
+        .split(/[،,]/)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  ];
 }
 
 function AdminContentPage() {
@@ -92,12 +96,7 @@ function AdminContentPage() {
     <>
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 py-8">
-        <Breadcrumb
-          items={[
-            { label: "خانه", to: "/" },
-            { label: "مدیریت محتوا و سئو" },
-          ]}
-        />
+        <Breadcrumb items={[{ label: "خانه", to: "/" }, { label: "مدیریت محتوا و سئو" }]} />
         <AccountGuard>
           {(user) =>
             user.roles.includes("administrator") ? (
@@ -261,8 +260,7 @@ function AdminContentDashboard() {
     }));
   };
 
-  const initialError =
-    contentQuery.error || authorsQuery.error || redirectsQuery.error;
+  const initialError = contentQuery.error || authorsQuery.error || redirectsQuery.error;
 
   const handleSaved = (entry: AdminContentDetail) => {
     queryClient.setQueryData(["admin", "content", entry.id], entry);
@@ -271,14 +269,13 @@ function AdminContentDashboard() {
   return (
     <section className="mt-8 space-y-10">
       <header>
-        <p className="text-xs font-bold text-[color:var(--roast)]">
-          SEO OPERATIONS
-        </p>
+        <p className="text-xs font-bold text-[color:var(--roast)]">SEO OPERATIONS</p>
         <h1 className="mt-2 text-3xl font-bold text-[color:var(--steam)]">
           مدیریت محتوا، انتشار و Redirect
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-8 text-[color:var(--light)]">
-          محتوای جدید ابتدا Draft است. ویرایشگر کامل از Blockهای امن، روابط داخلی، Preview مشترک و جلوگیری از بازنویسی هم‌زمان استفاده می‌کند.
+          محتوای جدید ابتدا Draft است. ویرایشگر کامل از Blockهای امن، روابط داخلی، Preview مشترک و
+          جلوگیری از بازنویسی هم‌زمان استفاده می‌کند.
         </p>
       </header>
 
@@ -349,15 +346,9 @@ function AdminContentDashboard() {
             </Field>
           </div>
           {authorMutation.isError ? (
-            <p className="mt-3 text-xs text-red-300">
-              {errorMessage(authorMutation.error)}
-            </p>
+            <p className="mt-3 text-xs text-red-300">{errorMessage(authorMutation.error)}</p>
           ) : null}
-          <Button
-            type="submit"
-            className="mt-4 w-full"
-            loading={authorMutation.isPending}
-          >
+          <Button type="submit" className="mt-4 w-full" loading={authorMutation.isPending}>
             ثبت نویسنده
           </Button>
         </form>
@@ -415,15 +406,9 @@ function AdminContentDashboard() {
             </Field>
           </div>
           {redirectMutation.isError ? (
-            <p className="mt-3 text-xs text-red-300">
-              {errorMessage(redirectMutation.error)}
-            </p>
+            <p className="mt-3 text-xs text-red-300">{errorMessage(redirectMutation.error)}</p>
           ) : null}
-          <Button
-            type="submit"
-            className="mt-4 w-full"
-            loading={redirectMutation.isPending}
-          >
+          <Button type="submit" className="mt-4 w-full" loading={redirectMutation.isPending}>
             ثبت Redirect
           </Button>
         </form>
@@ -466,7 +451,8 @@ function AdminContentDashboard() {
           <div>
             <h2 className="text-xl font-bold">ایجاد Draft سریع</h2>
             <p className="mt-2 text-xs leading-6 text-[color:var(--light)]">
-              Draft اولیه با دو پاراگراف ساخته می‌شود؛ پس از ساخت، ویرایشگر کامل خودکار باز خواهد شد.
+              Draft اولیه با دو پاراگراف ساخته می‌شود؛ پس از ساخت، ویرایشگر کامل خودکار باز خواهد
+              شد.
             </p>
           </div>
           <span className="rounded-full border border-[color:var(--mid)] px-3 py-1 text-xs text-[color:var(--roast)]">
@@ -477,9 +463,7 @@ function AdminContentDashboard() {
           <Field label="نوع محتوا">
             <select
               value={contentForm.type}
-              onChange={(event) =>
-                changeContentType(event.target.value as AdminContentType)
-              }
+              onChange={(event) => changeContentType(event.target.value as AdminContentType)}
               className={fieldClass}
             >
               {(Object.keys(TYPE_LABELS) as AdminContentType[]).map((type) => (
@@ -641,9 +625,7 @@ function AdminContentDashboard() {
           </label>
         </div>
         {contentMutation.isError ? (
-          <p className="mt-3 text-sm text-red-300">
-            {errorMessage(contentMutation.error)}
-          </p>
+          <p className="mt-3 text-sm text-red-300">{errorMessage(contentMutation.error)}</p>
         ) : null}
         <Button
           type="submit"
@@ -669,9 +651,7 @@ function AdminContentDashboard() {
         </div>
         <div className="mt-5 space-y-3">
           {contentQuery.isPending ? (
-            <p className="text-sm text-[color:var(--light)]">
-              در حال دریافت محتوا…
-            </p>
+            <p className="text-sm text-[color:var(--light)]">در حال دریافت محتوا…</p>
           ) : contentQuery.data?.length ? (
             contentQuery.data.map((entry) => (
               <article
@@ -680,9 +660,7 @@ function AdminContentDashboard() {
               >
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-bold text-[color:var(--steam)]">
-                      {entry.title}
-                    </h3>
+                    <h3 className="font-bold text-[color:var(--steam)]">{entry.title}</h3>
                     <span className="rounded-full border border-[color:var(--mid)] px-2 py-0.5 text-[10px] text-[color:var(--roast)]">
                       {STATUS_LABELS[entry.status]}
                     </span>
@@ -693,10 +671,7 @@ function AdminContentDashboard() {
                       {entry.seo.robots_index ? "index" : "noindex"}
                     </span>
                   </div>
-                  <p
-                    className="mt-2 break-all text-xs text-[color:var(--light)]"
-                    dir="ltr"
-                  >
+                  <p className="mt-2 break-all text-xs text-[color:var(--light)]" dir="ltr">
                     {entry.canonical_path}
                   </p>
                   <p className="mt-2 text-xs text-[color:var(--light)]">
@@ -704,19 +679,14 @@ function AdminContentDashboard() {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="secondary"
-                    onClick={() => setSelectedEntryId(entry.id)}
-                  >
+                  <Button variant="secondary" onClick={() => setSelectedEntryId(entry.id)}>
                     ویرایش و Preview
                   </Button>
                   {entry.status === "draft" ? (
                     <Button
                       variant="outline"
                       disabled={statusMutation.isPending}
-                      onClick={() =>
-                        statusMutation.mutate({ id: entry.id, status: "review" })
-                      }
+                      onClick={() => statusMutation.mutate({ id: entry.id, status: "review" })}
                     >
                       ارسال برای بررسی
                     </Button>

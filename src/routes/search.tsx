@@ -38,7 +38,9 @@ function readRecent(): string[] {
   if (typeof window === "undefined") return [];
   try {
     const parsed = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
-    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string").slice(0, 5) : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is string => typeof item === "string").slice(0, 5)
+      : [];
   } catch {
     return [];
   }
@@ -97,7 +99,8 @@ function SearchPage() {
   const roasteries = query.data?.roasteries ?? [];
   const showProducts = type === "all" || type === "products";
   const showRoasteries = type === "all" || type === "roasteries";
-  const hasResult = (showProducts && products.length > 0) || (showRoasteries && roasteries.length > 0);
+  const hasResult =
+    (showProducts && products.length > 0) || (showRoasteries && roasteries.length > 0);
 
   return (
     <>
@@ -112,7 +115,10 @@ function SearchPage() {
             }}
             className="relative"
           >
-            <SearchIcon size={18} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--roast)]" />
+            <SearchIcon
+              size={18}
+              className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--roast)]"
+            />
             <input
               ref={inputRef}
               type="search"
@@ -174,7 +180,12 @@ function SearchPage() {
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {recent.map((item) => (
-                    <button key={item} type="button" onClick={() => setLocalQuery(item)} className="rounded-full border border-[color:var(--mid)] bg-[color:var(--dark)] px-3 py-1 text-xs text-[color:var(--light)]">
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setLocalQuery(item)}
+                      className="rounded-full border border-[color:var(--mid)] bg-[color:var(--dark)] px-3 py-1 text-xs text-[color:var(--light)]"
+                    >
                       {item}
                     </button>
                   ))}
@@ -184,7 +195,12 @@ function SearchPage() {
             <h2 className="mt-7 text-sm font-bold text-[color:var(--light)]">پیشنهادها</h2>
             <div className="mt-3 flex flex-wrap gap-2">
               {fallbackSuggestions.map((item) => (
-                <button key={item} type="button" onClick={() => setLocalQuery(item)} className="rounded-full border border-[color:var(--roast)] px-3 py-1 text-xs text-[color:var(--roast)]">
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setLocalQuery(item)}
+                  className="rounded-full border border-[color:var(--roast)] px-3 py-1 text-xs text-[color:var(--roast)]"
+                >
                   {item}
                 </button>
               ))}
@@ -201,15 +217,30 @@ function SearchPage() {
             <p className="mt-2 text-sm text-[color:var(--light)]">
               {isApiError(query.error) ? query.error.message : "ارتباط با سرویس جستجو برقرار نشد."}
             </p>
-            <button type="button" onClick={() => query.refetch()} className="mt-4 text-sm text-[color:var(--roast)]">تلاش مجدد</button>
+            <button
+              type="button"
+              onClick={() => query.refetch()}
+              className="mt-4 text-sm text-[color:var(--roast)]"
+            >
+              تلاش مجدد
+            </button>
           </section>
         ) : !hasResult ? (
           <section className="mt-16 text-center">
             <h2 className="text-lg font-bold">نتیجه‌ای برای «{normalized}» پیدا نشد</h2>
-            <p className="mt-2 text-sm text-[color:var(--light)]">یکی از پیشنهادهای زیر را امتحان کنید.</p>
+            <p className="mt-2 text-sm text-[color:var(--light)]">
+              یکی از پیشنهادهای زیر را امتحان کنید.
+            </p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               {suggestions.map((item) => (
-                <button key={item} type="button" onClick={() => setLocalQuery(item)} className="rounded-full border border-[color:var(--roast)] px-3 py-1 text-xs text-[color:var(--roast)]">{item}</button>
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setLocalQuery(item)}
+                  className="rounded-full border border-[color:var(--roast)] px-3 py-1 text-xs text-[color:var(--roast)]"
+                >
+                  {item}
+                </button>
               ))}
             </div>
           </section>
@@ -219,7 +250,9 @@ function SearchPage() {
               <section className="mt-8">
                 <h2 className="mb-4 text-xl font-bold">روستری‌ها</h2>
                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                  {roasteries.map((roastery) => <CatalogRoasteryCard key={roastery.id} roastery={roastery} />)}
+                  {roasteries.map((roastery) => (
+                    <CatalogRoasteryCard key={roastery.id} roastery={roastery} />
+                  ))}
                 </div>
               </section>
             ) : null}
@@ -227,7 +260,9 @@ function SearchPage() {
               <section className="mt-10">
                 <h2 className="mb-4 text-xl font-bold">دانه‌های قهوه</h2>
                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                  {products.map((product) => <CatalogProductCard key={product.id} product={product} />)}
+                  {products.map((product) => (
+                    <CatalogProductCard key={product.id} product={product} />
+                  ))}
                 </div>
               </section>
             ) : null}
@@ -235,7 +270,9 @@ function SearchPage() {
         )}
 
         <div className="mt-10 text-center text-xs text-[color:var(--light)]">
-          <Link to="/products" className="underline underline-offset-4">مشاهده همه محصولات</Link>
+          <Link to="/products" className="underline underline-offset-4">
+            مشاهده همه محصولات
+          </Link>
         </div>
       </main>
       <Footer />

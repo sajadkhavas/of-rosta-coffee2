@@ -10,9 +10,7 @@ const errorPayloadSchema = z
       .object({
         code: z.string().optional(),
         message: z.string().optional(),
-        fields: z
-          .record(z.union([z.string(), z.array(z.string())]))
-          .optional(),
+        fields: z.record(z.union([z.string(), z.array(z.string())])).optional(),
         request_id: z.string().optional(),
       })
       .passthrough()
@@ -31,12 +29,7 @@ export interface ApiErrorPayload {
   message?: string;
 }
 
-export type ApiFailureKind =
-  | "http"
-  | "timeout"
-  | "aborted"
-  | "network"
-  | "configuration";
+export type ApiFailureKind = "http" | "timeout" | "aborted" | "network" | "configuration";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -88,16 +81,10 @@ export function isUnauthenticatedError(error: unknown): boolean {
 }
 
 export function isForbiddenError(error: unknown): boolean {
-  return (
-    isApiError(error) &&
-    (error.status === 403 || error.code === "request.forbidden")
-  );
+  return isApiError(error) && (error.status === 403 || error.code === "request.forbidden");
 }
 
-export function firstFieldError(
-  error: unknown,
-  ...fields: string[]
-): string | undefined {
+export function firstFieldError(error: unknown, ...fields: string[]): string | undefined {
   if (!isApiError(error)) return undefined;
   for (const field of fields) {
     const value = error.fields[field];
@@ -107,16 +94,14 @@ export function firstFieldError(
   return undefined;
 }
 
-function isJsonBody(
-  body: ApiRequestOptions["body"],
-): body is Record<string, unknown> {
+function isJsonBody(body: ApiRequestOptions["body"]): body is Record<string, unknown> {
   return Boolean(
     body &&
-      typeof body === "object" &&
-      !(body instanceof FormData) &&
-      !(body instanceof Blob) &&
-      !(body instanceof URLSearchParams) &&
-      !(body instanceof ArrayBuffer),
+    typeof body === "object" &&
+    !(body instanceof FormData) &&
+    !(body instanceof Blob) &&
+    !(body instanceof URLSearchParams) &&
+    !(body instanceof ArrayBuffer),
   );
 }
 
@@ -225,10 +210,7 @@ async function performRequest(
     externalSignal?.addEventListener("abort", onExternalAbort, { once: true });
   }
 
-  const timeoutMs = Math.min(
-    Math.max(requestedTimeout ?? DEFAULT_TIMEOUT_MS, 1_000),
-    120_000,
-  );
+  const timeoutMs = Math.min(Math.max(requestedTimeout ?? DEFAULT_TIMEOUT_MS, 1_000), 120_000);
   const timer = setTimeout(() => {
     timedOut = true;
     controller.abort(new DOMException("Request timed out", "TimeoutError"));
@@ -265,8 +247,7 @@ async function performRequest(
     throw new ApiError({
       status: 0,
       code: "network.unavailable",
-      message:
-        "ارتباط با سرویس رستا برقرار نشد. اتصال اینترنت یا وضعیت API را بررسی کنید.",
+      message: "ارتباط با سرویس رستا برقرار نشد. اتصال اینترنت یا وضعیت API را بررسی کنید.",
       kind: "network",
       cause,
     });
@@ -331,11 +312,8 @@ export async function apiFetch<T = unknown>(
 
   if (!response.ok) {
     const parsedPayload = errorPayloadSchema.safeParse(payload);
-    const errorPayload: ApiErrorPayload = parsedPayload.success
-      ? parsedPayload.data
-      : {};
-    const code =
-      errorPayload.error?.code ?? defaultCodeForStatus(response.status);
+    const errorPayload: ApiErrorPayload = parsedPayload.success ? parsedPayload.data : {};
+    const code = errorPayload.error?.code ?? defaultCodeForStatus(response.status);
 
     if (
       !options.suppressSessionExpiryEvent &&
@@ -348,14 +326,10 @@ export async function apiFetch<T = unknown>(
       status: response.status,
       code,
       message:
-        errorPayload.error?.message ??
-        errorPayload.message ??
-        "در ارتباط با سرور مشکلی پیش آمد.",
+        errorPayload.error?.message ?? errorPayload.message ?? "در ارتباط با سرور مشکلی پیش آمد.",
       fields: errorPayload.error?.fields,
       requestId:
-        errorPayload.error?.request_id ??
-        response.headers.get("x-request-id") ??
-        undefined,
+        errorPayload.error?.request_id ?? response.headers.get("x-request-id") ?? undefined,
       retryAfterSeconds: parseRetryAfter(response.headers.get("retry-after")),
       kind: "http",
     });

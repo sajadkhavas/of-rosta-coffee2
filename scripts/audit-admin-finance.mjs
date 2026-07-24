@@ -7,16 +7,12 @@ const paths = {
   navbar: "src/components/Navbar.tsx",
   routeTree: "src/routeTree.gen.ts",
   backendRoutes: "backend/routes/finance.php",
-  dispatchController:
-    "backend/app/Http/Controllers/Admin/AdminDispatchRefundController.php",
+  dispatchController: "backend/app/Http/Controllers/Admin/AdminDispatchRefundController.php",
 };
 
 const files = Object.fromEntries(
   await Promise.all(
-    Object.entries(paths).map(async ([name, path]) => [
-      name,
-      await readFile(path, "utf8"),
-    ]),
+    Object.entries(paths).map(async ([name, path]) => [name, await readFile(path, "utf8")]),
   ),
 );
 const packageJson = JSON.parse(files.package);
@@ -28,8 +24,7 @@ function gate(name, condition, evidence) {
 
 gate(
   "permanent_admin_finance_gate",
-  packageJson.scripts?.["audit:admin-finance"] ===
-    "node scripts/audit-admin-finance.mjs" &&
+  packageJson.scripts?.["audit:admin-finance"] === "node scripts/audit-admin-finance.mjs" &&
     packageJson.scripts?.check?.includes("audit:admin-finance"),
   "The finance workspace audit must remain in the permanent frontend check chain.",
 );
@@ -138,10 +133,7 @@ const report = {
   gates,
 };
 
-await writeFile(
-  "frontend-admin-finance-audit.json",
-  `${JSON.stringify(report, null, 2)}\n`,
-);
+await writeFile("frontend-admin-finance-audit.json", `${JSON.stringify(report, null, 2)}\n`);
 
 if (failed.length > 0) {
   console.error("Administrator finance workspace audit failed:");

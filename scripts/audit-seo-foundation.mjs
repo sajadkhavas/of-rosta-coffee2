@@ -45,11 +45,7 @@ const sitemap = read("src/routes/sitemap[.]xml.ts");
 if (sitemap.includes('path: "/quiz"')) {
   failures.push("Quiz must not be included in the sitemap.");
 }
-for (const needle of [
-  "listIndexableContent",
-  "MAX_CATALOG_PAGES",
-  "structuredContentEntries",
-]) {
+for (const needle of ["listIndexableContent", "MAX_CATALOG_PAGES", "structuredContentEntries"]) {
   if (!sitemap.includes(needle)) {
     failures.push(`Sitemap is missing required boundary: ${needle}`);
   }
@@ -103,9 +99,7 @@ requireContains(
   "Roastery pages must load authoritative data before rendering metadata.",
 );
 
-const structuredRenderer = read(
-  "src/components/content/StructuredContentPage.tsx",
-);
+const structuredRenderer = read("src/components/content/StructuredContentPage.tsx");
 if (structuredRenderer.includes("dangerouslySetInnerHTML")) {
   failures.push("Structured editorial content must not render raw HTML.");
 }

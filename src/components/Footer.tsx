@@ -25,19 +25,47 @@ export function Footer() {
         <nav aria-label="لینک‌های فوتر">
           <h2 className="eyebrow">مسیرها</h2>
           <ul className="mt-4 space-y-3 text-sm text-[color:var(--light)]">
-            <li><Link to="/" className="transition hover:text-[color:var(--roast)]">خانه</Link></li>
-            <li><Link to="/roasteries" className="transition hover:text-[color:var(--roast)]">روستری‌ها</Link></li>
-            <li><Link to="/products" className="transition hover:text-[color:var(--roast)]">محصولات</Link></li>
-            <li><Link to="/about" className="transition hover:text-[color:var(--roast)]">درباره ما</Link></li>
+            <li>
+              <Link to="/" className="transition hover:text-[color:var(--roast)]">
+                خانه
+              </Link>
+            </li>
+            <li>
+              <Link to="/roasteries" className="transition hover:text-[color:var(--roast)]">
+                روستری‌ها
+              </Link>
+            </li>
+            <li>
+              <Link to="/products" className="transition hover:text-[color:var(--roast)]">
+                محصولات
+              </Link>
+            </li>
+            <li>
+              <Link to="/about" className="transition hover:text-[color:var(--roast)]">
+                درباره ما
+              </Link>
+            </li>
           </ul>
         </nav>
 
         <nav aria-label="راهنما">
           <h2 className="eyebrow">راهنما</h2>
           <ul className="mt-4 space-y-3 text-sm text-[color:var(--light)]">
-            <li><Link to="/contact" className="transition hover:text-[color:var(--roast)]">تماس با ما</Link></li>
-            <li><Link to="/terms" className="transition hover:text-[color:var(--roast)]">قوانین و مقررات</Link></li>
-            <li><Link to="/privacy" className="transition hover:text-[color:var(--roast)]">حریم خصوصی</Link></li>
+            <li>
+              <Link to="/contact" className="transition hover:text-[color:var(--roast)]">
+                تماس با ما
+              </Link>
+            </li>
+            <li>
+              <Link to="/terms" className="transition hover:text-[color:var(--roast)]">
+                قوانین و مقررات
+              </Link>
+            </li>
+            <li>
+              <Link to="/privacy" className="transition hover:text-[color:var(--roast)]">
+                حریم خصوصی
+              </Link>
+            </li>
           </ul>
         </nav>
 

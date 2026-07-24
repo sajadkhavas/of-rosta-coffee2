@@ -3,18 +3,10 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { Alert, Button } from "@/components/system";
 import { currentUserQueryOptions } from "@/lib/api/identity";
-import {
-  isForbiddenError,
-  isUnauthenticatedError,
-  isApiError,
-} from "@/lib/api/client";
+import { isForbiddenError, isUnauthenticatedError, isApiError } from "@/lib/api/client";
 import type { AuthUser } from "@/lib/api/contracts";
 
-export function AccountGuard({
-  children,
-}: {
-  children: (user: AuthUser) => ReactNode;
-}) {
+export function AccountGuard({ children }: { children: (user: AuthUser) => ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const query = useQuery(currentUserQueryOptions());
@@ -34,7 +26,10 @@ export function AccountGuard({
     }
   }, [location.pathname, navigate, query.error, query.isError]);
 
-  if (query.isPending || (query.isError && (isUnauthenticatedError(query.error) || isForbiddenError(query.error)))) {
+  if (
+    query.isPending ||
+    (query.isError && (isUnauthenticatedError(query.error) || isForbiddenError(query.error)))
+  ) {
     return (
       <div className="grid min-h-[45vh] place-items-center" role="status">
         <div className="text-center">

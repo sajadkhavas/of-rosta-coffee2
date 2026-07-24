@@ -30,8 +30,7 @@ const MAX_STORED_INTENT_LENGTH = 4_096;
 const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9:_-]{24,160}$/;
 const SAFE_ID_PATTERN = /^[A-Za-z0-9._:-]{1,200}$/;
 
-const intentStorageKey = (kind: TransactionIntentKind) =>
-  `rosta_${kind}_intent_v1`;
+const intentStorageKey = (kind: TransactionIntentKind) => `rosta_${kind}_intent_v1`;
 const PAYMENT_EXPECTATION_KEY = "rosta_payment_expectation_v2";
 const LEGACY_PAYMENT_EXPECTATION_KEY = "rosta_payment_expectation_v1";
 
@@ -61,9 +60,7 @@ const randomHex = (length: number) => {
   if (!cryptoApi?.getRandomValues) {
     throw new Error("Secure random generator is unavailable.");
   }
-  const bytes = cryptoApi.getRandomValues(
-    new Uint8Array(Math.ceil(length / 2)),
-  );
+  const bytes = cryptoApi.getRandomValues(new Uint8Array(Math.ceil(length / 2)));
   return [...bytes]
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("")
@@ -72,7 +69,10 @@ const randomHex = (length: number) => {
 
 export const createTransactionIdempotencyKey = (prefix: string) => {
   const safePrefix =
-    prefix.toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 12) || "TXN";
+    prefix
+      .toUpperCase()
+      .replace(/[^A-Z0-9_-]/g, "")
+      .slice(0, 12) || "TXN";
   return `${safePrefix}-${Date.now().toString(36)}-${randomHex(32)}`;
 };
 
@@ -96,9 +96,7 @@ export const buildOrderFingerprint = ({
         ? Math.max(1, Math.min(20, Math.trunc(item.quantity)))
         : 1,
     }))
-    .sort((left, right) =>
-      left.variantId.localeCompare(right.variantId, "en"),
-    );
+    .sort((left, right) => left.variantId.localeCompare(right.variantId, "en"));
 
   const source = JSON.stringify({
     quoteId: normalizeText(quoteId, 200),
@@ -170,14 +168,9 @@ export const getOrCreateTransactionIntent = (
     keyFactory?: (prefix: string) => string;
   } = {},
 ) => {
-  const storage =
-    options.storage === undefined ? getSessionStorage() : options.storage;
+  const storage = options.storage === undefined ? getSessionStorage() : options.storage;
   const now = options.now ?? Date.now();
-  const existing = parseIntent(
-    storage?.getItem(intentStorageKey(kind)) ?? null,
-    kind,
-    now,
-  );
+  const existing = parseIntent(storage?.getItem(intentStorageKey(kind)) ?? null, kind, now);
 
   if (existing?.fingerprint === fingerprint) return existing.idempotencyKey;
 
@@ -225,18 +218,14 @@ export const savePaymentExpectation = (
 ): PaymentExpectation => {
   const normalizedPaymentId = normalizeText(paymentId, 200);
   const normalizedOrderId = normalizeText(orderId, 200);
-  if (
-    !SAFE_ID_PATTERN.test(normalizedPaymentId) ||
-    !SAFE_ID_PATTERN.test(normalizedOrderId)
-  ) {
+  if (!SAFE_ID_PATTERN.test(normalizedPaymentId) || !SAFE_ID_PATTERN.test(normalizedOrderId)) {
     throw new Error("Payment expectation identifiers are invalid.");
   }
   if (!Number.isSafeInteger(amount) || amount <= 0 || currency !== "IRR") {
     throw new Error("Payment expectation amount or currency is invalid.");
   }
 
-  const storage =
-    options.storage === undefined ? getSessionStorage() : options.storage;
+  const storage = options.storage === undefined ? getSessionStorage() : options.storage;
   const expectation: PaymentExpectation = {
     version: 2,
     paymentId: normalizedPaymentId,
@@ -259,8 +248,7 @@ export const readPaymentExpectation = (
   paymentId: string,
   options: { storage?: StorageLike | null; now?: number } = {},
 ): PaymentExpectation | null => {
-  const storage =
-    options.storage === undefined ? getSessionStorage() : options.storage;
+  const storage = options.storage === undefined ? getSessionStorage() : options.storage;
   const raw = storage?.getItem(PAYMENT_EXPECTATION_KEY) ?? null;
   if (!raw || raw.length > MAX_STORED_INTENT_LENGTH) return null;
 
@@ -289,9 +277,7 @@ export const readPaymentExpectation = (
   }
 };
 
-export const clearPaymentExpectation = (
-  storage: StorageLike | null = getSessionStorage(),
-) => {
+export const clearPaymentExpectation = (storage: StorageLike | null = getSessionStorage()) => {
   const remove = () => {
     try {
       storage?.removeItem(PAYMENT_EXPECTATION_KEY);

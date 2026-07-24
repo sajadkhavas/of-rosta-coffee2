@@ -49,13 +49,7 @@ function createBlock(type: ContentBlock["type"]): ContentBlock {
   }
 }
 
-function BlockField({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function BlockField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="grid gap-2 text-xs font-bold text-[color:var(--steam)]">
       {label}
@@ -78,9 +72,7 @@ function BlockInputs({
           <textarea
             rows={5}
             value={block.text}
-            onChange={(event) =>
-              onChange({ ...block, text: event.target.value })
-            }
+            onChange={(event) => onChange({ ...block, text: event.target.value })}
             className={inputClass}
           />
         </BlockField>
@@ -106,9 +98,7 @@ function BlockInputs({
           <BlockField label="متن تیتر">
             <input
               value={block.text}
-              onChange={(event) =>
-                onChange({ ...block, text: event.target.value })
-              }
+              onChange={(event) => onChange({ ...block, text: event.target.value })}
               className={inputClass}
             />
           </BlockField>
@@ -154,9 +144,7 @@ function BlockInputs({
             <textarea
               rows={4}
               value={block.text}
-              onChange={(event) =>
-                onChange({ ...block, text: event.target.value })
-              }
+              onChange={(event) => onChange({ ...block, text: event.target.value })}
               className={inputClass}
             />
           </BlockField>
@@ -197,9 +185,7 @@ function BlockInputs({
             <textarea
               rows={4}
               value={block.text}
-              onChange={(event) =>
-                onChange({ ...block, text: event.target.value })
-              }
+              onChange={(event) => onChange({ ...block, text: event.target.value })}
               className={inputClass}
             />
           </BlockField>
@@ -296,9 +282,7 @@ function BlockInputs({
           <input
             dir="ltr"
             value={block.roastery_slug}
-            onChange={(event) =>
-              onChange({ ...block, roastery_slug: event.target.value })
-            }
+            onChange={(event) => onChange({ ...block, roastery_slug: event.target.value })}
             className={`${inputClass} text-left`}
           />
         </BlockField>
@@ -398,9 +382,7 @@ export function StructuredBlockEditor({
                 <button
                   type="button"
                   disabled={blocks.length === 1}
-                  onClick={() =>
-                    onChange(blocks.filter((_, itemIndex) => itemIndex !== index))
-                  }
+                  onClick={() => onChange(blocks.filter((_, itemIndex) => itemIndex !== index))}
                   className="rounded-lg border border-red-400/40 px-2 py-1 text-red-300 disabled:opacity-30"
                 >
                   حذف

@@ -7,10 +7,7 @@ const files = {
   animation: await readFile("src/lib/animations.ts", "utf8"),
   performance: await readFile("src/lib/performance.ts", "utf8"),
   serviceWorker: await readFile("public/sw.js", "utf8"),
-  serviceWorkerRegistration: await readFile(
-    "src/components/ServiceWorkerRegistration.tsx",
-    "utf8",
-  ),
+  serviceWorkerRegistration: await readFile("src/components/ServiceWorkerRegistration.tsx", "utf8"),
   manifest: await readFile("public/manifest.json", "utf8"),
   server: await readFile("src/server.ts", "utf8"),
   router: await readFile("src/router.tsx", "utf8"),
@@ -28,8 +25,7 @@ const packageJson = JSON.parse(files.package);
 
 gate(
   "permanent_phase16_gate",
-  packageJson.scripts?.["audit:phase16"] ===
-    "node scripts/audit-phase16-performance.mjs" &&
+  packageJson.scripts?.["audit:phase16"] === "node scripts/audit-phase16-performance.mjs" &&
     packageJson.scripts?.check?.includes("audit:phase16"),
   "audit:phase16 is part of the permanent frontend check chain",
 );
@@ -60,8 +56,7 @@ gate(
   "private_cache_boundary",
   ["/api", "/admin", "/auth", "/cart", "/checkout", "/orders", "/panel", "/profile"].every(
     (path) => files.serviceWorker.includes(`"${path}"`) && files.server.includes(`"${path}"`),
-  ) &&
-    files.serviceWorker.includes('fetch(request, { cache: "no-store" })'),
+  ) && files.serviceWorker.includes('fetch(request, { cache: "no-store" })'),
   "private and transactional paths bypass service-worker storage and HTML uses network truth",
 );
 gate(
@@ -107,8 +102,8 @@ gate(
 );
 gate(
   "whole_bean_boundary",
-  ![files.performance, files.animation, files.networkStatus, files.serviceWorker].some(
-    (content) => /grind[_-]?selector|grind[_-]?state/i.test(content),
+  ![files.performance, files.animation, files.networkStatus, files.serviceWorker].some((content) =>
+    /grind[_-]?selector|grind[_-]?state/i.test(content),
   ),
   "performance work introduces no grind selector or grind state",
 );
@@ -120,10 +115,7 @@ const report = {
   passed: failed.length === 0,
   gates,
 };
-await writeFile(
-  "frontend-phase16-audit.json",
-  `${JSON.stringify(report, null, 2)}\n`,
-);
+await writeFile("frontend-phase16-audit.json", `${JSON.stringify(report, null, 2)}\n`);
 
 if (failed.length > 0) {
   console.error("Phase 16 performance audit failed:");

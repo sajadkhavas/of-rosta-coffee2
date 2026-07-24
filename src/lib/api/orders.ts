@@ -38,9 +38,7 @@ export interface OrderListResult {
 
 type OrderListWire = OrderSummaryWire | OrderDetailWire;
 type WireLine = OrderSummaryWire["sub_orders"][number]["items"][number];
-type WireShipment = NonNullable<
-  OrderSummaryWire["sub_orders"][number]["shipment"]
->;
+type WireShipment = NonNullable<OrderSummaryWire["sub_orders"][number]["shipment"]>;
 type WireSubOrder = OrderSummaryWire["sub_orders"][number];
 
 function mapLine(value: WireLine): OrderLine {
@@ -50,9 +48,7 @@ function mapLine(value: WireLine): OrderLine {
       id: value.product.id,
       name: value.product.name,
       slug: value.product.slug,
-      imageUrl:
-        parseOptionalMedia(value.product.primary_image)?.sources[0]?.url ??
-        null,
+      imageUrl: parseOptionalMedia(value.product.primary_image)?.sources[0]?.url ?? null,
     },
     variant: {
       id: value.variant.id,
@@ -124,35 +120,22 @@ export function mapOrderDetail(value: OrderDetailWire): OrderDetail {
   };
 }
 
-function boundedInteger(
-  value: number | undefined,
-  min: number,
-  max: number,
-): number | undefined {
+function boundedInteger(value: number | undefined, min: number, max: number): number | undefined {
   if (value === undefined || !Number.isFinite(value)) return undefined;
   return Math.min(max, Math.max(min, Math.trunc(value)));
 }
 
-export async function listOrders(
-  params: OrderListParams = {},
-): Promise<OrderListResult> {
+export async function listOrders(params: OrderListParams = {}): Promise<OrderListResult> {
   const search = new URLSearchParams();
   const page = boundedInteger(params.page, 1, 10_000);
   const perPage = boundedInteger(params.perPage, 1, 100);
   if (page) search.set("page", String(page));
   if (perPage) search.set("per_page", String(perPage));
-  if (params.status && params.status !== "all")
-    search.set("status", params.status);
+  if (params.status && params.status !== "all") search.set("status", params.status);
 
-  const raw = await apiFetch(
-    `/orders${search.size ? `?${search.toString()}` : ""}`,
-  );
+  const raw = await apiFetch(`/orders${search.size ? `?${search.toString()}` : ""}`);
   const response = parseContract(
-    collectionSchema(
-      authoritativeOrderSummaryWireSchema.or(
-        authoritativeOrderDetailWireSchema,
-      ),
-    ),
+    collectionSchema(authoritativeOrderSummaryWireSchema.or(authoritativeOrderDetailWireSchema)),
     raw,
     "فهرست سفارش‌ها",
   );

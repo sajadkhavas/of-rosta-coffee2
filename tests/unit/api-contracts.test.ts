@@ -106,9 +106,7 @@ describe("Rosta runtime API contracts", () => {
   });
 
   test("rejects grind state anywhere in a product contract", () => {
-    expect(() =>
-      productSummaryWireSchema.parse({ ...product, grind: "espresso" }),
-    ).toThrow();
+    expect(() => productSummaryWireSchema.parse({ ...product, grind: "espresso" })).toThrow();
     expect(() =>
       productSummaryWireSchema.parse({
         ...product,
@@ -128,17 +126,13 @@ describe("Rosta runtime API contracts", () => {
     expect(() =>
       productSummaryWireSchema.parse({
         ...product,
-        variants: [
-          { ...variant, is_available: true, available_quantity: 0 },
-        ],
+        variants: [{ ...variant, is_available: true, available_quantity: 0 }],
       }),
     ).toThrow();
   });
 
   test("rejects unpublished products on public endpoints", () => {
-    expect(() =>
-      publicProductSummaryWireSchema.parse({ ...product, status: "draft" }),
-    ).toThrow();
+    expect(() => publicProductSummaryWireSchema.parse({ ...product, status: "draft" })).toThrow();
   });
 
   test("downgrades invalid optional media without inventing media truth", () => {
@@ -148,9 +142,7 @@ describe("Rosta runtime API contracts", () => {
         sources: [{ ...media.sources[0], url: "javascript:alert(1)" }],
       }),
     ).toBeNull();
-    expect(parseOptionalMedia(media)?.sources[0]?.url).toBe(
-      "https://cdn.rosta.shop/coffee.webp",
-    );
+    expect(parseOptionalMedia(media)?.sources[0]?.url).toBe("https://cdn.rosta.shop/coffee.webp");
   });
 
   test("rejects cross-roastery and inconsistent quote totals", () => {
@@ -185,12 +177,8 @@ describe("Rosta runtime API contracts", () => {
       currency: "IRR",
       verified_at: "2026-07-21T10:00:00Z",
     };
-    expect(verifiedPaymentWireSchema.parse(valid).payment_id).toBe(
-      "payment-1",
-    );
-    expect(() =>
-      verifiedPaymentWireSchema.parse({ ...valid, verified_at: null }),
-    ).toThrow();
+    expect(verifiedPaymentWireSchema.parse(valid).payment_id).toBe("payment-1");
+    expect(() => verifiedPaymentWireSchema.parse({ ...valid, verified_at: null })).toThrow();
     expect(() => {
       const { amount: _amount, ...missingAmount } = valid;
       verifiedPaymentWireSchema.parse(missingAmount);

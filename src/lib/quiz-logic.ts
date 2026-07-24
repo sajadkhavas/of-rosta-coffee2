@@ -33,7 +33,7 @@ const FLAVOR_TO_NOTES: Record<string, string[]> = {
   "شکلاتی و کارامل": ["شکلات", "کارامل", "کاکائو"],
   "گلی و عطری": ["یاس", "گل", "عطری"],
   "آجیلی و خاکی": ["بادام", "فندق", "آجیلی", "ادویه"],
-  "مرکباتی": ["لیمو", "پرتقال", "گریپ", "برگاموت"],
+  مرکباتی: ["لیمو", "پرتقال", "گریپ", "برگاموت"],
   "شیرین و عسلی": ["عسل", "کارامل", "شیرین"],
 };
 const roastMap: Record<Exclude<RoastPref, "پیشنهاد بده">, ProductSummary["roastLevel"]> = {
@@ -52,20 +52,45 @@ export function matchProducts(
     .filter((product) => product.variants.some((variant) => variant.isAvailable))
     .map((product) => {
       let score = 0;
-      if (profile.roast && profile.roast !== "پیشنهاد بده" && product.roastLevel === roastMap[profile.roast]) score += 4;
-      if (["اسپرسوساز خانگی", "موکاپات"].includes(profile.brewMethod || "") && ["medium", "dark"].includes(product.roastLevel)) score += 2;
-      if (["V60 یا دریپ", "کلدبرو"].includes(profile.brewMethod || "") && ["light", "medium"].includes(product.roastLevel)) score += 2;
-      if (profile.adventure === "adventurous" && ["natural", "honey", "other"].includes(product.processingMethod)) score += 2;
+      if (
+        profile.roast &&
+        profile.roast !== "پیشنهاد بده" &&
+        product.roastLevel === roastMap[profile.roast]
+      )
+        score += 4;
+      if (
+        ["اسپرسوساز خانگی", "موکاپات"].includes(profile.brewMethod || "") &&
+        ["medium", "dark"].includes(product.roastLevel)
+      )
+        score += 2;
+      if (
+        ["V60 یا دریپ", "کلدبرو"].includes(profile.brewMethod || "") &&
+        ["light", "medium"].includes(product.roastLevel)
+      )
+        score += 2;
+      if (
+        profile.adventure === "adventurous" &&
+        ["natural", "honey", "other"].includes(product.processingMethod)
+      )
+        score += 2;
       if (profile.adventure === "safe" && product.processingMethod === "washed") score += 2;
       for (const flavor of profile.flavors) {
         const notes = FLAVOR_TO_NOTES[flavor] ?? [];
-        score += product.tastingNotes.filter((note) => notes.some((target) => note.includes(target) || target.includes(note))).length * 2;
+        score +=
+          product.tastingNotes.filter((note) =>
+            notes.some((target) => note.includes(target) || target.includes(note)),
+          ).length * 2;
       }
       if (profile.experience === "beginner" && product.roastLevel === "medium") score += 1;
       if (profile.experience === "pro" && product.processingMethod !== "washed") score += 1;
       return { product, score };
     })
-    .sort((a, b) => b.score - a.score || b.product.variants.filter((item) => item.isAvailable).length - a.product.variants.filter((item) => item.isAvailable).length)
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        b.product.variants.filter((item) => item.isAvailable).length -
+          a.product.variants.filter((item) => item.isAvailable).length,
+    )
     .slice(0, Math.max(1, Math.min(12, take)))
     .map((item) => item.product);
 }
@@ -73,13 +98,17 @@ export function matchProducts(
 export const STORAGE_KEY = "rosta:taste-profile";
 export function saveProfile(profile: TasteProfile) {
   if (typeof window === "undefined") return;
-  try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(profile)); } catch { /* storage is optional */ }
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+  } catch {
+    /* storage is optional */
+  }
 }
 export function loadProfile(): TasteProfile | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) as TasteProfile : null;
+    return raw ? (JSON.parse(raw) as TasteProfile) : null;
   } catch {
     return null;
   }

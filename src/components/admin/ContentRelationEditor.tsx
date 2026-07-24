@@ -60,9 +60,7 @@ export function ContentRelationEditor({
             className="rounded-2xl border border-[color:var(--mid)] bg-black/10 p-4"
           >
             <header className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs font-bold text-[color:var(--roast)]">
-                رابطه {index + 1}
-              </p>
+              <p className="text-xs font-bold text-[color:var(--roast)]">رابطه {index + 1}</p>
               <div className="flex gap-2 text-xs">
                 <button
                   type="button"
@@ -104,19 +102,18 @@ export function ContentRelationEditor({
                   onChange={(event) =>
                     update(index, {
                       ...relation,
-                      relation_type: event.target
-                        .value as ContentRelationInput["relation_type"],
+                      relation_type: event.target.value as ContentRelationInput["relation_type"],
                     })
                   }
                   className={inputClass}
                 >
-                  {(
-                    Object.keys(relationLabels) as ContentRelationInput["relation_type"][]
-                  ).map((value) => (
-                    <option key={value} value={value}>
-                      {relationLabels[value]}
-                    </option>
-                  ))}
+                  {(Object.keys(relationLabels) as ContentRelationInput["relation_type"][]).map(
+                    (value) => (
+                      <option key={value} value={value}>
+                        {relationLabels[value]}
+                      </option>
+                    ),
+                  )}
                 </select>
               </label>
               <label className="grid gap-2 text-xs font-bold">
@@ -126,19 +123,18 @@ export function ContentRelationEditor({
                   onChange={(event) =>
                     update(index, {
                       ...relation,
-                      target_type: event.target
-                        .value as ContentRelationInput["target_type"],
+                      target_type: event.target.value as ContentRelationInput["target_type"],
                     })
                   }
                   className={inputClass}
                 >
-                  {(
-                    Object.keys(targetLabels) as ContentRelationInput["target_type"][]
-                  ).map((value) => (
-                    <option key={value} value={value}>
-                      {targetLabels[value]}
-                    </option>
-                  ))}
+                  {(Object.keys(targetLabels) as ContentRelationInput["target_type"][]).map(
+                    (value) => (
+                      <option key={value} value={value}>
+                        {targetLabels[value]}
+                      </option>
+                    ),
+                  )}
                 </select>
               </label>
               <label className="grid gap-2 text-xs font-bold">
@@ -177,9 +173,7 @@ export function ContentRelationEditor({
       <button
         type="button"
         disabled={relations.length >= 100}
-        onClick={() =>
-          onChange([...relations, emptyRelation(relations.length)])
-        }
+        onClick={() => onChange([...relations, emptyRelation(relations.length)])}
         className="mt-4 rounded-xl border border-dashed border-[color:var(--roast)] px-4 py-2.5 text-xs font-bold text-[color:var(--roast)] disabled:opacity-40"
       >
         + افزودن رابطه داخلی

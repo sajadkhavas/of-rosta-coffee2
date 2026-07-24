@@ -52,14 +52,7 @@ function IconAction({
 }
 
 function CartPage() {
-  const {
-    items,
-    hydrated,
-    apiItems,
-    localSubtotal,
-    updateQuantity,
-    removeItem,
-  } = useCart();
+  const { items, hydrated, apiItems, localSubtotal, updateQuantity, removeItem } = useCart();
 
   const quoteQuery = useQuery({
     queryKey: ["cart", "validate", apiItems],
@@ -90,14 +83,27 @@ function CartPage() {
         <Navbar />
         <main className="mx-auto grid min-h-[60vh] max-w-xl place-items-center px-4 py-16 text-center">
           <section>
-            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" className="mx-auto text-[color:var(--roast)]">
-              <path d="M6 8h12l-1 12H7L6 8zM9 8V6a3 3 0 016 0v2" stroke="currentColor" strokeWidth="1.5" />
+            <svg
+              width="80"
+              height="80"
+              viewBox="0 0 24 24"
+              fill="none"
+              className="mx-auto text-[color:var(--roast)]"
+            >
+              <path
+                d="M6 8h12l-1 12H7L6 8zM9 8V6a3 3 0 016 0v2"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              />
             </svg>
             <h1 className="mt-4 text-2xl font-bold">سبد خرید خالی است</h1>
             <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">
               یک وزن موجود از دانه قهوه را انتخاب و به سبد اضافه کنید.
             </p>
-            <Link to="/products" className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-[color:var(--roast)] px-6 text-sm font-bold text-[color:var(--night)]">
+            <Link
+              to="/products"
+              className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-[color:var(--roast)] px-6 text-sm font-bold text-[color:var(--night)]"
+            >
               مشاهده کاتالوگ
             </Link>
           </section>
@@ -119,7 +125,9 @@ function CartPage() {
       <main className="mx-auto max-w-6xl px-4 py-8">
         <Breadcrumb items={[{ label: "خانه", to: "/" }, { label: "سبد خرید" }]} />
         <header className="mt-4">
-          <p className="text-xs font-bold tracking-[0.2em] text-[color:var(--roast)]">SERVER VALIDATED CART</p>
+          <p className="text-xs font-bold tracking-[0.2em] text-[color:var(--roast)]">
+            SERVER VALIDATED CART
+          </p>
           <h1 className="mt-2 text-3xl font-bold">سبد خرید</h1>
           <p className="mt-2 text-sm leading-7 text-[color:var(--light)]">
             قیمت، موجودی و قانون تک‌روستری بودن سبد توسط سرور رستا بررسی می‌شود.
@@ -147,29 +155,51 @@ function CartPage() {
         ) : null}
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_340px]">
-          <section className="rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-4" aria-label="اقلام سبد">
+          <section
+            className="rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-4"
+            aria-label="اقلام سبد"
+          >
             <header className="mb-3 flex items-center justify-between border-b border-[color:var(--mid)] pb-3">
               <div>
                 <h2 className="text-sm font-bold">{items[0].roasteryName}</h2>
-                <p className="mt-1 text-[11px] text-[color:var(--light)]">تمام اقلام فقط دانه کامل هستند.</p>
+                <p className="mt-1 text-[11px] text-[color:var(--light)]">
+                  تمام اقلام فقط دانه کامل هستند.
+                </p>
               </div>
-              <span className="rounded-full border border-[color:var(--roast)] px-3 py-1 text-[11px] text-[color:var(--roast)]">تک‌روستری</span>
+              <span className="rounded-full border border-[color:var(--roast)] px-3 py-1 text-[11px] text-[color:var(--roast)]">
+                تک‌روستری
+              </span>
             </header>
             <ul className="divide-y divide-[color:var(--mid)]">
               {items.map((item) => (
                 <li key={item.variantId} className="flex gap-3 py-4 first:pt-1 last:pb-1">
                   {item.productImageUrl ? (
-                    <img src={item.productImageUrl} alt={item.productName} width={88} height={88} loading="lazy" className="size-22 rounded-xl object-cover" />
+                    <img
+                      src={item.productImageUrl}
+                      alt={item.productName}
+                      width={88}
+                      height={88}
+                      loading="lazy"
+                      className="size-22 rounded-xl object-cover"
+                    />
                   ) : (
-                    <div className="grid size-22 shrink-0 place-items-center rounded-xl bg-[color:var(--night)] text-xs text-[color:var(--light)]">تصویر</div>
+                    <div className="grid size-22 shrink-0 place-items-center rounded-xl bg-[color:var(--night)] text-xs text-[color:var(--light)]">
+                      تصویر
+                    </div>
                   )}
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <Link to="/products/$slug" params={{ slug: item.productSlug }} className="text-sm font-bold hover:text-[color:var(--roast)]">
+                        <Link
+                          to="/products/$slug"
+                          params={{ slug: item.productSlug }}
+                          className="text-sm font-bold hover:text-[color:var(--roast)]"
+                        >
                           {item.productName}
                         </Link>
-                        <p className="mt-1 text-xs text-[color:var(--light)]">{formatWeight(item.weightGrams)} · دانه کامل</p>
+                        <p className="mt-1 text-xs text-[color:var(--light)]">
+                          {formatWeight(item.weightGrams)} · دانه کامل
+                        </p>
                       </div>
                       <IconAction label="حذف از سبد" onClick={() => removeItem(item.variantId)}>
                         <X size={17} />
@@ -177,17 +207,28 @@ function CartPage() {
                     </div>
                     <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                       <div className="inline-flex items-center rounded-xl border border-[color:var(--mid)]">
-                        <IconAction label="کاهش تعداد" onClick={() => updateQuantity(item.variantId, item.quantity - 1)}>
+                        <IconAction
+                          label="کاهش تعداد"
+                          onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
+                        >
                           <Minus size={16} />
                         </IconAction>
-                        <span className="min-w-8 text-center font-mono text-sm">{item.quantity.toLocaleString("fa-IR")}</span>
-                        <IconAction label="افزایش تعداد" disabled={item.quantity >= 20} onClick={() => updateQuantity(item.variantId, item.quantity + 1)}>
+                        <span className="min-w-8 text-center font-mono text-sm">
+                          {item.quantity.toLocaleString("fa-IR")}
+                        </span>
+                        <IconAction
+                          label="افزایش تعداد"
+                          disabled={item.quantity >= 20}
+                          onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
+                        >
                           <Plus size={16} />
                         </IconAction>
                       </div>
                       <div className="text-end">
                         <p className="text-[10px] text-[color:var(--light)]">قیمت آخرین مشاهده</p>
-                        <p className="font-mono text-sm font-bold text-[color:var(--roast)]">{formatIrr(item.unitPriceSnapshot * item.quantity)}</p>
+                        <p className="font-mono text-sm font-bold text-[color:var(--roast)]">
+                          {formatIrr(item.unitPriceSnapshot * item.quantity)}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -199,7 +240,13 @@ function CartPage() {
           <aside className="h-fit rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5 lg:sticky lg:top-20">
             <div className="flex items-center justify-between gap-3">
               <h2 className="font-bold">خلاصه معتبر سرور</h2>
-              <button type="button" onClick={() => quoteQuery.refetch()} disabled={quoteQuery.isFetching} aria-label="اعتبارسنجی دوباره" className="grid size-10 place-items-center rounded-lg border border-[color:var(--mid)] text-[color:var(--light)] disabled:opacity-50">
+              <button
+                type="button"
+                onClick={() => quoteQuery.refetch()}
+                disabled={quoteQuery.isFetching}
+                aria-label="اعتبارسنجی دوباره"
+                className="grid size-10 place-items-center rounded-lg border border-[color:var(--mid)] text-[color:var(--light)] disabled:opacity-50"
+              >
                 <RefreshCw size={16} className={quoteQuery.isFetching ? "animate-spin" : ""} />
               </button>
             </div>
@@ -211,29 +258,58 @@ function CartPage() {
               </div>
             ) : quote ? (
               <dl className="mt-5 space-y-3 text-sm">
-                <div className="flex justify-between text-[color:var(--light)]"><dt>جمع اقلام</dt><dd className="font-mono">{formatIrr(quote.subtotal)}</dd></div>
-                <div className="flex justify-between text-[color:var(--light)]"><dt>ارسال</dt><dd className="font-mono">{formatIrr(quote.shippingTotal)}</dd></div>
+                <div className="flex justify-between text-[color:var(--light)]">
+                  <dt>جمع اقلام</dt>
+                  <dd className="font-mono">{formatIrr(quote.subtotal)}</dd>
+                </div>
+                <div className="flex justify-between text-[color:var(--light)]">
+                  <dt>ارسال</dt>
+                  <dd className="font-mono">{formatIrr(quote.shippingTotal)}</dd>
+                </div>
                 {quote.discountTotal > 0 ? (
-                  <div className="flex justify-between text-emerald-300"><dt>تخفیف</dt><dd className="font-mono">− {formatIrr(quote.discountTotal)}</dd></div>
+                  <div className="flex justify-between text-emerald-300">
+                    <dt>تخفیف</dt>
+                    <dd className="font-mono">− {formatIrr(quote.discountTotal)}</dd>
+                  </div>
                 ) : null}
-                <div className="flex justify-between border-t border-[color:var(--mid)] pt-3 font-bold"><dt>مبلغ قابل پرداخت</dt><dd className="font-mono text-[color:var(--roast)]">{formatIrr(quote.grandTotal)}</dd></div>
+                <div className="flex justify-between border-t border-[color:var(--mid)] pt-3 font-bold">
+                  <dt>مبلغ قابل پرداخت</dt>
+                  <dd className="font-mono text-[color:var(--roast)]">
+                    {formatIrr(quote.grandTotal)}
+                  </dd>
+                </div>
               </dl>
             ) : (
               <dl className="mt-5 space-y-3 text-sm text-[color:var(--light)]">
-                <div className="flex justify-between"><dt>جمع آخرین مشاهده</dt><dd className="font-mono">{formatIrr(localSubtotal)}</dd></div>
+                <div className="flex justify-between">
+                  <dt>جمع آخرین مشاهده</dt>
+                  <dd className="font-mono">{formatIrr(localSubtotal)}</dd>
+                </div>
               </dl>
             )}
 
-            {expiresAt ? <p className="mt-3 text-[11px] text-[color:var(--light)]">این اعتبارسنجی تا ساعت {expiresAt} معتبر است؛ Checkout قیمت را دوباره محاسبه می‌کند.</p> : null}
+            {expiresAt ? (
+              <p className="mt-3 text-[11px] text-[color:var(--light)]">
+                این اعتبارسنجی تا ساعت {expiresAt} معتبر است؛ Checkout قیمت را دوباره محاسبه می‌کند.
+              </p>
+            ) : null}
 
             {canCheckout ? (
-              <Link to="/checkout" className="mt-5 flex min-h-12 w-full items-center justify-center rounded-xl bg-[color:var(--roast)] px-4 text-sm font-bold text-[color:var(--night)]">
+              <Link
+                to="/checkout"
+                className="mt-5 flex min-h-12 w-full items-center justify-center rounded-xl bg-[color:var(--roast)] px-4 text-sm font-bold text-[color:var(--night)]"
+              >
                 ادامه و انتخاب آدرس
               </Link>
             ) : (
-              <Button type="button" disabled className="mt-5 w-full">ابتدا تأیید سرور لازم است</Button>
+              <Button type="button" disabled className="mt-5 w-full">
+                ابتدا تأیید سرور لازم است
+              </Button>
             )}
-            <Link to="/products" className="mt-3 block w-full rounded-xl border border-[color:var(--mid)] py-3 text-center text-sm text-[color:var(--light)]">
+            <Link
+              to="/products"
+              className="mt-3 block w-full rounded-xl border border-[color:var(--mid)] py-3 text-center text-sm text-[color:var(--light)]"
+            >
               ادامه خرید
             </Link>
           </aside>

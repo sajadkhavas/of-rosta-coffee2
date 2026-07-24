@@ -10,12 +10,7 @@ import {
   Store,
   Truck,
 } from "lucide-react";
-import {
-  useEffect,
-  useMemo,
-  useState,
-  type FormEvent,
-} from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   Alert,
   Button,
@@ -26,12 +21,7 @@ import {
   TextField,
   useToast,
 } from "@/components/system";
-import type {
-  AuthUser,
-  OrderSummary,
-  ProductSummary,
-  ProductVariant,
-} from "@/lib/api/contracts";
+import type { AuthUser, OrderSummary, ProductSummary, ProductVariant } from "@/lib/api/contracts";
 import { isApiError } from "@/lib/api/client";
 import {
   adjustSellerStock,
@@ -91,17 +81,12 @@ export function SellerOperationsDashboard({ user }: { user: AuthUser }) {
   const [activeTab, setActiveTab] = useState<TabId>("orders");
 
   useEffect(() => {
-    if (
-      !selectedRoasteryId &&
-      roasteriesQuery.data?.length
-    ) {
+    if (!selectedRoasteryId && roasteriesQuery.data?.length) {
       setSelectedRoasteryId(roasteriesQuery.data[0].id);
     }
   }, [roasteriesQuery.data, selectedRoasteryId]);
 
-  const selectedRoastery = roasteriesQuery.data?.find(
-    (item) => item.id === selectedRoasteryId,
-  );
+  const selectedRoastery = roasteriesQuery.data?.find((item) => item.id === selectedRoasteryId);
 
   if (!hasSellerRole && !onboarded) {
     return <RoasteryOnboarding onCreated={() => setOnboarded(true)} />;
@@ -195,15 +180,9 @@ export function SellerOperationsDashboard({ user }: { user: AuthUser }) {
         })}
       </nav>
 
-      {activeTab === "orders" ? (
-        <SellerOrdersWorkspace roastery={selectedRoastery} />
-      ) : null}
-      {activeTab === "catalog" ? (
-        <SellerCatalogWorkspace roastery={selectedRoastery} />
-      ) : null}
-      {activeTab === "media" ? (
-        <SellerMediaWorkspace roastery={selectedRoastery} />
-      ) : null}
+      {activeTab === "orders" ? <SellerOrdersWorkspace roastery={selectedRoastery} /> : null}
+      {activeTab === "catalog" ? <SellerCatalogWorkspace roastery={selectedRoastery} /> : null}
+      {activeTab === "media" ? <SellerMediaWorkspace roastery={selectedRoastery} /> : null}
     </section>
   );
 }
@@ -258,33 +237,27 @@ function RoasteryOnboarding({ onCreated }: { onCreated: () => void }) {
         </div>
       </div>
       <p className="mt-4 text-sm leading-7 text-[color:var(--light)]">
-        پس از ثبت، روستری در وضعیت «در انتظار بررسی» قرار می‌گیرد. اطلاعات حساس
-        تأییدشده با ویرایش دوباره به صف بررسی بازمی‌گردند.
+        پس از ثبت، روستری در وضعیت «در انتظار بررسی» قرار می‌گیرد. اطلاعات حساس تأییدشده با ویرایش
+        دوباره به صف بررسی بازمی‌گردند.
       </p>
       <form onSubmit={submit} className="mt-6 grid gap-4 md:grid-cols-2">
         <TextField
           label="نام روستری"
           required
           value={form.name}
-          onChange={(event) =>
-            setForm((current) => ({ ...current, name: event.target.value }))
-          }
+          onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
         />
         <TextField
           label="Slug"
           required
           dir="ltr"
           value={form.slug}
-          onChange={(event) =>
-            setForm((current) => ({ ...current, slug: event.target.value }))
-          }
+          onChange={(event) => setForm((current) => ({ ...current, slug: event.target.value }))}
         />
         <TextField
           label="شهر"
           value={form.city}
-          onChange={(event) =>
-            setForm((current) => ({ ...current, city: event.target.value }))
-          }
+          onChange={(event) => setForm((current) => ({ ...current, city: event.target.value }))}
         />
         <div className="grid grid-cols-2 gap-3">
           <TextField
@@ -346,9 +319,7 @@ function RoasteryOnboarding({ onCreated }: { onCreated: () => void }) {
 }
 
 function RoasterySummaryCard({ roastery }: { roastery: SellerRoastery }) {
-  const canEdit = roastery.accessRoles.some((role) =>
-    editableRoles.has(role as EditableRole),
-  );
+  const canEdit = roastery.accessRoles.some((role) => editableRoles.has(role as EditableRole));
   return (
     <article className="grid gap-4 rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5 md:grid-cols-[1fr_auto]">
       <div className="flex items-start gap-4">
@@ -404,9 +375,7 @@ function SellerOrdersWorkspace({ roastery }: { roastery: SellerRoastery }) {
     }
   }, [ordersQuery.data, selectedOrderId]);
 
-  const selectedOrder = ordersQuery.data?.items.find(
-    (order) => order.id === selectedOrderId,
-  );
+  const selectedOrder = ordersQuery.data?.items.find((order) => order.id === selectedOrderId);
   const selectedSubOrder = selectedOrder?.subOrders[0];
   const allowedActions = fulfillmentActions(selectedSubOrder?.status);
 
@@ -466,9 +435,7 @@ function SellerOrdersWorkspace({ roastery }: { roastery: SellerRoastery }) {
         </div>
         <div className="mt-5 grid gap-3">
           {ordersQuery.isLoading ? (
-            Array.from({ length: 4 }).map((_, index) => (
-              <Skeleton key={index} className="h-28" />
-            ))
+            Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-28" />)
           ) : ordersQuery.isError ? (
             <Alert variant="danger">{errorMessage(ordersQuery.error)}</Alert>
           ) : ordersQuery.data?.items.length ? (
@@ -613,9 +580,7 @@ function OrderCard({
             {toFa(subOrder?.items.length ?? 0)} قلم · {formatIrr(order.grandTotal)}
           </p>
         </div>
-        <StatusPill
-          label={subOrder ? subOrderStatusLabel(subOrder.status) : order.status}
-        />
+        <StatusPill label={subOrder ? subOrderStatusLabel(subOrder.status) : order.status} />
       </div>
       {subOrder?.items.length ? (
         <p className="mt-3 line-clamp-2 text-xs leading-6 text-[color:var(--light)]">
@@ -684,8 +649,8 @@ function SellerCatalogWorkspace({ roastery }: { roastery: SellerRoastery }) {
     <div className="space-y-6">
       {!canEditCatalog ? (
         <Alert variant="info" title="دسترسی مشاهده و عملیات موجودی">
-          نقش Staff نمی‌تواند محصول یا Variant ایجاد کند؛ عملیات موجودی و سفارش همچنان
-          طبق Scope روستری در دسترس است.
+          نقش Staff نمی‌تواند محصول یا Variant ایجاد کند؛ عملیات موجودی و سفارش همچنان طبق Scope
+          روستری در دسترس است.
         </Alert>
       ) : null}
 
@@ -708,9 +673,7 @@ function SellerCatalogWorkspace({ roastery }: { roastery: SellerRoastery }) {
           </div>
           <div className="mt-5 grid gap-3">
             {productsQuery.isLoading ? (
-              Array.from({ length: 4 }).map((_, index) => (
-                <Skeleton key={index} className="h-24" />
-              ))
+              Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-24" />)
             ) : productsQuery.isError ? (
               <Alert variant="danger">{errorMessage(productsQuery.error)}</Alert>
             ) : productsQuery.data?.items.length ? (
@@ -882,18 +845,14 @@ function CreateProductForm({
           label="نام محصول"
           required
           value={form.name}
-          onChange={(event) =>
-            setForm((current) => ({ ...current, name: event.target.value }))
-          }
+          onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
         />
         <TextField
           label="Slug"
           required
           dir="ltr"
           value={form.slug}
-          onChange={(event) =>
-            setForm((current) => ({ ...current, slug: event.target.value }))
-          }
+          onChange={(event) => setForm((current) => ({ ...current, slug: event.target.value }))}
         />
         <TextField
           label="درصد عربیکا"
@@ -1030,9 +989,7 @@ function ProductOperations({
 }) {
   const queryClient = useQueryClient();
   const { pushToast } = useToast();
-  const [selectedVariantId, setSelectedVariantId] = useState(
-    product.variants[0]?.id ?? "",
-  );
+  const [selectedVariantId, setSelectedVariantId] = useState(product.variants[0]?.id ?? "");
 
   useEffect(() => {
     if (!product.variants.some((variant) => variant.id === selectedVariantId)) {
@@ -1047,8 +1004,7 @@ function ProductOperations({
   });
   const ledgerQuery = useQuery({
     queryKey: ["seller", roastery.id, selectedVariantId, "stock-ledger"],
-    queryFn: () =>
-      listAuthoritativeStockLedger(roastery.id, selectedVariantId),
+    queryFn: () => listAuthoritativeStockLedger(roastery.id, selectedVariantId),
     enabled: Boolean(selectedVariantId),
     staleTime: 10_000,
   });
@@ -1097,17 +1053,10 @@ function ProductOperations({
         </div>
         {canEditCatalog ? (
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              onClick={() => onSetStatus("draft")}
-              loading={statusPending}
-            >
+            <Button variant="outline" onClick={() => onSetStatus("draft")} loading={statusPending}>
               Draft
             </Button>
-            <Button
-              onClick={() => onSetStatus("review")}
-              loading={statusPending}
-            >
+            <Button onClick={() => onSetStatus("review")} loading={statusPending}>
               ارسال برای بررسی
             </Button>
             <Button
@@ -1234,9 +1183,7 @@ function VariantPanel({
             required
             dir="ltr"
             value={form.sku}
-            onChange={(event) =>
-              setForm((current) => ({ ...current, sku: event.target.value }))
-            }
+            onChange={(event) => setForm((current) => ({ ...current, sku: event.target.value }))}
           />
           <label className="grid gap-2 text-sm font-bold">
             وزن
@@ -1405,10 +1352,7 @@ function StockPanel({
 }) {
   const [form, setForm] = useState({
     delta: "",
-    reason: "purchase" as Exclude<
-      StockReason,
-      "reservation" | "release" | "sale"
-    >,
+    reason: "purchase" as Exclude<StockReason, "reservation" | "release" | "sale">,
     roastBatchId: "",
   });
   const submit = (event: FormEvent) => {
@@ -1442,12 +1386,16 @@ function StockPanel({
           <Skeleton className="h-20" />
         ) : ledger.length ? (
           ledger.slice(0, 5).map((entry) => (
-            <div key={entry.id} className="flex items-center justify-between rounded-xl border border-[color:var(--mid)] p-3 text-xs">
+            <div
+              key={entry.id}
+              className="flex items-center justify-between rounded-xl border border-[color:var(--mid)] p-3 text-xs"
+            >
               <span>
                 {stockReasonLabel(entry.reason)} · {formatDate(entry.created_at)}
               </span>
               <span className="font-mono-num">
-                {entry.delta > 0 ? "+" : ""}{toFa(entry.delta)} → {toFa(entry.balance_after)}
+                {entry.delta > 0 ? "+" : ""}
+                {toFa(entry.delta)} → {toFa(entry.balance_after)}
               </span>
             </div>
           ))
@@ -1556,7 +1504,8 @@ function SellerMediaWorkspace({ roastery }: { roastery: SellerRoastery }) {
       >
         <h2 className="font-bold">آپلود امن رسانه</h2>
         <p className="mt-2 text-xs leading-6 text-[color:var(--light)]">
-          فایل مستقیم با Signed PUT به Object Storage می‌رود؛ کلید و URL عمومی فقط توسط Backend ساخته می‌شوند.
+          فایل مستقیم با Signed PUT به Object Storage می‌رود؛ کلید و URL عمومی فقط توسط Backend
+          ساخته می‌شوند.
         </p>
         <label className="mt-5 grid gap-2 text-sm font-bold">
           تصویر
@@ -1648,13 +1597,7 @@ function SellerMediaWorkspace({ roastery }: { roastery: SellerRoastery }) {
   );
 }
 
-function StatusPill({
-  label,
-  subtle = false,
-}: {
-  label: string;
-  subtle?: boolean;
-}) {
+function StatusPill({ label, subtle = false }: { label: string; subtle?: boolean }) {
   return (
     <span
       className={`rounded-full border px-3 py-1 text-[10px] font-bold ${
@@ -1700,11 +1643,19 @@ function numberOrNull(value: string): number | null {
 }
 
 function commaList(value: string): string[] {
-  return [...new Set(value.split(/[،,]/).map((item) => item.trim()).filter(Boolean))].slice(0, 30);
+  return [
+    ...new Set(
+      value
+        .split(/[،,]/)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  ].slice(0, 30);
 }
 
 function newLedgerIdempotencyKey(): string {
-  const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const id =
+    globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   return `stock:${id}`;
 }
 
@@ -1736,23 +1687,23 @@ function productStatusLabel(status: ProductSummary["status"]): string {
 }
 
 function subOrderStatusLabel(status: string): string {
-  return {
-    pending_acceptance: "منتظر پذیرش",
-    accepted: "پذیرفته‌شده",
-    rejected: "ردشده",
-    preparing: "در حال آماده‌سازی",
-    ready_to_ship: "آماده ارسال",
-    shipped: "ارسال‌شده",
-    delivered: "تحویل‌شده",
-    cancelled: "لغوشده",
-    refund_pending: "در انتظار بازپرداخت",
-    refunded: "بازپرداخت‌شده",
-  }[status] ?? status;
+  return (
+    {
+      pending_acceptance: "منتظر پذیرش",
+      accepted: "پذیرفته‌شده",
+      rejected: "ردشده",
+      preparing: "در حال آماده‌سازی",
+      ready_to_ship: "آماده ارسال",
+      shipped: "ارسال‌شده",
+      delivered: "تحویل‌شده",
+      cancelled: "لغوشده",
+      refund_pending: "در انتظار بازپرداخت",
+      refunded: "بازپرداخت‌شده",
+    }[status] ?? status
+  );
 }
 
-function fulfillmentActions(
-  status?: string,
-): FulfillmentInput["status"][] {
+function fulfillmentActions(status?: string): FulfillmentInput["status"][] {
   const actions: Partial<Record<string, FulfillmentInput["status"][]>> = {
     pending_acceptance: ["accepted", "rejected"],
     accepted: ["preparing"],
@@ -1775,13 +1726,15 @@ function fulfillmentActionLabel(status: FulfillmentInput["status"]): string {
 }
 
 function stockReasonLabel(reason: string): string {
-  return {
-    opening: "موجودی اولیه",
-    purchase: "ورود خرید/تولید",
-    correction: "اصلاح",
-    damage: "آسیب",
-    expiry: "انقضا",
-    return: "مرجوعی",
-    reservation_release: "آزادسازی رزرو",
-  }[reason] ?? reason;
+  return (
+    {
+      opening: "موجودی اولیه",
+      purchase: "ورود خرید/تولید",
+      correction: "اصلاح",
+      damage: "آسیب",
+      expiry: "انقضا",
+      return: "مرجوعی",
+      reservation_release: "آزادسازی رزرو",
+    }[reason] ?? reason
+  );
 }

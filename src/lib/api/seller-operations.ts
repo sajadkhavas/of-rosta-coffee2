@@ -49,9 +49,7 @@ const sellerRoasteryWireSchema = roasteryDetailWireSchema.extend({
 
 const sellerRoasteryListSchema = z
   .object({
-    data: z
-      .object({ items: z.array(sellerRoasteryWireSchema).max(500) })
-      .strict(),
+    data: z.object({ items: z.array(sellerRoasteryWireSchema).max(500) }).strict(),
   })
   .passthrough();
 
@@ -113,17 +111,13 @@ const uploadIntentSchema = z
 
 const sellerRoasteryResourceSchema = resourceSchema(roasteryDetailWireSchema);
 const sellerProductResourceSchema = resourceSchema(sellerProductDetailWireSchema);
-const variantResourceSchema = resourceSchema(
-  productSummaryWireSchema.shape.variants.element,
-);
+const variantResourceSchema = resourceSchema(productSummaryWireSchema.shape.variants.element);
 const roastBatchResourceSchema = resourceSchema(roastBatchWireSchema);
 const stockLedgerResourceSchema = resourceSchema(stockLedgerSchema);
 const mediaResourceSchema = resourceSchema(mediaAssetSchema);
 const uploadIntentResourceSchema = resourceSchema(uploadIntentSchema);
 
-export type SellerRoasteryStatus = z.infer<
-  typeof sellerRoasteryWireSchema.shape.status
->;
+export type SellerRoasteryStatus = z.infer<typeof sellerRoasteryWireSchema.shape.status>;
 export type SellerAccessRole = z.infer<typeof sellerRoleSchema>;
 export type StockReason = z.infer<typeof stockLedgerSchema.shape.reason>;
 export type StockLedgerEntry = z.infer<typeof stockLedgerSchema>;
@@ -181,13 +175,7 @@ export interface AdjustStockInput {
 }
 
 export interface FulfillmentInput {
-  status:
-    | "accepted"
-    | "rejected"
-    | "preparing"
-    | "ready_to_ship"
-    | "shipped"
-    | "delivered";
+  status: "accepted" | "rejected" | "preparing" | "ready_to_ship" | "shipped" | "delivered";
   reason?: string;
   carrier?: string;
   trackingCode?: string;
@@ -281,9 +269,7 @@ function mapProduct(value: ProductSummaryWire): ProductSummary {
   };
 }
 
-function mapProductDetail(
-  value: z.infer<typeof sellerProductDetailWireSchema>,
-): ProductDetail {
+function mapProductDetail(value: z.infer<typeof sellerProductDetailWireSchema>): ProductDetail {
   return {
     ...mapProduct(value),
     description: value.description,
@@ -319,9 +305,7 @@ function productBody(input: UpsertProductInput) {
 }
 
 export async function listSellerRoasteries(): Promise<SellerRoastery[]> {
-  const response = sellerRoasteryListSchema.parse(
-    await apiFetch<unknown>("/seller/roasteries"),
-  );
+  const response = sellerRoasteryListSchema.parse(await apiFetch<unknown>("/seller/roasteries"));
   return response.data.items.map((value) => ({
     ...mapRoastery(value),
     status: value.status,
@@ -329,14 +313,10 @@ export async function listSellerRoasteries(): Promise<SellerRoastery[]> {
   }));
 }
 
-export async function getSellerRoastery(
-  roasteryId: string,
-): Promise<RoasteryDetail> {
+export async function getSellerRoastery(roasteryId: string): Promise<RoasteryDetail> {
   const response = parseContract(
     sellerRoasteryResourceSchema,
-    await apiFetch<unknown>(
-      `/seller/roasteries/${encodeURIComponent(roasteryId)}`,
-    ),
+    await apiFetch<unknown>(`/seller/roasteries/${encodeURIComponent(roasteryId)}`),
     "جزئیات روستری فروشنده",
   );
   return mapRoastery(response.data);
@@ -351,14 +331,10 @@ export async function listSellerOrigins(): Promise<SellerList<SellerOrigin>> {
   return { items: response.data, meta: response.meta, links: response.links };
 }
 
-export async function listSellerProducts(
-  roasteryId: string,
-): Promise<SellerList<ProductSummary>> {
+export async function listSellerProducts(roasteryId: string): Promise<SellerList<ProductSummary>> {
   const response = parseContract(
     collectionSchema(productSummaryWireSchema),
-    await apiFetch<unknown>(
-      `/seller/roasteries/${encodeURIComponent(roasteryId)}/products`,
-    ),
+    await apiFetch<unknown>(`/seller/roasteries/${encodeURIComponent(roasteryId)}/products`),
     "محصولات پنل فروشنده",
   );
   return {
@@ -388,10 +364,10 @@ export async function createSellerProduct(
 ): Promise<ProductDetail> {
   const response = parseContract(
     sellerProductResourceSchema,
-    await apiFetch<unknown>(
-      `/seller/roasteries/${encodeURIComponent(roasteryId)}/products`,
-      { method: "POST", body: productBody(input) },
-    ),
+    await apiFetch<unknown>(`/seller/roasteries/${encodeURIComponent(roasteryId)}/products`, {
+      method: "POST",
+      body: productBody(input),
+    }),
     "ایجاد محصول فروشنده",
   );
   return mapProductDetail(response.data);
@@ -403,16 +379,18 @@ export async function updateSellerProduct(
   input: Partial<UpsertProductInput>,
 ): Promise<ProductDetail> {
   const body = Object.fromEntries(
-    Object.entries(productBody({
-      originId: input.originId ?? "",
-      name: input.name ?? "",
-      slug: input.slug ?? "",
-      processingMethod: input.processingMethod ?? "washed",
-      roastLevel: input.roastLevel ?? "medium",
-      arabicaPercentage: input.arabicaPercentage ?? 100,
-      tastingNotes: input.tastingNotes ?? [],
-      ...input,
-    })).filter(([key]) => {
+    Object.entries(
+      productBody({
+        originId: input.originId ?? "",
+        name: input.name ?? "",
+        slug: input.slug ?? "",
+        processingMethod: input.processingMethod ?? "washed",
+        roastLevel: input.roastLevel ?? "medium",
+        arabicaPercentage: input.arabicaPercentage ?? 100,
+        tastingNotes: input.tastingNotes ?? [],
+        ...input,
+      }),
+    ).filter(([key]) => {
       const sourceKey = {
         origin_id: "originId",
         primary_media_id: "primaryMediaId",
@@ -479,8 +457,7 @@ export async function updateSellerVariant(
   if (input.sku !== undefined) body.sku = input.sku.trim();
   if (input.weightGrams !== undefined) body.weight_grams = input.weightGrams;
   if (input.price !== undefined) body.price = input.price;
-  if (input.compareAtPrice !== undefined)
-    body.compare_at_price = input.compareAtPrice;
+  if (input.compareAtPrice !== undefined) body.compare_at_price = input.compareAtPrice;
   if (input.isActive !== undefined) body.is_active = input.isActive;
   const response = parseContract(
     variantResourceSchema,
@@ -573,13 +550,9 @@ export async function adjustSellerStock(
   return response.data;
 }
 
-export async function listSellerOrders(
-  roasteryId: string,
-): Promise<SellerList<OrderSummary>> {
+export async function listSellerOrders(roasteryId: string): Promise<SellerList<OrderSummary>> {
   const response = parseContract(
-    collectionSchema(
-      authoritativeOrderSummaryWireSchema.or(authoritativeOrderDetailWireSchema),
-    ),
+    collectionSchema(authoritativeOrderSummaryWireSchema.or(authoritativeOrderDetailWireSchema)),
     await apiFetch<unknown>(
       `/seller/roasteries/${encodeURIComponent(roasteryId)}/orders?per_page=100`,
     ),
@@ -592,10 +565,7 @@ export async function listSellerOrders(
   };
 }
 
-export async function getSellerOrder(
-  roasteryId: string,
-  orderId: string,
-): Promise<OrderDetail> {
+export async function getSellerOrder(roasteryId: string, orderId: string): Promise<OrderDetail> {
   const response = parseContract(
     resourceSchema(authoritativeOrderDetailWireSchema),
     await apiFetch<unknown>(
@@ -631,14 +601,10 @@ export async function transitionSellerOrder(
   return mapOrderDetail(response.data);
 }
 
-export async function listSellerMedia(
-  roasteryId: string,
-): Promise<SellerList<MediaAsset>> {
+export async function listSellerMedia(roasteryId: string): Promise<SellerList<MediaAsset>> {
   const response = parseContract(
     collectionSchema(mediaAssetSchema),
-    await apiFetch<unknown>(
-      `/seller/roasteries/${encodeURIComponent(roasteryId)}/media`,
-    ),
+    await apiFetch<unknown>(`/seller/roasteries/${encodeURIComponent(roasteryId)}/media`),
     "رسانه‌های روستری",
   );
   return {
@@ -655,18 +621,15 @@ export async function uploadSellerMedia(
   const checksum = await sha256Hex(input.file);
   const intent = parseContract(
     uploadIntentResourceSchema,
-    await apiFetch<unknown>(
-      `/seller/roasteries/${encodeURIComponent(roasteryId)}/media/uploads`,
-      {
-        method: "POST",
-        body: {
-          filename: input.file.name,
-          mime_type: input.file.type,
-          size_bytes: input.file.size,
-          checksum_sha256: checksum,
-        },
+    await apiFetch<unknown>(`/seller/roasteries/${encodeURIComponent(roasteryId)}/media/uploads`, {
+      method: "POST",
+      body: {
+        filename: input.file.name,
+        mime_type: input.file.type,
+        size_bytes: input.file.size,
+        checksum_sha256: checksum,
       },
-    ),
+    }),
     "ایجاد مجوز آپلود رسانه",
   ).data;
 
@@ -725,28 +688,20 @@ export const sellerOrdersQueryOptions = (roasteryId: string) =>
   });
 
 function uniqueStrings(values: string[], max: number): string[] {
-  return [...new Set(values.map((value) => value.trim()).filter(Boolean))].slice(
-    0,
-    max,
-  );
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))].slice(0, max);
 }
 
 async function sha256Hex(file: File): Promise<string> {
   if (!globalThis.crypto?.subtle) {
     throw new Error("مرورگر امکان محاسبه امن SHA-256 را ندارد.");
   }
-  const digest = await globalThis.crypto.subtle.digest(
-    "SHA-256",
-    await file.arrayBuffer(),
-  );
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", await file.arrayBuffer());
   return Array.from(new Uint8Array(digest))
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
 }
 
-async function imageDimensions(
-  file: File,
-): Promise<{ width: number; height: number }> {
+async function imageDimensions(file: File): Promise<{ width: number; height: number }> {
   const url = URL.createObjectURL(file);
   try {
     const image = new Image();

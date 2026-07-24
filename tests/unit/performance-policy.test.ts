@@ -1,8 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  classifyPerformanceTier,
-  rateWebVital,
-} from "../../src/lib/performance";
+import { classifyPerformanceTier, rateWebVital } from "../../src/lib/performance";
 
 describe("frontend performance policy", () => {
   test("disables enhanced motion for accessibility and data-saving signals", () => {

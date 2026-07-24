@@ -21,9 +21,7 @@ function safeJson(value: unknown): string {
 export function seoHead(input: SeoHeadInput) {
   const canonical = absoluteUrl(input.path);
   const description = input.description?.trim() || siteConfig.description;
-  const image = input.image
-    ? absoluteUrl(input.image)
-    : absoluteUrl(siteConfig.socialImagePath);
+  const image = input.image ? absoluteUrl(input.image) : absoluteUrl(siteConfig.socialImagePath);
   const index = input.index ?? siteConfig.allowIndexing;
   const follow = input.follow ?? true;
 
@@ -112,9 +110,7 @@ export function contentSeoHead(entry: ContentEntry) {
   ];
 
   const faqBlocks = entry.body.filter((block) => block.type === "faq");
-  const faqItems = faqBlocks.flatMap((block) =>
-    block.type === "faq" ? block.items : [],
-  );
+  const faqItems = faqBlocks.flatMap((block) => (block.type === "faq" ? block.items : []));
   if (faqItems.length) {
     jsonLd.push({
       "@context": "https://schema.org",

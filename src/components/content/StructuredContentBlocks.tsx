@@ -4,20 +4,12 @@ import type { ContentBlock } from "@/lib/api/content";
 export function StructuredContentBlock({ block }: { block: ContentBlock }) {
   switch (block.type) {
     case "paragraph":
-      return (
-        <p className="text-base leading-9 text-[color:var(--light)]">
-          {block.text}
-        </p>
-      );
+      return <p className="text-base leading-9 text-[color:var(--light)]">{block.text}</p>;
     case "heading":
       return block.level === 2 ? (
-        <h2 className="pt-5 text-2xl font-bold text-[color:var(--steam)]">
-          {block.text}
-        </h2>
+        <h2 className="pt-5 text-2xl font-bold text-[color:var(--steam)]">{block.text}</h2>
       ) : (
-        <h3 className="pt-3 text-xl font-bold text-[color:var(--steam)]">
-          {block.text}
-        </h3>
+        <h3 className="pt-3 text-xl font-bold text-[color:var(--steam)]">{block.text}</h3>
       );
     case "list": {
       const Tag = block.style === "ordered" ? "ol" : "ul";
@@ -56,9 +48,7 @@ export function StructuredContentBlock({ block }: { block: ContentBlock }) {
     case "faq":
       return (
         <section className="space-y-3">
-          <h2 className="text-2xl font-bold text-[color:var(--steam)]">
-            پرسش‌های متداول
-          </h2>
+          <h2 className="text-2xl font-bold text-[color:var(--steam)]">پرسش‌های متداول</h2>
           {block.items.map((item) => (
             <details
               key={item.question}
@@ -67,9 +57,7 @@ export function StructuredContentBlock({ block }: { block: ContentBlock }) {
               <summary className="cursor-pointer font-bold text-[color:var(--steam)]">
                 {item.question}
               </summary>
-              <p className="mt-3 text-sm leading-8 text-[color:var(--light)]">
-                {item.answer}
-              </p>
+              <p className="mt-3 text-sm leading-8 text-[color:var(--light)]">{item.answer}</p>
             </details>
           ))}
         </section>
@@ -77,9 +65,7 @@ export function StructuredContentBlock({ block }: { block: ContentBlock }) {
     case "product_grid":
       return (
         <section>
-          <h2 className="text-2xl font-bold text-[color:var(--steam)]">
-            محصولات مرتبط
-          </h2>
+          <h2 className="text-2xl font-bold text-[color:var(--steam)]">محصولات مرتبط</h2>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {block.product_slugs.map((slug) => (
               <Link
@@ -151,10 +137,7 @@ export function StructuredContentBlocks({
   return (
     <div className="space-y-7">
       {blocks.map((block, index) => (
-        <StructuredContentBlock
-          key={`${contentHash}-${index}`}
-          block={block}
-        />
+        <StructuredContentBlock key={`${contentHash}-${index}`} block={block} />
       ))}
     </div>
   );

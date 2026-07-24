@@ -1,10 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import {
-  createFileRoute,
-  Link,
-  Navigate,
-  useNavigate,
-} from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-router";
 import { AccountGuard } from "@/components/account/AccountGuard";
 import { ContentLinkReportPanel } from "@/components/admin/ContentLinkReportPanel";
 import { Breadcrumb } from "@/components/Breadcrumb";
@@ -57,7 +52,8 @@ function ContentLinksWorkspace() {
     <div className="mt-8 space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-3xl text-sm leading-8 text-[color:var(--light)]">
-          این گزارش فقط داده‌های ذخیره‌شده در Laravel را بررسی می‌کند. برای اصلاح هر مورد، محتوا را در پنل تحریریه باز کنید و روابط آن را به‌روزرسانی کنید.
+          این گزارش فقط داده‌های ذخیره‌شده در Laravel را بررسی می‌کند. برای اصلاح هر مورد، محتوا را
+          در پنل تحریریه باز کنید و روابط آن را به‌روزرسانی کنید.
         </p>
         <Link
           to="/admin/content"

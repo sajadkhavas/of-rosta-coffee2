@@ -94,7 +94,14 @@ function signature(state: EditorState): string {
 }
 
 function parseKeywords(value: string): string[] {
-  return [...new Set(value.split(/[،,]/).map((item) => item.trim()).filter(Boolean))];
+  return [
+    ...new Set(
+      value
+        .split(/[،,]/)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  ];
 }
 
 function errorMessage(error: unknown): string {
@@ -103,13 +110,7 @@ function errorMessage(error: unknown): string {
     : "ذخیره محتوا انجام نشد. ارتباط سرویس و داده‌های فرم را بررسی کنید.";
 }
 
-function LabeledField({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
+function LabeledField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="grid gap-2 text-xs font-bold text-[color:var(--steam)]">
       {label}
@@ -118,10 +119,7 @@ function LabeledField({
   );
 }
 
-function previewAuthor(
-  authors: AdminContentAuthor[],
-  authorId: string,
-): AdminContentAuthor | null {
+function previewAuthor(authors: AdminContentAuthor[], authorId: string): AdminContentAuthor | null {
   return authors.find((author) => author.id === authorId) ?? null;
 }
 
@@ -142,9 +140,7 @@ export function EditorialContentDialog({
   const [state, setState] = useState<EditorState | null>(null);
   const [baseline, setBaseline] = useState("");
   const [tab, setTab] = useState<"edit" | "preview">("edit");
-  const [section, setSection] = useState<"identity" | "blocks" | "relations" | "seo">(
-    "identity",
-  );
+  const [section, setSection] = useState<"identity" | "blocks" | "relations" | "seo">("identity");
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   useEffect(() => {
@@ -200,9 +196,9 @@ export function EditorialContentDialog({
     const blocks = contentBlockSchema.array().min(1).max(200).safeParse(current.blocks);
     if (!blocks.success) {
       errors.push(
-        ...blocks.error.issues.slice(0, 8).map((issue) =>
-          `بلوک ${Number(issue.path[0] ?? 0) + 1}: ${issue.message}`,
-        ),
+        ...blocks.error.issues
+          .slice(0, 8)
+          .map((issue) => `بلوک ${Number(issue.path[0] ?? 0) + 1}: ${issue.message}`),
       );
     }
     current.relations.forEach((relation, index) => {
@@ -275,9 +271,7 @@ export function EditorialContentDialog({
       <header className="flex flex-wrap items-center justify-between gap-4 border-b border-[color:var(--mid)] px-5 py-4">
         <div>
           <p className="text-xs font-bold text-[color:var(--roast)]">EDITORIAL WORKSPACE</p>
-          <h2 className="mt-1 text-xl font-bold">
-            {detailQuery.data?.title ?? "ویرایش محتوا"}
-          </h2>
+          <h2 className="mt-1 text-xl font-bold">{detailQuery.data?.title ?? "ویرایش محتوا"}</h2>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -386,8 +380,7 @@ export function EditorialContentDialog({
                   <Alert variant="danger" title="ذخیره انجام نشد">
                     {errorMessage(mutation.error)}
                   </Alert>
-                  {isApiError(mutation.error) &&
-                  mutation.error.code === "content.edit_conflict" ? (
+                  {isApiError(mutation.error) && mutation.error.code === "content.edit_conflict" ? (
                     <Button variant="outline" className="mt-3" onClick={reloadLatest}>
                       دریافت نسخه جدید
                     </Button>
@@ -415,9 +408,7 @@ export function EditorialContentDialog({
                   <LabeledField label="نویسنده">
                     <select
                       value={state.authorId}
-                      onChange={(event) =>
-                        setState({ ...state, authorId: event.target.value })
-                      }
+                      onChange={(event) => setState({ ...state, authorId: event.target.value })}
                       className={inputClass}
                     >
                       <option value="">انتخاب نویسنده</option>
@@ -460,9 +451,7 @@ export function EditorialContentDialog({
                       <textarea
                         rows={4}
                         value={state.excerpt}
-                        onChange={(event) =>
-                          setState({ ...state, excerpt: event.target.value })
-                        }
+                        onChange={(event) => setState({ ...state, excerpt: event.target.value })}
                         className={inputClass}
                       />
                     </LabeledField>
@@ -493,9 +482,7 @@ export function EditorialContentDialog({
                   <LabeledField label="عنوان SEO">
                     <input
                       value={state.seoTitle}
-                      onChange={(event) =>
-                        setState({ ...state, seoTitle: event.target.value })
-                      }
+                      onChange={(event) => setState({ ...state, seoTitle: event.target.value })}
                       className={inputClass}
                     />
                   </LabeledField>
@@ -540,9 +527,7 @@ export function EditorialContentDialog({
                     <input
                       dir="ltr"
                       value={state.ogMediaUrl}
-                      onChange={(event) =>
-                        setState({ ...state, ogMediaUrl: event.target.value })
-                      }
+                      onChange={(event) => setState({ ...state, ogMediaUrl: event.target.value })}
                       className={`${inputClass} text-left`}
                     />
                   </LabeledField>
@@ -562,9 +547,7 @@ export function EditorialContentDialog({
                     <LabeledField label="کلمات کلیدی با ویرگول جدا شوند">
                       <input
                         value={state.keywords}
-                        onChange={(event) =>
-                          setState({ ...state, keywords: event.target.value })
-                        }
+                        onChange={(event) => setState({ ...state, keywords: event.target.value })}
                         className={inputClass}
                       />
                     </LabeledField>

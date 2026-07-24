@@ -1,6 +1,12 @@
 import { apiFetch } from "./client";
 import type { RoasteryDetail } from "./contracts";
-import { parseContract, parseOptionalMedia, resourceSchema, roasteryDetailWireSchema, type RoasteryDetailWire } from "./schemas";
+import {
+  parseContract,
+  parseOptionalMedia,
+  resourceSchema,
+  roasteryDetailWireSchema,
+  type RoasteryDetailWire,
+} from "./schemas";
 
 export interface UpdateSellerRoasteryInput {
   name?: string;
@@ -41,9 +47,12 @@ export async function updateSellerRoastery(
   if (input.slug !== undefined) body.slug = input.slug.trim();
   if (input.city !== undefined) body.city = input.city?.trim() || null;
   if (input.description !== undefined) body.description = input.description.trim();
-  if (input.shippingPolicy !== undefined) body.shipping_policy = input.shippingPolicy?.trim() || null;
-  if (input.preparationMinHours !== undefined) body.preparation_min_hours = input.preparationMinHours;
-  if (input.preparationMaxHours !== undefined) body.preparation_max_hours = input.preparationMaxHours;
+  if (input.shippingPolicy !== undefined)
+    body.shipping_policy = input.shippingPolicy?.trim() || null;
+  if (input.preparationMinHours !== undefined)
+    body.preparation_min_hours = input.preparationMinHours;
+  if (input.preparationMaxHours !== undefined)
+    body.preparation_max_hours = input.preparationMaxHours;
   if (input.logoMediaId !== undefined) body.logo_media_id = input.logoMediaId;
   if (input.coverMediaId !== undefined) body.cover_media_id = input.coverMediaId;
 
