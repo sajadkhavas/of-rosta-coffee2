@@ -1,0 +1,125 @@
+name: Rosta R2B2 Static Diagnosis
+
+on:
+  pull_request:
+    branches: [integration/rosta-r-program]
+    paths: [.github/workflows/r2b2-static-diagnosis.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rosta-r2b2-static-diagnosis
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      EXPECTED_HEAD: bdc442dfb567ee801c50bcf7bfb318fbb6b819f9
+      EVIDENCE_DIR: /tmp/rosta-r2-evidence/${{ github.run_id }}/r2b2-diagnosis
+      APP_ENV: testing
+      APP_DEBUG: "false"
+      LOG_CHANNEL: stack
+      LOG_STACK: single
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ":memory:"
+      ROSTA_PAYMENT_ENABLED: "false"
+      ROSTA_REFUND_ENABLED: "false"
+      ROSTA_SMS_ENABLED: "false"
+      ROSTA_MEDIA_UPLOADS_ENABLED: "false"
+      COMPOSER_NO_INTERACTION: "1"
+      COMPOSER_PROCESS_TIMEOUT: "900"
+    steps:
+      - name: Checkout R2B product branch
+        uses: actions/checkout@v4
+        with:
+          ref: program/r2b-php-quality
+          fetch-depth: 0
+
+      - name: Setup PHP 8.3 and Composer 2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: bcmath, ctype, curl, dom, fileinfo, intl, json, mbstring, openssl, pcntl, pdo_mysql, pdo_sqlite, posix, redis, simplexml, sockets, sqlite3, tokenizer, xml, xmlwriter, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Verify exact product snapshot and install
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test -z "$(git status --porcelain)"
+          test -s backend/composer.lock
+          php -r 'exit(PHP_MAJOR_VERSION === 8 && PHP_MINOR_VERSION === 3 ? 0 : 1);'
+          echo "APP_KEY=base64:$(php -r 'echo base64_encode(random_bytes(32));')" >> "$GITHUB_ENV"
+          {
+            echo "head=$(git rev-parse HEAD)"
+            echo "tree=$(git rev-parse 'HEAD^{tree}')"
+            echo "php=$(php --version | head -n 1)"
+            echo "composer=$(composer --version 2>&1 | head -n 1)"
+            git status --short --branch
+          } | tee "$EVIDENCE_DIR/snapshot.txt"
+          cd backend
+          cp .env.example .env
+          mkdir -p bootstrap/cache storage/app/private storage/app/public storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
+          rm -rf vendor
+          composer install --no-interaction --prefer-dist --no-progress 2>&1 | tee "$EVIDENCE_DIR/composer-install.log"
+          php artisan about 2>&1 | tee "$EVIDENCE_DIR/artisan-about.log"
+
+      - name: Capture PHPStan and Pint debt without modifying product
+        shell: bash
+        working-directory: backend
+        run: |
+          set -Eeuo pipefail
+          set +e
+          php vendor/bin/phpstan analyse --memory-limit=1G --error-format=json > "$EVIDENCE_DIR/phpstan.json" 2> "$EVIDENCE_DIR/phpstan.stderr.log"
+          phpstan_status=$?
+          php vendor/bin/phpstan analyse --memory-limit=1G --error-format=table > "$EVIDENCE_DIR/phpstan-table.log" 2>&1
+          phpstan_table_status=$?
+          php vendor/bin/pint --parallel --test > "$EVIDENCE_DIR/pint.log" 2>&1
+          pint_status=$?
+          set -e
+          printf 'phpstan_json=%s\nphpstan_table=%s\npint=%s\n' "$phpstan_status" "$phpstan_table_status" "$pint_status" | tee "$EVIDENCE_DIR/statuses.txt"
+          php -r '
+            $report = json_decode(file_get_contents(getenv("EVIDENCE_DIR")."/phpstan.json"), true, 512, JSON_THROW_ON_ERROR);
+            $fileCount = count($report["files"] ?? []);
+            $messageCount = 0;
+            foreach (($report["files"] ?? []) as $file) { $messageCount += count($file["messages"] ?? []); }
+            file_put_contents(getenv("EVIDENCE_DIR")."/summary.txt", "phpstan_files={$fileCount}\nphpstan_messages={$messageCount}\n");
+          '
+          cat "$EVIDENCE_DIR/summary.txt"
+          test -z "$(git status --porcelain --untracked-files=no)"
+
+      - name: Export exact backend source for local clustering
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rm -f backend/.env backend/*-audit.json
+          rm -rf backend/storage/framework/testing
+          tar \
+            --exclude='backend/vendor' \
+            --exclude='backend/storage/logs/*' \
+            --exclude='backend/storage/framework/cache/*' \
+            --exclude='backend/storage/framework/testing' \
+            -czf "$EVIDENCE_DIR/backend-source.tar.gz" \
+            backend .github/workflows/backend-ci.yml
+          sha256sum "$EVIDENCE_DIR/backend-source.tar.gz" > "$EVIDENCE_DIR/backend-source.sha256"
+          test -z "$(git status --porcelain)"
+          echo "ROSTA_R2B2_STATIC_DIAGNOSIS_COMPLETE" | tee "$EVIDENCE_DIR/result.txt"
+
+      - name: Upload R2B2 diagnosis
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rosta-r2b2-diagnosis-${{ github.run_id }}
+          path: /tmp/rosta-r2-evidence/${{ github.run_id }}/r2b2-diagnosis
+          if-no-files-found: warn
+          retention-days: 14
