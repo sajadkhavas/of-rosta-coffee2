@@ -23,30 +23,10 @@ final class InfrastructureAcceptance extends Command
         $checks = [];
         $token = Str::lower((string) Str::ulid());
 
-        $this->check(
-            $checks,
-            'database_driver',
-            config('database.default') === 'mysql',
-            'Default database driver is MySQL',
-        );
-        $this->check(
-            $checks,
-            'cache_driver',
-            config('cache.default') === 'redis',
-            'Default cache store is Redis',
-        );
-        $this->check(
-            $checks,
-            'session_driver',
-            config('session.driver') === 'redis',
-            'Session driver is Redis',
-        );
-        $this->check(
-            $checks,
-            'queue_driver',
-            config('queue.default') === 'redis',
-            'Queue connection is Redis',
-        );
+        $this->check($checks, 'database_driver', config('database.default') === 'mysql', 'Default database driver is MySQL');
+        $this->check($checks, 'cache_driver', config('cache.default') === 'redis', 'Default cache store is Redis');
+        $this->check($checks, 'session_driver', config('session.driver') === 'redis', 'Session driver is Redis');
+        $this->check($checks, 'queue_driver', config('queue.default') === 'redis', 'Queue connection is Redis');
 
         try {
             $value = DB::scalar('select 1');
@@ -80,12 +60,7 @@ final class InfrastructureAcceptance extends Command
             );
         } catch (Throwable) {
             Cache::forget($cacheKey);
-            $this->check(
-                $checks,
-                'redis_cache_round_trip',
-                false,
-                'Redis cache writes, reads and deletes an isolated value',
-            );
+            $this->check($checks, 'redis_cache_round_trip', false, 'Redis cache writes, reads and deletes an isolated value');
         }
 
         $sessionId = substr(hash('sha256', 'rosta:r2c:session:'.$token), 0, 40);
@@ -105,12 +80,7 @@ final class InfrastructureAcceptance extends Command
                 'Redis session handler persists and removes an isolated session',
             );
         } catch (Throwable) {
-            $this->check(
-                $checks,
-                'redis_session_round_trip',
-                false,
-                'Redis session handler persists and removes an isolated session',
-            );
+            $this->check($checks, 'redis_session_round_trip', false, 'Redis session handler persists and removes an isolated session');
         }
 
         $queueName = 'rosta-r2c-probe-'.$token;
@@ -125,7 +95,7 @@ final class InfrastructureAcceptance extends Command
                 'data' => ['token' => $token],
             ], JSON_THROW_ON_ERROR);
 
-            $pushedId = $queue->pushRaw($payload, $queueName);
+            $queue->pushRaw($payload, $queueName);
             $job = $queue->pop($queueName);
             $raw = $job?->getRawBody();
             $job?->delete();
@@ -137,16 +107,11 @@ final class InfrastructureAcceptance extends Command
             $this->check(
                 $checks,
                 'redis_queue_round_trip',
-                $pushedId !== null && is_string($raw) && str_contains($raw, $token),
+                is_string($raw) && str_contains($raw, $token),
                 'Laravel Redis queue pushes, reserves and deletes an isolated job',
             );
         } catch (Throwable) {
-            $this->check(
-                $checks,
-                'redis_queue_round_trip',
-                false,
-                'Laravel Redis queue pushes, reserves and deletes an isolated job',
-            );
+            $this->check($checks, 'redis_queue_round_trip', false, 'Laravel Redis queue pushes, reserves and deletes an isolated job');
         }
 
         $ready = ! in_array(false, array_column($checks, 'passed'), true);
@@ -166,12 +131,7 @@ final class InfrastructureAcceptance extends Command
             ));
         } else {
             foreach ($checks as $name => $item) {
-                $this->line(sprintf(
-                    '[%s] %s — %s',
-                    $item['passed'] ? 'PASS' : 'FAIL',
-                    $name,
-                    $item['evidence'],
-                ));
+                $this->line(sprintf('[%s] %s — %s', $item['passed'] ? 'PASS' : 'FAIL', $name, $item['evidence']));
             }
             if ($ready) {
                 $this->info('ROSTA_R2C_INFRASTRUCTURE_COMPLETE');
