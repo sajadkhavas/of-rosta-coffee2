@@ -1,0 +1,106 @@
+name: Rosta R1D Complete Frontend Diagnosis
+
+on:
+  pull_request:
+    branches:
+      - integration/rosta-r-program
+    paths:
+      - .github/workflows/r1d-diagnose.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      EVIDENCE_DIR: /tmp/rosta-r1d-diagnosis
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      VITE_SITE_URL: https://rosta.shop
+      VITE_API_URL: http://127.0.0.1:8000/api/v1
+      VITE_PAYMENT_REDIRECT_HOSTS: 127.0.0.1:8000
+      VITE_ALLOW_INDEXING: "false"
+      NITRO_PRESET: node-server
+    steps:
+      - name: Checkout R1D branch
+        uses: actions/checkout@v4
+        with:
+          ref: program/r1d-frontend-gate
+          fetch-depth: 0
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Bun 1.2.22
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.22
+
+      - name: Run every frontend gate independently
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$EVIDENCE_DIR/logs"
+          {
+            echo "head=$(git rev-parse HEAD)"
+            echo "tree=$(git rev-parse 'HEAD^{tree}')"
+            echo "node=$(node --version)"
+            echo "bun=$(bun --version)"
+            git status --short --branch
+          } | tee "$EVIDENCE_DIR/snapshot.txt"
+          test "$(git rev-parse HEAD)" = "39a5b2683ee4db943d0352c355e01b219bf47bf2"
+          test "$(node -p 'process.versions.node.split(".")[0]')" = "22"
+          test "$(bun --version)" = "1.2.22"
+          test -z "$(git status --porcelain)"
+
+          set +e
+          run_gate() {
+            name="$1"; shift
+            start=$(date +%s)
+            "$@" >"$EVIDENCE_DIR/logs/$name.log" 2>&1
+            status=$?
+            end=$(date +%s)
+            printf '%s\t%s\t%s\n' "$name" "$status" "$((end-start))" | tee -a "$EVIDENCE_DIR/matrix.tsv"
+            return 0
+          }
+
+          run_gate frozen-install bun install --frozen-lockfile
+          before_route_hash=$(sha256sum src/routeTree.gen.ts | cut -d' ' -f1)
+          run_gate routes-generate bun run routes:generate
+          after_route_hash=$(sha256sum src/routeTree.gen.ts | cut -d' ' -f1)
+          printf 'before=%s\nafter=%s\n' "$before_route_hash" "$after_route_hash" > "$EVIDENCE_DIR/route-hash.txt"
+
+          run_gate audit-phase6 bun run audit:phase6
+          run_gate audit-seo bun run audit:seo
+          run_gate audit-phase16 bun run audit:phase16
+          run_gate audit-phase17 bun run audit:phase17
+          run_gate audit-admin-finance bun run audit:admin-finance
+          run_gate audit-seller-operations bun run audit:seller-operations
+          run_gate audit-admin-operations bun run audit:admin-operations
+          run_gate audit-phase20 bun run audit:phase20
+          run_gate audit-phase21 bun run audit:phase21
+          run_gate audit-phase22 bun run audit:phase22
+          run_gate unit-tests bun run test:unit
+          run_gate typecheck bun run typecheck
+          run_gate lint bun run lint
+          run_gate build bun run build
+          run_gate bundle-check bun run bundle:check
+          set -e
+
+          git status --short --branch > "$EVIDENCE_DIR/final-status.txt"
+          git diff --name-status > "$EVIDENCE_DIR/generated-diff.txt"
+          find .output -maxdepth 3 -type f -print 2>/dev/null | sort > "$EVIDENCE_DIR/output-files.txt" || true
+          test "$before_route_hash" = "$after_route_hash"
+
+      - name: Upload diagnosis
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rosta-r1d-diagnosis-${{ github.run_id }}
+          path: /tmp/rosta-r1d-diagnosis
+          if-no-files-found: error
+          retention-days: 14
