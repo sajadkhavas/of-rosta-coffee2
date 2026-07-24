@@ -1,0 +1,119 @@
+name: Rosta R2B2 Type Batch 1
+
+on:
+  pull_request:
+    branches: [integration/rosta-r-program]
+    paths:
+      - .github/workflows/r2b2-type-batch1.yml
+      - .github/scripts/r2b2-model-resource-types.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rosta-r2b2-type-batch1
+  cancel-in-progress: false
+
+jobs:
+  apply-and-measure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      EXPECTED_HEAD: bdc442dfb567ee801c50bcf7bfb318fbb6b819f9
+      EVIDENCE_DIR: /tmp/rosta-r2-evidence/${{ github.run_id }}/r2b2-type1
+      APP_ENV: testing
+      APP_DEBUG: "false"
+      LOG_CHANNEL: stack
+      LOG_STACK: single
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ":memory:"
+      ROSTA_PAYMENT_ENABLED: "false"
+      ROSTA_REFUND_ENABLED: "false"
+      ROSTA_SMS_ENABLED: "false"
+      ROSTA_MEDIA_UPLOADS_ENABLED: "false"
+      COMPOSER_NO_INTERACTION: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: program/r2b-php-quality
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: bcmath, ctype, curl, dom, fileinfo, intl, json, mbstring, openssl, pcntl, pdo_mysql, pdo_sqlite, posix, redis, simplexml, sockets, sqlite3, tokenizer, xml, xmlwriter, zip
+          coverage: none
+          tools: composer:v2
+      - name: Verify snapshot install and apply type metadata
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test -z "$(git status --porcelain)"
+          echo "APP_KEY=base64:$(php -r 'echo base64_encode(random_bytes(32));')" >> "$GITHUB_ENV"
+          git show origin/automation/r2b2-static-executor:.github/scripts/r2b2-model-resource-types.py > /tmp/r2b2-model-resource-types.py
+          python /tmp/r2b2-model-resource-types.py 2>&1 | tee "$EVIDENCE_DIR/repair.log"
+          git diff --check
+          cd backend
+          cp .env.example .env
+          mkdir -p bootstrap/cache storage/app/private storage/app/public storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
+          rm -rf vendor
+          composer install --no-interaction --prefer-dist --no-progress 2>&1 | tee "$EVIDENCE_DIR/composer-install.log"
+      - name: Measure PHPStan after metadata batch
+        shell: bash
+        working-directory: backend
+        run: |
+          set -Eeuo pipefail
+          set +e
+          php vendor/bin/phpstan analyse --memory-limit=1G --error-format=json > "$EVIDENCE_DIR/phpstan.json" 2> "$EVIDENCE_DIR/phpstan.stderr.log"
+          status=$?
+          php vendor/bin/phpstan analyse --memory-limit=1G --error-format=table > "$EVIDENCE_DIR/phpstan-table.log" 2>&1
+          set -e
+          echo "phpstan_status=$status" | tee "$EVIDENCE_DIR/status.txt"
+          php -r '
+            $report = json_decode(file_get_contents(getenv("EVIDENCE_DIR")."/phpstan.json"), true, 512, JSON_THROW_ON_ERROR);
+            $files = count($report["files"] ?? []);
+            $messages = 0;
+            foreach (($report["files"] ?? []) as $file) { $messages += count($file["messages"] ?? []); }
+            file_put_contents(getenv("EVIDENCE_DIR")."/summary.txt", "phpstan_files={$files}\nphpstan_messages={$messages}\n");
+          '
+          cat "$EVIDENCE_DIR/summary.txt"
+          test "$(sed -n 's/phpstan_messages=//p' "$EVIDENCE_DIR/summary.txt")" -lt 384
+      - name: Preserve behavior and audit contracts
+        shell: bash
+        working-directory: backend
+        run: |
+          set -Eeuo pipefail
+          composer validate --strict 2>&1 | tee "$EVIDENCE_DIR/composer-validate.log"
+          composer audit --locked 2>&1 | tee "$EVIDENCE_DIR/composer-audit.log"
+          for gate in business checkout seo cooci-adoption fulfillment reviews-support media-storage openapi validation finance seller-operations admin-operations live-public staging; do
+            composer "audit:$gate" 2>&1 | tee "$EVIDENCE_DIR/audit-$gate.log"
+          done
+          php artisan test 2>&1 | tee "$EVIDENCE_DIR/tests-all.log"
+      - name: Capture bounded diff
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rm -f backend/.env backend/*-audit.json
+          rm -rf backend/storage/framework/testing
+          git diff --check
+          changed="$(git diff --name-only | sort)"
+          printf '%s\n' "$changed" | tee "$EVIDENCE_DIR/changed-files.txt"
+          test -n "$changed"
+          test -z "$(printf '%s\n' "$changed" | grep -Ev '^backend/app/(Models|Http/Resources)/' || true)"
+          git diff --stat | tee "$EVIDENCE_DIR/diff-stat.txt"
+          tar -czf "$EVIDENCE_DIR/typed-source.tar.gz" backend/app/Models backend/app/Http/Resources
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          echo "ROSTA_R2B2_TYPE_BATCH1_MEASURED" | tee "$EVIDENCE_DIR/result.txt"
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rosta-r2b2-type1-${{ github.run_id }}
+          path: /tmp/rosta-r2-evidence/${{ github.run_id }}/r2b2-type1
+          if-no-files-found: warn
+          retention-days: 14
