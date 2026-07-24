@@ -1,5 +1,5 @@
-import "@fontsource-variable/vazirmatn";
-import "@fontsource-variable/playfair-display";
+import "@fontsource-variable/vazirmatn/index.css";
+import "@fontsource-variable/playfair-display/index.css";
 import "@fontsource/dm-mono/400.css";
 import "@fontsource/dm-mono/500.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -141,8 +141,9 @@ function ErrorComponent({
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
 }>()({
-  head: ({ location }) => {
-    const noIndex = routeShouldNoIndex(location.pathname);
+  head: ({ match }) => {
+    const pathname = match.pathname;
+    const noIndex = routeShouldNoIndex(pathname);
 
     return {
       meta: [
@@ -158,7 +159,7 @@ export const Route = createRootRouteWithContext<{
         { property: "og:site_name", content: siteConfig.name },
         { property: "og:type", content: "website" },
         { property: "og:locale", content: siteConfig.locale },
-        { property: "og:url", content: absoluteUrl(location.pathname) },
+        { property: "og:url", content: absoluteUrl(pathname) },
         {
           property: "og:image",
           content: absoluteUrl(siteConfig.socialImagePath),
@@ -189,7 +190,7 @@ export const Route = createRootRouteWithContext<{
         },
         { rel: "apple-touch-icon", href: "/icon-192.png" },
         { rel: "manifest", href: "/manifest.json" },
-        { rel: "canonical", href: absoluteUrl(location.pathname) },
+        { rel: "canonical", href: absoluteUrl(pathname) },
       ],
       scripts: [
         {

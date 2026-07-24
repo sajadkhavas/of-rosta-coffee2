@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { apiFetch } from "./client";
-import { parseContract, resourceSchema } from "./contracts";
+import { parseContract, resourceSchema } from "./schemas";
 
 export const inquiryTypes = [
   "support",

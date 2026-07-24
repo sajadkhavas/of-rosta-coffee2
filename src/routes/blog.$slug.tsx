@@ -5,7 +5,8 @@ import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import { absoluteUrl } from "@/config/site";
 import { isApiError } from "@/lib/api/client";
-import { blogEntryQueryOptions, blogIndexQueryOptions } from "@/lib/api/public-content";
+import { blogEntryQueryOptions, blogIndexQueryOptions, type PublicContentSummary } from "@/lib/api/public-content";
+import type { ContentEntry } from "@/lib/api/content";
 
 export const Route = createFileRoute("/blog/$slug")({
   loader: async ({ params, context }) => {
@@ -77,7 +78,7 @@ export const Route = createFileRoute("/blog/$slug")({
 });
 
 function BlogPostPage() {
-  const { entry, more } = Route.useLoaderData();
+  const { entry, more }: { entry: ContentEntry; more: PublicContentSummary[] } = Route.useLoaderData();
   const productRelations = entry.relations.filter((relation) => relation.target_type === "product");
   const roasteryRelations = entry.relations.filter((relation) => relation.target_type === "roastery");
   return (

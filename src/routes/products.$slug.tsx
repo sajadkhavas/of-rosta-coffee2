@@ -81,7 +81,8 @@ export const Route = createFileRoute("/products/$slug")({
     }
   },
   head: ({ loaderData }) => {
-    const product = loaderData;
+    const product: ProductDetail | undefined = loaderData;
+    if (!product) return {};
     const image = bestMediaUrl(product.primaryImage ?? product.gallery[0]);
     return seoHead({
       title: product.seo.title || `${product.name} از ${product.roastery.name} | رستا`,
@@ -103,7 +104,7 @@ export const Route = createFileRoute("/products/$slug")({
 
 function ProductPage() {
   const { slug } = Route.useParams();
-  const product = Route.useLoaderData();
+  const product: ProductDetail = Route.useLoaderData();
   const relatedQuery = useQuery(relatedProductsQueryOptions(slug));
   const [selectedVariantId, setSelectedVariantId] = useState("");
   const [selectedImage, setSelectedImage] = useState("");

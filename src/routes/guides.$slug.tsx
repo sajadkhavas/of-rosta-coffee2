@@ -8,7 +8,7 @@ export const Route = createFileRoute("/guides/$slug")({
     context.queryClient.ensureQueryData(
       contentPathQueryOptions(`/guides/${params.slug}`),
     ),
-  head: ({ loaderData }) => contentSeoHead(loaderData),
+  head: ({ loaderData }) => (loaderData ? contentSeoHead(loaderData) : {}),
   component: GuidePage,
 });
 

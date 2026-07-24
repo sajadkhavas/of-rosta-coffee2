@@ -1,4 +1,4 @@
-import type { RoastLevel } from "@/data/seed";
+type RoastLevel = "روشن" | "متوسط" | "تیره";
 
 const styles: Record<RoastLevel, string> = {
   روشن: "bg-emerald-100 text-emerald-900 border-emerald-300",

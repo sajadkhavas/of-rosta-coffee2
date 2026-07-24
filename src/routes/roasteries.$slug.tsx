@@ -35,6 +35,7 @@ export const Route = createFileRoute("/roasteries/$slug")({
   },
   head: ({ loaderData }) => {
     const roastery = loaderData;
+    if (!roastery) return {};
     const cover = bestMediaUrl(roastery.cover);
     const logo = bestMediaUrl(roastery.logo);
     const path = `/roasteries/${roastery.slug}`;

@@ -51,9 +51,12 @@ function canonicalFor(search: ProductsSearch) {
 export const Route = createFileRoute("/products/")({
   validateSearch: zodValidator(searchSchema),
   loaderDeps: ({ search }) => searchSchema.parse(search ?? {}),
-  loader: ({ context, deps }) => context.queryClient.ensureQueryData(productsQueryOptions(filtersFromSearch(deps))),
-  head: ({ search, loaderData }) => {
-    const resolved = searchSchema.parse(search ?? {});
+  loader: async ({ context, deps }) => ({
+    search: deps,
+    catalog: await context.queryClient.ensureQueryData(productsQueryOptions(filtersFromSearch(deps))),
+  }),
+  head: ({ loaderData }) => {
+    const resolved: ProductsSearch = loaderData?.search ?? searchSchema.parse({});
     const title = resolved.origin
       ? `خرید قهوه ${resolved.origin} | رستا`
       : resolved.roast
@@ -71,12 +74,12 @@ export const Route = createFileRoute("/products/")({
       links: [{ rel: "canonical", href: canonicalFor(resolved) }],
       scripts: [
         { type: "application/ld+json", children: JSON.stringify(breadcrumbJsonLd([{ label: "خانه", to: "/" }, { label: "محصولات", to: "/products" }])) },
-        ...(loaderData?.items.length ? [{
+        ...(loaderData?.catalog.items.length ? [{
           type: "application/ld+json",
           children: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "ItemList",
-            itemListElement: loaderData.items.map((product, index) => ({
+            itemListElement: loaderData.catalog.items.map((product, index) => ({
               "@type": "ListItem",
               position: index + 1,
               url: absoluteUrl(`/products/${product.slug}`),
@@ -91,7 +94,7 @@ export const Route = createFileRoute("/products/")({
 });
 
 function ProductsPage() {
-  const search = Route.useSearch();
+  const search: ProductsSearch = Route.useSearch();
   const navigate = useNavigate({ from: "/products/" });
   const query = useQuery(productsQueryOptions(filtersFromSearch(search)));
   const products = query.data?.items ?? [];

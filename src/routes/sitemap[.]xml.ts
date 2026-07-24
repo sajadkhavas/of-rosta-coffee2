@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
 import { absoluteUrl } from "@/config/site";
-import { blogPosts } from "@/data/blog-posts";
 import { listIndexableContent } from "@/lib/api/content";
 import { listProducts, listRoasteries } from "@/lib/api/catalog";
 
@@ -110,12 +109,6 @@ export const Route = createFileRoute("/sitemap.xml")({
           { path: "/contact", priority: "0.4", changefreq: "monthly" },
           { path: "/terms", priority: "0.3", changefreq: "monthly" },
           { path: "/privacy", priority: "0.3", changefreq: "monthly" },
-          ...blogPosts.map((post) => ({
-            path: `/blog/${post.slug}`,
-            priority: "0.6",
-            changefreq: "monthly" as const,
-            lastmod: post.publishedAt,
-          })),
         ];
 
         const entries = [

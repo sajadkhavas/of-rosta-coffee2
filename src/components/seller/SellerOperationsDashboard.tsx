@@ -1753,13 +1753,14 @@ function subOrderStatusLabel(status: string): string {
 function fulfillmentActions(
   status?: string,
 ): FulfillmentInput["status"][] {
-  return {
+  const actions: Partial<Record<string, FulfillmentInput["status"][]>> = {
     pending_acceptance: ["accepted", "rejected"],
     accepted: ["preparing"],
     preparing: ["ready_to_ship"],
     ready_to_ship: ["shipped"],
     shipped: ["delivered"],
-  }[status ?? ""] ?? [];
+  };
+  return actions[status ?? ""] ?? [];
 }
 
 function fulfillmentActionLabel(status: FulfillmentInput["status"]): string {

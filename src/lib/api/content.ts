@@ -79,8 +79,22 @@ const comparisonTableBlock = z
     columns: z.array(text(120)).min(1).max(8),
     rows: z.array(z.array(text(1000)).min(1).max(8)).min(1).max(50),
   })
-  .strict()
+  .strict();
+
+export const contentBlockSchema = z
+  .discriminatedUnion("type", [
+    paragraphBlock,
+    headingBlock,
+    listBlock,
+    quoteBlock,
+    calloutBlock,
+    faqBlock,
+    productGridBlock,
+    roasterySpotlightBlock,
+    comparisonTableBlock,
+  ])
   .superRefine((value, context) => {
+    if (value.type !== "comparison_table") return;
     value.rows.forEach((row, index) => {
       if (row.length !== value.columns.length) {
         context.addIssue({
@@ -91,18 +105,6 @@ const comparisonTableBlock = z
       }
     });
   });
-
-export const contentBlockSchema = z.discriminatedUnion("type", [
-  paragraphBlock,
-  headingBlock,
-  listBlock,
-  quoteBlock,
-  calloutBlock,
-  faqBlock,
-  productGridBlock,
-  roasterySpotlightBlock,
-  comparisonTableBlock,
-]);
 
 export const contentRelationSchema = z
   .object({
