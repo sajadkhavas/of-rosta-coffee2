@@ -176,8 +176,8 @@ jobs:
           git diff --check
           tracked="$(git diff --name-only | sort)"
           untracked="$(git ls-files --others --exclude-standard | sort)"
-          expected_tracked=$'.github/workflows/backend-ci.yml\nbackend/config/database.php'
-          expected_untracked='backend/app/Http/Controllers/Controller.php'
+          expected_tracked=$'.github/workflows/backend-ci.yml\nbackend/config/database.php\nbackend/scripts/audit-business-contract.php\nbackend/scripts/audit-commerce-openapi-drift.php\nbackend/scripts/audit-live-public-contract.php\nbackend/scripts/audit-validation-hardening.php'
+          expected_untracked=$'backend/app/Http/Controllers/Controller.php\nbackend/scripts/route-contract-support.php'
           printf '%s\n' "$tracked" | tee "$EVIDENCE_DIR/tracked-files.txt"
           printf '%s\n' "$untracked" | tee "$EVIDENCE_DIR/untracked-files.txt"
           test "$tracked" = "$expected_tracked"
@@ -185,13 +185,21 @@ jobs:
           git diff --stat | tee "$EVIDENCE_DIR/diff-stat.txt"
           git config user.name "Rosta Program Automation"
           git config user.email "actions@users.noreply.github.com"
-          git add .github/workflows/backend-ci.yml backend/config/database.php backend/app/Http/Controllers/Controller.php
+          git add \
+            .github/workflows/backend-ci.yml \
+            backend/app/Http/Controllers/Controller.php \
+            backend/config/database.php \
+            backend/scripts/audit-business-contract.php \
+            backend/scripts/audit-commerce-openapi-drift.php \
+            backend/scripts/audit-live-public-contract.php \
+            backend/scripts/audit-validation-hardening.php \
+            backend/scripts/route-contract-support.php
           staged="$(git diff --cached --name-only | sort)"
-          expected_staged=$'.github/workflows/backend-ci.yml\nbackend/app/Http/Controllers/Controller.php\nbackend/config/database.php'
+          expected_staged=$'.github/workflows/backend-ci.yml\nbackend/app/Http/Controllers/Controller.php\nbackend/config/database.php\nbackend/scripts/audit-business-contract.php\nbackend/scripts/audit-commerce-openapi-drift.php\nbackend/scripts/audit-live-public-contract.php\nbackend/scripts/audit-validation-hardening.php\nbackend/scripts/route-contract-support.php'
           printf '%s\n' "$staged" | tee "$EVIDENCE_DIR/staged-files.txt"
           test "$staged" = "$expected_staged"
           git diff --cached --check
-          git commit -m "fix(backend): restore deterministic PHP boot and CI key handling"
+          git commit -m "fix(backend): restore PHP quality and runtime contract audits"
           git push origin HEAD:"$TARGET_BRANCH"
           git rev-parse HEAD | tee "$EVIDENCE_DIR/result-commit.txt"
           echo "ROSTA_R2B_PHP_QUALITY_COMPLETE" | tee "$EVIDENCE_DIR/result.txt"
