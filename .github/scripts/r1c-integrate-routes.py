@@ -54,6 +54,25 @@ for path in (
 
 replace(
     "scripts/audit-admin-finance.mjs",
+    '''    files.routeTree.includes("AdminFinanceRouteImport") &&
+    files.routeTree.includes('"/admin/finance"'),
+''',
+    '''    files.routeTree.includes("AdminFinanceRouteImport") &&
+    /["']\\/admin\\/finance["']/.test(files.routeTree),
+''',
+)
+replace(
+    "scripts/audit-seller-operations.mjs",
+    '''    files.routeTree.includes("PanelRouteImport") &&
+    files.routeTree.includes('"/panel"'),
+''',
+    '''    files.routeTree.includes("PanelRouteImport") &&
+    /["']\\/panel["']/.test(files.routeTree),
+''',
+)
+
+replace(
+    "scripts/audit-admin-finance.mjs",
     "The administrator finance route must be present in navigation and the active temporary route tree.",
     "The administrator finance route must be present in navigation and the generated route tree.",
 )
