@@ -129,6 +129,12 @@ jobs:
       - name: Run MySQL migrations
         run: php artisan migrate --force
 
+      - name: Verify MySQL and Redis readiness
+        shell: bash
+        run: |
+          set -o pipefail
+          php artisan rosta:readiness --strict --json 2>&1 | tee backend-readiness.json
+
       - name: Run backend quality gate
         shell: bash
         run: |
@@ -142,6 +148,7 @@ jobs:
           name: backend-quality-${{ github.run_id }}
           path: |
             backend/*-audit.json
+            backend/backend-readiness.json
             backend/backend-quality.log
             backend/storage/logs/*.log
           if-no-files-found: ignore
