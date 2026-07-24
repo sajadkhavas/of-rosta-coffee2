@@ -18,7 +18,7 @@ final class StockService
     ) {}
 
     /**
-     * @param array<string, mixed> $metadata
+     * @param  array<string, mixed>  $metadata
      */
     public function adjust(
         ProductVariant $variant,
@@ -137,7 +137,7 @@ final class StockService
     }
 
     /**
-     * @param array<string, mixed> $value
+     * @param  array<string, mixed>  $value
      * @return array<string, mixed>
      */
     private function canonicalize(array $value): array

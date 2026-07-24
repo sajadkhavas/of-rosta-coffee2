@@ -2,8 +2,10 @@
 
 namespace App\Http\Resources;
 
+use App\Models\ProductVariant;
 use Illuminate\Http\Request;
 
+/** @mixin ProductVariant */
 final class ProductVariantResource extends OkJsonResource
 {
     public function toArray(Request $request): array

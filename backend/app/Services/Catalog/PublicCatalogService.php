@@ -11,14 +11,13 @@ use Illuminate\Support\Collection;
 final class PublicCatalogService
 {
     /**
-     * @param array<string, mixed> $filters
+     * @param  array<string, mixed>  $filters
      */
     public function products(array $filters): LengthAwarePaginator
     {
         $query = $this->publicProductQuery()
             ->withMin([
-                'variants as min_active_price' => static fn ($variants) =>
-                    $variants->where('is_active', true),
+                'variants as min_active_price' => static fn ($variants) => $variants->where('is_active', true),
             ], 'price');
 
         $text = trim((string) ($filters['q'] ?? ''));
@@ -57,28 +56,24 @@ final class PublicCatalogService
 
         if (($filters['weight'] ?? []) !== []) {
             $weights = array_map('intval', $filters['weight']);
-            $query->whereHas('variants', static fn (Builder $variant): Builder =>
-                $variant->where('is_active', true)->whereIn('weight_grams', $weights));
+            $query->whereHas('variants', static fn (Builder $variant): Builder => $variant->where('is_active', true)->whereIn('weight_grams', $weights));
         }
 
         if (array_key_exists('min_price', $filters)) {
             $minimum = (int) $filters['min_price'];
-            $query->whereHas('variants', static fn (Builder $variant): Builder =>
-                $variant->where('is_active', true)->where('price', '>=', $minimum));
+            $query->whereHas('variants', static fn (Builder $variant): Builder => $variant->where('is_active', true)->where('price', '>=', $minimum));
         }
 
         if (array_key_exists('max_price', $filters)) {
             $maximum = (int) $filters['max_price'];
-            $query->whereHas('variants', static fn (Builder $variant): Builder =>
-                $variant->where('is_active', true)->where('price', '<=', $maximum));
+            $query->whereHas('variants', static fn (Builder $variant): Builder => $variant->where('is_active', true)->where('price', '<=', $maximum));
         }
 
         if (($filters['available'] ?? null) !== null) {
             $available = (bool) $filters['available'];
             $method = $available ? 'whereHas' : 'whereDoesntHave';
-            $query->{$method}('variants', static fn (Builder $variant): Builder =>
-                $variant->where('is_active', true)
-                    ->whereColumn('stock_on_hand', '>', 'stock_reserved'));
+            $query->{$method}('variants', static fn (Builder $variant): Builder => $variant->where('is_active', true)
+                ->whereColumn('stock_on_hand', '>', 'stock_reserved'));
         }
 
         match ($filters['sort'] ?? 'recommended') {
@@ -161,6 +156,7 @@ final class PublicCatalogService
         return compact('products', 'roasteries', 'suggestions');
     }
 
+    /** @return Builder<Product> */
     private function publicProductQuery(): Builder
     {
         return Product::query()
@@ -172,8 +168,7 @@ final class PublicCatalogService
                 'latestRoastBatch',
                 'roastery.logo',
                 'roastery.cover',
-                'variants' => static fn ($variants) =>
-                    $variants->where('is_active', true)->orderBy('weight_grams'),
+                'variants' => static fn ($variants) => $variants->where('is_active', true)->orderBy('weight_grams'),
             ]);
     }
 }

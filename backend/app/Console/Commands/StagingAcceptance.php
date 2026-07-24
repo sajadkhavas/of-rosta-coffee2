@@ -110,7 +110,7 @@ final class StagingAcceptance extends Command
             $this->record(
                 $checks,
                 'redis_queue',
-                is_int($size) && $size >= 0,
+                $size >= 0,
                 'Redis queue connection is readable',
             );
         } catch (Throwable $exception) {

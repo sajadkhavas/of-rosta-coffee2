@@ -12,7 +12,6 @@ use App\Models\Origin;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Roastery;
-use App\Models\Shipment;
 use App\Models\StockLedgerEntry;
 use App\Models\SubOrder;
 use App\Models\SubOrderStatusHistory;

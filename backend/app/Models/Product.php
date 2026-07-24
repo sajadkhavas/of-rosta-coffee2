@@ -5,7 +5,9 @@ namespace App\Models;
 use App\Enums\ProcessingMethod;
 use App\Enums\ProductStatus;
 use App\Enums\RoastLevel;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,6 +15,36 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @property string $id
+ * @property string|null $roastery_id
+ * @property string|null $origin_id
+ * @property string|null $primary_media_id
+ * @property string|null $name
+ * @property string|null $slug
+ * @property string|null $short_description
+ * @property string|null $description
+ * @property ProcessingMethod $processing_method
+ * @property RoastLevel $roast_level
+ * @property int $arabica_percentage
+ * @property array<mixed> $tasting_notes
+ * @property array<mixed> $brewing_suggestions
+ * @property string|null $seo_title
+ * @property string|null $seo_description
+ * @property ProductStatus $status
+ * @property CarbonImmutable|null $published_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
+ * @property-read Roastery|null $roastery
+ * @property-read Origin|null $origin
+ * @property-read MediaAsset|null $primaryImage
+ * @property-read Collection<int, MediaAsset> $gallery
+ * @property-read Collection<int, ProductVariant> $variants
+ * @property-read Collection<int, RoastBatch> $roastBatches
+ * @property-read RoastBatch|null $latestRoastBatch
+ *
+ * @method static \Illuminate\Database\Eloquent\Builder<static> published()
+ */
 final class Product extends Model
 {
     use HasUlids;
@@ -49,21 +81,25 @@ final class Product extends Model
         ];
     }
 
+    /** @return BelongsTo<Roastery, $this> */
     public function roastery(): BelongsTo
     {
         return $this->belongsTo(Roastery::class);
     }
 
+    /** @return BelongsTo<Origin, $this> */
     public function origin(): BelongsTo
     {
         return $this->belongsTo(Origin::class);
     }
 
+    /** @return BelongsTo<MediaAsset, $this> */
     public function primaryImage(): BelongsTo
     {
         return $this->belongsTo(MediaAsset::class, 'primary_media_id');
     }
 
+    /** @return BelongsToMany<MediaAsset, $this> */
     public function gallery(): BelongsToMany
     {
         return $this->belongsToMany(MediaAsset::class, 'product_media')
@@ -71,16 +107,19 @@ final class Product extends Model
             ->orderByPivot('position');
     }
 
+    /** @return HasMany<ProductVariant, $this> */
     public function variants(): HasMany
     {
         return $this->hasMany(ProductVariant::class)->orderBy('weight_grams');
     }
 
+    /** @return HasMany<RoastBatch, $this> */
     public function roastBatches(): HasMany
     {
         return $this->hasMany(RoastBatch::class)->orderByDesc('roasted_at');
     }
 
+    /** @return HasOne<RoastBatch, $this> */
     public function latestRoastBatch(): HasOne
     {
         return $this->hasOne(RoastBatch::class)->ofMany(

@@ -2,8 +2,10 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Product;
 use Illuminate\Http\Request;
 
+/** @mixin Product */
 final class ProductDetailResource extends ProductSummaryResource
 {
     public function toArray(Request $request): array

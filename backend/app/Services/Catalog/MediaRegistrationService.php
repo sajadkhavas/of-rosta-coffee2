@@ -17,7 +17,7 @@ final class MediaRegistrationService
     ) {}
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public function register(
         Roastery $roastery,

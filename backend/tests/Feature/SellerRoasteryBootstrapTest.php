@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Enums\Role;
 use App\Enums\RoasteryStatus;
+use App\Enums\Role;
 use App\Models\Roastery;
 use App\Models\User;
 use App\Models\UserRole;

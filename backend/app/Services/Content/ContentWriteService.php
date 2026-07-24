@@ -19,7 +19,7 @@ final class ContentWriteService
     ) {}
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public function create(array $data, User $actor, Request $request): ContentEntry
     {
@@ -50,7 +50,7 @@ final class ContentWriteService
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public function update(
         ContentEntry $entry,
@@ -113,8 +113,8 @@ final class ContentWriteService
     }
 
     /**
-     * @param array<string, mixed> $data
-     * @param list<array<string, mixed>> $body
+     * @param  array<string, mixed>  $data
+     * @param  list<array<string, mixed>>  $body
      * @return array<string, mixed>
      */
     private function normalizedData(
@@ -181,7 +181,7 @@ final class ContentWriteService
     }
 
     /**
-     * @param list<array<string, mixed>> $relations
+     * @param  list<array<string, mixed>>  $relations
      */
     private function syncRelations(ContentEntry $entry, array $relations): void
     {

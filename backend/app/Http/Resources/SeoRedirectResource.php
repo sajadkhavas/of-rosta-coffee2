@@ -2,8 +2,10 @@
 
 namespace App\Http\Resources;
 
+use App\Models\SeoRedirect;
 use Illuminate\Http\Request;
 
+/** @mixin SeoRedirect */
 final class SeoRedirectResource extends OkJsonResource
 {
     public function toArray(Request $request): array

@@ -98,7 +98,7 @@ final class SeoPath
 
         $normalized = '/'.implode('/', $segments);
 
-        return $normalized === '' ? '/' : $normalized;
+        return $normalized;
     }
 
     public static function assertPublic(string $path): string

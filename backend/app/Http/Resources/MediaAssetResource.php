@@ -2,9 +2,11 @@
 
 namespace App\Http\Resources;
 
+use App\Models\MediaAsset;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/** @mixin MediaAsset */
 final class MediaAssetResource extends JsonResource
 {
     public function toArray(Request $request): array

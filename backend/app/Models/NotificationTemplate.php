@@ -2,9 +2,20 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property string $id
+ * @property string|null $key
+ * @property string|null $channel
+ * @property string|null $body
+ * @property string|null $provider_template
+ * @property bool $is_active
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
+ */
 final class NotificationTemplate extends Model
 {
     use HasUlids;

@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 final class CatalogAccess
 {
     /**
-     * @param list<Role> $allowedRoles
+     * @param  list<Role>  $allowedRoles
      */
     public function assertRoasteryAccess(
         User $user,

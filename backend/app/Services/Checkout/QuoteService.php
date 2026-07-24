@@ -14,7 +14,6 @@ use App\Models\ProductVariant;
 use App\Models\RoastBatch;
 use App\Models\Roastery;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use LogicException;
@@ -30,7 +29,7 @@ final class QuoteService
     ) {}
 
     /**
-     * @param list<array{variant_id: string, quantity: int}> $items
+     * @param  list<array{variant_id: string, quantity: int}>  $items
      */
     public function validateCart(array $items): CheckoutQuote
     {
@@ -44,7 +43,7 @@ final class QuoteService
     }
 
     /**
-     * @param list<array{variant_id: string, quantity: int}> $items
+     * @param  list<array{variant_id: string, quantity: int}>  $items
      */
     public function createCheckoutQuote(
         User $user,
@@ -66,7 +65,7 @@ final class QuoteService
     }
 
     /**
-     * @param list<array{variant_id: string, quantity: int}> $items
+     * @param  list<array{variant_id: string, quantity: int}>  $items
      */
     private function create(
         QuotePurpose $purpose,
@@ -95,8 +94,7 @@ final class QuoteService
                 'product.latestRoastBatch',
                 'product.roastery.logo',
                 'product.roastery.cover',
-                'product.variants' => static fn ($query) =>
-                    $query->where('is_active', true)->orderBy('weight_grams'),
+                'product.variants' => static fn ($query) => $query->where('is_active', true)->orderBy('weight_grams'),
             ])
             ->whereIn('id', $normalizedItems->pluck('variant_id'))
             ->get()

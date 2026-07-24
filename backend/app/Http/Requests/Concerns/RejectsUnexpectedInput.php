@@ -7,7 +7,7 @@ use Illuminate\Validation\ValidationException;
 trait RejectsUnexpectedInput
 {
     /**
-     * @param list<string> $allowed
+     * @param  list<string>  $allowed
      */
     protected function rejectUnexpected(array $allowed): void
     {
@@ -25,8 +25,8 @@ trait RejectsUnexpectedInput
     }
 
     /**
-     * @param array<int, mixed> $items
-     * @param list<string> $allowed
+     * @param  array<int, mixed>  $items
+     * @param  list<string>  $allowed
      */
     protected function rejectUnexpectedNested(array $items, array $allowed, string $prefix): void
     {

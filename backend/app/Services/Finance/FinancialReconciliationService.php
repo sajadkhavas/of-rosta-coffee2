@@ -130,8 +130,8 @@ final class FinancialReconciliationService
         $deduplicationKey = hash('sha256', implode('|', [
             $safeKind,
             $order->id,
-            $payment?->id ?? '-',
-            $refund?->id ?? '-',
+            $payment instanceof PaymentAttempt ? $payment->id : '-',
+            $refund instanceof RefundAttempt ? $refund->id : '-',
         ]));
 
         return FinancialReconciliationCase::query()->createOrFirst(

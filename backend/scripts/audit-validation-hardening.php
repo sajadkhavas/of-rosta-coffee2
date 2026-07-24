@@ -25,6 +25,7 @@ foreach (preg_split('/\R/', $files['frontend_ci']) ?: [] as $line) {
     if (preg_match('/^([A-Za-z0-9_-]+):(?:\s|$)/', $line, $match) === 1) {
         if ($match[1] === 'pull_request') {
             $insidePullRequest = true;
+
             continue;
         }
         if ($insidePullRequest) {

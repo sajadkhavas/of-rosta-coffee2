@@ -2,8 +2,10 @@
 
 namespace App\Http\Resources;
 
+use App\Models\StockLedgerEntry;
 use Illuminate\Http\Request;
 
+/** @mixin StockLedgerEntry */
 final class StockLedgerEntryResource extends OkJsonResource
 {
     public function toArray(Request $request): array

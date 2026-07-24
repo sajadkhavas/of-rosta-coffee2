@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Collection;
 final class ContentLinkReportService
 {
     private const MAX_RELATIONS = 5_000;
+
     private const MAX_ISSUES = 250;
 
     /** @return array<string, mixed> */
@@ -131,7 +132,7 @@ final class ContentLinkReportService
     }
 
     /**
-     * @param Collection<int, ContentRelation> $relations
+     * @param  Collection<int, ContentRelation>  $relations
      * @return array<string, array<string, array<string, mixed>>>
      */
     private function targetMaps(Collection $relations): array
@@ -208,7 +209,7 @@ final class ContentLinkReportService
     }
 
     /**
-     * @param array<string, array<string, array<string, mixed>>> $maps
+     * @param  array<string, array<string, array<string, mixed>>>  $maps
      */
     private function brokenReason(ContentRelation $relation, array $maps): ?string
     {

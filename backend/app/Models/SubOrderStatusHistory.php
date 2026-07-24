@@ -2,11 +2,25 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use LogicException;
 
+/**
+ * @property string $id
+ * @property string|null $sub_order_id
+ * @property string|null $actor_id
+ * @property string|null $from_status
+ * @property string|null $to_status
+ * @property string|null $reason
+ * @property array<mixed> $metadata
+ * @property CarbonImmutable $created_at
+ * @property CarbonImmutable|null $updated_at
+ * @property-read SubOrder|null $subOrder
+ * @property-read User|null $actor
+ */
 final class SubOrderStatusHistory extends Model
 {
     use HasUlids;
@@ -35,19 +49,21 @@ final class SubOrderStatusHistory extends Model
 
     protected static function booted(): void
     {
-        static::updating(static function (): never {
+        self::updating(static function (): never {
             throw new LogicException('Sub-order status history is append-only.');
         });
-        static::deleting(static function (): never {
+        self::deleting(static function (): never {
             throw new LogicException('Sub-order status history is append-only.');
         });
     }
 
+    /** @return BelongsTo<SubOrder, $this> */
     public function subOrder(): BelongsTo
     {
         return $this->belongsTo(SubOrder::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function actor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'actor_id');

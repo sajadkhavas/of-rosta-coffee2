@@ -97,7 +97,7 @@ final class MediaUploadService
             );
         }
 
-        if (! is_array($signed) || ! isset($signed['url']) || ! is_string($signed['url'])) {
+        if (! isset($signed['url']) || ! is_string($signed['url'])) {
             $intent->forceFill([
                 'status' => MediaUploadStatus::Failed,
                 'failed_at' => now(),

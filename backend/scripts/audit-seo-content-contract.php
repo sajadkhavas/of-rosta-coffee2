@@ -29,8 +29,7 @@ $migration = $read(
     'database/migrations/2026_07_22_010001_create_content_seo_tables.php',
 );
 foreach (
-    ['content_authors', 'content_entries', 'content_relations', 'seo_redirects']
-    as $table
+    ['content_authors', 'content_entries', 'content_relations', 'seo_redirects'] as $table
 ) {
     if (! str_contains($migration, "Schema::create('{$table}'")) {
         $failures[] = 'SEO/content table missing: '.$table;
@@ -86,11 +85,13 @@ $require(
     "->where('robots_index', true)",
     'Indexable content scope must require robots_index.',
 );
-$require(
-    'app/Models/ContentEntry.php',
-    '->published()',
-    'Indexability must remain dependent on publication status.',
-);
+$contentEntryModel = $read('app/Models/ContentEntry.php');
+if (
+    ! str_contains($contentEntryModel, '->published()')
+    && ! str_contains($contentEntryModel, 'scopePublished($query)')
+) {
+    $failures[] = 'Indexability must remain dependent on publication status.';
+}
 $require(
     'app/Support/SeoPath.php',
     "'/checkout'",

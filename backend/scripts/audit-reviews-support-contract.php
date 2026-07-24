@@ -57,13 +57,13 @@ $gate(
     str_contains($files['inquiry_request'], "'website'")
         && str_contains($files['inquiry_request'], "'max:0'")
         && str_contains($files['review_routes'], 'throttle:inquiry-submit')
-        && str_contains($files['inquiry_service'], "now()->subMinutes(10)"),
+        && str_contains($files['inquiry_service'], 'now()->subMinutes(10)'),
     'Inquiries require honeypot, rate limiting and a bounded duplicate window.',
 );
 
 $gate(
     'no_raw_ip_or_plain_contact',
-    str_contains($files['inquiry_service'], "hash_hmac(")
+    str_contains($files['inquiry_service'], 'hash_hmac(')
         && str_contains($files['inquiry_model'], "'mobile' => 'encrypted'")
         && str_contains($files['inquiry_model'], "'email' => 'encrypted'")
         && str_contains($files['inquiry_model'], "'message' => 'encrypted'")
