@@ -1,0 +1,43 @@
+name: Rosta R2B Source Export
+
+on:
+  pull_request:
+    branches:
+      - integration/rosta-r-program
+    paths:
+      - .github/workflows/r2b-source-export.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout product branch
+        uses: actions/checkout@v4
+        with:
+          ref: program/r2b-php-quality
+          fetch-depth: 0
+      - name: Create source archive
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          tar \
+            --exclude='backend/vendor' \
+            --exclude='backend/storage/logs/*' \
+            --exclude='backend/storage/framework/cache/*' \
+            --exclude='backend/.env' \
+            -czf /tmp/rosta-r2b-source.tar.gz \
+            backend .github/workflows/backend-ci.yml src package.json
+          sha256sum /tmp/rosta-r2b-source.tar.gz > /tmp/rosta-r2b-source.sha256
+      - name: Upload source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: rosta-r2b-source-${{ github.run_id }}
+          path: |
+            /tmp/rosta-r2b-source.tar.gz
+            /tmp/rosta-r2b-source.sha256
+          retention-days: 3
