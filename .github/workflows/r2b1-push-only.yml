@@ -52,7 +52,7 @@ jobs:
           printf 'TRACKED\n%s\nUNTRACKED\n%s\n' "$tracked" "$untracked"
           test "$(printf '%s\n' "$tracked" | wc -l)" -eq 22
           test "$(printf '%s\n' "$untracked" | wc -l)" -eq 3
-          test -z "$(printf '%s\n' "$tracked" | grep -Ev '^(\.github/workflows/backend-ci\.yml|backend/(app|config/database\.php|scripts|tests)/)' || true)"
+          test -z "$(printf '%s\n' "$tracked" | grep -Ev '^(\.github/workflows/backend-ci\.yml|backend/config/database\.php|backend/(app|scripts|tests)/)' || true)"
           test -z "$(printf '%s\n' "$untracked" | grep -Ev '^backend/(app|scripts)/' || true)"
           git config user.name "Rosta Program Automation"
           git config user.email "actions@users.noreply.github.com"
