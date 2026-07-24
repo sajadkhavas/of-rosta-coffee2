@@ -1,0 +1,114 @@
+name: Rosta R2B1 Product Commit
+
+on:
+  pull_request:
+    branches: [integration/rosta-r-program]
+    paths: [.github/workflows/r2b1-product-commit.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reproduce-verify-and-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TARGET_BRANCH: program/r2b-php-quality
+      EXPECTED_HEAD: 42620fe43c3ba73a40c7dd508a3df3bba4f0f512
+      EVIDENCE_DIR: /tmp/rosta-r2-evidence/${{ github.run_id }}/r2b1-commit
+      APP_ENV: testing
+      APP_DEBUG: "false"
+      LOG_CHANNEL: stack
+      LOG_STACK: single
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ":memory:"
+      ROSTA_PAYMENT_ENABLED: "false"
+      ROSTA_REFUND_ENABLED: "false"
+      ROSTA_SMS_ENABLED: "false"
+      ROSTA_MEDIA_UPLOADS_ENABLED: "false"
+      COMPOSER_NO_INTERACTION: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: program/r2b-php-quality
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: bcmath, ctype, curl, dom, fileinfo, intl, json, mbstring, openssl, pcntl, pdo_mysql, pdo_sqlite, posix, redis, simplexml, sockets, sqlite3, tokenizer, xml, xmlwriter, zip
+          coverage: none
+          tools: composer:v2
+      - name: Reproduce reviewed product tree
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test -z "$(git status --porcelain)"
+          echo "APP_KEY=base64:$(php -r 'echo base64_encode(random_bytes(32));')" >> "$GITHUB_ENV"
+          sha256sum backend/composer.json backend/composer.lock | tee "$EVIDENCE_DIR/composer-before.sha256"
+          for script in r2b-known-repairs.py r2b-feature-repairs.py r2b-feature-repairs-2.py r2b-feature-repairs-3.py r2b-feature-repairs-4.py; do
+            git show "origin/automation/r2b-executor:.github/scripts/$script" > "/tmp/$script"
+          done
+          git show origin/automation/r2b1-final-executor:.github/scripts/r2b1-final-session-repair.py > /tmp/r2b1-final-session-repair.py
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('/tmp/r2b-known-repairs.py')
+          path.write_text(path.read_text().replace('pull_request:\\n', 'pull_request:\\\\n'))
+          PY
+          for script in r2b-known-repairs.py r2b-feature-repairs.py r2b-feature-repairs-2.py r2b-feature-repairs-3.py r2b-feature-repairs-4.py r2b1-final-session-repair.py; do
+            python "/tmp/$script"
+          done
+          git diff --check
+      - name: Verify audits and tests again
+        shell: bash
+        working-directory: backend
+        run: |
+          set -Eeuo pipefail
+          cp .env.example .env
+          mkdir -p bootstrap/cache storage/app/private storage/app/public storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
+          composer install --no-interaction --prefer-dist --no-progress 2>&1 | tee "$EVIDENCE_DIR/composer-install.log"
+          composer validate --strict 2>&1 | tee "$EVIDENCE_DIR/composer-validate.log"
+          composer audit --locked 2>&1 | tee "$EVIDENCE_DIR/composer-audit.log"
+          for gate in business checkout seo cooci-adoption fulfillment reviews-support media-storage openapi validation finance seller-operations admin-operations live-public staging; do
+            composer "audit:$gate" 2>&1 | tee "$EVIDENCE_DIR/audit-$gate.log"
+          done
+          php artisan test 2>&1 | tee "$EVIDENCE_DIR/tests-all.log"
+      - name: Clean runtime evidence and push product commit
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rm -f backend/*-audit.json backend/.env
+          rm -rf backend/storage/framework/testing
+          sha256sum backend/composer.json backend/composer.lock | tee "$EVIDENCE_DIR/composer-after.sha256"
+          cmp "$EVIDENCE_DIR/composer-before.sha256" "$EVIDENCE_DIR/composer-after.sha256"
+          git diff --check
+          tracked="$(git diff --name-only | sort)"
+          untracked="$(git ls-files --others --exclude-standard | sort)"
+          expected_tracked=$'.github/workflows/backend-ci.yml\nbackend/app/Http/Resources/AuthUserResource.php\nbackend/app/Http/Resources/CheckoutQuoteResource.php\nbackend/app/Http/Resources/ContentAuthorResource.php\nbackend/app/Http/Resources/ContentEntrySummaryResource.php\nbackend/app/Http/Resources/ProductVariantResource.php\nbackend/app/Http/Resources/SeoRedirectResource.php\nbackend/app/Http/Resources/StockLedgerEntryResource.php\nbackend/app/Providers/AppServiceProvider.php\nbackend/app/Services/Catalog/PublicCatalogService.php\nbackend/app/Services/Checkout/QuoteService.php\nbackend/app/Services/Content/ContentWriteService.php\nbackend/app/Support/SeoPath.php\nbackend/config/database.php\nbackend/scripts/audit-business-contract.php\nbackend/scripts/audit-commerce-openapi-drift.php\nbackend/scripts/audit-live-public-contract.php\nbackend/scripts/audit-validation-hardening.php\nbackend/tests/Feature/FulfillmentLifecycleTest.php\nbackend/tests/Feature/InquiryWorkflowTest.php\nbackend/tests/Support/AuthenticatesRecordedSession.php\nbackend/tests/TestCase.php'
+          expected_untracked=$'backend/app/Http/Controllers/Controller.php\nbackend/app/Http/Resources/OkJsonResource.php\nbackend/scripts/route-contract-support.php'
+          printf '%s\n' "$tracked" | tee "$EVIDENCE_DIR/tracked-files.txt"
+          printf '%s\n' "$untracked" | tee "$EVIDENCE_DIR/untracked-files.txt"
+          test "$tracked" = "$expected_tracked"
+          test "$untracked" = "$expected_untracked"
+          git config user.name "Rosta Program Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add .github/workflows/backend-ci.yml backend/app backend/config/database.php backend/scripts backend/tests
+          git diff --cached --check
+          git diff --cached --stat | tee "$EVIDENCE_DIR/diff-stat.txt"
+          git commit -m "fix(backend): complete feature and runtime contracts"
+          git push origin HEAD:"$TARGET_BRANCH"
+          git rev-parse HEAD | tee "$EVIDENCE_DIR/result-commit.txt"
+          echo "ROSTA_R2B1_FEATURE_GATE_COMPLETE" | tee "$EVIDENCE_DIR/result.txt"
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rosta-r2b1-commit-evidence-${{ github.run_id }}
+          path: /tmp/rosta-r2-evidence/${{ github.run_id }}/r2b1-commit
+          if-no-files-found: warn
+          retention-days: 14
