@@ -79,12 +79,19 @@ jobs:
           echo "APP_KEY=base64:$(php -r 'echo base64_encode(random_bytes(32));')" >> "$GITHUB_ENV"
           echo "ephemeral_app_key=present" | tee "$EVIDENCE_DIR/app-key.txt"
 
-      - name: Apply reviewed boot repairs
+      - name: Apply reviewed boot and audit repairs
         shell: bash
         run: |
           set -Eeuo pipefail
           git show origin/automation/r2b-executor:.github/scripts/r2b-known-repairs.py > /tmp/r2b-known-repairs.py
-          python /tmp/r2b-known-repairs.py
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('/tmp/r2b-known-repairs.py')
+          source = path.read_text()
+          source = source.replace('pull_request:\\n', 'pull_request:\\\\n')
+          path.write_text(source)
+          PY
+          python /tmp/r2b-known-repairs.py 2>&1 | tee "$EVIDENCE_DIR/repair.log"
           git diff --check
 
       - name: Prepare application and install locked dependencies
