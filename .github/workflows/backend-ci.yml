@@ -135,6 +135,13 @@ jobs:
           set -o pipefail
           php artisan rosta:readiness --strict --json 2>&1 | tee backend-readiness.json
 
+      - name: Exercise Redis cache session and queue contracts
+        shell: bash
+        run: |
+          set -o pipefail
+          composer acceptance:infrastructure 2>&1 | tee infrastructure-acceptance.json
+          grep -q 'ROSTA_R2C_INFRASTRUCTURE_COMPLETE' infrastructure-acceptance.json
+
       - name: Run backend quality gate
         shell: bash
         run: |
@@ -149,6 +156,7 @@ jobs:
           path: |
             backend/*-audit.json
             backend/backend-readiness.json
+            backend/infrastructure-acceptance.json
             backend/backend-quality.log
             backend/storage/logs/*.log
           if-no-files-found: ignore
