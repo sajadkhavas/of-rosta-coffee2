@@ -1,0 +1,135 @@
+name: Rosta R2A Composer Lock Executor
+
+on:
+  pull_request:
+    branches:
+      - integration/rosta-r-program
+    paths:
+      - .github/workflows/r2a-composer-lock.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rosta-r2a-composer-lock
+  cancel-in-progress: false
+
+jobs:
+  generate-verify-and-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      TARGET_BRANCH: program/r2a-composer-lock
+      EXPECTED_HEAD: 4622e887c7bce58ca319a0bae965dff1aa6b6db7
+      EVIDENCE_DIR: /tmp/rosta-r2-evidence/${{ github.run_id }}/r2a
+      COMPOSER_NO_INTERACTION: "1"
+      COMPOSER_PROCESS_TIMEOUT: "900"
+    steps:
+      - name: Checkout R2A product branch
+        uses: actions/checkout@v4
+        with:
+          ref: program/r2a-composer-lock
+          fetch-depth: 0
+
+      - name: Setup PHP 8.3 and Composer 2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: bcmath, ctype, curl, dom, fileinfo, intl, json, mbstring, openssl, pcntl, pdo_mysql, posix, redis, simplexml, sockets, tokenizer, xml, xmlwriter, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Verify exact clean baseline
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          {
+            echo "head=$(git rev-parse HEAD)"
+            echo "tree=$(git rev-parse 'HEAD^{tree}')"
+            echo "php=$(php --version | head -n 1)"
+            echo "composer=$(composer --version 2>&1 | head -n 1)"
+            git status --short --branch
+          } | tee "$EVIDENCE_DIR/snapshot.txt"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          php -r 'exit(PHP_MAJOR_VERSION === 8 && PHP_MINOR_VERSION === 3 ? 0 : 1);'
+          test -z "$(git status --porcelain)"
+          test ! -e backend/composer.lock
+          sha256sum backend/composer.json | tee "$EVIDENCE_DIR/composer-json-before.sha256"
+
+      - name: Generate deterministic lock without scripts
+        shell: bash
+        working-directory: backend
+        run: |
+          set -Eeuo pipefail
+          composer validate --strict --no-check-lock 2>&1 | tee "$EVIDENCE_DIR/validate-without-lock.log"
+          composer update \
+            --with-all-dependencies \
+            --no-install \
+            --no-scripts \
+            --no-interaction \
+            --prefer-dist \
+            --no-progress 2>&1 | tee "$EVIDENCE_DIR/update-lock.log"
+          test -s composer.lock
+          composer validate --strict 2>&1 | tee "$EVIDENCE_DIR/validate-locked.log"
+          sha256sum composer.lock | tee "$EVIDENCE_DIR/composer-lock.sha256"
+          composer show --locked --direct 2>&1 | tee "$EVIDENCE_DIR/direct-packages.log"
+
+      - name: First frozen install and security audit
+        shell: bash
+        working-directory: backend
+        run: |
+          set -Eeuo pipefail
+          rm -rf vendor
+          composer install \
+            --no-scripts \
+            --no-interaction \
+            --prefer-dist \
+            --no-progress 2>&1 | tee "$EVIDENCE_DIR/install-1.log"
+          composer audit --locked 2>&1 | tee "$EVIDENCE_DIR/audit-1.log"
+          composer validate --strict 2>&1 | tee "$EVIDENCE_DIR/validate-after-install-1.log"
+
+      - name: Second frozen install and security audit
+        shell: bash
+        working-directory: backend
+        run: |
+          set -Eeuo pipefail
+          rm -rf vendor
+          composer clear-cache 2>&1 | tee "$EVIDENCE_DIR/clear-cache.log"
+          composer install \
+            --no-scripts \
+            --no-interaction \
+            --prefer-dist \
+            --no-progress 2>&1 | tee "$EVIDENCE_DIR/install-2.log"
+          composer audit --locked 2>&1 | tee "$EVIDENCE_DIR/audit-2.log"
+          composer validate --strict 2>&1 | tee "$EVIDENCE_DIR/validate-after-install-2.log"
+
+      - name: Enforce one-file product scope and push
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          sha256sum backend/composer.json | tee "$EVIDENCE_DIR/composer-json-after.sha256"
+          cmp "$EVIDENCE_DIR/composer-json-before.sha256" "$EVIDENCE_DIR/composer-json-after.sha256"
+          git diff --check
+          changed="$(git diff --name-only | sort)"
+          printf '%s\n' "$changed" | tee "$EVIDENCE_DIR/changed-files.txt"
+          test "$changed" = "backend/composer.lock"
+          test -z "$(git diff --name-only -- ':!backend/composer.lock')"
+          git diff --stat | tee "$EVIDENCE_DIR/diff-stat.txt"
+          git config user.name "Rosta Program Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add backend/composer.lock
+          git commit -m "build(backend): freeze Composer dependencies"
+          git push origin HEAD:"$TARGET_BRANCH"
+          git rev-parse HEAD | tee "$EVIDENCE_DIR/result-commit.txt"
+          echo "ROSTA_R2A_COMPOSER_LOCK_COMPLETE" | tee "$EVIDENCE_DIR/result.txt"
+
+      - name: Upload R2A evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rosta-r2a-evidence-${{ github.run_id }}
+          path: /tmp/rosta-r2-evidence/${{ github.run_id }}/r2a
+          if-no-files-found: warn
+          retention-days: 14
