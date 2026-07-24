@@ -72,6 +72,30 @@ replace(
 ''',
 )
 
+# Phase 21 must inspect semantics instead of depending on Prettier line breaks.
+replace(
+    "scripts/audit-phase21-live-public.mjs",
+    '''  files.quiz.includes("ensureQueryData(productsQueryOptions") &&
+    files.quiz.includes('available: true') &&
+''',
+    '''  /ensureQueryData\\s*\\(\\s*productsQueryOptions\\s*\\(/.test(files.quiz) &&
+    /available\\s*:\\s*true/.test(files.quiz) &&
+''',
+)
+replace(
+    "scripts/audit-phase21-live-public.mjs",
+    '''  files.products.includes("loaderDeps") &&
+    files.products.includes("ensureQueryData(productsQueryOptions") &&
+    files.roasteries.includes("loaderDeps") &&
+    files.roasteries.includes("ensureQueryData(roasteriesQueryOptions") &&
+''',
+    '''  files.products.includes("loaderDeps") &&
+    /ensureQueryData\\s*\\(\\s*productsQueryOptions\\s*\\(/.test(files.products) &&
+    files.roasteries.includes("loaderDeps") &&
+    /ensureQueryData\\s*\\(\\s*roasteriesQueryOptions\\s*\\(/.test(files.roasteries) &&
+''',
+)
+
 # The runtime dependency was migrated in R1A; keep chunking aligned.
 replace(
     "vite.config.ts",
