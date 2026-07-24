@@ -1,0 +1,116 @@
+name: Rosta R1B Batch 1
+
+on:
+  pull_request:
+    branches:
+      - integration/rosta-r-program
+    paths:
+      - .github/workflows/r1b-batch1.yml
+      - .github/scripts/r1b-batch1.py
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rosta-r1b-batch1
+  cancel-in-progress: false
+
+jobs:
+  repair-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      TARGET_BRANCH: program/r1b-typescript-repair
+      EXPECTED_HEAD: a54571deb4c513a9a1ea79b8ab7de61cad8c698d
+      EVIDENCE_DIR: /tmp/rosta-r1b-batch1
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+    steps:
+      - name: Checkout R1B branch
+        uses: actions/checkout@v4
+        with:
+          ref: program/r1b-typescript-repair
+          fetch-depth: 0
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Bun 1.2.22
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.22
+
+      - name: Verify baseline and install
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test "$(node -p 'process.versions.node.split(".")[0]')" = "22"
+          test "$(bun --version)" = "1.2.22"
+          test -z "$(git status --porcelain)"
+          rm -rf node_modules
+          bun install --frozen-lockfile 2>&1 | tee "$EVIDENCE_DIR/install.log"
+          set +e
+          bun run typecheck > "$EVIDENCE_DIR/typecheck-before.log" 2>&1
+          before_status=$?
+          set -e
+          before_count="$(grep -c 'error TS[0-9]' "$EVIDENCE_DIR/typecheck-before.log" || true)"
+          printf 'status=%s\ncount=%s\n' "$before_status" "$before_count" | tee "$EVIDENCE_DIR/before.txt"
+          test "$before_count" -eq 92
+
+      - name: Apply bounded repairs
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git show origin/automation/r1a-executor:.github/scripts/r1b-batch1.py > /tmp/r1b-batch1.py
+          python /tmp/r1b-batch1.py
+          git diff --check
+
+      - name: TypeScript and focused gates
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +e
+          bun run typecheck > "$EVIDENCE_DIR/typecheck-after.log" 2>&1
+          after_status=$?
+          set -e
+          after_count="$(grep -c 'error TS[0-9]' "$EVIDENCE_DIR/typecheck-after.log" || true)"
+          printf 'status=%s\ncount=%s\n' "$after_status" "$after_count" | tee "$EVIDENCE_DIR/after.txt"
+          test "$after_count" -lt 92
+          ! grep -q "@/data/seed" "$EVIDENCE_DIR/typecheck-after.log"
+          ! grep -q "@/data/blog-posts" "$EVIDENCE_DIR/typecheck-after.log"
+          ! grep -q 'src/lib/api/content.ts(95' "$EVIDENCE_DIR/typecheck-after.log"
+          ! grep -q 'src/lib/api/inquiries.ts' "$EVIDENCE_DIR/typecheck-after.log"
+          ! grep -q 'src/components/ui/calendar.tsx' "$EVIDENCE_DIR/typecheck-after.log"
+          ! grep -q 'src/components/ui/resizable.tsx' "$EVIDENCE_DIR/typecheck-after.log"
+          bun run audit:phase21 2>&1 | tee "$EVIDENCE_DIR/audit-phase21.log"
+          bun run audit:phase22 2>&1 | tee "$EVIDENCE_DIR/audit-phase22.log"
+          bun run test:unit 2>&1 | tee "$EVIDENCE_DIR/unit.log"
+
+      - name: Enforce scope and push batch
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          expected=$'src/components/RoastLevelBadge.tsx\nsrc/components/WeightSelector.tsx\nsrc/components/seller/SellerOperationsDashboard.tsx\nsrc/lib/api/content.ts\nsrc/lib/api/inquiries.ts\nsrc/routes/__root.tsx\nsrc/routes/auth.index.tsx\nsrc/routes/brew.$slug.tsx\nsrc/routes/collections.$slug.tsx\nsrc/routes/compare.$slug.tsx\nsrc/routes/guides.$slug.tsx\nsrc/routes/origins.$slug.tsx\nsrc/routes/panel.manage.tsx\nsrc/routes/products.$slug.tsx\nsrc/routes/products.index.tsx\nsrc/routes/roasteries.$slug.tsx\nsrc/routes/sitemap[.]xml.ts\nsrc/routes/tastes.$slug.tsx'
+          changed="$(git diff --name-only | sort)"
+          printf '%s\n' "$changed" | tee "$EVIDENCE_DIR/changed-files.txt"
+          test "$changed" = "$expected"
+          git diff --stat | tee "$EVIDENCE_DIR/diff-stat.txt"
+          git config user.name 'Rosta Program Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add src
+          git commit -m 'fix(frontend): repair content and route TypeScript contracts'
+          git push origin HEAD:"$TARGET_BRANCH"
+          git rev-parse HEAD | tee "$EVIDENCE_DIR/result-commit.txt"
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rosta-r1b-batch1-${{ github.run_id }}
+          path: /tmp/rosta-r1b-batch1
+          if-no-files-found: warn
+          retention-days: 14
