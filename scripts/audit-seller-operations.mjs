@@ -8,7 +8,7 @@ const paths = {
   onboarding: "src/lib/api/seller-onboarding.ts",
   stock: "src/lib/api/seller-stock-ledger.ts",
   navbar: "src/components/Navbar.tsx",
-  routeTree: "src/routeTree.phase17.ts",
+  routeTree: "src/routeTree.gen.ts",
   backendRoutes: "backend/routes/api.php",
   fulfillmentRoutes: "backend/routes/fulfillment.php",
   mediaRoutes: "backend/routes/media-uploads.php",
@@ -118,8 +118,8 @@ gate(
   "route_and_navigation_registered",
   files.navbar.includes('to="/panel"') &&
     files.routeTree.includes("PanelRouteImport") &&
-    files.routeTree.includes('"/panel"'),
-  "The seller panel must remain reachable from navigation and registered in the active route tree.",
+    /["']\/panel["']/.test(files.routeTree),
+  "The seller panel must remain reachable from navigation and registered in the generated route tree.",
 );
 
 const failed = gates.filter((item) => !item.passed);

@@ -8,6 +8,7 @@
     "build": "vite build",
     "start": "node .output/server/index.mjs",
     "preview": "wrangler dev --config .output/server/wrangler.json",
+    "routes:generate": "tsr generate",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test:unit": "bun test tests/unit",

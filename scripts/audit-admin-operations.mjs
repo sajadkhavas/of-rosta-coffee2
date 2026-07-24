@@ -5,7 +5,7 @@ const paths = {
   route: "src/routes/admin.operations.tsx",
   client: "src/lib/api/admin-operations.ts",
   navbar: "src/components/Navbar.tsx",
-  routeTree: "src/routeTree.phase17.ts",
+  routeTree: "src/routeTree.gen.ts",
   controller: "backend/app/Http/Controllers/Admin/AdminOperationsController.php",
   roasteries: "backend/app/Http/Controllers/Admin/AdminRoasteryController.php",
   products: "backend/app/Http/Controllers/Admin/AdminProductController.php",
@@ -78,7 +78,7 @@ gate(
   files.routes.includes("rosta.role:administrator") &&
     files.navbar.includes('to="/admin/operations"') &&
     files.routeTree.includes("AdminOperationsRouteImport"),
-  "Operations routes must be server-protected and registered in navigation and the active route tree.",
+  "Operations routes must be server-protected and registered in navigation and the generated route tree.",
 );
 
 const failed = gates.filter((item) => !item.passed);

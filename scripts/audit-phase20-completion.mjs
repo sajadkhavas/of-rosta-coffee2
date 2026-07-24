@@ -8,7 +8,7 @@ const paths = {
   sellerClient: "src/lib/api/seller-operations.ts",
   adminRoute: "src/routes/admin.operations.tsx",
   adminClient: "src/lib/api/admin-operations.ts",
-  routeTree: "src/routeTree.phase17.ts",
+  routeTree: "src/routeTree.gen.ts",
   variantController: "backend/app/Http/Controllers/Seller/SellerVariantController.php",
   adminController: "backend/app/Http/Controllers/Admin/AdminOperationsController.php",
 };
