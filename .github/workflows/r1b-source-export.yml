@@ -1,0 +1,50 @@
+name: Rosta R1B Source Export
+
+on:
+  pull_request:
+    branches:
+      - integration/rosta-r-program
+    paths:
+      - .github/workflows/r1b-source-export.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export-r1b:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout R1B target
+        uses: actions/checkout@v4
+        with:
+          ref: program/r1b-typescript-repair
+          fetch-depth: 0
+
+      - name: Record snapshot and package source
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p /tmp/rosta-r1b-export
+          {
+            echo "head=$(git rev-parse HEAD)"
+            echo "tree=$(git rev-parse 'HEAD^{tree}')"
+            echo "branch=$(git branch --show-current)"
+            git status --short --branch
+          } > /tmp/rosta-r1b-export/snapshot.txt
+          tar \
+            --exclude=.git \
+            --exclude=node_modules \
+            --exclude=.output \
+            --exclude=coverage \
+            -czf /tmp/rosta-r1b-export/source.tar.gz .
+          sha256sum /tmp/rosta-r1b-export/source.tar.gz > /tmp/rosta-r1b-export/source.tar.gz.sha256
+
+      - name: Upload R1B source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: rosta-r1b-source-${{ github.run_id }}
+          path: /tmp/rosta-r1b-export
+          if-no-files-found: error
+          retention-days: 3
