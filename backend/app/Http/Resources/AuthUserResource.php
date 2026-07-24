@@ -3,9 +3,8 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
 
-final class AuthUserResource extends JsonResource
+final class AuthUserResource extends OkJsonResource
 {
     /**
      * @return array<string, mixed>

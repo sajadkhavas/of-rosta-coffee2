@@ -95,7 +95,7 @@ final class QuoteService
                 'product.latestRoastBatch',
                 'product.roastery.logo',
                 'product.roastery.cover',
-                'product.variants' => static fn (Builder $query): Builder =>
+                'product.variants' => static fn ($query) =>
                     $query->where('is_active', true)->orderBy('weight_grams'),
             ])
             ->whereIn('id', $normalizedItems->pluck('variant_id'))

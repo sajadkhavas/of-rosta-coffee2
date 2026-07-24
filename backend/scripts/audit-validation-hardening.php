@@ -19,6 +19,23 @@ $gate = static function (string $name, bool $passed, string $evidence) use (&$ga
     $gates[] = compact('name', 'passed', 'evidence');
 };
 
+$pullRequestBlock = '';
+$insidePullRequest = false;
+foreach (preg_split('/\R/', $files['frontend_ci']) ?: [] as $line) {
+    if (preg_match('/^([A-Za-z0-9_-]+):(?:\s|$)/', $line, $match) === 1) {
+        if ($match[1] === 'pull_request') {
+            $insidePullRequest = true;
+            continue;
+        }
+        if ($insidePullRequest) {
+            break;
+        }
+    }
+    if ($insidePullRequest) {
+        $pullRequestBlock .= $line."\n";
+    }
+}
+
 $gate(
     'testing_payment_forbidden_in_production',
     str_contains($files['payment_manager'], 'payment.testing_provider_forbidden')
@@ -78,7 +95,7 @@ $gate(
 $gate(
     'stacked_pr_ci_enabled',
     str_contains($files['frontend_ci'], "pull_request:\n")
-        && ! str_contains($files['frontend_ci'], 'branches: [main]')
+        && ! str_contains($pullRequestBlock, 'branches:')
         && str_contains($files['backend_ci'], 'docs/openapi/**')
         && str_contains($files['backend_ci'], 'rosta-v1-commerce-additions.yaml')
         && str_contains($files['backend_ci'], 'workflow_dispatch:'),

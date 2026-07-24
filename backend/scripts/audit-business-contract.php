@@ -195,32 +195,37 @@ $requireContains(
     'Idempotency keys must be customer scoped.',
 );
 
-$routes = $read('routes/api.php');
+require_once $root.'/scripts/route-contract-support.php';
+$routeContracts = rostaRouteContracts($root);
+
 foreach ([
     '/seller/origins',
-    '/media',
-    'roast-batches',
-    'stock-ledger',
+    '/seller/roasteries/{roasteryId}/media',
+    '/seller/roasteries/{roasteryId}/products/{productId}/roast-batches',
+    '/seller/roasteries/{roasteryId}/variants/{variantId}/stock-ledger',
     '/admin/origins',
     '/cart/validate',
     '/checkout/quote',
     '/orders',
     '/orders/{orderId}/cancel',
-    'throttle:cart-validate',
-    'throttle:checkout-quote',
-    'throttle:order-create',
 ] as $routeBoundary) {
-    if (! str_contains($routes, $routeBoundary)) {
-        $failures[] = 'Missing route boundary: '.$routeBoundary;
+    if (! isset($routeContracts[$routeBoundary])) {
+        $failures[] = 'Missing registered route boundary: '.$routeBoundary;
     }
 }
+
 foreach ([
-    "['auth:sanctum', 'rosta.session']",
-    'rosta.role:roastery_owner,roastery_manager,roastery_staff,administrator',
-    'rosta.role:administrator',
-] as $middlewareBoundary) {
-    if (! str_contains($routes, $middlewareBoundary)) {
-        $failures[] = 'Missing middleware boundary: '.$middlewareBoundary;
+    '/cart/validate' => ['throttle:cart-validate'],
+    '/checkout/quote' => ['auth:sanctum', 'rosta.session', 'throttle:checkout-quote'],
+    '/orders' => ['auth:sanctum', 'rosta.session', 'throttle:order-create'],
+    '/seller/origins' => ['auth:sanctum', 'rosta.session', 'rosta.role:roastery_owner,roastery_manager,roastery_staff,administrator'],
+    '/admin/origins' => ['auth:sanctum', 'rosta.session', 'rosta.role:administrator'],
+] as $path => $requiredMiddleware) {
+    $registered = $routeContracts[$path]['middleware'] ?? [];
+    foreach ($requiredMiddleware as $middlewareBoundary) {
+        if (! in_array($middlewareBoundary, $registered, true)) {
+            $failures[] = 'Missing registered middleware '.$middlewareBoundary.' for '.$path;
+        }
     }
 }
 

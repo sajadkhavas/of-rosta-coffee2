@@ -3,9 +3,8 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
 
-final class SeoRedirectResource extends JsonResource
+final class SeoRedirectResource extends OkJsonResource
 {
     public function toArray(Request $request): array
     {

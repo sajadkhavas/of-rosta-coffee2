@@ -59,7 +59,10 @@ final class InquiryWorkflowTest extends TestCase
             'website' => 'https://spam.example',
         ])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['website']);
+            ->assertJsonPath('error.code', 'request.validation_failed')
+            ->assertJsonStructure([
+                'error' => ['fields' => ['website']],
+            ]);
 
         $this->assertDatabaseCount('inquiries', 0);
     }

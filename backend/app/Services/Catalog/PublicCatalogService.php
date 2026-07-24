@@ -17,7 +17,7 @@ final class PublicCatalogService
     {
         $query = $this->publicProductQuery()
             ->withMin([
-                'variants as min_active_price' => static fn (Builder $variants): Builder =>
+                'variants as min_active_price' => static fn ($variants) =>
                     $variants->where('is_active', true),
             ], 'price');
 
@@ -172,7 +172,7 @@ final class PublicCatalogService
                 'latestRoastBatch',
                 'roastery.logo',
                 'roastery.cover',
-                'variants' => static fn (Builder $variants): Builder =>
+                'variants' => static fn ($variants) =>
                     $variants->where('is_active', true)->orderBy('weight_grams'),
             ]);
     }

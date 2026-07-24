@@ -7,6 +7,7 @@ use App\Models\AuthSession;
 use App\Models\User;
 use App\Models\UserRole;
 use App\Services\Identity\AuthSessionService;
+use Illuminate\Support\Facades\Auth;
 
 trait AuthenticatesRecordedSession
 {
@@ -29,8 +30,17 @@ trait AuthenticatesRecordedSession
             'expires_at' => now()->addHour(),
         ]);
 
-        $this->actingAs($user, 'web')->withSession([
+        $this->actingAs($user, 'web');
+        Auth::guard('sanctum')->forgetUser();
+        $guard = Auth::guard('web');
+        $passwordHash = method_exists($guard, 'hashPasswordForCookie')
+            ? $guard->hashPasswordForCookie($user->getAuthPassword())
+            : $user->getAuthPassword();
+
+        $this->withSession([
+            $guard->getName() => $user->getAuthIdentifier(),
             AuthSessionService::SESSION_KEY => $session->id,
+            'password_hash_web' => $passwordHash,
         ]);
 
         return $session;

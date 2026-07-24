@@ -64,7 +64,10 @@ final class FulfillmentLifecycleTest extends TestCase
             ->assertJsonPath('data.sub_orders.0.status', 'ready_to_ship');
         $this->patchJson($endpoint, ['status' => 'shipped'])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['carrier', 'tracking_code']);
+            ->assertJsonPath('error.code', 'request.validation_failed')
+            ->assertJsonStructure([
+                'error' => ['fields' => ['carrier', 'tracking_code']],
+            ]);
         $this->patchJson($endpoint, [
             'status' => 'shipped',
             'carrier' => 'پست جمهوری اسلامی',

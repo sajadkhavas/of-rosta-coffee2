@@ -32,6 +32,9 @@ final class ContentWriteService
                 ...$this->normalizedData($data, $body, true),
                 'status' => ContentStatus::Draft->value,
             ]);
+            $entry->forceFill([
+                'content_hash' => $this->documentHash($entry),
+            ])->save();
 
             $this->syncRelations($entry, $relations);
             $this->audit->record(
@@ -85,6 +88,7 @@ final class ContentWriteService
                 $locked->status = ContentStatus::Review;
                 $locked->published_at = null;
             }
+            $locked->content_hash = $this->documentHash($locked);
             $locked->save();
 
             if ($relationsProvided) {
@@ -143,6 +147,37 @@ final class ContentWriteService
         }
 
         return $data;
+    }
+
+    private function documentHash(ContentEntry $entry): string
+    {
+        $attributes = $entry->getAttributes();
+        $document = [];
+        foreach ([
+            'author_id',
+            'type',
+            'title',
+            'slug',
+            'canonical_path',
+            'excerpt',
+            'body',
+            'seo_title',
+            'seo_description',
+            'robots_index',
+            'robots_follow',
+            'og_title',
+            'og_description',
+            'og_media_url',
+            'schema_type',
+            'keywords',
+        ] as $field) {
+            $document[$field] = $attributes[$field] ?? null;
+        }
+
+        return hash('sha256', json_encode(
+            $document,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR,
+        ));
     }
 
     /**

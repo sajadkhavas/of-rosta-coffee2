@@ -53,7 +53,10 @@ final class SeoPath
             );
         }
 
-        if (preg_match('/[\\\x00-\x1F\x7F]/u', $candidate) === 1) {
+        if (
+            str_contains($candidate, '\\')
+            || preg_match('/[\x00-\x1F\x7F]/', $candidate) === 1
+        ) {
             throw new ApiDomainException(
                 'seo.path_invalid',
                 'مسیر سئو شامل نویسه نامعتبر است.',

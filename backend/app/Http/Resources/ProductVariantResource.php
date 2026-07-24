@@ -3,9 +3,8 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
 
-final class ProductVariantResource extends JsonResource
+final class ProductVariantResource extends OkJsonResource
 {
     public function toArray(Request $request): array
     {
