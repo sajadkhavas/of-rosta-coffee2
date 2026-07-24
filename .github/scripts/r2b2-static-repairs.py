@@ -77,6 +77,26 @@ replace(
     "return $this->scopePublished($query)->where('robots_index', true);",
 )
 
+# The SEO audit must recognize both Laravel's dynamic scope syntax and the
+# equivalent concrete scope call used for static-analysis certainty.
+replace(
+    "scripts/audit-seo-content-contract.php",
+    '''$require(
+    'app/Models/ContentEntry.php',
+    '->published()',
+    'Indexability must remain dependent on publication status.',
+);
+''',
+    '''$contentEntryModel = $read('app/Models/ContentEntry.php');
+if (
+    ! str_contains($contentEntryModel, '->published()')
+    && ! str_contains($contentEntryModel, 'scopePublished($query)')
+) {
+    $failures[] = 'Indexability must remain dependent on publication status.';
+}
+''',
+)
+
 # FilesystemAdapter::temporaryUploadUrl() is already typed as an array. Retain
 # validation of the required URL field without a redundant array check.
 replace(
