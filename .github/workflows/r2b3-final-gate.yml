@@ -132,7 +132,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           rm -f backend/.env backend/*-audit.json
-          rm -rf backend/storage/framework/testing
+          rm -rf backend/storage/framework/testing backend/storage/framework/cache/phpstan
           sha256sum backend/composer.json backend/composer.lock | tee "$EVIDENCE_DIR/composer-after.sha256"
           cmp "$EVIDENCE_DIR/composer-before.sha256" "$EVIDENCE_DIR/composer-after.sha256"
           git diff --check
