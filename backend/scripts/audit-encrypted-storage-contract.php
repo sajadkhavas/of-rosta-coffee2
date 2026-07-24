@@ -110,6 +110,17 @@ foreach ($contracts as $key => $contract) {
     }
 }
 
+$report = [
+    'passed' => $failures === [],
+    'discovered' => $discovered,
+    'registered' => $registered,
+    'failures' => $failures,
+];
+file_put_contents(
+    $root.'/encrypted-storage-audit.json',
+    json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR).PHP_EOL,
+);
+
 if ($failures !== []) {
     fwrite(STDERR, "Encrypted storage contract audit failed:\n");
     foreach ($failures as $failure) {
