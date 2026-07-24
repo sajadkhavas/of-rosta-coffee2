@@ -130,7 +130,10 @@ jobs:
         run: php artisan migrate --force
 
       - name: Run backend quality gate
-        run: composer check
+        shell: bash
+        run: |
+          set -o pipefail
+          composer check 2>&1 | tee backend-quality.log
 
       - name: Upload backend reports
         if: always()
@@ -139,6 +142,7 @@ jobs:
           name: backend-quality-${{ github.run_id }}
           path: |
             backend/*-audit.json
+            backend/backend-quality.log
             backend/storage/logs/*.log
           if-no-files-found: ignore
           retention-days: 14
