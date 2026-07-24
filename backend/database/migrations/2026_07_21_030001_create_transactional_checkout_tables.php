@@ -51,7 +51,7 @@ return new class extends Migration
             $table->unsignedBigInteger('discount_total')->default(0);
             $table->unsignedBigInteger('grand_total');
             $table->char('currency', 3)->default('IRR');
-            $table->json('address_snapshot')->nullable();
+            $table->longText('address_snapshot')->nullable();
             $table->json('shipping_snapshot')->nullable();
             $table->json('warnings');
             $table->timestamp('expires_at')->index();
@@ -86,7 +86,7 @@ return new class extends Migration
             $table->foreignUlid('quote_id')->unique()->constrained('checkout_quotes')->restrictOnDelete();
             $table->string('order_number', 120)->unique();
             $table->string('status', 48)->index();
-            $table->json('address_snapshot');
+            $table->longText('address_snapshot');
             $table->text('notes')->nullable();
             $table->unsignedBigInteger('subtotal');
             $table->unsignedBigInteger('shipping_total');

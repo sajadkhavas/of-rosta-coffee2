@@ -153,7 +153,7 @@ return new class extends Migration
             $table->string('reference_type', 80)->nullable();
             $table->string('reference_id', 200)->nullable();
             $table->string('idempotency_key', 160)->nullable();
-            $table->json('metadata')->nullable();
+            $table->longText('metadata')->nullable();
             $table->timestamps();
             $table->unique(['variant_id', 'idempotency_key']);
             $table->index(['variant_id', 'created_at']);
