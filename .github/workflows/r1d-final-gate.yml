@@ -1,0 +1,233 @@
+name: Rosta R1D Final Frontend Gate
+
+on:
+  pull_request:
+    branches:
+      - integration/rosta-r-program
+    paths:
+      - .github/workflows/r1d-final-gate.yml
+      - .github/scripts/r1d-final-repair.py
+      - .github/fixtures/audit-seo-content.mjs
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rosta-r1d-final-gate
+  cancel-in-progress: false
+
+jobs:
+  repair-format-and-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      TARGET_BRANCH: program/r1d-frontend-gate
+      EXPECTED_HEAD: 39a5b2683ee4db943d0352c355e01b219bf47bf2
+      EVIDENCE_DIR: /tmp/rosta-r1d-final
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      VITE_SITE_URL: https://rosta.shop
+      VITE_API_URL: http://127.0.0.1:8000/api/v1
+      VITE_PAYMENT_REDIRECT_HOSTS: 127.0.0.1:8000
+      VITE_ALLOW_INDEXING: "false"
+      NITRO_PRESET: node-server
+    steps:
+      - name: Checkout R1D product branch
+        uses: actions/checkout@v4
+        with:
+          ref: program/r1d-frontend-gate
+          fetch-depth: 0
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Bun 1.2.22
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.22
+
+      - name: Verify exact snapshot
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$EVIDENCE_DIR/logs"
+          {
+            echo "head=$(git rev-parse HEAD)"
+            echo "tree=$(git rev-parse 'HEAD^{tree}')"
+            echo "node=$(node --version)"
+            echo "bun=$(bun --version)"
+            git status --short --branch
+          } | tee "$EVIDENCE_DIR/snapshot.txt"
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test "$(node -p 'process.versions.node.split(".")[0]')" = "22"
+          test "$(bun --version)" = "1.2.22"
+          test -z "$(git status --porcelain)"
+          sha256sum package.json bun.lock src/routeTree.gen.ts | tee "$EVIDENCE_DIR/hashes-start.txt"
+
+      - name: Apply reviewed functional repairs
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git show origin/automation/r1d-final-executor:.github/scripts/r1d-final-repair.py > /tmp/r1d-final-repair.py
+          python /tmp/r1d-final-repair.py
+          git show origin/automation/r1d-final-executor:.github/fixtures/audit-seo-content.mjs > scripts/audit-seo-content.mjs
+          test -s scripts/audit-seo-content.mjs
+          git diff --check
+
+      - name: Generate and review dependency lock
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          proposal=/tmp/rosta-r1d-final-lock
+          rm -rf "$proposal"
+          mkdir -p "$proposal"
+          cp package.json bun.lock "$proposal/"
+          [ ! -f bunfig.toml ] || cp bunfig.toml "$proposal/"
+          pushd "$proposal" >/dev/null
+          /usr/bin/time -f 'elapsed=%e' bun install --lockfile-only 2>&1 | tee "$EVIDENCE_DIR/logs/lock-proposal.log"
+          rm -rf node_modules
+          bun install --frozen-lockfile 2>&1 | tee "$EVIDENCE_DIR/logs/proposal-frozen-install.log"
+          node --input-type=module <<'NODE' | tee "$EVIDENCE_DIR/dependency-proof.json"
+          import fs from 'node:fs';
+          const read = (name) => JSON.parse(fs.readFileSync(`node_modules/${name}/package.json`, 'utf8'));
+          const proof = {
+            'tw-animate-css': read('tw-animate-css').version,
+            'eslint-config-prettier': read('eslint-config-prettier').version,
+          };
+          console.log(JSON.stringify(proof, null, 2));
+          if (proof['tw-animate-css'] !== '1.3.4') process.exit(20);
+          if (proof['eslint-config-prettier'] !== '10.1.1') process.exit(21);
+          NODE
+          popd >/dev/null
+          cmp package.json "$proposal/package.json"
+          cp "$proposal/bun.lock" bun.lock
+
+      - name: Prove clean dependencies and route determinism
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rm -rf node_modules
+          /usr/bin/time -f 'elapsed=%e' bun install --frozen-lockfile 2>&1 | tee "$EVIDENCE_DIR/logs/frozen-run-1.log"
+          sha256sum package.json bun.lock | tee "$EVIDENCE_DIR/hashes-run-1.txt"
+          bun run routes:generate 2>&1 | tee "$EVIDENCE_DIR/logs/routes-run-1.log"
+          cp src/routeTree.gen.ts "$EVIDENCE_DIR/routeTree-canonical.ts"
+          sha256sum src/routeTree.gen.ts | tee "$EVIDENCE_DIR/route-hash-1.txt"
+          bun run routes:generate 2>&1 | tee "$EVIDENCE_DIR/logs/routes-run-2.log"
+          sha256sum src/routeTree.gen.ts | tee "$EVIDENCE_DIR/route-hash-2.txt"
+          cmp "$EVIDENCE_DIR/route-hash-1.txt" "$EVIDENCE_DIR/route-hash-2.txt"
+          cmp "$EVIDENCE_DIR/routeTree-canonical.ts" src/routeTree.gen.ts
+
+          rm -rf node_modules
+          /usr/bin/time -f 'elapsed=%e' bun install --frozen-lockfile 2>&1 | tee "$EVIDENCE_DIR/logs/frozen-run-2.log"
+          sha256sum package.json bun.lock | tee "$EVIDENCE_DIR/hashes-run-2.txt"
+          cmp "$EVIDENCE_DIR/hashes-run-1.txt" "$EVIDENCE_DIR/hashes-run-2.txt"
+          bun run routes:generate 2>&1 | tee "$EVIDENCE_DIR/logs/routes-after-run-2.log"
+          cmp "$EVIDENCE_DIR/routeTree-canonical.ts" src/routeTree.gen.ts
+
+      - name: Capture and repair formatting debt
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          set +e
+          bun run lint > "$EVIDENCE_DIR/logs/lint-before-fix.log" 2>&1
+          lint_before_status=$?
+          set -e
+          echo "$lint_before_status" > "$EVIDENCE_DIR/lint-before.exit"
+          grep '^/home/runner/work/.*/of-rosta-coffee2/' "$EVIDENCE_DIR/logs/lint-before-fix.log" \
+            | sed 's#^.*/of-rosta-coffee2/##' \
+            | sort -u > "$EVIDENCE_DIR/lint-reported-files.txt" || true
+          test -s "$EVIDENCE_DIR/lint-reported-files.txt"
+
+          ./node_modules/.bin/eslint . --fix > "$EVIDENCE_DIR/logs/lint-fix.log" 2>&1
+          bun run lint 2>&1 | tee "$EVIDENCE_DIR/logs/lint-after-fix.log"
+          bun run routes:generate 2>&1 | tee "$EVIDENCE_DIR/logs/routes-after-format.log"
+          cmp "$EVIDENCE_DIR/routeTree-canonical.ts" src/routeTree.gen.ts
+          git diff --check
+
+          targeted_regex='^(bun.lock|package.json|scripts/audit-phase6-security.mjs|scripts/audit-phase17-release-baseline.mjs|scripts/audit-seo-content.mjs|src/config/site.ts|src/lib/api/schemas.ts|src/routeTree.gen.ts|vite.config.ts)$'
+          git diff --name-only | sort > "$EVIDENCE_DIR/changed-after-format.txt"
+          while IFS= read -r file; do
+            if [[ "$file" =~ $targeted_regex ]]; then
+              continue
+            fi
+            grep -Fxq "$file" "$EVIDENCE_DIR/lint-reported-files.txt" || {
+              echo "Unexpected non-lint formatting change: $file" >&2
+              exit 30
+            }
+          done < "$EVIDENCE_DIR/changed-after-format.txt"
+
+      - name: Run all frontend gates independently
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          run_gate() {
+            name="$1"; shift
+            start=$(date +%s)
+            "$@" >"$EVIDENCE_DIR/logs/$name.log" 2>&1
+            status=$?
+            end=$(date +%s)
+            printf '%s\t%s\t%s\n' "$name" "$status" "$((end-start))" | tee -a "$EVIDENCE_DIR/matrix.tsv"
+            return "$status"
+          }
+          run_gate audit-phase6 bun run audit:phase6
+          run_gate audit-seo bun run audit:seo
+          run_gate audit-phase16 bun run audit:phase16
+          run_gate audit-phase17 bun run audit:phase17
+          run_gate audit-admin-finance bun run audit:admin-finance
+          run_gate audit-seller-operations bun run audit:seller-operations
+          run_gate audit-admin-operations bun run audit:admin-operations
+          run_gate audit-phase20 bun run audit:phase20
+          run_gate audit-phase21 bun run audit:phase21
+          run_gate audit-phase22 bun run audit:phase22
+          run_gate unit-tests bun run test:unit
+          run_gate typecheck bun run typecheck
+          run_gate lint bun run lint
+          run_gate build bun run build
+          test -s .output/server/index.mjs
+          test -d .output/public
+          find .output/public -type f | grep -q .
+          run_gate bundle-check bun run bundle:check
+
+      - name: Run aggregate check once
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rm -rf .output
+          /usr/bin/time -f 'elapsed=%e' bun run check 2>&1 | tee "$EVIDENCE_DIR/logs/final-check.log"
+          test -s .output/server/index.mjs
+          test -d .output/public
+          find .output/public -type f | grep -q .
+          bun run routes:generate 2>&1 | tee "$EVIDENCE_DIR/logs/routes-after-final-check.log"
+          cmp "$EVIDENCE_DIR/routeTree-canonical.ts" src/routeTree.gen.ts
+
+      - name: Enforce boundaries and push product commit
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git diff --check
+          git diff --name-only | sort | tee "$EVIDENCE_DIR/changed-files.txt"
+          test -z "$(git diff --name-only -- backend deploy .github 2>/dev/null || true)"
+          test -z "$(git status --porcelain | grep -E '(^| )\.env($|\.)|\.pem$|\.key$|\.p12$|\.sql$|\.dump$' || true)"
+          grep -Fq 'VITE_ALLOW_INDEXING=false' .env.staging.example
+          ! grep -RIE --exclude-dir=node_modules --exclude='bun.lock' 'grind[_-]?(selector|state)|grind_option|grind_preference' src scripts tests public vite.config.ts
+          grep -Fq '50 | 100 | 250 | 500 | 1000' src/lib/api/contracts.ts
+          git diff --stat | tee "$EVIDENCE_DIR/diff-stat.txt"
+
+          git config user.name 'Rosta Program Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add package.json bun.lock public scripts src tests vite.config.ts
+          git commit -m 'fix(frontend): complete production quality gate'
+          git push origin HEAD:"$TARGET_BRANCH"
+          git rev-parse HEAD | tee "$EVIDENCE_DIR/result-commit.txt"
+          echo 'frontend_foundation=ready' | tee "$EVIDENCE_DIR/result.txt"
+
+      - name: Upload final evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rosta-r1d-final-${{ github.run_id }}
+          path: /tmp/rosta-r1d-final
+          if-no-files-found: warn
+          retention-days: 14
