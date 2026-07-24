@@ -98,11 +98,14 @@ foreach ($contracts as $key => $contract) {
         continue;
     }
 
-    $field = preg_quote($contract['field'], '/');
-    if (preg_match("/\\$table->(?:text|longText)\\('{$field}'\\)/", $migration) !== 1) {
+    $field = $contract['field'];
+    $usesTextStorage = str_contains($migration, "\$table->text('{$field}')")
+        || str_contains($migration, "\$table->longText('{$field}')");
+
+    if (! $usesTextStorage) {
         $failures[] = 'Encrypted array storage must use text or longText: '.$key;
     }
-    if (preg_match("/\\$table->json\\('{$field}'\\)/", $migration) === 1) {
+    if (str_contains($migration, "\$table->json('{$field}')")) {
         $failures[] = 'Encrypted array storage must never use JSON: '.$key;
     }
 }
