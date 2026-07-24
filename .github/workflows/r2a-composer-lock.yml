@@ -112,14 +112,21 @@ jobs:
           sha256sum backend/composer.json | tee "$EVIDENCE_DIR/composer-json-after.sha256"
           cmp "$EVIDENCE_DIR/composer-json-before.sha256" "$EVIDENCE_DIR/composer-json-after.sha256"
           git diff --check
-          changed="$(git diff --name-only | sort)"
-          printf '%s\n' "$changed" | tee "$EVIDENCE_DIR/changed-files.txt"
-          test "$changed" = "backend/composer.lock"
-          test -z "$(git diff --name-only -- ':!backend/composer.lock')"
-          git diff --stat | tee "$EVIDENCE_DIR/diff-stat.txt"
+          tracked="$(git diff --name-only | sort)"
+          untracked="$(git ls-files --others --exclude-standard | sort)"
+          printf '%s\n' "$tracked" | tee "$EVIDENCE_DIR/tracked-files.txt"
+          printf '%s\n' "$untracked" | tee "$EVIDENCE_DIR/untracked-files.txt"
+          test -z "$tracked"
+          test "$untracked" = "backend/composer.lock"
+          test -s backend/composer.lock
           git config user.name "Rosta Program Automation"
           git config user.email "actions@users.noreply.github.com"
           git add backend/composer.lock
+          staged="$(git diff --cached --name-only | sort)"
+          printf '%s\n' "$staged" | tee "$EVIDENCE_DIR/staged-files.txt"
+          test "$staged" = "backend/composer.lock"
+          git diff --cached --check
+          git diff --cached --stat | tee "$EVIDENCE_DIR/diff-stat.txt"
           git commit -m "build(backend): freeze Composer dependencies"
           git push origin HEAD:"$TARGET_BRANCH"
           git rev-parse HEAD | tee "$EVIDENCE_DIR/result-commit.txt"
