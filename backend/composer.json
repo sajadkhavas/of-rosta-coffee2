@@ -67,6 +67,7 @@
     "audit:encrypted-storage": "@php scripts/audit-encrypted-storage-contract.php",
     "audit:acceptance-fixtures": "@php scripts/audit-acceptance-fixture-contract.php",
     "audit:browser-acceptance": "@php scripts/audit-browser-acceptance-contract.php",
+    "audit:r3c2": "@php scripts/audit-r3c2-commerce-roles-contract.php",
     "readiness": "@php artisan rosta:readiness --json",
     "acceptance:infrastructure": "@php artisan rosta:infrastructure-acceptance --json",
     "acceptance:fixtures": "@php artisan rosta:acceptance-fixtures --json",
@@ -96,6 +97,7 @@
       "@audit:encrypted-storage",
       "@audit:acceptance-fixtures",
       "@audit:browser-acceptance",
+      "@audit:r3c2",
       "@php artisan test",
       "@php vendor/bin/phpstan analyse --memory-limit=1G",
       "@php vendor/bin/pint --parallel --test"
