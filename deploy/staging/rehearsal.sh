@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.rehearsal.yml"
 EVIDENCE_DIR="${EVIDENCE_DIR:-/tmp/rosta-r4a-evidence}"
+BACKUP_FILE="${TMPDIR:-/tmp}/rosta-r4a-${GITHUB_RUN_ID:-$$}.sql.gz"
 
 fail() {
   printf '[r4a] ERROR: %s\n' "$*" >&2
@@ -30,6 +31,7 @@ test -s "$ROOT_DIR/bun.lock" || fail "bun.lock is required"
 test -s "$ROOT_DIR/backend/composer.lock" || fail "backend/composer.lock is required"
 test -f "$COMPOSE_FILE" || fail "Missing rehearsal compose file"
 
+rm -rf "$EVIDENCE_DIR"
 mkdir -p "$EVIDENCE_DIR"
 chmod 700 "$EVIDENCE_DIR"
 
@@ -73,8 +75,9 @@ cleanup() {
   local exit_code=$?
   collect_runtime_evidence
   compose down --volumes --remove-orphans >/dev/null 2>&1 || true
+  rm -f "$BACKUP_FILE" "$BACKUP_FILE.sha256"
   if [[ $exit_code -ne 0 ]]; then
-    log "Rehearsal failed; evidence retained at $EVIDENCE_DIR"
+    log "Rehearsal failed; redacted evidence retained at $EVIDENCE_DIR"
   fi
   exit "$exit_code"
 }
@@ -96,17 +99,16 @@ sha256sum \
 
 log "Rendering the isolated staging package"
 compose config --quiet
-compose config > "$EVIDENCE_DIR/compose-rendered.yml"
+compose config --no-interpolate > "$EVIDENCE_DIR/compose-contract.yml"
 
-log "Building the immutable backend, Nginx and frontend images"
+log "Building immutable backend, Nginx and frontend images"
 compose build --pull api api-web frontend 2>&1 | tee "$EVIDENCE_DIR/docker-build.log"
 
 for image in \
   "rosta-r4a-api:$ROSTA_IMAGE_TAG" \
   "rosta-r4a-api-web:$ROSTA_IMAGE_TAG" \
   "rosta-r4a-frontend:$ROSTA_IMAGE_TAG"; do
-  docker image inspect --format '{{.Id}} {{index .RepoDigests 0}}' "$image" \
-    2>/dev/null || docker image inspect --format '{{.Id}}' "$image"
+  docker image inspect --format '{{.Id}}' "$image"
 done | tee "$EVIDENCE_DIR/image-identities.txt"
 
 docker tag "rosta-r4a-api:$ROSTA_IMAGE_TAG" rosta-r4a-api:r4a-baseline
@@ -116,11 +118,7 @@ docker tag "rosta-r4a-frontend:$ROSTA_IMAGE_TAG" rosta-r4a-frontend:r4a-baseline
 log "Starting private MySQL, Redis and S3-compatible object storage"
 compose up -d --wait mysql redis
 compose up -d minio
-compose create minio-init >/dev/null
-compose start --attach minio-init 2>&1 | tee "$EVIDENCE_DIR/minio-init.log"
-
-test "$(compose ps -a --format json minio-init | python3 -c 'import json,sys; data=json.load(sys.stdin); item=data[0] if isinstance(data,list) else data; print(item.get("ExitCode", item.get("ExitCode", 1)))')" = "0" \
-  || fail "Object-storage initialization did not complete successfully"
+compose run --rm --no-deps minio-init 2>&1 | tee "$EVIDENCE_DIR/minio-init.log"
 
 log "Applying forward-only migrations to the empty rehearsal database"
 compose run --rm api php artisan migrate --force --no-interaction \
@@ -147,9 +145,24 @@ import json, sys
 payload = json.load(open(sys.argv[1], encoding="utf-8"))
 if payload.get("accepted") is not True:
     raise SystemExit("staging acceptance did not return accepted=true")
+required = {
+    "mysql_connection",
+    "migrations_current",
+    "redis_round_trip",
+    "redis_queue",
+    "r2_private_round_trip",
+    "r2_public_delivery",
+    "r2_cors",
+    "r2_cleanup",
+}
+checks = payload.get("checks", {})
+missing = sorted(required.difference(checks))
+failed = sorted(name for name in required if not checks.get(name, {}).get("passed"))
+if missing or failed:
+    raise SystemExit(f"incomplete staging acceptance: missing={missing}; failed={failed}")
 PY
 
-log "Accepting the local edge, SSR, noindex and security-header boundaries"
+log "Accepting local edge, SSR, noindex and security-header boundaries"
 curl --fail --silent --show-error --dump-header "$EVIDENCE_DIR/home.headers" \
   http://127.0.0.1:18080/ > "$EVIDENCE_DIR/home.html"
 curl --fail --silent --show-error --dump-header "$EVIDENCE_DIR/api.headers" \
@@ -169,20 +182,19 @@ if payload.get("data", {}).get("status") != "ok":
 PY
 
 log "Creating and verifying a transaction-consistent database backup"
-backup="$EVIDENCE_DIR/rehearsal.sql.gz"
 compose exec -T -e MYSQL_PWD="$R4A_MYSQL_ROOT_PASSWORD" mysql \
   mysqldump --user=root --single-transaction --quick --routines --events --triggers \
-  --set-gtid-purged=OFF rosta_rehearsal | gzip -9 > "$backup"
-test -s "$backup"
-gzip -t "$backup"
-sha256sum "$backup" | tee "$backup.sha256"
+  --set-gtid-purged=OFF rosta_rehearsal | gzip -9 > "$BACKUP_FILE"
+test -s "$BACKUP_FILE"
+gzip -t "$BACKUP_FILE"
+sha256sum "$BACKUP_FILE" | awk '{print $1}' | tee "$EVIDENCE_DIR/backup.sha256"
 
 source_migrations="$(compose exec -T -e MYSQL_PWD="$R4A_MYSQL_ROOT_PASSWORD" mysql \
   mysql --user=root --batch --skip-column-names \
   -e 'SELECT COUNT(*) FROM rosta_rehearsal.migrations')"
 compose exec -T -e MYSQL_PWD="$R4A_MYSQL_ROOT_PASSWORD" mysql \
   mysql --user=root -e 'DROP DATABASE IF EXISTS rosta_rehearsal_restore; CREATE DATABASE rosta_rehearsal_restore CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'
-gzip -dc "$backup" | compose exec -T -e MYSQL_PWD="$R4A_MYSQL_ROOT_PASSWORD" mysql \
+gzip -dc "$BACKUP_FILE" | compose exec -T -e MYSQL_PWD="$R4A_MYSQL_ROOT_PASSWORD" mysql \
   mysql --user=root rosta_rehearsal_restore
 restored_migrations="$(compose exec -T -e MYSQL_PWD="$R4A_MYSQL_ROOT_PASSWORD" mysql \
   mysql --user=root --batch --skip-column-names \
@@ -191,6 +203,7 @@ test "$source_migrations" = "$restored_migrations"
 printf 'source_migrations=%s\nrestored_migrations=%s\n' \
   "$source_migrations" "$restored_migrations" \
   | tee "$EVIDENCE_DIR/restore-drill.txt"
+rm -f "$BACKUP_FILE"
 
 log "Exercising image-only rollback without schema rollback"
 accepted_tag="$ROSTA_IMAGE_TAG"
@@ -226,6 +239,7 @@ sha256sum \
   | tee "$EVIDENCE_DIR/dependencies-after.sha256"
 cmp "$EVIDENCE_DIR/dependencies-before.sha256" "$EVIDENCE_DIR/dependencies-after.sha256"
 
+collect_runtime_evidence
 for secret in \
   "$R4A_APP_KEY" \
   "$R4A_DB_PASSWORD" \
@@ -238,11 +252,14 @@ for secret in \
   fi
 done
 
-if grep -R -E 'PAYMENT_MERCHANT_ID|KAVENEGAR_API_KEY|APP_KEY=|DB_PASSWORD=' "$EVIDENCE_DIR" >/dev/null 2>&1; then
+if grep -R -E 'PAYMENT_MERCHANT_ID|KAVENEGAR_API_KEY|APP_KEY=|DB_PASSWORD=|S3_SECRET_ACCESS_KEY=' "$EVIDENCE_DIR" >/dev/null 2>&1; then
   fail "Secret-shaped material entered rehearsal evidence"
 fi
 
-collect_runtime_evidence
+if find "$EVIDENCE_DIR" -type f \( -name '*.sql' -o -name '*.sql.gz' -o -name '*.env' -o -name '*.png' -o -name '*.webm' \) | grep -q .; then
+  fail "Private, visual or database payload entered rehearsal evidence"
+fi
+
 git -C "$ROOT_DIR" diff --check
 git -C "$ROOT_DIR" status --porcelain --untracked-files=all \
   | tee "$EVIDENCE_DIR/git-status-final.txt"
@@ -258,4 +275,5 @@ test -z "$(git -C "$ROOT_DIR" status --porcelain --untracked-files=all)"
 
 trap - EXIT
 compose down --volumes --remove-orphans >/dev/null
+rm -f "$BACKUP_FILE" "$BACKUP_FILE.sha256"
 log "Hosted staging package rehearsal completed"
