@@ -90,12 +90,18 @@ jobs:
           cp r4a-staging-package-audit.json "$EVIDENCE_DIR/"
           rm -f r4a-staging-package-audit.json
 
-      - name: Run complete backend permanent gate
+      - name: Run backend staging contract gate
         working-directory: backend
         shell: bash
         run: |
-          set -o pipefail
-          composer check 2>&1 | tee "$EVIDENCE_DIR/backend-check.log"
+          set -Eeuo pipefail
+          composer validate --strict --no-interaction 2>&1 | tee "$EVIDENCE_DIR/composer-validate.log"
+          composer audit --locked --no-interaction 2>&1 | tee "$EVIDENCE_DIR/composer-audit.log"
+          composer audit:staging 2>&1 | tee "$EVIDENCE_DIR/backend-staging-audit.log"
+          php -l scripts/audit-staging-deployment-contract.php \
+            | tee "$EVIDENCE_DIR/backend-staging-syntax.log"
+          php vendor/bin/pint --test scripts/audit-staging-deployment-contract.php \
+            2>&1 | tee "$EVIDENCE_DIR/backend-staging-format.log"
 
       - name: Run hosted staging package rehearsal
         shell: bash
