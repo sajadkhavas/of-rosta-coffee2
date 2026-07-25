@@ -149,10 +149,15 @@ jobs:
           grep -q 'ROSTA_R3A_ACCEPTANCE_FIXTURES_COMPLETE' "$EVIDENCE_DIR/acceptance-fixtures.json"
 
       - name: Build production TanStack SSR output
+        shell: bash
         env:
           NODE_ENV: production
           NITRO_PRESET: node-server
-        run: bun run build 2>&1 | tee "$EVIDENCE_DIR/frontend-build.log"
+        run: |
+          set -o pipefail
+          bun run build 2>&1 | tee "$EVIDENCE_DIR/frontend-build.log"
+          git diff -- src/routeTree.gen.ts | tee "$EVIDENCE_DIR/route-tree.diff"
+          cp src/routeTree.gen.ts "$EVIDENCE_DIR/routeTree.gen.ts"
 
       - name: Boot Laravel API
         working-directory: backend
