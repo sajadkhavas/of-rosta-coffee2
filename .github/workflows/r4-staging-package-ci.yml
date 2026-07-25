@@ -116,7 +116,11 @@ jobs:
           set -Eeuo pipefail
           rm -f backend/.env backend/*-audit.json ./*-audit.json ./r3*.json ./r4*.json bundle-report.json
           rm -rf backend/storage/framework/cache/phpstan backend/storage/framework/testing test-results
-          sha256sum package.json bun.lock backend/composer.json backend/composer.lock \
+          sha256sum \
+            "$GITHUB_WORKSPACE/package.json" \
+            "$GITHUB_WORKSPACE/bun.lock" \
+            "$GITHUB_WORKSPACE/backend/composer.json" \
+            "$GITHUB_WORKSPACE/backend/composer.lock" \
             | tee "$EVIDENCE_DIR/dependencies-after.sha256"
           cmp "$EVIDENCE_DIR/dependencies-before.sha256" "$EVIDENCE_DIR/dependencies-after.sha256"
           if grep -R -E 'APP_KEY=|DB_PASSWORD=|MYSQL_ROOT_PASSWORD|S3_SECRET_ACCESS_KEY|PAYMENT_MERCHANT_ID|KAVENEGAR_API_KEY|09123456789|0912000000[0-9]' "$EVIDENCE_DIR"; then
