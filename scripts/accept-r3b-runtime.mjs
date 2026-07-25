@@ -10,7 +10,6 @@ const checks = [];
 
 function record(name, passed, evidence) {
   checks.push({ name, passed, evidence });
-  if (!passed) throw new Error(`${name}: ${evidence}`);
 }
 
 async function response(url, init = {}) {
@@ -39,11 +38,24 @@ async function html(path) {
   return { result, body };
 }
 
+function htmlEvidence(result, body, expected) {
+  return [
+    `status=${result.status}`,
+    `content_type=${result.headers.get("content-type") ?? "missing"}`,
+    `body_length=${body.length}`,
+    `expected_content=${body.includes(expected)}`,
+  ].join("; ");
+}
+
 try {
   const live = await json(`${apiBase}/health/live`, {
     headers: { "X-Request-ID": "r3b-live-probe" },
   });
-  record("api_liveness", live.result.status === 200 && live.body?.data?.status === "ok", "Laravel liveness returns the canonical envelope.");
+  record(
+    "api_liveness",
+    live.result.status === 200 && live.body?.data?.status === "ok",
+    `status=${live.result.status}; canonical_status=${live.body?.data?.status ?? "missing"}`,
+  );
   record(
     "contract_header",
     live.result.headers.get("x-rosta-contract-version") === expectedContract &&
@@ -63,7 +75,7 @@ try {
       ready.body?.data?.status === "ready" &&
       ready.body?.data?.checks?.database === true &&
       ready.body?.data?.checks?.redis === true,
-    "Laravel confirms MySQL and Redis readiness.",
+    `status=${ready.result.status}; canonical_status=${ready.body?.data?.status ?? "missing"}`,
   );
 
   const products = await json(`${apiBase}/products`);
@@ -73,14 +85,15 @@ try {
     products.result.status === 200 &&
       productsText.includes("ethiopia-sidamo-whole-bean") &&
       [100, 250, 500].every((weight) => productsText.includes(`\"weight_grams\":${weight}`)),
-    "Public catalog exposes the seeded published product and allowed acceptance weights.",
+    `status=${products.result.status}; live_slug=${productsText.includes("ethiopia-sidamo-whole-bean")}`,
   );
 
   const roasteries = await json(`${apiBase}/roasteries`);
+  const roasteriesText = JSON.stringify(roasteries.body);
   record(
     "public_roasteries",
-    roasteries.result.status === 200 && JSON.stringify(roasteries.body).includes("rosta-roastery"),
-    "Public roastery API exposes the verified acceptance roastery.",
+    roasteries.result.status === 200 && roasteriesText.includes("rosta-roastery"),
+    `status=${roasteries.result.status}; live_slug=${roasteriesText.includes("rosta-roastery")}`,
   );
 
   const cors = await response(`${apiBase}/products`, {
@@ -97,7 +110,7 @@ try {
       cors.status < 300 &&
       cors.headers.get("access-control-allow-origin") === frontendBase &&
       cors.headers.get("access-control-allow-credentials") === "true",
-    "CORS reflects only the configured frontend origin and allows credentials.",
+    `status=${cors.status}; origin=${cors.headers.get("access-control-allow-origin") ?? "missing"}; credentials=${cors.headers.get("access-control-allow-credentials") ?? "missing"}`,
   );
 
   const csrf = await response(`${backendBase}/sanctum/csrf-cookie`, {
@@ -113,7 +126,7 @@ try {
   record(
     "csrf_cookie_boundary",
     csrf.status === 204 && setCookies.some((cookie) => cookie.startsWith("XSRF-TOKEN=")),
-    "Sanctum issues an XSRF cookie only through the configured credentialed origin.",
+    `status=${csrf.status}; xsrf_cookie=${setCookies.some((cookie) => cookie.startsWith("XSRF-TOKEN="))}`,
   );
 
   const unauthenticated = await json(`${apiBase}/me`, {
@@ -128,7 +141,7 @@ try {
     unauthenticated.result.status === 401 &&
       unauthenticated.result.headers.get("location") === null &&
       unauthenticated.result.headers.get("access-control-allow-origin") === frontendBase,
-    "Protected API resources reject fixture identities until a real session is established.",
+    `status=${unauthenticated.result.status}; redirect=${unauthenticated.result.headers.get("location") ?? "none"}`,
   );
 
   const homepage = await html("/");
@@ -136,29 +149,29 @@ try {
     "ssr_homepage",
     homepage.result.status === 200 &&
       homepage.result.headers.get("content-type")?.includes("text/html") === true &&
-      homepage.body.includes("رستا"),
-    "TanStack Start renders the Persian homepage through the Node SSR server.",
+      homepage.body.includes("قهوه‌ای که زنده است"),
+    htmlEvidence(homepage.result, homepage.body, "قهوه‌ای که زنده است"),
   );
 
   const productsPage = await html("/products");
   record(
     "ssr_catalog",
     productsPage.result.status === 200 && productsPage.body.includes("اتیوپی سیدامو دانه کامل"),
-    "SSR catalog consumes the live Laravel product response.",
+    htmlEvidence(productsPage.result, productsPage.body, "اتیوپی سیدامو دانه کامل"),
   );
 
   const productPage = await html("/products/ethiopia-sidamo-whole-bean");
   record(
     "ssr_product_detail",
     productPage.result.status === 200 && productPage.body.includes("اتیوپی سیدامو دانه کامل"),
-    "SSR product detail resolves the seeded live slug.",
+    htmlEvidence(productPage.result, productPage.body, "اتیوپی سیدامو دانه کامل"),
   );
 
   const roasteriesPage = await html("/roasteries");
   record(
     "ssr_roasteries",
     roasteriesPage.result.status === 200 && roasteriesPage.body.includes("روستری رستا"),
-    "SSR roastery listing consumes the verified live roastery response.",
+    htmlEvidence(roasteriesPage.result, roasteriesPage.body, "روستری رستا"),
   );
 
   const robots = await response(`${frontendBase}/robots.txt`);
@@ -166,19 +179,27 @@ try {
   record(
     "indexing_disabled",
     robots.status === 200 && /disallow\s*:\s*\//i.test(robotsBody),
-    "Integrated acceptance runtime remains explicitly non-indexable.",
+    `status=${robots.status}; disallow_all=${/disallow\s*:\s*\//i.test(robotsBody)}`,
   );
 
+  const readyForAcceptance = checks.every((check) => check.passed);
   const report = {
-    ready: true,
+    ready: readyForAcceptance,
     generated_at: new Date().toISOString(),
     contract_version: expectedContract,
     api_origin: new URL(apiBase).origin,
     frontend_origin: new URL(frontendBase).origin,
     checks,
-    marker: "ROSTA_R3B_INTEGRATED_RUNTIME_COMPLETE",
+    failures: checks.filter((check) => !check.passed).map((check) => check.name),
+    marker: readyForAcceptance ? "ROSTA_R3B_INTEGRATED_RUNTIME_COMPLETE" : null,
   };
   await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+
+  if (!readyForAcceptance) {
+    console.error(JSON.stringify(report, null, 2));
+    process.exit(1);
+  }
+
   console.log(JSON.stringify(report, null, 2));
 } catch (error) {
   const report = {
