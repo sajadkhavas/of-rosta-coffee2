@@ -1,0 +1,64 @@
+name: Source Format Artifact
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/source-format-artifact.yml"
+      - "scripts/accept-r3b-runtime.mjs"
+      - "scripts/audit-r3b-integrated-runtime.mjs"
+      - "scripts/audit-r3c-browser-acceptance.mjs"
+      - "scripts/audit-r3c2-commerce-roles.mjs"
+      - "scripts/audit-r3d-final-integration.mjs"
+      - "scripts/audit-seo-content.mjs"
+      - "tests/browser/r3c-public-customer.spec.ts"
+      - "tests/browser/r3c2-commerce-roles.spec.ts"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.22
+
+      - name: Install frozen dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Format reported sources with the locked Prettier version
+        run: |
+          bunx prettier --write \
+            scripts/accept-r3b-runtime.mjs \
+            scripts/audit-r3b-integrated-runtime.mjs \
+            scripts/audit-r3c-browser-acceptance.mjs \
+            scripts/audit-r3c2-commerce-roles.mjs \
+            scripts/audit-r3d-final-integration.mjs \
+            scripts/audit-seo-content.mjs \
+            tests/browser/r3c-public-customer.spec.ts \
+            tests/browser/r3c2-commerce-roles.spec.ts
+          git diff --check
+          git diff --binary > prettier-format.patch
+
+      - name: Upload formatted sources
+        uses: actions/upload-artifact@v4
+        with:
+          name: rosta-locked-prettier-${{ github.run_id }}
+          path: |
+            scripts/accept-r3b-runtime.mjs
+            scripts/audit-r3b-integrated-runtime.mjs
+            scripts/audit-r3c-browser-acceptance.mjs
+            scripts/audit-r3c2-commerce-roles.mjs
+            scripts/audit-r3d-final-integration.mjs
+            scripts/audit-seo-content.mjs
+            tests/browser/r3c-public-customer.spec.ts
+            tests/browser/r3c2-commerce-roles.spec.ts
+            prettier-format.patch
+          retention-days: 1
