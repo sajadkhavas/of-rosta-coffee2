@@ -131,12 +131,6 @@ services:
       - minio-data:/data
     networks:
       - object-storage
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
-      interval: 5s
-      timeout: 3s
-      retries: 30
-      start_period: 15s
     security_opt:
       - no-new-privileges:true
     logging: *default-logging
@@ -145,7 +139,7 @@ services:
     image: minio/mc:RELEASE.2025-04-16T18-13-26Z
     entrypoint: ["/bin/sh", "-c"]
     command: >-
-      mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}";
+      until mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"; do sleep 2; done;
       mc mb --ignore-existing local/rosta-media;
       mc anonymous set download local/rosta-media
     environment:
