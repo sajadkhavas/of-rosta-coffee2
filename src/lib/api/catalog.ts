@@ -167,7 +167,7 @@ export function productFiltersToSearch(filters: ProductFilters): URLSearchParams
     search.set("max_price", String(maxPrice));
   }
   if (filters.available !== undefined) {
-    search.set("available", filters.available ? "true" : "false");
+    search.set("available", filters.available ? "1" : "0");
   }
   if (filters.sort) search.set("sort", filters.sort);
   if (page) search.set("page", String(page));
