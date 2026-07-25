@@ -107,8 +107,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          chmod +x deploy/staging/rehearsal.sh
-          deploy/staging/rehearsal.sh
+          bash deploy/staging/rehearsal.sh
           grep -q 'ROSTA_R4A_STAGING_PACKAGE_COMPLETE' "$EVIDENCE_DIR/result.txt"
 
       - name: Enforce evidence privacy and clean workspace
