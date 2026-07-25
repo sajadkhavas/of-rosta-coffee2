@@ -56,7 +56,7 @@ jobs:
         working-directory: backend
 
     env:
-      EVIDENCE_DIR: /tmp/rosta-r2-evidence/${{ github.run_id }}/r2d
+      EVIDENCE_DIR: /tmp/rosta-r3-evidence/${{ github.run_id }}/r3a
       APP_ENV: testing
       APP_DEBUG: "false"
       APP_URL: http://localhost:8000
@@ -97,7 +97,7 @@ jobs:
           coverage: none
           tools: composer:v2
 
-      - name: Freeze exact R2D snapshot
+      - name: Freeze exact backend snapshot
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -187,7 +187,7 @@ jobs:
           set -Eeuo pipefail
           composer validate --strict 2>&1 | tee "$EVIDENCE_DIR/composer-validate.log"
           composer audit --locked 2>&1 | tee "$EVIDENCE_DIR/composer-audit.log"
-          for gate in business checkout seo cooci-adoption fulfillment reviews-support media-storage openapi validation finance seller-operations admin-operations live-public staging encrypted-storage; do
+          for gate in business checkout seo cooci-adoption fulfillment reviews-support media-storage openapi validation finance seller-operations admin-operations live-public staging encrypted-storage acceptance-fixtures; do
             composer "audit:$gate" 2>&1 | tee "$EVIDENCE_DIR/audit-$gate.log"
           done
 
@@ -215,7 +215,16 @@ jobs:
           set -o pipefail
           composer check 2>&1 | tee "$EVIDENCE_DIR/composer-check.log"
 
-      - name: Enforce clean scope and emit backend marker
+      - name: Seed and verify R3A acceptance fixtures
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          php artisan migrate:fresh --force 2>&1 | tee "$EVIDENCE_DIR/acceptance-migrations.log"
+          composer acceptance:fixtures 2>&1 | tee "$EVIDENCE_DIR/acceptance-fixtures.json"
+          grep -q '"ready": true' "$EVIDENCE_DIR/acceptance-fixtures.json"
+          grep -q 'ROSTA_R3A_ACCEPTANCE_FIXTURES_COMPLETE' "$EVIDENCE_DIR/acceptance-fixtures.json"
+
+      - name: Enforce clean scope and emit backend markers
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -227,13 +236,16 @@ jobs:
           git diff --check
           git status --short --untracked-files=all | tee "$EVIDENCE_DIR/git-status-final.txt"
           test -z "$(git status --porcelain --untracked-files=all)"
-          echo "backend_foundation=ready" | tee "$EVIDENCE_DIR/result.txt"
+          {
+            echo "backend_foundation=ready"
+            echo "ROSTA_R3A_ACCEPTANCE_FIXTURES_COMPLETE"
+          } | tee "$EVIDENCE_DIR/result.txt"
 
-      - name: Upload R2D evidence
+      - name: Upload backend and R3A evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rosta-r2d-backend-${{ github.run_id }}
-          path: /tmp/rosta-r2-evidence/${{ github.run_id }}/r2d
+          name: rosta-r3a-backend-${{ github.run_id }}
+          path: /tmp/rosta-r3-evidence/${{ github.run_id }}/r3a
           if-no-files-found: warn
           retention-days: 14
