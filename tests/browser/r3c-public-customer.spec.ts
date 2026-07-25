@@ -7,11 +7,17 @@ const require = createRequire(import.meta.url);
 const axeSource = readFileSync(require.resolve("axe-core/axe.min.js"), "utf8");
 const pendingOtpKey = "rosta.pending-otp.v1";
 
+interface AxeNode {
+  target: string[];
+  html: string;
+  failureSummary?: string;
+}
+
 interface AxeViolation {
   id: string;
   impact: string | null;
   help: string;
-  nodes: unknown[];
+  nodes: AxeNode[];
 }
 
 async function expectNoSeriousAccessibilityViolations(page: Page): Promise<void> {
@@ -32,7 +38,16 @@ async function expectNoSeriousAccessibilityViolations(page: Page): Promise<void>
   });
 
   expect(
-    violations.map(({ id, impact, help, nodes }) => ({ id, impact, help, nodes: nodes.length })),
+    violations.map(({ id, impact, help, nodes }) => ({
+      id,
+      impact,
+      help,
+      nodes: nodes.map(({ target, html, failureSummary }) => ({
+        target,
+        html,
+        failureSummary,
+      })),
+    })),
   ).toEqual([]);
 }
 
