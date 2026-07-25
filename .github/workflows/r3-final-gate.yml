@@ -241,7 +241,10 @@ jobs:
         run: |
           set -Eeuo pipefail
           cp r3d-final-integration-audit.json "$EVIDENCE_DIR/"
-          rm -f ./*-audit.json ./r3*.json backend/.env backend/*-audit.json
+          if test -s bundle-report.json; then
+            cp bundle-report.json "$EVIDENCE_DIR/"
+          fi
+          rm -f ./*-audit.json ./r3*.json bundle-report.json backend/.env backend/*-audit.json
           rm -rf backend/storage/framework/cache/phpstan backend/storage/framework/testing test-results
           sha256sum package.json bun.lock backend/composer.json backend/composer.lock | tee "$EVIDENCE_DIR/dependencies-after.sha256"
           cmp "$EVIDENCE_DIR/dependencies-before.sha256" "$EVIDENCE_DIR/dependencies-after.sha256"
