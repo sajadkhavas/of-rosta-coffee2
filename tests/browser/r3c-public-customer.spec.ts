@@ -87,7 +87,9 @@ test.describe("R3C public browser journeys", () => {
     const products = await page.goto("/products");
     expect(products?.status()).toBe(200);
     await expect(page.getByText("اتیوپی سیدامو دانه کامل").first()).toBeVisible();
-    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/products/);
+    const canonical = page.locator('link[rel="canonical"]');
+    await expect(canonical).toHaveCount(1);
+    await expect(canonical).toHaveAttribute("href", /\/products/);
 
     const product = await page.goto("/products/ethiopia-sidamo-whole-bean");
     expect(product?.status()).toBe(200);
