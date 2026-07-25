@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Models\UserRole;
 use Database\Seeders\RostaAcceptanceSeeder;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
 
@@ -20,7 +19,7 @@ final class SeedAcceptanceFixtures extends Command
 
     protected $description = 'Seed deterministic non-production fixtures for integrated Rosta acceptance';
 
-    public function handle(): int
+    public function handle(RostaAcceptanceSeeder $seeder): int
     {
         if (! app()->environment(['local', 'testing'])) {
             return $this->fail('Acceptance fixtures are allowed only in local and testing environments.');
@@ -35,16 +34,10 @@ final class SeedAcceptanceFixtures extends Command
         }
 
         try {
-            $exitCode = Artisan::call('db:seed', [
-                '--class' => RostaAcceptanceSeeder::class,
-                '--force' => true,
-            ]);
+            $seeder->setContainer(app())->setCommand($this);
+            $seeder();
         } catch (Throwable $exception) {
             return $this->fail('Acceptance fixture seeding failed: '.$exception->getMessage());
-        }
-
-        if ($exitCode !== self::SUCCESS) {
-            return $this->fail('Acceptance fixture seeding returned a non-zero exit code.');
         }
 
         $customer = User::query()->where('mobile', '09123456789')->firstOrFail();
