@@ -14,9 +14,9 @@ import type {
   SearchCatalogType,
 } from "./contracts";
 import { apiFetch, isApiError } from "./client";
+import { laravelCollectionSchema } from "./pagination";
 import { queryKeys } from "./query-keys";
 import {
-  collectionSchema,
   parseContract,
   parseOptionalMedia,
   productDetailWireSchema,
@@ -181,7 +181,7 @@ export async function listProducts(
   const search = productFiltersToSearch(filters);
   const raw = await apiFetch(`/products${search.size ? `?${search.toString()}` : ""}`);
   const response = parseContract(
-    collectionSchema(publicProductSummaryWireSchema),
+    laravelCollectionSchema(publicProductSummaryWireSchema),
     raw,
     "فهرست محصولات",
   );
@@ -219,7 +219,7 @@ export async function listRoasteries(
 
   const raw = await apiFetch(`/roasteries${search.size ? `?${search.toString()}` : ""}`);
   const response = parseContract(
-    collectionSchema(roasterySummaryWireSchema),
+    laravelCollectionSchema(roasterySummaryWireSchema),
     raw,
     "فهرست روستری‌ها",
   );
