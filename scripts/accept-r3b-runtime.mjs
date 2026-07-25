@@ -121,9 +121,10 @@ try {
       Referer: `${frontendBase}/`,
     },
   });
-  const setCookies = typeof csrf.headers.getSetCookie === "function"
-    ? csrf.headers.getSetCookie()
-    : [csrf.headers.get("set-cookie") ?? ""];
+  const setCookies =
+    typeof csrf.headers.getSetCookie === "function"
+      ? csrf.headers.getSetCookie()
+      : [csrf.headers.get("set-cookie") ?? ""];
   record(
     "csrf_cookie_boundary",
     csrf.status === 204 && setCookies.some((cookie) => cookie.startsWith("XSRF-TOKEN=")),

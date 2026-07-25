@@ -23,17 +23,19 @@ interface AxeViolation {
 async function expectNoSeriousAccessibilityViolations(page: Page): Promise<void> {
   await page.addScriptTag({ content: axeSource });
   const violations = await page.evaluate(async () => {
-    const axe = (window as unknown as {
-      axe: {
-        run: (
-          context: Document,
-          options: { resultTypes: string[] },
-        ) => Promise<{ violations: AxeViolation[] }>;
-      };
-    }).axe;
+    const axe = (
+      window as unknown as {
+        axe: {
+          run: (
+            context: Document,
+            options: { resultTypes: string[] },
+          ) => Promise<{ violations: AxeViolation[] }>;
+        };
+      }
+    ).axe;
     const result = await axe.run(document, { resultTypes: ["violations"] });
-    return result.violations.filter((violation) =>
-      violation.impact === "serious" || violation.impact === "critical",
+    return result.violations.filter(
+      (violation) => violation.impact === "serious" || violation.impact === "critical",
     );
   });
 
@@ -57,16 +59,12 @@ function consumeAcceptanceOtp(challengeId: string): string {
   }
 
   for (let attempt = 0; attempt < 30; attempt += 1) {
-    const result = spawnSync(
-      "php",
-      ["artisan", "rosta:acceptance-otp", challengeId, "--no-ansi"],
-      {
-        cwd: "backend",
-        encoding: "utf8",
-        env: process.env,
-        stdio: ["ignore", "pipe", "pipe"],
-      },
-    );
+    const result = spawnSync("php", ["artisan", "rosta:acceptance-otp", challengeId, "--no-ansi"], {
+      cwd: "backend",
+      encoding: "utf8",
+      env: process.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
 
     const output = result.stdout.trim();
     if (result.status === 0 && /^\d{6}$/.test(output)) return output;
@@ -77,7 +75,9 @@ function consumeAcceptanceOtp(challengeId: string): string {
 }
 
 test.describe("R3C public browser journeys", () => {
-  test("public content, live catalog and metadata render through production SSR", async ({ page }) => {
+  test("public content, live catalog and metadata render through production SSR", async ({
+    page,
+  }) => {
     const home = await page.goto("/");
     expect(home?.status()).toBe(200);
     await expect(page.getByRole("heading", { name: "قهوه‌ای که زنده است" })).toBeVisible();
@@ -116,7 +116,9 @@ test.describe("R3C public browser journeys", () => {
 });
 
 test.describe("R3C real customer session", () => {
-  test("random OTP creates a secure cookie session and hostile redirect is contained", async ({ page }) => {
+  test("random OTP creates a secure cookie session and hostile redirect is contained", async ({
+    page,
+  }) => {
     await page.goto("/auth/?mode=login&redirect=%2F%2Fevil.example");
     await page.getByLabel("شماره موبایل").fill("09123456789");
     await page.getByRole("button", { name: "دریافت کد ورود" }).click();
@@ -137,7 +139,9 @@ test.describe("R3C real customer session", () => {
     await page.waitForURL(/\/profile(?:\?|$)/);
     expect(new URL(page.url()).pathname).toBe("/profile");
     await expect(page.getByRole("heading", { name: "حساب کاربری" })).toBeVisible();
-    await expect(page.getByText("نشست امن مبتنی بر Cookie؛ بدون ذخیره Token در مرورگر.")).toBeVisible();
+    await expect(
+      page.getByText("نشست امن مبتنی بر Cookie؛ بدون ذخیره Token در مرورگر."),
+    ).toBeVisible();
     await expect(page.getByText("خانه پذیرش")).toBeVisible();
 
     const me = await page.evaluate(async () => {

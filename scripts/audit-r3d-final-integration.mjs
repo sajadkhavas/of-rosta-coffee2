@@ -20,24 +20,64 @@ const failures = [];
 const required = [
   ["finalWorkflow", "mysql:8.4", "R3D final acceptance must use MySQL 8.4."],
   ["finalWorkflow", "redis:7.4-alpine", "R3D final acceptance must use Redis 7.4."],
-  ["finalWorkflow", "First clean frontend install", "R3D must perform the first clean frontend installation."],
-  ["finalWorkflow", "Second clean frontend install", "R3D must prove frontend dependency reproducibility twice."],
-  ["finalWorkflow", "First clean backend install", "R3D must perform the first clean backend installation."],
-  ["finalWorkflow", "Second clean backend install", "R3D must prove backend dependency reproducibility twice."],
+  [
+    "finalWorkflow",
+    "First clean frontend install",
+    "R3D must perform the first clean frontend installation.",
+  ],
+  [
+    "finalWorkflow",
+    "Second clean frontend install",
+    "R3D must prove frontend dependency reproducibility twice.",
+  ],
+  [
+    "finalWorkflow",
+    "First clean backend install",
+    "R3D must perform the first clean backend installation.",
+  ],
+  [
+    "finalWorkflow",
+    "Second clean backend install",
+    "R3D must prove backend dependency reproducibility twice.",
+  ],
   ["finalWorkflow", "bun run check", "R3D must run the complete frontend permanent gate."],
   ["finalWorkflow", "composer check", "R3D must run the complete backend permanent gate."],
-  ["finalWorkflow", "rosta:acceptance-fixtures", "R3D must seed deterministic acceptance fixtures."],
+  [
+    "finalWorkflow",
+    "rosta:acceptance-fixtures",
+    "R3D must seed deterministic acceptance fixtures.",
+  ],
   ["finalWorkflow", "bun run test:browser", "R3D must run the real browser journeys."],
-  ["finalWorkflow", "all_surfaces_integrated=ready", "R3D must emit the authoritative final marker."],
+  [
+    "finalWorkflow",
+    "all_surfaces_integrated=ready",
+    "R3D must emit the authoritative final marker.",
+  ],
   ["finalWorkflow", "APP_ENV: testing", "R3D must remain in the testing application environment."],
   ["finalWorkflow", "PAYMENT_DRIVER: testing", "R3D may use only the testing payment provider."],
-  ["finalWorkflow", 'ROSTA_REFUND_ENABLED: "false"', "Refund execution must remain disabled in R3D."],
+  [
+    "finalWorkflow",
+    'ROSTA_REFUND_ENABLED: "false"',
+    "Refund execution must remain disabled in R3D.",
+  ],
   ["finalWorkflow", 'ROSTA_SMS_ENABLED: "false"', "Production SMS must remain disabled in R3D."],
   ["finalWorkflow", 'VITE_ALLOW_INDEXING: "false"', "Indexing must remain disabled in R3D."],
-  ["browserWorkflow", "ROSTA_R3C2_COMMERCE_ROLES_COMPLETE", "R3D requires the R3C2 browser marker."],
-  ["runtimeWorkflow", "ROSTA_R3B_INTEGRATED_RUNTIME_COMPLETE", "R3D requires the R3B runtime marker."],
+  [
+    "browserWorkflow",
+    "ROSTA_R3C2_COMMERCE_ROLES_COMPLETE",
+    "R3D requires the R3C2 browser marker.",
+  ],
+  [
+    "runtimeWorkflow",
+    "ROSTA_R3B_INTEGRATED_RUNTIME_COMPLETE",
+    "R3D requires the R3B runtime marker.",
+  ],
   ["backendComposer", '"audit:r3c2"', "R3D requires the backend R3C2 permanent audit."],
-  ["browserTests", "foreign-acceptance-roastery", "R3D requires adversarial seller scope acceptance."],
+  [
+    "browserTests",
+    "foreign-acceptance-roastery",
+    "R3D requires adversarial seller scope acceptance.",
+  ],
 ];
 
 for (const [file, fragment, message] of required) {

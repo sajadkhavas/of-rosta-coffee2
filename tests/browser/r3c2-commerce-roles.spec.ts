@@ -47,9 +47,7 @@ async function api(
   return page.evaluate(
     async ({ base, path, method, body }) => {
       const headers: Record<string, string> = { Accept: "application/json" };
-      const xsrfCookie = document.cookie
-        .split("; ")
-        .find((item) => item.startsWith("XSRF-TOKEN="));
+      const xsrfCookie = document.cookie.split("; ").find((item) => item.startsWith("XSRF-TOKEN="));
       if (body !== undefined) headers["Content-Type"] = "application/json";
       if (method !== "GET" && xsrfCookie) {
         headers["X-XSRF-TOKEN"] = decodeURIComponent(xsrfCookie.slice("XSRF-TOKEN=".length));
@@ -82,16 +80,12 @@ function consumeAcceptanceOtp(challengeId: string): string {
   }
 
   for (let attempt = 0; attempt < 30; attempt += 1) {
-    const result = spawnSync(
-      "php",
-      ["artisan", "rosta:acceptance-otp", challengeId, "--no-ansi"],
-      {
-        cwd: "backend",
-        encoding: "utf8",
-        env: process.env,
-        stdio: ["ignore", "pipe", "pipe"],
-      },
-    );
+    const result = spawnSync("php", ["artisan", "rosta:acceptance-otp", challengeId, "--no-ansi"], {
+      cwd: "backend",
+      encoding: "utf8",
+      env: process.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
     const output = result.stdout.trim();
     if (result.status === 0 && /^\d{6}$/.test(output)) return output;
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250);
@@ -137,7 +131,9 @@ test("R3C2 completes commerce, scoped seller, administrator and adversarial jour
   const customer = await rolePage(browser, "09123456789", "/profile");
   expect(array(customer.user.roles, "customer roles")).toContain("customer");
   expect((await api(customer.page, "/seller/roasteries")).status).toBe(403);
-  expect((await api(customer.page, "/admin/roasteries?status=verified&per_page=100")).status).toBe(403);
+  expect((await api(customer.page, "/admin/roasteries?status=verified&per_page=100")).status).toBe(
+    403,
+  );
 
   const productResponse = await api(customer.page, "/products/ethiopia-sidamo-whole-bean");
   expect(productResponse.status).toBe(200);
@@ -146,7 +142,9 @@ test("R3C2 completes commerce, scoped seller, administrator and adversarial jour
   const variants = array(product.variants, "product variants").map((item) =>
     record(item, "product variant"),
   );
-  const selectedVariant = variants.find((item) => number(item.weight_grams, "variant weight") === 100);
+  const selectedVariant = variants.find(
+    (item) => number(item.weight_grams, "variant weight") === 100,
+  );
   expect(selectedVariant).toBeDefined();
   const variantId = text(selectedVariant?.id, "100g variant id");
 
@@ -213,7 +211,11 @@ test("R3C2 completes commerce, scoped seller, administrator and adversarial jour
   expect(callbackResponse?.status()).toBe(200);
   expect(new URL(customer.page.url()).pathname).toBe("/checkout");
 
-  const verification = await api(customer.page, `/payments/${encodeURIComponent(paymentId)}/verify`, "POST");
+  const verification = await api(
+    customer.page,
+    `/payments/${encodeURIComponent(paymentId)}/verify`,
+    "POST",
+  );
   expect(verification.status).toBe(200);
   expect(text(record(data(verification), "payment verification").status, "payment status")).toBe(
     "paid",
@@ -224,7 +226,9 @@ test("R3C2 completes commerce, scoped seller, administrator and adversarial jour
 
   const seller = await rolePage(browser, "09120000002", "/panel/manage");
   expect(array(seller.user.roles, "seller roles")).toContain("roastery_owner");
-  await expect(seller.page.getByRole("heading", { name: "ویرایش اطلاعات و کاتالوگ" })).toBeVisible();
+  await expect(
+    seller.page.getByRole("heading", { name: "ویرایش اطلاعات و کاتالوگ" }),
+  ).toBeVisible();
 
   const sellerRoasteriesResponse = await api(seller.page, "/seller/roasteries");
   expect(sellerRoasteriesResponse.status).toBe(200);
@@ -240,14 +244,18 @@ test("R3C2 completes commerce, scoped seller, administrator and adversarial jour
   const publicRoasteries = array(data(publicRoasteriesResponse), "public roasteries").map((item) =>
     record(item, "public roastery"),
   );
-  const foreignRoastery = publicRoasteries.find((item) => item.slug === "foreign-acceptance-roastery");
+  const foreignRoastery = publicRoasteries.find(
+    (item) => item.slug === "foreign-acceptance-roastery",
+  );
   expect(foreignRoastery).toBeDefined();
   const foreignRoasteryId = text(foreignRoastery?.id, "foreign roastery id");
 
   expect([403, 404]).toContain(
     (await api(seller.page, `/seller/roasteries/${encodeURIComponent(foreignRoasteryId)}`)).status,
   );
-  expect((await api(seller.page, "/admin/roasteries?status=verified&per_page=100")).status).toBe(403);
+  expect((await api(seller.page, "/admin/roasteries?status=verified&per_page=100")).status).toBe(
+    403,
+  );
   expect((await api(seller.page, `/orders/${encodeURIComponent(orderId)}`)).status).toBe(404);
   expect(
     (await api(seller.page, `/payments/${encodeURIComponent(paymentId)}/verify`, "POST")).status,
@@ -264,7 +272,9 @@ test("R3C2 completes commerce, scoped seller, administrator and adversarial jour
   expect(sellerOrders.some((item) => item.id === orderId)).toBe(true);
 
   const fulfillmentPath = `/seller/roasteries/${encodeURIComponent(ownedRoasteryId)}/orders/${encodeURIComponent(orderId)}/fulfillment`;
-  const invalidDelivered = await api(seller.page, fulfillmentPath, "PATCH", { status: "delivered" });
+  const invalidDelivered = await api(seller.page, fulfillmentPath, "PATCH", {
+    status: "delivered",
+  });
   expect(invalidDelivered.status).toBe(409);
 
   for (const transition of [
@@ -320,7 +330,10 @@ test("R3C2 completes commerce, scoped seller, administrator and adversarial jour
   expect(adminRoasteryItems.some((item) => item.id === ownedRoasteryId)).toBe(true);
   expect(adminRoasteryItems.some((item) => item.id === foreignRoasteryId)).toBe(true);
 
-  const pendingReviews = await api(administrator.page, "/admin/reviews?status=pending&per_page=100");
+  const pendingReviews = await api(
+    administrator.page,
+    "/admin/reviews?status=pending&per_page=100",
+  );
   expect(pendingReviews.status).toBe(200);
   const pendingItems = array(
     record(data(pendingReviews), "pending review envelope").items,
@@ -337,7 +350,9 @@ test("R3C2 completes commerce, scoped seller, administrator and adversarial jour
   expect(approvedReview.status).toBe(200);
   expect(record(data(approvedReview), "approved review").status).toBe("approved");
 
-  expect((await api(administrator.page, `/orders/${encodeURIComponent(orderId)}`)).status).toBe(404);
+  expect((await api(administrator.page, `/orders/${encodeURIComponent(orderId)}`)).status).toBe(
+    404,
+  );
   expect(
     (
       await api(administrator.page, "/admin/reviews/01INVALIDR3C2REVIEW00000000", "PATCH", {
@@ -360,5 +375,9 @@ test("R3C2 completes commerce, scoped seller, administrator and adversarial jour
   ).toBe(true);
 
   expect(productId).not.toBe("");
-  await Promise.all([customer.context.close(), seller.context.close(), administrator.context.close()]);
+  await Promise.all([
+    customer.context.close(),
+    seller.context.close(),
+    administrator.context.close(),
+  ]);
 });
