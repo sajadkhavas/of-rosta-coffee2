@@ -1,0 +1,51 @@
+name: R5B Pint Autofix
+
+on:
+  push:
+    branches:
+      - program/r5b-marketplace-schema
+
+permissions:
+  contents: write
+
+concurrency:
+  group: r5b-pint-autofix
+  cancel-in-progress: false
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout R5B branch
+        uses: actions/checkout@v4
+        with:
+          ref: program/r5b-marketplace-schema
+          fetch-depth: 0
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_sqlite
+          coverage: none
+
+      - name: Install locked backend dependencies
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Apply locked Pint formatter
+        working-directory: backend
+        run: vendor/bin/pint
+
+      - name: Commit formatter output
+        run: |
+          if git diff --quiet; then
+            echo "No formatter changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend
+          git commit -m "R5B format marketplace schema"
+          git push origin HEAD:program/r5b-marketplace-schema
