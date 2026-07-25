@@ -6,6 +6,7 @@ use App\Models\Address;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\RoastBatch;
+use App\Models\Roastery;
 use App\Models\StockLedgerEntry;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -43,6 +44,18 @@ final class RostaAcceptanceSeeder extends Seeder
             'address_line' => 'نشانی رزروشده برای پذیرش یکپارچه رستا',
             'postal_code' => '3199999999',
             'is_default' => true,
+        ]);
+
+        Roastery::query()->create([
+            'name' => 'روستری خارج از محدوده پذیرش',
+            'slug' => 'foreign-acceptance-roastery',
+            'city' => 'تهران',
+            'description' => 'Fixture مستقل برای اثبات مرز دسترسی Roastery-scoped.',
+            'shipping_policy' => 'این Fixture نباید در پنل Seller اصلی قابل مدیریت باشد.',
+            'status' => 'verified',
+            'verified_at' => now(),
+            'preparation_min_hours' => 24,
+            'preparation_max_hours' => 48,
         ]);
 
         $product = Product::query()
