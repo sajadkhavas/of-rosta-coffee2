@@ -119,7 +119,7 @@ gate(
   hasAll(files.ledger, [
     "rosta_hub_grinding",
     "rosta_route_shipping",
-    "No Rosta Hub grinding or Rosta-route shipping amount can enter roastery payable balance",
+    "No service or shipping amount owned by Rosta may enter a roastery payable balance",
     "refunded_parent_total <= captured_parent_total",
   ]) &&
     hasAll(files.domain, [
