@@ -123,7 +123,7 @@ jobs:
             "$GITHUB_WORKSPACE/backend/composer.lock" \
             | tee "$EVIDENCE_DIR/dependencies-after.sha256"
           cmp "$EVIDENCE_DIR/dependencies-before.sha256" "$EVIDENCE_DIR/dependencies-after.sha256"
-          if grep -R -E 'APP_KEY=|DB_PASSWORD=|MYSQL_ROOT_PASSWORD|S3_SECRET_ACCESS_KEY|PAYMENT_MERCHANT_ID|KAVENEGAR_API_KEY|09123456789|0912000000[0-9]' "$EVIDENCE_DIR"; then
+          if grep -R -E 'APP_KEY=|DB_PASSWORD=|MYSQL_ROOT_PASSWORD=|S3_SECRET_ACCESS_KEY=|PAYMENT_MERCHANT_ID=|KAVENEGAR_API_KEY=|09123456789|0912000000[0-9]' "$EVIDENCE_DIR"; then
             echo "Sensitive material entered R4A evidence." >&2
             exit 1
           fi
