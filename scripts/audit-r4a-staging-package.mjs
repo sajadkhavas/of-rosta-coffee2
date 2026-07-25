@@ -20,17 +20,17 @@ const files = Object.fromEntries(
 );
 const packageJson = JSON.parse(files.package);
 const gates = [];
-const gate = (name, passed, evidence) =>
-  gates.push({ name, passed: Boolean(passed), evidence });
+const gate = (name, passed, evidence) => gates.push({ name, passed: Boolean(passed), evidence });
 const hasAll = (source, fragments) => fragments.every((fragment) => source.includes(fragment));
 
 const scripts = packageJson.scripts ?? {};
+const permanentR4aGate =
+  scripts["audit:r4a"] === "node scripts/audit-r4a-staging-package.mjs" &&
+  scripts.check?.includes("audit:r4a") &&
+  scripts["staging:rehearse"] === "ROSTA_ALLOW_REHEARSAL=true bash deploy/staging/rehearsal.sh";
 gate(
   "permanent_r4a_gate",
-  scripts["audit:r4a"] === "node scripts/audit-r4a-staging-package.mjs" &&
-    scripts.check?.includes("audit:r4a") &&
-    scripts["staging:rehearse"] ===
-      "ROSTA_ALLOW_REHEARSAL=true bash deploy/staging/rehearsal.sh",
+  permanentR4aGate,
   "R4A audit and rehearsal commands must remain in the permanent package contract.",
 );
 
@@ -40,7 +40,7 @@ gate(
     "release_sha:",
     "40-character commit SHA",
     "ref: ${{ inputs.release_sha }}",
-    "test \"$checked_out\" = \"${{ inputs.release_sha }}\"",
+    'test "$checked_out" = "${{ inputs.release_sha }}"',
     "git merge-base --is-ancestor",
     "origin/integration/rosta-r-program",
     "runs-on: [self-hosted, linux, x64, rosta-staging]",
@@ -117,7 +117,7 @@ gate(
   "rehearsal_exercises_complete_package",
   hasAll(files.rehearsal, [
     "ROSTA_ALLOW_REHEARSAL",
-    "git -C \"$ROOT_DIR\" rev-parse HEAD",
+    'git -C "$ROOT_DIR" rev-parse HEAD',
     "compose config --no-interpolate",
     "compose build --pull api api-web frontend",
     "compose run --rm api php artisan migrate --force",
@@ -147,7 +147,7 @@ gate(
     "Ephemeral rehearsal secret entered evidence",
     "Secret-shaped material entered rehearsal evidence",
     "Private, visual or database payload entered rehearsal evidence",
-    "rm -f \"$BACKUP_FILE\"",
+    'rm -f "$BACKUP_FILE"',
     "compose config --no-interpolate",
   ]) &&
     hasAll(files.rehearsalWorkflow, [
