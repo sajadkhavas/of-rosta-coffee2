@@ -21,9 +21,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  public-and-customer:
+  public-commerce-and-roles:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 50
 
     services:
       mysql:
@@ -51,7 +51,7 @@ jobs:
           --health-retries=20
 
     env:
-      EVIDENCE_DIR: /tmp/rosta-r3-evidence/${{ github.run_id }}/r3c
+      EVIDENCE_DIR: /tmp/rosta-r3-evidence/${{ github.run_id }}/r3c2
       APP_ENV: testing
       APP_DEBUG: "false"
       APP_URL: http://127.0.0.1:8000
@@ -75,7 +75,11 @@ jobs:
       REDIS_PORT: 6379
       SMS_DRIVER: acceptance
       ROSTA_SMS_ENABLED: "false"
-      ROSTA_PAYMENT_ENABLED: "false"
+      ROSTA_PAYMENT_ENABLED: "true"
+      PAYMENT_DRIVER: testing
+      PAYMENT_AMOUNT_MULTIPLIER: 1
+      PAYMENT_CALLBACK_URL: http://127.0.0.1:3000/checkout
+      ROSTA_ALLOWED_PAYMENT_REDIRECT_HOSTS: 127.0.0.1
       ROSTA_REFUND_ENABLED: "false"
       ROSTA_MEDIA_UPLOADS_ENABLED: "false"
       VITE_SITE_URL: http://127.0.0.1:3000
@@ -156,6 +160,7 @@ jobs:
           php artisan rosta:readiness --strict --json 2>&1 | tee "$EVIDENCE_DIR/backend-readiness.json"
           php artisan rosta:acceptance-fixtures --json > "$EVIDENCE_DIR/acceptance-fixtures.json"
           grep -q 'ROSTA_R3A_ACCEPTANCE_FIXTURES_COMPLETE' "$EVIDENCE_DIR/acceptance-fixtures.json"
+          grep -q 'foreign-acceptance-roastery' "$EVIDENCE_DIR/acceptance-fixtures.json"
 
       - name: Build production SSR
         shell: bash
@@ -196,12 +201,13 @@ jobs:
           cat "$EVIDENCE_DIR/frontend-runtime.log"
           exit 1
 
-      - name: Run R3C contract audit
+      - name: Run R3C and R3C2 contract audits
         shell: bash
         run: |
           set -o pipefail
           bun run audit:r3c 2>&1 | tee "$EVIDENCE_DIR/audit-r3c.log"
-          cp r3c-browser-audit.json "$EVIDENCE_DIR/"
+          bun run audit:r3c2 2>&1 | tee "$EVIDENCE_DIR/audit-r3c2.log"
+          cp r3c-browser-audit.json r3c2-commerce-roles-audit.json "$EVIDENCE_DIR/"
 
       - name: Run real browser journeys
         shell: bash
@@ -218,12 +224,12 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          rm -f r3c-browser-audit.json backend/.env backend/*-audit.json
+          rm -f r3c-browser-audit.json r3c2-commerce-roles-audit.json backend/.env backend/*-audit.json
           rm -rf backend/storage/framework/cache/phpstan backend/storage/framework/testing test-results
           sha256sum package.json bun.lock backend/composer.json backend/composer.lock | tee "$EVIDENCE_DIR/dependencies-after.sha256"
           cmp "$EVIDENCE_DIR/dependencies-before.sha256" "$EVIDENCE_DIR/dependencies-after.sha256"
-          if grep -R -E 'APP_KEY=|DB_PASSWORD=|MYSQL_ROOT_PASSWORD|09123456789|0912000000[12]|Local OTP delivery|"code"[[:space:]]*:[[:space:]]*"[0-9]{6}"' "$EVIDENCE_DIR"; then
-            echo "Sensitive authentication material entered R3C evidence." >&2
+          if grep -R -E 'APP_KEY=|DB_PASSWORD=|MYSQL_ROOT_PASSWORD|PAYMENT_MERCHANT_ID|KAVENEGAR_API_KEY|09123456789|0912000000[12]|Local OTP delivery|"code"[[:space:]]*:[[:space:]]*"[0-9]{6}"' "$EVIDENCE_DIR"; then
+            echo "Sensitive authentication or provider material entered R3C2 evidence." >&2
             exit 1
           fi
           if find "$EVIDENCE_DIR" -type f \( -name '*.png' -o -name '*.webm' -o -name '*.zip' \) | grep -q .; then
@@ -243,14 +249,17 @@ jobs:
           fi
           git status --short --untracked-files=all | tee "$EVIDENCE_DIR/git-status-final.txt"
           test -z "$(git status --porcelain --untracked-files=all)"
-          echo "ROSTA_R3C_BROWSER_ACCEPTANCE_COMPLETE" | tee "$EVIDENCE_DIR/result.txt"
+          {
+            echo "ROSTA_R3C_BROWSER_ACCEPTANCE_COMPLETE"
+            echo "ROSTA_R3C2_COMMERCE_ROLES_COMPLETE"
+          } | tee "$EVIDENCE_DIR/result.txt"
 
-      - name: Upload R3C evidence
+      - name: Upload R3C2 evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rosta-r3c-browser-${{ github.run_id }}
-          path: /tmp/rosta-r3-evidence/${{ github.run_id }}/r3c
+          name: rosta-r3c2-browser-${{ github.run_id }}
+          path: /tmp/rosta-r3-evidence/${{ github.run_id }}/r3c2
           if-no-files-found: warn
           retention-days: 14
 
