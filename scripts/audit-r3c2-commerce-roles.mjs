@@ -3,6 +3,9 @@ import { readFile, writeFile } from "node:fs/promises";
 const files = {
   workflow: ".github/workflows/browser-acceptance-ci.yml",
   tests: "tests/browser/r3c2-commerce-roles.spec.ts",
+  panelLayout: "src/routes/panel.tsx",
+  panelIndex: "src/routes/panel.index.tsx",
+  panelManage: "src/routes/panel.manage.tsx",
   otpProvider: "backend/app/Providers/AppServiceProvider.php",
   paymentManager: "backend/app/Services/Payments/PaymentProviderManager.php",
   fixture: "backend/database/seeders/RostaAcceptanceSeeder.php",
@@ -37,6 +40,9 @@ const required = [
   ["tests", "duplicateReview.status", "R3C2 must reject duplicate reviews."],
   ["tests", '"/admin/reviews/', "R3C2 must moderate the review through an administrator session."],
   ["tests", "rosta:acceptance-otp", "All R3C2 roles must authenticate through the real one-time CLI bridge."],
+  ["panelLayout", "Outlet", "The seller panel parent must render nested seller routes."],
+  ["panelIndex", 'createFileRoute("/panel/")', "Daily seller operations must live on the panel index route."],
+  ["panelManage", 'createFileRoute("/panel/manage")', "Catalog management must remain an independently rendered nested route."],
   ["otpProvider", "environment('testing')", "The expanded OTP rate must remain testing-only."],
   ["otpProvider", "otpRequestsPerMinute = $acceptanceOtp ? 12 : 3", "Production OTP throttling must remain unchanged."],
   ["paymentManager", "'testing' => ! app()->environment('production')", "The testing payment provider must remain forbidden in production."],
@@ -61,6 +67,7 @@ const forbidden = [
   ["tests", "migrate:fresh"],
   ["fixture", "order_id"],
   ["fixture", "payment_id"],
+  ["panelLayout", "SellerOperationsDashboard"],
 ];
 
 for (const [file, fragment] of forbidden) {
