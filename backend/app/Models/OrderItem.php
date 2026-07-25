@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
@@ -29,6 +31,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read ProductVariant|null $variant
  * @property-read RoastBatch|null $roastBatch
  * @property-read InventoryReservation|null $reservation
+ * @property-read Collection<int, OrderItemService> $services
+ * @property-read Collection<int, SettlementAllocation> $settlementAllocations
+ * @property-read Collection<int, OrderEvent> $events
  */
 final class OrderItem extends Model
 {
@@ -94,5 +99,23 @@ final class OrderItem extends Model
     public function reservation(): HasOne
     {
         return $this->hasOne(InventoryReservation::class);
+    }
+
+    /** @return HasMany<OrderItemService, $this> */
+    public function services(): HasMany
+    {
+        return $this->hasMany(OrderItemService::class);
+    }
+
+    /** @return HasMany<SettlementAllocation, $this> */
+    public function settlementAllocations(): HasMany
+    {
+        return $this->hasMany(SettlementAllocation::class);
+    }
+
+    /** @return HasMany<OrderEvent, $this> */
+    public function events(): HasMany
+    {
+        return $this->hasMany(OrderEvent::class);
     }
 }

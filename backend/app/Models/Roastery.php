@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @property string $id
@@ -32,8 +33,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read Collection<int, ShippingRule> $shippingRules
  * @property-read Collection<int, Coupon> $coupons
  * @property-read Collection<int, CheckoutQuote> $checkoutQuotes
+ * @property-read Collection<int, CheckoutQuoteGroup> $checkoutQuoteGroups
  * @property-read Collection<int, Order> $orders
  * @property-read Collection<int, SubOrder> $subOrders
+ * @property-read RoasteryGrindingCapability|null $grindingCapability
  * @property-read MediaAsset|null $logo
  * @property-read MediaAsset|null $cover
  */
@@ -99,7 +102,19 @@ final class Roastery extends Model
         return $this->hasMany(CheckoutQuote::class);
     }
 
-    /** @return HasMany<Order, $this> */
+    /** @return HasMany<CheckoutQuoteGroup, $this> */
+    public function checkoutQuoteGroups(): HasMany
+    {
+        return $this->hasMany(CheckoutQuoteGroup::class);
+    }
+
+    /**
+     * Legacy single-roastery parent-order relation.
+     *
+     * Marketplace settlement and fulfilment must use subOrders().
+     *
+     * @return HasMany<Order, $this>
+     */
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
@@ -109,6 +124,12 @@ final class Roastery extends Model
     public function subOrders(): HasMany
     {
         return $this->hasMany(SubOrder::class);
+    }
+
+    /** @return HasOne<RoasteryGrindingCapability, $this> */
+    public function grindingCapability(): HasOne
+    {
+        return $this->hasOne(RoasteryGrindingCapability::class);
     }
 
     /** @return BelongsTo<MediaAsset, $this> */

@@ -16,6 +16,18 @@ $contracts = [
         'migration' => 'database/migrations/2026_07_21_030001_create_transactional_checkout_tables.php',
         'field' => 'address_snapshot',
     ],
+    'app/Models/OrderEvent.php:internal_metadata' => [
+        'migration' => 'database/migrations/2026_07_25_230001_create_r5b_marketplace_schema.php',
+        'field' => 'internal_metadata',
+    ],
+    'app/Models/ShipmentLeg.php:destination_snapshot' => [
+        'migration' => 'database/migrations/2026_07_25_230001_create_r5b_marketplace_schema.php',
+        'field' => 'destination_snapshot',
+    ],
+    'app/Models/ShipmentLeg.php:origin_snapshot' => [
+        'migration' => 'database/migrations/2026_07_25_230001_create_r5b_marketplace_schema.php',
+        'field' => 'origin_snapshot',
+    ],
     'app/Models/StockLedgerEntry.php:metadata' => [
         'migration' => 'database/migrations/2026_07_21_020001_create_catalog_inventory_tables.php',
         'field' => 'metadata',

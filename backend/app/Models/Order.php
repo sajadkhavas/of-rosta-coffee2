@@ -36,6 +36,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read Roastery|null $roastery
  * @property-read CheckoutQuote|null $quote
  * @property-read SubOrder|null $subOrder
+ * @property-read Collection<int, SubOrder> $subOrders
  * @property-read Collection<int, OrderItem> $items
  * @property-read Collection<int, InventoryReservation> $reservations
  * @property-read Collection<int, PaymentAttempt> $paymentAttempts
@@ -43,6 +44,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read Collection<int, FinancialReconciliationCase> $reconciliationCases
  * @property-read Collection<int, OrderInternalNote> $internalNotes
  * @property-read Collection<int, OrderIdempotencyKey> $idempotencyKeys
+ * @property-read Collection<int, OrderItemService> $itemServices
+ * @property-read Collection<int, ShipmentLeg> $shipmentLegs
+ * @property-read Collection<int, SettlementAllocation> $settlementAllocations
+ * @property-read Collection<int, OrderTaxLine> $taxLines
+ * @property-read Collection<int, OrderEvent> $events
  */
 final class Order extends Model
 {
@@ -90,7 +96,13 @@ final class Order extends Model
         return $this->belongsTo(User::class);
     }
 
-    /** @return BelongsTo<Roastery, $this> */
+    /**
+     * Legacy single-roastery compatibility relation.
+     *
+     * R5 code must use subOrders() for authoritative marketplace behaviour.
+     *
+     * @return BelongsTo<Roastery, $this>
+     */
     public function roastery(): BelongsTo
     {
         return $this->belongsTo(Roastery::class);
@@ -102,10 +114,20 @@ final class Order extends Model
         return $this->belongsTo(CheckoutQuote::class, 'quote_id');
     }
 
-    /** @return HasOne<SubOrder, $this> */
+    /**
+     * Legacy single-sub-order compatibility relation.
+     *
+     * @return HasOne<SubOrder, $this>
+     */
     public function subOrder(): HasOne
     {
-        return $this->hasOne(SubOrder::class);
+        return $this->hasOne(SubOrder::class)->oldestOfMany();
+    }
+
+    /** @return HasMany<SubOrder, $this> */
+    public function subOrders(): HasMany
+    {
+        return $this->hasMany(SubOrder::class)->orderBy('created_at');
     }
 
     /** @return HasMany<OrderItem, $this> */
@@ -148,5 +170,35 @@ final class Order extends Model
     public function idempotencyKeys(): HasMany
     {
         return $this->hasMany(OrderIdempotencyKey::class);
+    }
+
+    /** @return HasMany<OrderItemService, $this> */
+    public function itemServices(): HasMany
+    {
+        return $this->hasMany(OrderItemService::class);
+    }
+
+    /** @return HasMany<ShipmentLeg, $this> */
+    public function shipmentLegs(): HasMany
+    {
+        return $this->hasMany(ShipmentLeg::class)->orderBy('sequence');
+    }
+
+    /** @return HasMany<SettlementAllocation, $this> */
+    public function settlementAllocations(): HasMany
+    {
+        return $this->hasMany(SettlementAllocation::class);
+    }
+
+    /** @return HasMany<OrderTaxLine, $this> */
+    public function taxLines(): HasMany
+    {
+        return $this->hasMany(OrderTaxLine::class);
+    }
+
+    /** @return HasMany<OrderEvent, $this> */
+    public function events(): HasMany
+    {
+        return $this->hasMany(OrderEvent::class)->orderBy('occurred_at');
     }
 }
