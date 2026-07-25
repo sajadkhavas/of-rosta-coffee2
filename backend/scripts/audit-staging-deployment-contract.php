@@ -8,6 +8,7 @@ $files = [
     'environment' => file_get_contents($root.'/.env.staging.example'),
     'compose' => file_get_contents($repo.'/deploy/staging/docker-compose.yml'),
     'deploy' => file_get_contents($repo.'/deploy/staging/deploy.sh'),
+    'deploy_workflow' => file_get_contents($repo.'/.github/workflows/staging-deploy.yml'),
     'acceptance' => file_get_contents($repo.'/deploy/staging/acceptance.sh'),
     'rollback' => file_get_contents($repo.'/deploy/staging/rollback.sh'),
 ];
@@ -88,16 +89,37 @@ $gate(
 );
 
 $gate(
-    'deploy_is_backup_first',
+    'deploy_is_backup_first_and_lock_consuming',
     $containsAll($files['deploy'], [
-        'ensure_composer_lock',
+        'require_committed_composer_lock',
+        'backend/composer.lock is required',
+        'composer validate --strict',
+        'composer audit --locked',
+        'composer install',
+        'composer check',
         'backup_database',
         'php artisan migrate --force',
         'acceptance.sh',
         'record_release_tag',
         'flock -n',
-    ]),
-    'Deployment must serialize, generate the lock when absent, back up, migrate, accept and record the release.',
+    ])
+        && ! str_contains($files['deploy'], 'composer update')
+        && ! str_contains($files['deploy'], 'ensure_composer_lock'),
+    'Deployment must serialize, consume the reviewed lock, back up, migrate, accept and record the release.',
+);
+
+$gate(
+    'deploy_uses_immutable_program_sha',
+    $containsAll($files['deploy_workflow'], [
+        'release_sha:',
+        '40-character commit SHA',
+        'ref: ${{ inputs.release_sha }}',
+        'git merge-base --is-ancestor',
+        'origin/integration/rosta-r-program',
+    ])
+        && ! str_contains($files['deploy_workflow'], 'release_ref:')
+        && ! str_contains($files['deploy_workflow'], 'agent/phase-22'),
+    'Deployment must select an exact immutable commit already accepted on the R-program branch.',
 );
 
 $gate(
