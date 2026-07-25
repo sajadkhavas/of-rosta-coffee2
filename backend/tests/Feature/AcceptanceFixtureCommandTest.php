@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\ProductVariant;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
@@ -56,8 +58,8 @@ final class AcceptanceFixtureCommandTest extends TestCase
     {
         $this->assertSame(0, Artisan::call('rosta:acceptance-fixtures', ['--json' => true]));
 
-        $userCount = (int) \App\Models\User::query()->count();
-        $variantCount = (int) \App\Models\ProductVariant::query()->count();
+        $userCount = (int) User::query()->count();
+        $variantCount = (int) ProductVariant::query()->count();
 
         $this->assertSame(1, Artisan::call('rosta:acceptance-fixtures', ['--json' => true]));
 
@@ -65,8 +67,8 @@ final class AcceptanceFixtureCommandTest extends TestCase
         $this->assertFalse($report['ready']);
         $this->assertNull($report['marker']);
         $this->assertStringContainsString('empty migrated database', $report['error']);
-        $this->assertSame($userCount, \App\Models\User::query()->count());
-        $this->assertSame($variantCount, \App\Models\ProductVariant::query()->count());
+        $this->assertSame($userCount, User::query()->count());
+        $this->assertSame($variantCount, ProductVariant::query()->count());
     }
 
     public function test_acceptance_fixtures_are_forbidden_in_production(): void
