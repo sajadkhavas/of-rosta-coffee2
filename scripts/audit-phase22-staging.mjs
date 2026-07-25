@@ -17,6 +17,7 @@ const paths = {
   caddy: "deploy/staging/Caddyfile",
   lib: "deploy/staging/lib.sh",
   deploy: "deploy/staging/deploy.sh",
+  deployWorkflow: ".github/workflows/staging-deploy.yml",
   acceptance: "deploy/staging/acceptance.sh",
   backup: "deploy/staging/backup.sh",
   rollback: "deploy/staging/rollback.sh",
@@ -49,7 +50,7 @@ gate(
   "phase22_files_present",
   missing.length === 0,
   missing.length === 0
-    ? "All phase 22 deployment, acceptance, backup and rollback files exist."
+    ? "All staging deployment, acceptance, backup and rollback files exist."
     : `Missing files: ${missing.join(", ")}`,
 );
 
@@ -151,14 +152,34 @@ gate(
   "deploy_is_guarded_and_evidenced",
   hasAll(files.deploy, [
     "flock -n",
-    "ensure_composer_lock",
-    "composer update",
+    "require_committed_composer_lock",
+    "composer validate --strict",
+    "composer audit --locked",
+    "composer install",
+    "composer check",
+    "backend/composer.lock is required",
     "backup_database",
     "php artisan migrate --force",
     "acceptance.sh",
     "record_release_tag",
-  ]),
-  "Deployment must serialize execution, generate the missing PHP lock, back up, migrate, accept and record the release.",
+  ]) &&
+    !files.deploy.includes("composer update") &&
+    !files.deploy.includes("ensure_composer_lock"),
+  "Deployment must serialize execution, require the reviewed lock, back up, migrate, accept and record the release.",
+);
+
+gate(
+  "deployment_uses_accepted_immutable_sha",
+  hasAll(files.deployWorkflow, [
+    "release_sha:",
+    "40-character commit SHA",
+    "ref: ${{ inputs.release_sha }}",
+    "git merge-base --is-ancestor",
+    "origin/integration/rosta-r-program",
+  ]) &&
+    !files.deployWorkflow.includes("release_ref:") &&
+    !files.deployWorkflow.includes("agent/phase-22"),
+  "Staging deployment must check out an exact SHA already accepted on the R-program branch.",
 );
 
 gate(

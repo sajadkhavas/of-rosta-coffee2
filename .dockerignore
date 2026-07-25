@@ -1,5 +1,4 @@
 .git
-.github
 .idea
 .vscode
 .env
@@ -19,6 +18,8 @@ test-results
 *.log
 backend/.env
 backend/.env.*
+!backend/.env.example
+!backend/.env.staging.example
 backend/vendor
 backend/storage/logs
 backend/storage/framework/cache

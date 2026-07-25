@@ -1,0 +1,42 @@
+:8080 {
+  encode zstd gzip
+
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    Content-Security-Policy "default-src 'self'; img-src 'self' data: blob: http://127.0.0.1:18081; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self' http://127.0.0.1:18080 http://127.0.0.1:18081; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "DENY"
+    X-Robots-Tag "noindex, nofollow, noarchive"
+    -Server
+  }
+
+  @api path /api/* /sanctum/*
+  handle @api {
+    reverse_proxy api-web:8080
+  }
+
+  handle {
+    reverse_proxy frontend:3000
+  }
+}
+
+:8081 {
+  @preflight method OPTIONS
+  handle @preflight {
+    header Access-Control-Allow-Origin "http://127.0.0.1:18080"
+    header Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
+    header Access-Control-Allow-Headers "content-type"
+    header Access-Control-Max-Age "86400"
+    respond "" 204
+  }
+
+  header {
+    Access-Control-Allow-Origin "http://127.0.0.1:18080"
+    X-Content-Type-Options "nosniff"
+    X-Robots-Tag "noindex, nofollow, noarchive"
+    -Server
+  }
+
+  reverse_proxy minio:9000
+}

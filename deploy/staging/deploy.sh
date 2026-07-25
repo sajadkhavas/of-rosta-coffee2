@@ -19,9 +19,9 @@ flock -n 9 || fail "Another staging deployment is already running"
 
 release_tag="${ROSTA_RELEASE_TAG:-}"
 if [[ -z "$release_tag" ]]; then
-  release_tag="$(git -C "$ROSTA_ROOT_DIR" rev-parse --short=12 HEAD 2>/dev/null || date -u +%Y%m%d%H%M%S)"
+  release_tag="$(git -C "$ROSTA_ROOT_DIR" rev-parse HEAD 2>/dev/null || true)"
 fi
-[[ "$release_tag" =~ ^[A-Za-z0-9._-]{7,64}$ ]] || fail "Invalid release tag: $release_tag"
+[[ "$release_tag" =~ ^[0-9a-f]{40}$ ]] || fail "ROSTA_RELEASE_TAG must be an immutable 40-character commit SHA"
 export ROSTA_IMAGE_TAG="$release_tag"
 
 failure_report() {
@@ -51,23 +51,13 @@ quality_container() {
     "$@"
 }
 
-ensure_composer_lock() {
-  if [[ -s "$ROSTA_ROOT_DIR/backend/composer.lock" ]]; then
-    log "Using existing backend/composer.lock"
-    return 0
-  fi
-
-  log "composer.lock is absent; generating it against the PHP 8.3 platform contract"
-  quality_container composer update \
-    --no-install \
-    --no-scripts \
-    --no-interaction \
-    --prefer-dist \
-    --no-progress
-
+require_committed_composer_lock() {
   test -s "$ROSTA_ROOT_DIR/backend/composer.lock" \
-    || fail "Composer lock generation did not produce backend/composer.lock"
-  log "Generated backend/composer.lock; it must be committed before production"
+    || fail "backend/composer.lock is required; deployment never generates dependencies"
+
+  log "Validating and auditing the committed Composer lock"
+  quality_container composer validate --strict --no-interaction
+  quality_container composer audit --locked --no-interaction
 }
 
 run_backend_quality() {
@@ -83,7 +73,7 @@ run_backend_quality() {
 
 log "Validating deployment contract"
 build_quality_image
-ensure_composer_lock
+require_committed_composer_lock
 run_backend_quality
 rosta_compose config --quiet
 
@@ -102,7 +92,7 @@ rosta_compose run --rm api php artisan migrate --force --no-interaction
 log "Starting API, workers, SSR frontend and TLS edge"
 rosta_compose up -d --wait api api-web worker scheduler frontend edge
 
-log "Running phase 22 acceptance"
+log "Running staging acceptance"
 ROSTA_RELEASE_TAG="$ROSTA_IMAGE_TAG" "$SCRIPT_DIR/acceptance.sh"
 
 record_release_tag "$ROSTA_IMAGE_TAG"
