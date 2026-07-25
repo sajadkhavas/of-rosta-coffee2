@@ -35,6 +35,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read Address|null $address
  * @property-read Roastery|null $roastery
  * @property-read Coupon|null $coupon
+ * @property-read Collection<int, CheckoutQuoteGroup> $groups
  * @property-read Collection<int, CheckoutQuoteItem> $items
  * @property-read Order|null $order
  */
@@ -89,7 +90,13 @@ final class CheckoutQuote extends Model
         return $this->belongsTo(Address::class);
     }
 
-    /** @return BelongsTo<Roastery, $this> */
+    /**
+     * Legacy single-roastery compatibility relation.
+     *
+     * R5 quote authority belongs to groups().
+     *
+     * @return BelongsTo<Roastery, $this>
+     */
     public function roastery(): BelongsTo
     {
         return $this->belongsTo(Roastery::class);
@@ -99,6 +106,12 @@ final class CheckoutQuote extends Model
     public function coupon(): BelongsTo
     {
         return $this->belongsTo(Coupon::class);
+    }
+
+    /** @return HasMany<CheckoutQuoteGroup, $this> */
+    public function groups(): HasMany
+    {
+        return $this->hasMany(CheckoutQuoteGroup::class, 'quote_id')->orderBy('created_at');
     }
 
     /** @return HasMany<CheckoutQuoteItem, $this> */

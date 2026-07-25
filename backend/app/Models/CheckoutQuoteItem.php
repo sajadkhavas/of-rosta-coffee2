@@ -3,13 +3,16 @@
 namespace App\Models;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property string $id
  * @property string|null $quote_id
+ * @property string|null $group_id
  * @property string|null $product_id
  * @property string|null $variant_id
  * @property string|null $roast_batch_id
@@ -23,9 +26,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property-read CheckoutQuote|null $quote
+ * @property-read CheckoutQuoteGroup|null $group
  * @property-read Product|null $product
  * @property-read ProductVariant|null $variant
  * @property-read RoastBatch|null $roastBatch
+ * @property-read Collection<int, CheckoutQuoteItemService> $services
  */
 final class CheckoutQuoteItem extends Model
 {
@@ -33,6 +38,7 @@ final class CheckoutQuoteItem extends Model
 
     protected $fillable = [
         'quote_id',
+        'group_id',
         'product_id',
         'variant_id',
         'roast_batch_id',
@@ -64,6 +70,12 @@ final class CheckoutQuoteItem extends Model
         return $this->belongsTo(CheckoutQuote::class, 'quote_id');
     }
 
+    /** @return BelongsTo<CheckoutQuoteGroup, $this> */
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(CheckoutQuoteGroup::class, 'group_id');
+    }
+
     /** @return BelongsTo<Product, $this> */
     public function product(): BelongsTo
     {
@@ -80,5 +92,11 @@ final class CheckoutQuoteItem extends Model
     public function roastBatch(): BelongsTo
     {
         return $this->belongsTo(RoastBatch::class);
+    }
+
+    /** @return HasMany<CheckoutQuoteItemService, $this> */
+    public function services(): HasMany
+    {
+        return $this->hasMany(CheckoutQuoteItemService::class, 'quote_item_id');
     }
 }
