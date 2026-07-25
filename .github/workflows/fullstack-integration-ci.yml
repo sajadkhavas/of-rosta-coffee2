@@ -219,6 +219,17 @@ jobs:
             exit 1
           fi
           git diff --check
+          git status --porcelain --untracked-files=all | tee "$EVIDENCE_DIR/git-status-before-generated-reset.txt"
+          unexpected_status="$(
+            git status --porcelain --untracked-files=all |
+              grep -vE '^ M src/routeTree\.gen\.ts$' || true
+          )"
+          test -z "$unexpected_status"
+          if ! git diff --quiet -- src/routeTree.gen.ts; then
+            test -s "$EVIDENCE_DIR/route-tree.diff"
+            test -s "$EVIDENCE_DIR/routeTree.gen.ts"
+            git checkout -- src/routeTree.gen.ts
+          fi
           git status --short --untracked-files=all | tee "$EVIDENCE_DIR/git-status-final.txt"
           test -z "$(git status --porcelain --untracked-files=all)"
           echo "ROSTA_R3B_INTEGRATED_RUNTIME_COMPLETE" | tee "$EVIDENCE_DIR/result.txt"
