@@ -60,11 +60,15 @@ final class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(120)->by($key);
         });
 
-        RateLimiter::for('otp-request', function (Request $request): array {
+        $acceptanceOtp = $this->app->environment('testing')
+            && config('services.sms.driver') === 'acceptance';
+        $otpRequestsPerMinute = $acceptanceOtp ? 12 : 3;
+
+        RateLimiter::for('otp-request', function (Request $request) use ($otpRequestsPerMinute): array {
             $mobile = IranMobile::normalize((string) $request->input('mobile'));
 
             return [
-                Limit::perMinute(3)->by('otp-request:ip:'.$request->ip()),
+                Limit::perMinute($otpRequestsPerMinute)->by('otp-request:ip:'.$request->ip()),
                 Limit::perHour(5)->by('otp-request:mobile:'.hash('sha256', $mobile)),
             ];
         });
