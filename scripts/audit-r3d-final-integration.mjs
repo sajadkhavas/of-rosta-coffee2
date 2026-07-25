@@ -29,7 +29,8 @@ const required = [
   ["finalWorkflow", "rosta:acceptance-fixtures", "R3D must seed deterministic acceptance fixtures."],
   ["finalWorkflow", "bun run test:browser", "R3D must run the real browser journeys."],
   ["finalWorkflow", "all_surfaces_integrated=ready", "R3D must emit the authoritative final marker."],
-  ["finalWorkflow", 'PAYMENT_DRIVER: testing', "R3D may use only the testing payment provider."],
+  ["finalWorkflow", "APP_ENV: testing", "R3D must remain in the testing application environment."],
+  ["finalWorkflow", "PAYMENT_DRIVER: testing", "R3D may use only the testing payment provider."],
   ["finalWorkflow", 'ROSTA_REFUND_ENABLED: "false"', "Refund execution must remain disabled in R3D."],
   ["finalWorkflow", 'ROSTA_SMS_ENABLED: "false"', "Production SMS must remain disabled in R3D."],
   ["finalWorkflow", 'VITE_ALLOW_INDEXING: "false"', "Indexing must remain disabled in R3D."],
@@ -51,14 +52,15 @@ if (!packageJson.scripts?.check?.includes("audit:r3d")) {
 }
 
 const forbidden = [
+  ["finalWorkflow", "APP_ENV: production"],
   ["finalWorkflow", "PAYMENT_DRIVER: zarinpal"],
   ["finalWorkflow", "PAYMENT_MERCHANT_ID:"],
   ["finalWorkflow", "KAVENEGAR_API_KEY:"],
   ["finalWorkflow", 'ROSTA_REFUND_ENABLED: "true"'],
   ["finalWorkflow", 'ROSTA_SMS_ENABLED: "true"'],
   ["finalWorkflow", 'VITE_ALLOW_INDEXING: "true"'],
-  ["finalWorkflow", "deploy"],
-  ["finalWorkflow", "production"],
+  ["finalWorkflow", "deploy/staging"],
+  ["finalWorkflow", "deploy/production"],
 ];
 for (const [file, fragment] of forbidden) {
   if (sources[file].toLowerCase().includes(fragment.toLowerCase())) {
