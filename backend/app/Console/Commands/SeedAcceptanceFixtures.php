@@ -22,22 +22,22 @@ final class SeedAcceptanceFixtures extends Command
     public function handle(RostaAcceptanceSeeder $seeder): int
     {
         if (! app()->environment(['local', 'testing'])) {
-            return $this->fail('Acceptance fixtures are allowed only in local and testing environments.');
+            return $this->reject('Acceptance fixtures are allowed only in local and testing environments.');
         }
 
         if (! Schema::hasTable('users') || ! Schema::hasTable('products')) {
-            return $this->fail('Run the complete database migrations before acceptance fixtures.');
+            return $this->reject('Run the complete database migrations before acceptance fixtures.');
         }
 
         if (User::query()->exists()) {
-            return $this->fail('Acceptance fixtures require an empty migrated database.');
+            return $this->reject('Acceptance fixtures require an empty migrated database.');
         }
 
         try {
             $seeder->setContainer(app())->setCommand($this);
             $seeder();
         } catch (Throwable $exception) {
-            return $this->fail('Acceptance fixture seeding failed: '.$exception->getMessage());
+            return $this->reject('Acceptance fixture seeding failed: '.$exception->getMessage());
         }
 
         $customer = User::query()->where('mobile', '09123456789')->firstOrFail();
@@ -110,7 +110,7 @@ final class SeedAcceptanceFixtures extends Command
         return self::SUCCESS;
     }
 
-    private function fail(string $message): int
+    private function reject(string $message): int
     {
         if ($this->option('json')) {
             $this->line((string) json_encode([
