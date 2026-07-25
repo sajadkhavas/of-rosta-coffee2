@@ -55,6 +55,10 @@ const publicMetadata = [
 
 const seoSurface = Object.values(files).join("\n");
 
+const rootHasRouteCanonical =
+  files.root?.includes('rel: "canonical"') ||
+  files.root?.includes('property: "og:url"');
+
 gate(
   "seo_audit_files_present",
   missing.length === 0,
@@ -78,6 +82,12 @@ gate(
     'direction: "rtl"',
   ]) && !files.siteConfig?.includes("rosta.coffee"),
   "Canonical URLs and indexing state must come from the central RTL site configuration.",
+);
+
+gate(
+  "root_does_not_duplicate_route_canonicals",
+  !rootHasRouteCanonical,
+  "The root layout must provide only universal metadata; public routes own their canonical and og:url values.",
 );
 
 gate(

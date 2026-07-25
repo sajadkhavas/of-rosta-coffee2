@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Contracts\OtpSender;
 use App\Models\Order;
 use App\Observers\OrderObserver;
+use App\Services\Sms\AcceptanceOtpSender;
 use App\Services\Sms\DisabledOtpSender;
 use App\Services\Sms\LogOtpSender;
 use App\Support\IranMobile;
@@ -20,6 +21,10 @@ final class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(OtpSender::class, function (): OtpSender {
             $driver = (string) config('services.sms.driver');
+
+            if ($driver === 'acceptance' && $this->app->environment('testing')) {
+                return new AcceptanceOtpSender;
+            }
 
             if ($driver === 'log' && $this->app->environment(['local', 'testing'])) {
                 return new LogOtpSender;

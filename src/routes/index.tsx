@@ -99,10 +99,7 @@ function HomePage() {
               >
                 مستقیم از روستری به دست تو؛ فقط دانه کامل، با قیمت، موجودی و تاریخ رست واقعی.
               </p>
-              <div
-                data-fade-up
-                className="mx-auto mt-10 flex flex-wrap items-center justify-center gap-6 md:mx-0 md:justify-start"
-              >
+              <div className="mx-auto mt-10 flex flex-wrap items-center justify-center gap-6 md:mx-0 md:justify-start">
                 <Link to="/products" className="btn-primary">
                   مشاهده قهوه‌ها <span aria-hidden>←</span>
                 </Link>

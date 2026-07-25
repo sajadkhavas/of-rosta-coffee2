@@ -66,6 +66,7 @@
     "audit:staging": "@php scripts/audit-staging-deployment-contract.php",
     "audit:encrypted-storage": "@php scripts/audit-encrypted-storage-contract.php",
     "audit:acceptance-fixtures": "@php scripts/audit-acceptance-fixture-contract.php",
+    "audit:browser-acceptance": "@php scripts/audit-browser-acceptance-contract.php",
     "readiness": "@php artisan rosta:readiness --json",
     "acceptance:infrastructure": "@php artisan rosta:infrastructure-acceptance --json",
     "acceptance:fixtures": "@php artisan rosta:acceptance-fixtures --json",
@@ -94,6 +95,7 @@
       "@audit:staging",
       "@audit:encrypted-storage",
       "@audit:acceptance-fixtures",
+      "@audit:browser-acceptance",
       "@php artisan test",
       "@php vendor/bin/phpstan analyse --memory-limit=1G",
       "@php vendor/bin/pint --parallel --test"
