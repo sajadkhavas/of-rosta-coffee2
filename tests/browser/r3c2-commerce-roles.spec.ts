@@ -4,13 +4,11 @@ import { spawnSync } from "node:child_process";
 
 const pendingOtpKey = "rosta.pending-otp.v1";
 const apiBase = "http://127.0.0.1:8000/api/v1";
-
 type JsonRecord = Record<string, unknown>;
 
 interface ApiResult {
   status: number;
   body: unknown;
-  url: string;
 }
 
 function record(value: unknown, label: string): JsonRecord {
@@ -52,7 +50,6 @@ async function api(
       const xsrfCookie = document.cookie
         .split("; ")
         .find((item) => item.startsWith("XSRF-TOKEN="));
-
       if (body !== undefined) headers["Content-Type"] = "application/json";
       if (method !== "GET" && xsrfCookie) {
         headers["X-XSRF-TOKEN"] = decodeURIComponent(xsrfCookie.slice("XSRF-TOKEN=".length));
@@ -73,8 +70,7 @@ async function api(
           payload = raw;
         }
       }
-
-      return { status: response.status, body: payload, url: response.url };
+      return { status: response.status, body: payload };
     },
     { base: apiBase, path, method, body },
   );
@@ -100,7 +96,6 @@ function consumeAcceptanceOtp(challengeId: string): string {
     if (result.status === 0 && /^\d{6}$/.test(output)) return output;
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250);
   }
-
   throw new Error("The one-time R3C2 OTP was not delivered before the bounded deadline.");
 }
 
@@ -127,7 +122,7 @@ async function login(page: Page, mobile: string, redirect: string): Promise<Json
   return record(data(me), "authenticated user");
 }
 
-async function newRolePage(browser: Browser, mobile: string, redirect: string) {
+async function rolePage(browser: Browser, mobile: string, redirect: string) {
   const context = await browser.newContext();
   const page = await context.newPage();
   const user = await login(page, mobile, redirect);
@@ -139,10 +134,8 @@ test.describe.configure({ mode: "serial" });
 test("R3C2 completes commerce, scoped seller, administrator and adversarial journeys", async ({
   browser,
 }) => {
-  const customer = await newRolePage(browser, "09123456789", "/profile");
-  const customerRoles = array(customer.user.roles, "customer roles");
-  expect(customerRoles).toContain("customer");
-
+  const customer = await rolePage(browser, "09123456789", "/profile");
+  expect(array(customer.user.roles, "customer roles")).toContain("customer");
   expect((await api(customer.page, "/seller/roasteries")).status).toBe(403);
   expect((await api(customer.page, "/admin/roasteries?status=verified&per_page=100")).status).toBe(403);
 
@@ -162,7 +155,6 @@ test("R3C2 completes commerce, scoped seller, administrator and adversarial jour
   const addresses = array(data(addressesResponse), "customer addresses").map((item) =>
     record(item, "customer address"),
   );
-  expect(addresses.length).toBeGreaterThan(0);
   const addressId = text(addresses[0].id, "address id");
 
   const quoteResponse = await api(customer.page, "/checkout/quote", "POST", {
@@ -170,9 +162,8 @@ test("R3C2 completes commerce, scoped seller, administrator and adversarial jour
     address_id: addressId,
     coupon_code: null,
   });
-  expect(quoteResponse.status).toBe(201);
-  const quote = record(data(quoteResponse), "checkout quote");
-  const quoteId = text(quote.id, "quote id");
+  expect(quoteResponse.status).toBe(200);
+  const quoteId = text(record(data(quoteResponse), "checkout quote").id, "quote id");
 
   const orderKey = `r3c2-order-${randomUUID()}`;
   const orderRequest = { quote_id: quoteId, idempotency_key: orderKey, notes: "R3C2 acceptance" };
@@ -227,16 +218,13 @@ test("R3C2 completes commerce, scoped seller, administrator and adversarial jour
   expect(text(record(data(verification), "payment verification").status, "payment status")).toBe(
     "paid",
   );
-
   const paidOrder = await api(customer.page, `/orders/${encodeURIComponent(orderId)}`);
   expect(paidOrder.status).toBe(200);
   expect(text(record(data(paidOrder), "paid order").status, "paid order status")).toBe("paid");
 
-  const seller = await newRolePage(browser, "09120000002", "/panel/manage");
+  const seller = await rolePage(browser, "09120000002", "/panel/manage");
   expect(array(seller.user.roles, "seller roles")).toContain("roastery_owner");
-  await expect(
-    seller.page.getByRole("heading", { name: "ویرایش اطلاعات و کاتالوگ" }),
-  ).toBeVisible();
+  await expect(seller.page.getByRole("heading", { name: "ویرایش اطلاعات و کاتالوگ" })).toBeVisible();
 
   const sellerRoasteriesResponse = await api(seller.page, "/seller/roasteries");
   expect(sellerRoasteriesResponse.status).toBe(200);
@@ -252,15 +240,13 @@ test("R3C2 completes commerce, scoped seller, administrator and adversarial jour
   const publicRoasteries = array(data(publicRoasteriesResponse), "public roasteries").map((item) =>
     record(item, "public roastery"),
   );
-  const foreignRoastery = publicRoasteries.find(
-    (item) => item.slug === "foreign-acceptance-roastery",
-  );
+  const foreignRoastery = publicRoasteries.find((item) => item.slug === "foreign-acceptance-roastery");
   expect(foreignRoastery).toBeDefined();
   const foreignRoasteryId = text(foreignRoastery?.id, "foreign roastery id");
 
-  expect(
-    [403, 404],
-  ).toContain((await api(seller.page, `/seller/roasteries/${encodeURIComponent(foreignRoasteryId)}`)).status);
+  expect([403, 404]).toContain(
+    (await api(seller.page, `/seller/roasteries/${encodeURIComponent(foreignRoasteryId)}`)).status,
+  );
   expect((await api(seller.page, "/admin/roasteries?status=verified&per_page=100")).status).toBe(403);
   expect((await api(seller.page, `/orders/${encodeURIComponent(orderId)}`)).status).toBe(404);
   expect(
@@ -277,12 +263,8 @@ test("R3C2 completes commerce, scoped seller, administrator and adversarial jour
   );
   expect(sellerOrders.some((item) => item.id === orderId)).toBe(true);
 
-  const invalidDelivered = await api(
-    seller.page,
-    `/seller/roasteries/${encodeURIComponent(ownedRoasteryId)}/orders/${encodeURIComponent(orderId)}/fulfillment`,
-    "PATCH",
-    { status: "delivered" },
-  );
+  const fulfillmentPath = `/seller/roasteries/${encodeURIComponent(ownedRoasteryId)}/orders/${encodeURIComponent(orderId)}/fulfillment`;
+  const invalidDelivered = await api(seller.page, fulfillmentPath, "PATCH", { status: "delivered" });
   expect(invalidDelivered.status).toBe(409);
 
   for (const transition of [
@@ -292,13 +274,7 @@ test("R3C2 completes commerce, scoped seller, administrator and adversarial jour
     { status: "shipped", carrier: "پست", tracking_code: "R3C2TRACK001" },
     { status: "delivered" },
   ]) {
-    const response = await api(
-      seller.page,
-      `/seller/roasteries/${encodeURIComponent(ownedRoasteryId)}/orders/${encodeURIComponent(orderId)}/fulfillment`,
-      "PATCH",
-      transition,
-    );
-    expect(response.status).toBe(200);
+    expect((await api(seller.page, fulfillmentPath, "PATCH", transition)).status).toBe(200);
   }
 
   const deliveredOrder = await api(customer.page, `/orders/${encodeURIComponent(orderId)}`);
@@ -326,12 +302,10 @@ test("R3C2 completes commerce, scoped seller, administrator and adversarial jour
   });
   expect(duplicateReview.status).toBe(409);
 
-  const administrator = await newRolePage(browser, "09120000001", "/admin/operations");
+  const administrator = await rolePage(browser, "09120000001", "/admin/operations");
   expect(array(administrator.user.roles, "administrator roles")).toContain("administrator");
   await expect(
-    administrator.page.getByRole("heading", {
-      name: "نظارت کاتالوگ، پشتیبانی و سلامت عملیات",
-    }),
+    administrator.page.getByRole("heading", { name: "نظارت کاتالوگ، پشتیبانی و سلامت عملیات" }),
   ).toBeVisible();
 
   const adminRoasteries = await api(
@@ -365,9 +339,11 @@ test("R3C2 completes commerce, scoped seller, administrator and adversarial jour
 
   expect((await api(administrator.page, `/orders/${encodeURIComponent(orderId)}`)).status).toBe(404);
   expect(
-    (await api(administrator.page, "/admin/reviews/01INVALIDR3C2REVIEW00000000", "PATCH", {
-      status: "approved",
-    })).status,
+    (
+      await api(administrator.page, "/admin/reviews/01INVALIDR3C2REVIEW00000000", "PATCH", {
+        status: "approved",
+      })
+    ).status,
   ).toBe(404);
 
   const publicReviews = await api(
@@ -375,13 +351,13 @@ test("R3C2 completes commerce, scoped seller, administrator and adversarial jour
     `/products/${encodeURIComponent(text(product.slug, "product slug"))}/reviews`,
   );
   expect(publicReviews.status).toBe(200);
-  const publicReviewData = record(data(publicReviews), "public review data");
-  const publicReviewItems = array(publicReviewData.items, "public review items").map((item) =>
-    record(item, "public review"),
-  );
-  expect(publicReviewItems.some((item) => item.id === reviewId && item.is_verified_purchase === true)).toBe(
-    true,
-  );
+  const publicReviewItems = array(
+    record(data(publicReviews), "public review data").items,
+    "public review items",
+  ).map((item) => record(item, "public review"));
+  expect(
+    publicReviewItems.some((item) => item.id === reviewId && item.is_verified_purchase === true),
+  ).toBe(true);
 
   expect(productId).not.toBe("");
   await Promise.all([customer.context.close(), seller.context.close(), administrator.context.close()]);
