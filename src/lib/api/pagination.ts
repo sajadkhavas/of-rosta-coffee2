@@ -6,6 +6,7 @@ const paginationLinkSchema = z
   .object({
     url: paginationUrl,
     label: z.string().max(500),
+    page: z.number().int().min(1).nullable(),
     active: z.boolean(),
   })
   .strict();
