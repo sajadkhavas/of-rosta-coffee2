@@ -110,7 +110,7 @@ test.describe("R3C public browser journeys", () => {
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/products");
-    await expect(page.locator("body")).toHaveAttribute("dir", "rtl");
+    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
     await expectNoSeriousAccessibilityViolations(page);
   });
 });
