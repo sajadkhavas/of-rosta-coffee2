@@ -21,7 +21,7 @@ const required = [
   ["config", 'video: "off"', "Videos must remain disabled to avoid OTP capture."],
   ["tests", "rosta.pending-otp.v1", "Customer acceptance must obtain the real challenge identifier from browser session state."],
   ["tests", "rosta:acceptance-otp", "Customer acceptance must consume OTP only through the non-HTTP CLI bridge."],
-  ["tests", "//evil.example", "Customer acceptance must test hostile redirect containment."],
+  ["tests", "%2F%2Fevil.example", "Customer acceptance must test the encoded hostile redirect payload."],
   ["tests", "expectNoSeriousAccessibilityViolations", "Browser acceptance must include accessibility checks."],
   ["tests", "credentials: \"include\"", "Customer acceptance must prove the credentialed cookie session."],
   ["workflow", "mysql:8.4", "Browser CI must use MySQL 8.4."],
