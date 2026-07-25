@@ -44,6 +44,7 @@ final class SeedAcceptanceFixtures extends Command
         $administrator = User::query()->where('mobile', '09120000001')->firstOrFail();
         $seller = User::query()->where('mobile', '09120000002')->firstOrFail();
         $roastery = Roastery::query()->where('slug', 'rosta-roastery')->firstOrFail();
+        $foreignRoastery = Roastery::query()->where('slug', 'foreign-acceptance-roastery')->firstOrFail();
         $product = Product::query()->where('slug', 'ethiopia-sidamo-whole-bean')->firstOrFail();
         $address = Address::query()
             ->where('user_id', $customer->id)
@@ -84,6 +85,11 @@ final class SeedAcceptanceFixtures extends Command
                     'id' => $roastery->id,
                     'slug' => $roastery->slug,
                     'status' => $roastery->status,
+                ],
+                'foreign_scope' => [
+                    'roastery_id' => $foreignRoastery->id,
+                    'roastery_slug' => $foreignRoastery->slug,
+                    'expected_seller_access' => 'denied',
                 ],
                 'product' => [
                     'id' => $product->id,
