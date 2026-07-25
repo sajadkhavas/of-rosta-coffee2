@@ -42,7 +42,6 @@ const forbidden = [
   ["config", 'screenshot: "only-on-failure"'],
   ["config", 'video: "retain-on-failure"'],
   ["workflow", 'ROSTA_SMS_ENABLED: "true"'],
-  ["workflow", 'ROSTA_PAYMENT_ENABLED: "true"'],
   ["workflow", 'VITE_ALLOW_INDEXING: "true"'],
   ["tests", "page.route("],
   ["tests", "context.addCookies("],
@@ -51,6 +50,18 @@ const forbidden = [
 for (const [file, fragment] of forbidden) {
   if (sources[file].includes(fragment)) {
     failures.push(`R3C browser contract contains forbidden fragment in ${files[file]}: ${fragment}`);
+  }
+}
+
+if (sources.workflow.includes('ROSTA_PAYMENT_ENABLED: "true"')) {
+  if (!sources.workflow.includes("PAYMENT_DRIVER: testing")) {
+    failures.push("Enabled R3C payment acceptance must use only the testing provider.");
+  }
+  if (!sources.workflow.includes("APP_ENV: testing")) {
+    failures.push("Enabled R3C payment acceptance must remain in the testing environment.");
+  }
+  if (!sources.workflow.includes('ROSTA_REFUND_ENABLED: "false"')) {
+    failures.push("Refund execution must remain disabled during browser acceptance.");
   }
 }
 
