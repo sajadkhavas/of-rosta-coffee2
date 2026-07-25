@@ -1,0 +1,137 @@
+name: R4 Staging Package CI
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "backend/**"
+      - "deploy/staging/**"
+      - "scripts/**"
+      - "Dockerfile.staging"
+      - ".dockerignore"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/r4-staging-package-ci.yml"
+      - ".github/workflows/staging-deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: r4-staging-package-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hosted-rehearsal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      EVIDENCE_DIR: /tmp/rosta-r4a-evidence/${{ github.run_id }}
+      ROSTA_ALLOW_REHEARSAL: "true"
+
+    steps:
+      - name: Checkout immutable candidate
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.22
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: bcmath, ctype, curl, dom, fileinfo, intl, json, mbstring, openssl, pcntl, pdo_mysql, pdo_sqlite, posix, redis, simplexml, sockets, tokenizer, xml, xmlwriter, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Freeze R4A candidate
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          test -s bun.lock
+          test -s backend/composer.lock
+          {
+            echo "head=$(git rev-parse HEAD)"
+            echo "tree=$(git rev-parse 'HEAD^{tree}')"
+            echo "node=$(node --version)"
+            echo "bun=$(bun --version)"
+            echo "php=$(php --version | head -n 1)"
+            echo "composer=$(composer --version 2>&1 | head -n 1)"
+            echo "docker=$(docker --version)"
+            echo "compose=$(docker compose version)"
+          } | tee "$EVIDENCE_DIR/toolchain.txt"
+          sha256sum package.json bun.lock backend/composer.json backend/composer.lock \
+            | tee "$EVIDENCE_DIR/dependencies-before.sha256"
+
+      - name: Install frozen frontend dependencies
+        run: bun install --frozen-lockfile 2>&1 | tee "$EVIDENCE_DIR/bun-install.log"
+
+      - name: Install locked backend dependencies
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist --no-progress 2>&1 | tee "$EVIDENCE_DIR/composer-install.log"
+
+      - name: Audit R4A staging package contract
+        shell: bash
+        run: |
+          set -o pipefail
+          bun run audit:r4a 2>&1 | tee "$EVIDENCE_DIR/audit-r4a.log"
+          cp r4a-staging-package-audit.json "$EVIDENCE_DIR/"
+          rm -f r4a-staging-package-audit.json
+
+      - name: Run complete backend permanent gate
+        working-directory: backend
+        shell: bash
+        run: |
+          set -o pipefail
+          composer check 2>&1 | tee "$EVIDENCE_DIR/backend-check.log"
+
+      - name: Run hosted staging package rehearsal
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          chmod +x deploy/staging/rehearsal.sh
+          deploy/staging/rehearsal.sh
+          grep -q 'ROSTA_R4A_STAGING_PACKAGE_COMPLETE' "$EVIDENCE_DIR/result.txt"
+
+      - name: Enforce evidence privacy and clean workspace
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rm -f backend/.env backend/*-audit.json ./*-audit.json ./r3*.json ./r4*.json bundle-report.json
+          rm -rf backend/storage/framework/cache/phpstan backend/storage/framework/testing test-results
+          sha256sum package.json bun.lock backend/composer.json backend/composer.lock \
+            | tee "$EVIDENCE_DIR/dependencies-after.sha256"
+          cmp "$EVIDENCE_DIR/dependencies-before.sha256" "$EVIDENCE_DIR/dependencies-after.sha256"
+          if grep -R -E 'APP_KEY=|DB_PASSWORD=|MYSQL_ROOT_PASSWORD|S3_SECRET_ACCESS_KEY|PAYMENT_MERCHANT_ID|KAVENEGAR_API_KEY|09123456789|0912000000[0-9]' "$EVIDENCE_DIR"; then
+            echo "Sensitive material entered R4A evidence." >&2
+            exit 1
+          fi
+          if find "$EVIDENCE_DIR" -type f \( -name '*.env' -o -name '*.sql' -o -name '*.sql.gz' -o -name '*.png' -o -name '*.webm' -o -name '*.zip' \) | grep -q .; then
+            echo "Private, database, visual or archive payload entered R4A evidence." >&2
+            exit 1
+          fi
+          git diff --check
+          git status --porcelain --untracked-files=all | tee "$EVIDENCE_DIR/git-status-final-after-gates.txt"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          echo "ROSTA_R4A_STAGING_PACKAGE_COMPLETE" | tee "$EVIDENCE_DIR/final-marker.txt"
+
+      - name: Upload R4A evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rosta-r4a-staging-package-${{ github.run_id }}
+          path: /tmp/rosta-r4a-evidence/${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 21
