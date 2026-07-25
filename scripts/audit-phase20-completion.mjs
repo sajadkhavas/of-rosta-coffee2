@@ -3,7 +3,8 @@ import { readFile, writeFile } from "node:fs/promises";
 const paths = {
   package: "package.json",
   manage: "src/routes/panel.manage.tsx",
-  panel: "src/routes/panel.tsx",
+  panelLayout: "src/routes/panel.tsx",
+  panelIndex: "src/routes/panel.index.tsx",
   managementClient: "src/lib/api/seller-management.ts",
   sellerClient: "src/lib/api/seller-operations.ts",
   adminRoute: "src/routes/admin.operations.tsx",
@@ -30,11 +31,15 @@ gate(
 );
 gate(
   "seller_professional_editor_registered",
-  files.manage.includes('createFileRoute("/panel/manage")') &&
+  files.panelLayout.includes('createFileRoute("/panel")') &&
+    files.panelLayout.includes("Outlet") &&
+    files.panelIndex.includes('createFileRoute("/panel/")') &&
+    files.panelIndex.includes('to="/panel/manage"') &&
+    files.manage.includes('createFileRoute("/panel/manage")') &&
     files.manage.includes('content: "noindex,nofollow"') &&
-    files.panel.includes('to="/panel/manage"') &&
-    files.routeTree.includes("PanelManageRouteImport"),
-  "The professional seller editor must be protected, non-indexable, reachable and registered.",
+    files.routeTree.includes("PanelManageRouteImport") &&
+    files.routeTree.includes("PanelIndexRouteImport"),
+  "The professional seller editor must be protected, non-indexable, reachable through the panel index, and rendered by the nested panel layout.",
 );
 gate(
   "complete_roastery_edit_contract",
