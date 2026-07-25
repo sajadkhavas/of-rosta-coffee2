@@ -155,6 +155,11 @@ services:
 
   api:
     <<: *backend-app
+    networks:
+      backend:
+        aliases:
+          - app
+      object-storage: {}
     healthcheck:
       test: ["CMD", "php-fpm", "-t"]
       interval: 10s
