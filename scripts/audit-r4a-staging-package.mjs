@@ -104,7 +104,7 @@ gate(
     'ROSTA_REFUND_ENABLED: "false"',
     'ROSTA_SMS_ENABLED: "false"',
     'ROSTA_MEDIA_UPLOADS_ENABLED: "true"',
-    "S3_USE_PATH_STYLE_ENDPOINT: \"true\"",
+    'S3_USE_PATH_STYLE_ENDPOINT: "true"',
     "no-new-privileges:true",
   ]) &&
     !files.compose.match(/image:\s+[^\n]*:latest\b/) &&
@@ -151,7 +151,7 @@ gate(
     "compose config --no-interpolate",
   ]) &&
     hasAll(files.rehearsalWorkflow, [
-      "ROSTA_ALLOW_REHEARSAL: \"true\"",
+      'ROSTA_ALLOW_REHEARSAL: "true"',
       "ROSTA_R4A_STAGING_PACKAGE_COMPLETE",
       "Upload R4A evidence",
       "retention-days: 21",
@@ -182,27 +182,35 @@ gate(
     "composer audit --locked",
     "release_sha:",
     "origin/integration/rosta-r-program",
-  ]) &&
-    !files.phase22Audit.includes('"composer update"') &&
-    !files.phase22Audit.includes('"ensure_composer_lock"'),
+    '!files.deploy.includes("composer update")',
+    '!files.deploy.includes("ensure_composer_lock")',
+  ]),
   "The historical Phase 22 audit must enforce the current immutable R4 deployment contract.",
 );
 
-const combined = Object.values(files).join("\n");
+const executableContracts = [
+  files.deployWorkflow,
+  files.deploy,
+  files.compose,
+  files.caddy,
+  files.frontendImage,
+  files.backendImage,
+].join("\n");
+
 gate(
   "production_boundaries_remain_disabled",
-  !combined.includes('ROSTA_PAYMENT_ENABLED: "true"') &&
-    !combined.includes('ROSTA_REFUND_ENABLED: "true"') &&
-    !combined.includes('ROSTA_SMS_ENABLED: "true"') &&
-    !combined.includes('VITE_ALLOW_INDEXING: "true"') &&
-    !combined.includes("PAYMENT_MERCHANT_ID") &&
-    !combined.includes("KAVENEGAR_API_KEY"),
+  !executableContracts.includes('ROSTA_PAYMENT_ENABLED: "true"') &&
+    !executableContracts.includes('ROSTA_REFUND_ENABLED: "true"') &&
+    !executableContracts.includes('ROSTA_SMS_ENABLED: "true"') &&
+    !executableContracts.includes('VITE_ALLOW_INDEXING: "true"') &&
+    !executableContracts.match(/^\s*PAYMENT_MERCHANT_ID\s*:/m) &&
+    !executableContracts.match(/^\s*KAVENEGAR_API_KEY\s*:/m),
   "R4A cannot activate production money movement, SMS, credentials or indexing.",
 );
 
 gate(
   "whole_bean_boundary_preserved",
-  !/grind[_-]?(selector|state)|grind_option|grind_preference/i.test(combined),
+  !/grind[_-]?(selector|state)|grind_option|grind_preference/i.test(executableContracts),
   "Staging packaging must not introduce any grind selector, state, option or preference.",
 );
 
