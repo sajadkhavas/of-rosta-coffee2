@@ -57,8 +57,8 @@ jobs:
       APP_URL: http://127.0.0.1:8000
       LOG_CHANNEL: stack
       LOG_STACK: single
-      FRONTEND_ALLOWED_ORIGINS: http://127.0.0.1:3000
-      SANCTUM_STATEFUL_DOMAINS: 127.0.0.1:3000
+      FRONTEND_ALLOWED_ORIGINS: http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173
+      SANCTUM_STATEFUL_DOMAINS: 127.0.0.1:3000,localhost:5173,127.0.0.1:5173
       SESSION_DRIVER: redis
       SESSION_SECURE_COOKIE: "false"
       SESSION_SAME_SITE: lax
