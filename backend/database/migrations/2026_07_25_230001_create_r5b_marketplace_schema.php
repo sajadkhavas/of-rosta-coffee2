@@ -332,14 +332,14 @@ return new class extends Migration
             ->groupBy('order_id')
             ->havingRaw('COUNT(*) > 1')
             ->exists()) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 'R5B rollback refused because multi-roastery orders already exist.',
             );
         }
 
         if (DB::table('orders')->whereNull('roastery_id')->exists()
             || DB::table('checkout_quotes')->whereNull('roastery_id')->exists()) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 'R5B rollback refused because parent orders or quotes no longer have a legacy roastery.',
             );
         }
@@ -399,7 +399,7 @@ return new class extends Migration
                     $order = DB::table('orders')->where('id', $subOrder->order_id)->first();
 
                     if ($order === null) {
-                        throw new \RuntimeException(
+                        throw new RuntimeException(
                             "Sub-order {$subOrder->id} has no parent order.",
                         );
                     }
@@ -439,7 +439,7 @@ return new class extends Migration
             ->chunkById(100, function ($quotes): void {
                 foreach ($quotes as $quote) {
                     if ($quote->roastery_id === null) {
-                        throw new \RuntimeException(
+                        throw new RuntimeException(
                             "Legacy checkout quote {$quote->id} has no roastery.",
                         );
                     }

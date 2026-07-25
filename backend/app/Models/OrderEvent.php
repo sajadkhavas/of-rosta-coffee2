@@ -66,11 +66,11 @@ final class OrderEvent extends Model
 
     protected static function booted(): void
     {
-        static::updating(static function (): never {
+        self::updating(static function (): never {
             throw new LogicException('Order events are append-only and cannot be updated.');
         });
 
-        static::deleting(static function (): never {
+        self::deleting(static function (): never {
             throw new LogicException('Order events are append-only and cannot be deleted.');
         });
     }

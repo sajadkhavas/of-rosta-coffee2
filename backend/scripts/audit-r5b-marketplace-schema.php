@@ -171,7 +171,7 @@ $failed = array_values(array_filter(
 ));
 
 $report = [
-    'generated_at' => (new DateTimeImmutable())->format(DATE_ATOM),
+    'generated_at' => (new DateTimeImmutable)->format(DATE_ATOM),
     'passed' => $failed === [],
     'checked_files' => array_values($files),
     'gates' => $gates,
