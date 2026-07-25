@@ -106,11 +106,7 @@ gate(
   hasAll(files.domain, [
     "A roastery rejection is a seller action, not a customer cancellation",
     "leave accepted or completed sibling sub-orders unchanged",
-  ]) &&
-    hasAll(files.ledger, [
-      "Roastery rejection refund",
-      "preserve accepted sibling sub-orders",
-    ]),
+  ]) && hasAll(files.ledger, ["Roastery rejection refund", "preserve accepted sibling sub-orders"]),
   "Seller rejection must refund only the affected sub-order and must not cancel accepted siblings.",
 );
 
@@ -136,14 +132,8 @@ gate(
     "one card per Rosta service fulfilment",
     "All timeline events are append-only",
   ]) &&
-    hasAll(files.states, [
-      "Transition audit record",
-      "parent aggregate recalculation",
-    ]) &&
-    hasAll(files.api, [
-      "customer-visible events",
-      "cancellation capability derived by backend",
-    ]),
+    hasAll(files.states, ["Transition audit record", "parent aggregate recalculation"]) &&
+    hasAll(files.api, ["customer-visible events", "cancellation capability derived by backend"]),
   "Customers must receive truthful child-level tracking backed by append-only events.",
 );
 
