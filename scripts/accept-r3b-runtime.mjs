@@ -33,7 +33,7 @@ async function json(url, init = {}) {
 }
 
 async function html(path) {
-  const result = await response(`${frontendBase}${path}`);
+  const result = await response(`${frontendBase}${path}`, { redirect: "follow" });
   const body = await result.text();
   return { result, body };
 }
@@ -41,6 +41,7 @@ async function html(path) {
 function htmlEvidence(result, body, expected) {
   return [
     `status=${result.status}`,
+    `final_url=${result.url}`,
     `content_type=${result.headers.get("content-type") ?? "missing"}`,
     `body_length=${body.length}`,
     `expected_content=${body.includes(expected)}`,
