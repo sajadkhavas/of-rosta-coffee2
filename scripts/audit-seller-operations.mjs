@@ -2,7 +2,9 @@ import { readFile, writeFile } from "node:fs/promises";
 
 const paths = {
   package: "package.json",
-  route: "src/routes/panel.tsx",
+  layout: "src/routes/panel.tsx",
+  route: "src/routes/panel.index.tsx",
+  manageRoute: "src/routes/panel.manage.tsx",
   dashboard: "src/components/seller/SellerOperationsDashboard.tsx",
   client: "src/lib/api/seller-operations.ts",
   onboarding: "src/lib/api/seller-onboarding.ts",
@@ -34,11 +36,19 @@ gate(
 );
 
 gate(
+  "nested_panel_layout",
+  files.layout.includes('createFileRoute("/panel")') &&
+    files.layout.includes("Outlet") &&
+    files.manageRoute.includes('createFileRoute("/panel/manage")'),
+  "The seller panel parent must render nested routes so the management workspace cannot be shadowed by the daily dashboard.",
+);
+
+gate(
   "protected_non_indexable_panel",
-  files.route.includes('createFileRoute("/panel")') &&
+  files.route.includes('createFileRoute("/panel/")') &&
     files.route.includes("AccountGuard") &&
     files.route.includes('content: "noindex,nofollow"'),
-  "The seller workspace must require an authenticated account and stay outside search indexing.",
+  "The seller workspace index must require an authenticated account and stay outside search indexing.",
 );
 
 gate(
@@ -114,8 +124,9 @@ gate(
   "route_and_navigation_registered",
   files.navbar.includes('to="/panel"') &&
     files.routeTree.includes("PanelRouteImport") &&
-    /["']\/panel["']/.test(files.routeTree),
-  "The seller panel must remain reachable from navigation and registered in the generated route tree.",
+    /["']\/panel["']/.test(files.routeTree) &&
+    files.route.includes('to="/panel/manage"'),
+  "The seller panel must remain reachable from navigation and link to the nested management workspace.",
 );
 
 const failed = gates.filter((item) => !item.passed);
@@ -125,7 +136,6 @@ const report = {
   passed: failed.length === 0,
   gates,
 };
-
 await writeFile("frontend-seller-operations-audit.json", `${JSON.stringify(report, null, 2)}\n`);
 
 if (failed.length > 0) {

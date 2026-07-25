@@ -56,8 +56,7 @@ const publicMetadata = [
 const seoSurface = Object.values(files).join("\n");
 
 const rootHasRouteCanonical =
-  files.root?.includes('rel: "canonical"') ||
-  files.root?.includes('property: "og:url"');
+  files.root?.includes('rel: "canonical"') || files.root?.includes('property: "og:url"');
 
 gate(
   "seo_audit_files_present",

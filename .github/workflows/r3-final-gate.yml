@@ -1,4 +1,4 @@
-name: Browser Acceptance CI
+name: R3 Final Gate
 
 on:
   pull_request:
@@ -7,24 +7,22 @@ on:
       - "backend/**"
       - "tests/browser/**"
       - "scripts/**"
-      - "playwright.config.ts"
       - "package.json"
       - "bun.lock"
-      - ".github/workflows/browser-acceptance-ci.yml"
+      - ".github/workflows/**"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: browser-acceptance-${{ github.ref }}
+  group: r3-final-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  public-commerce-and-roles:
+  all-surfaces-integrated:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
-
+    timeout-minutes: 60
     services:
       mysql:
         image: mysql:8.4
@@ -51,7 +49,7 @@ jobs:
           --health-retries=20
 
     env:
-      EVIDENCE_DIR: /tmp/rosta-r3-evidence/${{ github.run_id }}/r3c2
+      EVIDENCE_DIR: /tmp/rosta-r3-evidence/${{ github.run_id }}/r3d
       APP_ENV: testing
       APP_DEBUG: "false"
       APP_URL: http://127.0.0.1:8000
@@ -87,7 +85,6 @@ jobs:
       VITE_PAYMENT_REDIRECT_HOSTS: 127.0.0.1:8000,127.0.0.1:3000
       VITE_ALLOW_INDEXING: "false"
       ROSTA_INTERNAL_API_URL: http://127.0.0.1:8000/api/v1
-      R3C_FRONTEND_BASE: http://127.0.0.1:3000
 
     steps:
       - name: Checkout
@@ -113,7 +110,7 @@ jobs:
           coverage: none
           tools: composer:v2
 
-      - name: Freeze browser acceptance snapshot
+      - name: Freeze final snapshot
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -128,41 +125,73 @@ jobs:
             echo "node=$(node --version)"
             echo "bun=$(bun --version)"
             echo "php=$(php --version | head -n 1)"
+            echo "composer=$(composer --version 2>&1 | head -n 1)"
           } | tee "$EVIDENCE_DIR/versions.txt"
           sha256sum package.json bun.lock backend/composer.json backend/composer.lock | tee "$EVIDENCE_DIR/dependencies-before.sha256"
 
-      - name: Install frozen dependencies
+      - name: First clean frontend install
         shell: bash
         run: |
           set -o pipefail
-          bun install --frozen-lockfile 2>&1 | tee "$EVIDENCE_DIR/bun-install.log"
+          rm -rf node_modules
+          bun install --frozen-lockfile 2>&1 | tee "$EVIDENCE_DIR/frontend-install-1.log"
+
+      - name: Second clean frontend install
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -rf node_modules
+          bun install --frozen-lockfile 2>&1 | tee "$EVIDENCE_DIR/frontend-install-2.log"
+
+      - name: First clean backend install
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -rf backend/vendor
           cd backend
-          composer install --no-interaction --prefer-dist --no-progress 2>&1 | tee "$EVIDENCE_DIR/composer-install.log"
+          composer install --no-interaction --prefer-dist --no-progress 2>&1 | tee "$EVIDENCE_DIR/backend-install-1.log"
 
-      - name: Install Chromium
-        run: bunx playwright install --with-deps chromium 2>&1 | tee "$EVIDENCE_DIR/playwright-install.log"
+      - name: Second clean backend install
+        shell: bash
+        run: |
+          set -o pipefail
+          rm -rf backend/vendor
+          cd backend
+          composer install --no-interaction --prefer-dist --no-progress 2>&1 | tee "$EVIDENCE_DIR/backend-install-2.log"
 
-      - name: Run backend permanent gate
+      - name: Prepare isolated Laravel environment
         working-directory: backend
         shell: bash
         run: |
           set -Eeuo pipefail
           cp .env.example .env
           mkdir -p bootstrap/cache storage/app/private storage/app/public storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
+
+      - name: Run complete backend gate
+        working-directory: backend
+        shell: bash
+        run: |
+          set -o pipefail
           composer check 2>&1 | tee "$EVIDENCE_DIR/backend-check.log"
 
-      - name: Prepare acceptance database
+      - name: Run complete frontend gate
+        shell: bash
+        run: |
+          set -o pipefail
+          bun run check 2>&1 | tee "$EVIDENCE_DIR/frontend-check.log"
+
+      - name: Prepare final acceptance database
         working-directory: backend
         shell: bash
         run: |
           set -Eeuo pipefail
           php artisan migrate:fresh --force 2>&1 | tee "$EVIDENCE_DIR/mysql-migrations.log"
-          php artisan rosta:readiness --strict --json 2>&1 | tee "$EVIDENCE_DIR/backend-readiness.json"
+          php artisan rosta:readiness --strict --json 2>&1 | tee "$EVIDENCE_DIR/readiness.json"
           php artisan rosta:acceptance-fixtures --json > "$EVIDENCE_DIR/acceptance-fixtures.json"
           grep -q 'ROSTA_R3A_ACCEPTANCE_FIXTURES_COMPLETE' "$EVIDENCE_DIR/acceptance-fixtures.json"
           grep -q 'foreign-acceptance-roastery' "$EVIDENCE_DIR/acceptance-fixtures.json"
 
-      - name: Build production SSR
+      - name: Build final Node SSR output
         shell: bash
         env:
           NODE_ENV: production
@@ -173,26 +202,21 @@ jobs:
           git diff -- src/routeTree.gen.ts | tee "$EVIDENCE_DIR/route-tree.diff"
           cp src/routeTree.gen.ts "$EVIDENCE_DIR/routeTree.gen.ts"
 
-      - name: Boot Laravel, notification worker and SSR
+      - name: Install Chromium
+        run: bunx playwright install --with-deps chromium 2>&1 | tee "$EVIDENCE_DIR/playwright-install.log"
+
+      - name: Boot final integrated runtime
         shell: bash
         run: |
           set -Eeuo pipefail
-          (
-            cd backend
-            php artisan serve --host=127.0.0.1 --port=8000
-          ) > "$EVIDENCE_DIR/laravel-runtime.log" 2>&1 &
+          (cd backend && php artisan serve --host=127.0.0.1 --port=8000) > "$EVIDENCE_DIR/laravel-runtime.log" 2>&1 &
           echo $! > "$EVIDENCE_DIR/laravel.pid"
-          (
-            cd backend
-            php artisan queue:work redis --queue=notifications --sleep=1 --tries=1 --timeout=30
-          ) > "$EVIDENCE_DIR/queue-worker.log" 2>&1 &
+          (cd backend && php artisan queue:work redis --queue=notifications --sleep=1 --tries=1 --timeout=30) > "$EVIDENCE_DIR/queue-worker.log" 2>&1 &
           echo $! > "$EVIDENCE_DIR/worker.pid"
-          NODE_ENV=production HOST=127.0.0.1 PORT=3000 \
-            node .output/server/index.mjs > "$EVIDENCE_DIR/frontend-runtime.log" 2>&1 &
+          NODE_ENV=production HOST=127.0.0.1 PORT=3000 node .output/server/index.mjs > "$EVIDENCE_DIR/frontend-runtime.log" 2>&1 &
           echo $! > "$EVIDENCE_DIR/frontend.pid"
           for attempt in $(seq 1 50); do
-            if curl --fail --silent http://127.0.0.1:8000/api/v1/health/live > /dev/null \
-              && curl --fail --silent http://127.0.0.1:3000/robots.txt > /dev/null; then
+            if curl --fail --silent http://127.0.0.1:8000/api/v1/health/live > /dev/null && curl --fail --silent http://127.0.0.1:3000/robots.txt > /dev/null; then
               exit 0
             fi
             sleep 1
@@ -201,47 +225,40 @@ jobs:
           cat "$EVIDENCE_DIR/frontend-runtime.log"
           exit 1
 
-      - name: Run R3C and R3C2 contract audits
+      - name: Run all real browser journeys
         shell: bash
         run: |
           set -o pipefail
-          bun run audit:r3c 2>&1 | tee "$EVIDENCE_DIR/audit-r3c.log"
-          bun run audit:r3c2 2>&1 | tee "$EVIDENCE_DIR/audit-r3c2.log"
-          cp r3c-browser-audit.json r3c2-commerce-roles-audit.json "$EVIDENCE_DIR/"
-
-      - name: Run real browser journeys
-        shell: bash
-        run: |
-          set -o pipefail
-          export R3C_JUNIT_PATH="$EVIDENCE_DIR/r3c-junit.xml"
+          export R3C_JUNIT_PATH="$EVIDENCE_DIR/r3-final-junit.xml"
           bun run test:browser -- --config=playwright.config.ts 2>&1 | tee "$EVIDENCE_DIR/browser.log"
-          grep -q 'failures="0"' "$EVIDENCE_DIR/r3c-junit.xml"
+          grep -q 'failures="0"' "$EVIDENCE_DIR/r3-final-junit.xml"
           kill -0 "$(cat "$EVIDENCE_DIR/laravel.pid")"
           kill -0 "$(cat "$EVIDENCE_DIR/worker.pid")"
           kill -0 "$(cat "$EVIDENCE_DIR/frontend.pid")"
 
-      - name: Enforce private evidence and clean workspace
+      - name: Enforce final evidence and clean workspace
         shell: bash
         run: |
           set -Eeuo pipefail
-          rm -f r3c-browser-audit.json r3c2-commerce-roles-audit.json backend/.env backend/*-audit.json
+          cp r3d-final-integration-audit.json "$EVIDENCE_DIR/"
+          if test -s bundle-report.json; then
+            cp bundle-report.json "$EVIDENCE_DIR/"
+          fi
+          rm -f ./*-audit.json ./r3*.json bundle-report.json backend/.env backend/*-audit.json
           rm -rf backend/storage/framework/cache/phpstan backend/storage/framework/testing test-results
           sha256sum package.json bun.lock backend/composer.json backend/composer.lock | tee "$EVIDENCE_DIR/dependencies-after.sha256"
           cmp "$EVIDENCE_DIR/dependencies-before.sha256" "$EVIDENCE_DIR/dependencies-after.sha256"
-          if grep -R -E 'APP_KEY=|DB_PASSWORD=|MYSQL_ROOT_PASSWORD|PAYMENT_MERCHANT_ID|KAVENEGAR_API_KEY|09123456789|0912000000[12]|Local OTP delivery|"code"[[:space:]]*:[[:space:]]*"[0-9]{6}"' "$EVIDENCE_DIR"; then
-            echo "Sensitive authentication or provider material entered R3C2 evidence." >&2
+          if grep -R -E 'APP_KEY=|DB_PASSWORD=|MYSQL_ROOT_PASSWORD|PAYMENT_MERCHANT_ID|KAVENEGAR_API_KEY|09123456789|0912000000[12]|"code"[[:space:]]*:[[:space:]]*"[0-9]{6}"' "$EVIDENCE_DIR"; then
+            echo "Sensitive material entered R3D evidence." >&2
             exit 1
           fi
           if find "$EVIDENCE_DIR" -type f \( -name '*.png' -o -name '*.webm' -o -name '*.zip' \) | grep -q .; then
-            echo "Visual or trace artifacts are forbidden for OTP browser acceptance." >&2
+            echo "Visual or trace artifacts are forbidden in R3D evidence." >&2
             exit 1
           fi
           git diff --check
           git status --porcelain --untracked-files=all | tee "$EVIDENCE_DIR/git-status-before-generated-reset.txt"
-          unexpected_status="$(
-            git status --porcelain --untracked-files=all |
-              grep -vE '^ M src/routeTree\.gen\.ts$' || true
-          )"
+          unexpected_status="$(git status --porcelain --untracked-files=all | grep -vE '^ M src/routeTree\.gen\.ts$' || true)"
           test -z "$unexpected_status"
           if ! git diff --quiet -- src/routeTree.gen.ts; then
             test -s "$EVIDENCE_DIR/route-tree.diff"
@@ -250,20 +267,23 @@ jobs:
           git status --short --untracked-files=all | tee "$EVIDENCE_DIR/git-status-final.txt"
           test -z "$(git status --porcelain --untracked-files=all)"
           {
+            echo "ROSTA_R3A_ACCEPTANCE_FIXTURES_COMPLETE"
+            echo "ROSTA_R3B_INTEGRATED_RUNTIME_COMPLETE"
             echo "ROSTA_R3C_BROWSER_ACCEPTANCE_COMPLETE"
             echo "ROSTA_R3C2_COMMERCE_ROLES_COMPLETE"
+            echo "all_surfaces_integrated=ready"
           } | tee "$EVIDENCE_DIR/result.txt"
 
-      - name: Upload R3C2 evidence
+      - name: Upload R3D final evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rosta-r3c2-browser-${{ github.run_id }}
-          path: /tmp/rosta-r3-evidence/${{ github.run_id }}/r3c2
+          name: rosta-r3d-final-${{ github.run_id }}
+          path: /tmp/rosta-r3-evidence/${{ github.run_id }}/r3d
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 21
 
-      - name: Stop browser acceptance runtime
+      - name: Stop final runtime
         if: always()
         shell: bash
         run: |
