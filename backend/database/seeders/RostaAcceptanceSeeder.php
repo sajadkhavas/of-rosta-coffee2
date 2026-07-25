@@ -27,7 +27,7 @@ final class RostaAcceptanceSeeder extends Seeder
             );
         }
 
-        $this->call(DatabaseSeeder::class);
+        $this->call(DatabaseSeeder::class, true);
 
         $customer = User::query()
             ->where('mobile', '09123456789')
