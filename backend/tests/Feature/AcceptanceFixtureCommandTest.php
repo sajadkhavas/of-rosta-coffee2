@@ -25,6 +25,8 @@ final class AcceptanceFixtureCommandTest extends TestCase
         $this->assertSame('acceptance-customer', $report['fixtures']['customer']['alias']);
         $this->assertSame('acceptance-administrator', $report['fixtures']['administrator']['alias']);
         $this->assertSame('acceptance-seller', $report['fixtures']['seller']['alias']);
+        $this->assertSame('foreign-acceptance-roastery', $report['fixtures']['foreign_scope']['roastery_slug']);
+        $this->assertSame('denied', $report['fixtures']['foreign_scope']['expected_seller_access']);
         $this->assertArrayNotHasKey('mobile', $report['fixtures']['customer']);
         $this->assertArrayNotHasKey('email', $report['fixtures']['customer']);
         $this->assertStringNotContainsString('otp', mb_strtolower(Artisan::output()));
@@ -39,6 +41,10 @@ final class AcceptanceFixtureCommandTest extends TestCase
         ]);
         $this->assertDatabaseHas('roasteries', [
             'slug' => 'rosta-roastery',
+            'status' => 'verified',
+        ]);
+        $this->assertDatabaseHas('roasteries', [
+            'slug' => 'foreign-acceptance-roastery',
             'status' => 'verified',
         ]);
         $this->assertDatabaseHas('products', [
