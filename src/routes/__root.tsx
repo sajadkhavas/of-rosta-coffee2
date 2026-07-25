@@ -145,7 +145,6 @@ export const Route = createRootRouteWithContext<{
         { property: "og:site_name", content: siteConfig.name },
         { property: "og:type", content: "website" },
         { property: "og:locale", content: siteConfig.locale },
-        { property: "og:url", content: absoluteUrl(pathname) },
         {
           property: "og:image",
           content: absoluteUrl(siteConfig.socialImagePath),
@@ -174,7 +173,6 @@ export const Route = createRootRouteWithContext<{
         },
         { rel: "apple-touch-icon", href: "/icon-192.png" },
         { rel: "manifest", href: "/manifest.json" },
-        { rel: "canonical", href: absoluteUrl(pathname) },
       ],
       scripts: [
         {
