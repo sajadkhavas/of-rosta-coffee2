@@ -155,9 +155,7 @@ export async function getPublicGrindingCapability(
 ): Promise<GrindingCapability | null> {
   const response = parseContract(
     resourceSchema(grindingCapabilityWireSchema.nullable()),
-    await apiFetch<unknown>(
-      `/roasteries/${encodeURIComponent(roasterySlug)}/grinding-capability`,
-    ),
+    await apiFetch<unknown>(`/roasteries/${encodeURIComponent(roasterySlug)}/grinding-capability`),
     "قابلیت آسیاب روستری",
   );
   return response.data ? mapGrindingCapability(response.data) : null;
