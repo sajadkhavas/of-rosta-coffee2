@@ -27,6 +27,14 @@ class RoasterySummaryResource extends JsonResource
             ];
         }
 
+        $grindingCapability = null;
+        if (
+            $this->relationLoaded('grindingCapability')
+            && $this->grindingCapability?->is_active
+        ) {
+            $grindingCapability = new GrindingCapabilityResource($this->grindingCapability);
+        }
+
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -37,6 +45,7 @@ class RoasterySummaryResource extends JsonResource
             'cover' => $this->cover ? new MediaAssetResource($this->cover) : null,
             'preparation_time' => $preparation,
             'rating' => $rating,
+            'grinding_capability' => $grindingCapability,
         ];
     }
 }
