@@ -36,12 +36,19 @@ const item: CartItem = {
   roasterySlug: "sample-roastery",
   weightGrams: 250,
   unitPriceSnapshot: 500_000,
+  packagingFeeMode: "free",
+  packagingFeeAmount: 0,
   quantity: 2,
   addedAt: 1_750_000_000_000,
 };
 
+const legacyItem = (() => {
+  const { packagingFeeMode: _mode, packagingFeeAmount: _amount, ...legacy } = item;
+  return legacy;
+})();
+
 describe("versioned cart persistence", () => {
-  test("round-trips a valid versioned single-roastery cart", () => {
+  test("round-trips a valid versioned marketplace cart", () => {
     const serialized = serializeStoredCart([item], 1_750_000_000_100);
     const decoded = JSON.parse(serialized);
     expect(decoded.version).toBe(CART_STORAGE_VERSION);
@@ -76,41 +83,78 @@ describe("versioned cart persistence", () => {
       items: [{ ...item, unitPriceSnapshot: -1 }],
     };
     expect(parseStoredCart(JSON.stringify(negativePrice))).toEqual([]);
-  });
 
-  test("rejects duplicate Variants and cross-roastery carts", () => {
-    expect(() => serializeStoredCart([item, { ...item }])).toThrow();
     expect(() =>
-      serializeStoredCart([
-        item,
-        {
-          ...item,
-          variantId: "variant-500",
-          roasteryId: "roastery-2",
-          roasterySlug: "other-roastery",
-        },
-      ]),
+      serializeStoredCart([{ ...item, packagingFeeMode: "fixed", packagingFeeAmount: 0 }]),
+    ).toThrow();
+    expect(() =>
+      serializeStoredCart([{ ...item, packagingFeeMode: "free", packagingFeeAmount: 1 }]),
     ).toThrow();
   });
 
-  test("migrates a bounded valid v2 array into v3", () => {
+  test("rejects duplicate Variants and supports multiple roasteries", () => {
+    expect(() => serializeStoredCart([item, { ...item }])).toThrow();
+
+    const marketplaceItems = [
+      item,
+      {
+        ...item,
+        variantId: "variant-500",
+        productId: "product-2",
+        productSlug: "colombia-sample",
+        productName: "قهوه کلمبیا",
+        roasteryId: "roastery-2",
+        roasteryName: "روستری دوم",
+        roasterySlug: "other-roastery",
+        packagingFeeMode: "fixed" as const,
+        packagingFeeAmount: 75_000,
+      },
+    ];
+    expect(parseStoredCart(serializeStoredCart(marketplaceItems))).toEqual(marketplaceItems);
+  });
+
+  test("migrates a bounded legacy v2 array into v4 with explicit free packaging", () => {
     const storage = new MemoryStorage();
-    storage.setItem("rosta_cart_v2", JSON.stringify([item]));
+    storage.setItem("rosta_cart_v2", JSON.stringify([legacyItem]));
     expect(readCartStorage(storage)).toEqual([item]);
     expect(JSON.parse(storage.getItem(CART_STORAGE_KEY) ?? "{}").version).toBe(
       CART_STORAGE_VERSION,
     );
   });
 
-  test("drops invalid legacy entries instead of trusting them", () => {
+  test("migrates the previous v3 envelope without losing the cart", () => {
     const storage = new MemoryStorage();
     storage.setItem(
-      "rosta_cart_v2",
-      JSON.stringify([
-        item,
-        { ...item, variantId: "variant-bad", weightGrams: 333 },
-        { ...item, variantId: "variant-other", roasteryId: "roastery-2" },
-      ]),
+      "rosta_cart_v3",
+      JSON.stringify({
+        version: 3,
+        updatedAt: 1_750_000_000_100,
+        items: [legacyItem],
+      }),
+    );
+    expect(readCartStorage(storage)).toEqual([item]);
+    expect(JSON.parse(storage.getItem(CART_STORAGE_KEY) ?? "{}").version).toBe(4);
+  });
+
+  test("drops invalid and duplicate legacy entries instead of trusting them", () => {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      "rosta_cart_v3",
+      JSON.stringify({
+        version: 3,
+        updatedAt: 1_750_000_000_100,
+        items: [
+          legacyItem,
+          { ...legacyItem, variantId: "variant-bad", weightGrams: 333 },
+          { ...legacyItem },
+          {
+            ...legacyItem,
+            variantId: "variant-invalid-package",
+            packagingFeeMode: "fixed",
+            packagingFeeAmount: 0,
+          },
+        ],
+      }),
     );
     expect(readCartStorage(storage)).toEqual([item]);
   });

@@ -6,6 +6,7 @@ use App\Enums\QuotePurpose;
 use App\Models\CheckoutQuote;
 use App\Models\CheckoutQuoteGroup;
 use App\Models\CheckoutQuoteItem;
+use App\Models\CheckoutQuoteItemService;
 use Illuminate\Http\Request;
 
 /** @mixin CheckoutQuote */
@@ -22,6 +23,17 @@ final class CheckoutQuoteResource extends OkJsonResource
                         'variant' => $item->variant_snapshot,
                         'quantity' => $item->quantity,
                         'line_total' => $item->line_total,
+                        'services' => $item->services->map(static fn (CheckoutQuoteItemService $service): array => [
+                            'id' => $service->id,
+                            'type' => $service->service_type,
+                            'provider_type' => $service->provider_type,
+                            'packaging_fee' => $service->packaging_fee,
+                            'tax_amount' => $service->tax_amount,
+                            'total_amount' => $service->total_amount,
+                            'currency' => $service->currency,
+                            'is_free' => $service->total_amount === 0,
+                            'label' => $service->service_snapshot['label'] ?? null,
+                        ])->values()->all(),
                     ])
                     ->values()
                     ->all();
@@ -57,6 +69,7 @@ final class CheckoutQuoteResource extends OkJsonResource
             'roastery_id' => $this->roastery_id,
             'groups' => $groups,
             'subtotal' => $this->subtotal,
+            'packaging_total' => $this->groups->sum('packaging_total'),
             'shipping_total' => $this->shipping_total,
             'discount_total' => $this->discount_total,
             'grand_total' => $this->grand_total,

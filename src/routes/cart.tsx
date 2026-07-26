@@ -52,7 +52,15 @@ function IconAction({
 }
 
 function CartPage() {
-  const { items, hydrated, apiItems, localSubtotal, updateQuantity, removeItem } = useCart();
+  const {
+    items,
+    hydrated,
+    apiItems,
+    localSubtotal,
+    localPackagingTotal,
+    updateQuantity,
+    removeItem,
+  } = useCart();
 
   const quoteQuery = useQuery({
     queryKey: ["cart", "validate", apiItems],
@@ -130,7 +138,7 @@ function CartPage() {
           </p>
           <h1 className="mt-2 text-3xl font-bold">سبد خرید</h1>
           <p className="mt-2 text-sm leading-7 text-[color:var(--light)]">
-            قیمت، موجودی و قانون تک‌روستری بودن سبد توسط سرور رستا بررسی می‌شود.
+            قیمت، موجودی، بسته‌بندی و گروه‌بندی چندروستری توسط سرور رستا بررسی می‌شود.
           </p>
         </header>
 
@@ -161,13 +169,13 @@ function CartPage() {
           >
             <header className="mb-3 flex items-center justify-between border-b border-[color:var(--mid)] pb-3">
               <div>
-                <h2 className="text-sm font-bold">{items[0].roasteryName}</h2>
+                <h2 className="text-sm font-bold">سبد چندروستری رستا</h2>
                 <p className="mt-1 text-[11px] text-[color:var(--light)]">
                   تمام اقلام فقط دانه کامل هستند.
                 </p>
               </div>
               <span className="rounded-full border border-[color:var(--roast)] px-3 py-1 text-[11px] text-[color:var(--roast)]">
-                تک‌روستری
+                {new Set(items.map((item) => item.roasteryId)).size.toLocaleString("fa-IR")} روستری
               </span>
             </header>
             <ul className="divide-y divide-[color:var(--mid)]">
@@ -198,7 +206,7 @@ function CartPage() {
                           {item.productName}
                         </Link>
                         <p className="mt-1 text-xs text-[color:var(--light)]">
-                          {formatWeight(item.weightGrams)} · دانه کامل
+                          {item.roasteryName} · {formatWeight(item.weightGrams)} · دانه کامل
                         </p>
                       </div>
                       <IconAction label="حذف از سبد" onClick={() => removeItem(item.variantId)}>
@@ -228,6 +236,11 @@ function CartPage() {
                         <p className="text-[10px] text-[color:var(--light)]">قیمت آخرین مشاهده</p>
                         <p className="font-mono text-sm font-bold text-[color:var(--roast)]">
                           {formatIrr(item.unitPriceSnapshot * item.quantity)}
+                        </p>
+                        <p className="mt-1 text-[10px] text-[color:var(--light)]">
+                          {item.packagingFeeAmount === 0
+                            ? "بسته‌بندی رایگان"
+                            : `بسته‌بندی ${formatIrr(item.packagingFeeAmount * item.quantity)}`}
                         </p>
                       </div>
                     </div>
@@ -263,6 +276,12 @@ function CartPage() {
                   <dd className="font-mono">{formatIrr(quote.subtotal)}</dd>
                 </div>
                 <div className="flex justify-between text-[color:var(--light)]">
+                  <dt>بسته‌بندی روستری</dt>
+                  <dd className="font-mono">
+                    {quote.packagingTotal === 0 ? "رایگان" : formatIrr(quote.packagingTotal)}
+                  </dd>
+                </div>
+                <div className="flex justify-between text-[color:var(--light)]">
                   <dt>ارسال</dt>
                   <dd className="font-mono">{formatIrr(quote.shippingTotal)}</dd>
                 </div>
@@ -284,6 +303,12 @@ function CartPage() {
                 <div className="flex justify-between">
                   <dt>جمع آخرین مشاهده</dt>
                   <dd className="font-mono">{formatIrr(localSubtotal)}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt>بسته‌بندی آخرین مشاهده</dt>
+                  <dd className="font-mono">
+                    {localPackagingTotal === 0 ? "رایگان" : formatIrr(localPackagingTotal)}
+                  </dd>
                 </div>
               </dl>
             )}

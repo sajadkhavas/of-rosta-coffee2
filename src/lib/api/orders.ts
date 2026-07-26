@@ -59,6 +59,20 @@ function mapLine(value: WireLine): OrderLine {
     },
     quantity: value.quantity,
     lineTotal: value.line_total,
+    services: value.services.map((service) => ({
+      id: service.id,
+      type: service.type,
+      providerType: service.provider_type,
+      status: service.status,
+      serviceFee: service.service_fee,
+      packagingFee: service.packaging_fee,
+      shippingFee: service.shipping_fee,
+      taxAmount: service.tax_amount,
+      totalAmount: service.total_amount,
+      currency: service.currency,
+      isFree: service.is_free,
+      label: service.label ?? null,
+    })),
   };
 }
 
@@ -78,11 +92,32 @@ function mapSubOrder(value: WireSubOrder): SubOrderSummary {
   return {
     id: value.id,
     status: value.status,
+    acceptanceStatus: value.acceptance_status,
+    customerCancellable: value.customer_cancellable,
     roastery: value.roastery,
     items: value.items.map(mapLine),
     subtotal: value.subtotal,
+    packagingTotal: value.packaging_total,
+    grindingTotal: value.grinding_total,
     shippingTotal: value.shipping_total,
+    discountTotal: value.discount_total,
+    taxTotal: value.tax_total,
+    grandTotal: value.grand_total,
+    currency: value.currency,
     shipment: mapShipment(value.shipment),
+    shipmentLegs: value.shipment_legs.map((leg) => ({
+      id: leg.id,
+      routeType: leg.route_type,
+      sequence: leg.sequence,
+      status: leg.status,
+      carrier: leg.carrier ?? null,
+      trackingCode: leg.tracking_code ?? null,
+      totalAmount: leg.total_amount,
+      currency: leg.currency,
+      plannedAt: leg.planned_at ?? null,
+      pickedUpAt: leg.picked_up_at ?? null,
+      deliveredAt: leg.delivered_at ?? null,
+    })),
   };
 }
 
@@ -115,6 +150,7 @@ export function mapOrderDetail(value: OrderDetailWire): OrderDetail {
         }
       : null,
     subtotal: value.subtotal,
+    packagingTotal: value.packaging_total,
     shippingTotal: value.shipping_total,
     discountTotal: value.discount_total,
   };

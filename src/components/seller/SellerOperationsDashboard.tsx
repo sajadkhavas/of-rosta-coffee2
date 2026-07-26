@@ -786,6 +786,8 @@ function CreateProductForm({
     roastLevel: "medium" as "light" | "medium" | "dark",
     arabicaPercentage: "100",
     tastingNotes: "",
+    packagingFeeMode: "free" as "free" | "fixed",
+    packagingFeeAmount: "0",
   });
 
   useEffect(() => {
@@ -806,6 +808,8 @@ function CreateProductForm({
       roastLevel: form.roastLevel,
       arabicaPercentage: Number(form.arabicaPercentage),
       tastingNotes: commaList(form.tastingNotes),
+      packagingFeeMode: form.packagingFeeMode,
+      packagingFeeAmount: Number(form.packagingFeeAmount || 0),
       status: "draft",
     });
   };
@@ -900,6 +904,36 @@ function CreateProductForm({
             <option value="dark">تیره</option>
           </select>
         </label>
+        <label className="grid gap-2 text-sm font-bold">
+          هزینه بسته‌بندی
+          <select
+            value={form.packagingFeeMode}
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                packagingFeeMode: event.target.value as typeof current.packagingFeeMode,
+                packagingFeeAmount:
+                  event.target.value === "free" ? "0" : current.packagingFeeAmount,
+              }))
+            }
+            className={fieldClass}
+          >
+            <option value="free">رایگان</option>
+            <option value="fixed">مبلغ ثابت برای هر بسته</option>
+          </select>
+        </label>
+        <TextField
+          label="مبلغ هر بسته (ریال)"
+          inputMode="numeric"
+          disabled={form.packagingFeeMode === "free"}
+          value={form.packagingFeeAmount}
+          onChange={(event) =>
+            setForm((current) => ({
+              ...current,
+              packagingFeeAmount: digits(event.target.value).slice(0, 16),
+            }))
+          }
+        />
         <div className="md:col-span-2">
           <TextField
             label="یادداشت‌های طعمی؛ جداشده با ویرگول"
@@ -990,6 +1024,8 @@ function ProductOperations({
   const queryClient = useQueryClient();
   const { pushToast } = useToast();
   const [selectedVariantId, setSelectedVariantId] = useState(product.variants[0]?.id ?? "");
+  const [packagingMode, setPackagingMode] = useState<"free" | "fixed">(product.packaging.mode);
+  const [packagingAmount, setPackagingAmount] = useState(String(product.packaging.feeAmount));
 
   useEffect(() => {
     if (!product.variants.some((variant) => variant.id === selectedVariantId)) {
@@ -1029,6 +1065,17 @@ function ProductOperations({
       pushToast({ title: "بچ رست ثبت شد", variant: "success" });
     },
   });
+  const packagingMutation = useMutation({
+    mutationFn: () =>
+      updateSellerProduct(roastery.id, product.id, {
+        packagingFeeMode: packagingMode,
+        packagingFeeAmount: packagingMode === "fixed" ? Number(packagingAmount || 0) : 0,
+      }),
+    onSuccess: async () => {
+      await onRefresh();
+      pushToast({ title: "هزینه بسته‌بندی محصول ذخیره شد", variant: "success" });
+    },
+  });
   const stockMutation = useMutation({
     mutationFn: (input: Parameters<typeof adjustSellerStock>[2]) =>
       adjustSellerStock(roastery.id, selectedVariantId, input),
@@ -1048,7 +1095,10 @@ function ProductOperations({
           <p className="text-xs font-bold text-[color:var(--roast)]">PRODUCT OPERATIONS</p>
           <h2 className="mt-2 text-xl font-bold">{product.name}</h2>
           <p className="mt-1 text-xs text-[color:var(--light)]">
-            {product.origin.name} · {productStatusLabel(product.status)}
+            {product.origin.name} · {productStatusLabel(product.status)} ·{" "}
+            {product.packaging.isFree
+              ? "بسته‌بندی رایگان"
+              : `بسته‌بندی ${formatIrr(product.packaging.feeAmount)}`}
           </p>
         </div>
         {canEditCatalog ? (
@@ -1072,6 +1122,46 @@ function ProductOperations({
       {statusError ? (
         <div className="mt-4">
           <Alert variant="danger">{errorMessage(statusError)}</Alert>
+        </div>
+      ) : null}
+
+      {canEditCatalog ? (
+        <div className="mt-5 grid gap-3 rounded-2xl border border-[color:var(--mid)] bg-[color:var(--night)] p-4 md:grid-cols-[1fr_1fr_auto]">
+          <label className="grid gap-2 text-sm font-bold">
+            بسته‌بندی محصول
+            <select
+              value={packagingMode}
+              onChange={(event) => {
+                const mode = event.target.value as "free" | "fixed";
+                setPackagingMode(mode);
+                if (mode === "free") setPackagingAmount("0");
+              }}
+              className={fieldClass}
+            >
+              <option value="free">رایگان</option>
+              <option value="fixed">مبلغ ثابت برای هر بسته</option>
+            </select>
+          </label>
+          <TextField
+            label="مبلغ هر بسته (ریال)"
+            inputMode="numeric"
+            disabled={packagingMode === "free"}
+            value={packagingAmount}
+            onChange={(event) => setPackagingAmount(digits(event.target.value).slice(0, 16))}
+          />
+          <Button
+            type="button"
+            className="self-end"
+            loading={packagingMutation.isPending}
+            onClick={() => packagingMutation.mutate()}
+          >
+            ذخیره بسته‌بندی
+          </Button>
+          {packagingMutation.isError ? (
+            <div className="md:col-span-3">
+              <Alert variant="danger">{errorMessage(packagingMutation.error)}</Alert>
+            </div>
+          ) : null}
         </div>
       ) : null}
 

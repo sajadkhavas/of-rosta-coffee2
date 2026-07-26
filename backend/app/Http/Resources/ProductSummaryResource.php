@@ -21,6 +21,15 @@ class ProductSummaryResource extends JsonResource
             'roast_level' => $this->roast_level->value,
             'arabica_percentage' => $this->arabica_percentage,
             'tasting_notes' => array_values($this->tasting_notes ?? []),
+            'packaging' => [
+                'mode' => $this->packaging_fee_mode->value,
+                'fee_amount' => $this->packagingFee(),
+                'currency' => 'IRR',
+                'is_free' => $this->packagingIsFree(),
+                'label' => $this->packagingIsFree()
+                    ? 'بسته‌بندی روستری رایگان'
+                    : 'هزینه بسته‌بندی روستری',
+            ],
             'primary_image' => $this->primaryImage
                 ? new MediaAssetResource($this->primaryImage)
                 : null,

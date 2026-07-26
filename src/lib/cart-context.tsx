@@ -29,10 +29,7 @@ export interface CartAddInput {
   variant: ProductVariant;
 }
 
-export type CartAddResult =
-  | { status: "added" }
-  | { status: "requires_reset"; currentRoasteryName: string }
-  | { status: "limit_reached" };
+export type CartAddResult = { status: "added" } | { status: "limit_reached" };
 
 interface CartContextValue {
   items: CartItem[];
@@ -44,6 +41,7 @@ interface CartContextValue {
   clear: () => void;
   itemCount: number;
   localSubtotal: number;
+  localPackagingTotal: number;
   apiItems: CartApiItem[];
   roasteryId?: string;
 }
@@ -101,14 +99,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addItem = useCallback(
     (input: CartAddInput, quantity = 1): CartAddResult => {
-      const currentRoastery = items[0];
-      if (currentRoastery && currentRoastery.roasteryId !== input.product.roastery.id) {
-        return {
-          status: "requires_reset",
-          currentRoasteryName: currentRoastery.roasteryName,
-        };
-      }
-
       const existing = items.find((item) => item.variantId === input.variant.id);
       if (!existing && items.length >= MAX_CART_ITEMS) {
         return { status: "limit_reached" };
@@ -123,13 +113,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
           ]);
         }
         const next = current.slice();
-        next[index] = {
-          ...next[index],
-          productName: input.product.name,
-          roasteryName: input.product.roastery.name,
-          unitPriceSnapshot: input.variant.price,
-          quantity: clampQuantity(next[index].quantity + quantity),
-        };
+        next[index] = createCartSnapshot(
+          input.product,
+          input.variant,
+          clampQuantity(next[index].quantity + quantity),
+          next[index].addedAt,
+        );
         return safelyNormalize(next);
       });
       return { status: "added" };
@@ -165,6 +154,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     () => items.reduce((sum, item) => sum + item.unitPriceSnapshot * item.quantity, 0),
     [items],
   );
+  const localPackagingTotal = useMemo(
+    () => items.reduce((sum, item) => sum + item.packagingFeeAmount * item.quantity, 0),
+    [items],
+  );
   const apiItems = useMemo<CartApiItem[]>(
     () =>
       items.map((item) => ({
@@ -185,8 +178,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       clear,
       itemCount,
       localSubtotal,
+      localPackagingTotal,
       apiItems,
-      roasteryId: items[0]?.roasteryId,
+      roasteryId:
+        new Set(items.map((item) => item.roasteryId)).size === 1 ? items[0]?.roasteryId : undefined,
     }),
     [
       items,
@@ -198,6 +193,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       clear,
       itemCount,
       localSubtotal,
+      localPackagingTotal,
       apiItems,
     ],
   );

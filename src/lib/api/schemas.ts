@@ -253,6 +253,39 @@ export const roastBatchWireSchema = z
   })
   .strict();
 
+export const packagingPolicyWireSchema = z
+  .object({
+    mode: z.enum(["free", "fixed"]),
+    fee_amount: moneySchema,
+    currency: currencySchema,
+    is_free: z.boolean(),
+    label: boundedText(240),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.is_free !== (value.fee_amount === 0)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["is_free"],
+        message: "وضعیت رایگان بسته‌بندی با مبلغ آن سازگار نیست.",
+      });
+    }
+    if (value.mode === "free" && value.fee_amount !== 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["fee_amount"],
+        message: "بسته‌بندی رایگان باید مبلغ صفر داشته باشد.",
+      });
+    }
+    if (value.mode === "fixed" && value.fee_amount === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["fee_amount"],
+        message: "بسته‌بندی ثابت باید مبلغ مثبت داشته باشد.",
+      });
+    }
+  });
+
 const productBaseFields = {
   id: identifierSchema,
   name: boundedText(240),
@@ -269,6 +302,7 @@ const productBaseFields = {
   roast_level: z.enum(["light", "medium", "dark"]),
   arabica_percentage: z.number().int().min(0).max(100),
   tasting_notes: z.array(boundedText(100)).max(30),
+  packaging: packagingPolicyWireSchema,
   primary_image: z.unknown().nullable().optional(),
   roastery: roasterySummaryWireSchema,
   variants: z.array(productVariantWireSchema).min(1).max(30),
@@ -300,6 +334,24 @@ export const searchResultWireSchema = z
   })
   .strict();
 
+const commerceServiceWireSchema = z
+  .object({
+    id: identifierSchema,
+    type: boundedText(80),
+    provider_type: boundedText(80),
+    packaging_fee: moneySchema,
+    tax_amount: moneySchema,
+    total_amount: moneySchema,
+    currency: currencySchema,
+    is_free: z.boolean(),
+    label: nullableText(240),
+  })
+  .strict()
+  .refine(
+    (value) => value.is_free === (value.total_amount === 0),
+    "وضعیت رایگان خدمت ناسازگار است.",
+  );
+
 export const cartLineWireSchema = z
   .object({
     id: identifierSchema,
@@ -307,6 +359,7 @@ export const cartLineWireSchema = z
     variant: productVariantWireSchema,
     quantity: z.number().int().min(1).max(20),
     line_total: moneySchema,
+    services: z.array(commerceServiceWireSchema).max(20),
   })
   .strict()
   .refine(
@@ -314,26 +367,31 @@ export const cartLineWireSchema = z
     "Variant داخل محصول Quote وجود ندارد.",
   );
 
+const quoteGroupWireSchema = z
+  .object({
+    id: identifierSchema,
+    roastery: roasterySummaryWireSchema,
+    items: z.array(cartLineWireSchema).min(1).max(100),
+    subtotal: moneySchema,
+    packaging_total: moneySchema,
+    grinding_total: moneySchema,
+    shipping_cost: moneySchema.nullable().optional(),
+    shipping_total: moneySchema.nullable().optional(),
+    discount_total: moneySchema,
+    tax_total: moneySchema,
+    grand_total: moneySchema,
+    currency: currencySchema,
+  })
+  .strict();
+
 export const quoteWireSchema = z
   .object({
     id: identifierSchema,
     expires_at: isoDateTimeSchema,
     roastery_id: identifierSchema.nullable().optional(),
-    groups: z
-      .array(
-        z
-          .object({
-            roastery: roasterySummaryWireSchema,
-            items: z.array(cartLineWireSchema).min(1).max(100),
-            subtotal: moneySchema,
-            shipping_cost: moneySchema.nullable().optional(),
-            shipping_total: moneySchema.nullable().optional(),
-          })
-          .strict(),
-      )
-      .min(1)
-      .max(1),
+    groups: z.array(quoteGroupWireSchema).min(1).max(50),
     subtotal: moneySchema,
+    packaging_total: moneySchema,
     shipping_total: moneySchema,
     discount_total: moneySchema,
     grand_total: moneySchema,
@@ -352,28 +410,82 @@ export const quoteWireSchema = z
   })
   .strict()
   .superRefine((value, context) => {
-    const group = value.groups[0];
-    const groupRoasteryId = group.roastery.id;
-    if (value.roastery_id && value.roastery_id !== groupRoasteryId) {
+    const singleRoasteryId = value.groups.length === 1 ? value.groups[0].roastery.id : null;
+    if ((value.roastery_id ?? null) !== singleRoasteryId) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["roastery_id"],
-        message: "روستری Quote ناسازگار است.",
+        message: "شناسه روستری سفارش اصلی با تعداد گروه‌ها سازگار نیست.",
       });
     }
-    if (group.items.some((item) => item.product.roastery.id !== groupRoasteryId)) {
+
+    for (const [groupIndex, group] of value.groups.entries()) {
+      if (group.items.some((item) => item.product.roastery.id !== group.roastery.id)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["groups", groupIndex, "items"],
+          message: "آیتمی به روستری گروه دیگری تعلق دارد.",
+        });
+      }
+      const itemSubtotal = group.items.reduce((sum, item) => sum + item.line_total, 0);
+      const packaging = group.items.reduce(
+        (sum, item) =>
+          sum +
+          item.services
+            .filter((service) => service.type === "packaging")
+            .reduce((serviceSum, service) => serviceSum + service.packaging_fee, 0),
+        0,
+      );
+      const shipping = group.shipping_total ?? group.shipping_cost ?? 0;
+      const expectedGrand =
+        group.subtotal +
+        group.packaging_total +
+        group.grinding_total +
+        shipping +
+        group.tax_total -
+        group.discount_total;
+      if (itemSubtotal !== group.subtotal) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["groups", groupIndex, "subtotal"],
+          message: "جمع اقلام گروه Quote ناسازگار است.",
+        });
+      }
+      if (packaging !== group.packaging_total) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["groups", groupIndex, "packaging_total"],
+          message: "جمع بسته‌بندی گروه Quote ناسازگار است.",
+        });
+      }
+      if (expectedGrand !== group.grand_total) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["groups", groupIndex, "grand_total"],
+          message: "جمع نهایی گروه Quote ناسازگار است.",
+        });
+      }
+    }
+
+    const groupSubtotal = value.groups.reduce((sum, group) => sum + group.subtotal, 0);
+    const packagingTotal = value.groups.reduce((sum, group) => sum + group.packaging_total, 0);
+    const shippingTotal = value.groups.reduce(
+      (sum, group) => sum + (group.shipping_total ?? group.shipping_cost ?? 0),
+      0,
+    );
+    const discountTotal = value.groups.reduce((sum, group) => sum + group.discount_total, 0);
+    const grandTotal = value.groups.reduce((sum, group) => sum + group.grand_total, 0);
+    if (
+      groupSubtotal !== value.subtotal ||
+      packagingTotal !== value.packaging_total ||
+      shippingTotal !== value.shipping_total ||
+      discountTotal !== value.discount_total ||
+      grandTotal !== value.grand_total
+    ) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["groups"],
-        message: "Quote شامل چند روستری است.",
-      });
-    }
-    const expectedGrandTotal = value.subtotal + value.shipping_total - value.discount_total;
-    if (expectedGrandTotal !== value.grand_total) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["grand_total"],
-        message: "جمع نهایی Quote ناسازگار است.",
+        message: "جمع گروه‌های Quote با سفارش اصلی سازگار نیست.",
       });
     }
   });
@@ -405,6 +517,24 @@ export const subOrderStatusSchema = z.enum([
   "refunded",
 ]);
 
+const orderItemServiceWireSchema = z
+  .object({
+    id: identifierSchema,
+    type: boundedText(80),
+    provider_type: boundedText(80),
+    status: boundedText(80),
+    grinding_profile: z.unknown().nullable().optional(),
+    service_fee: moneySchema,
+    packaging_fee: moneySchema,
+    shipping_fee: moneySchema,
+    tax_amount: moneySchema,
+    total_amount: moneySchema,
+    currency: currencySchema,
+    is_free: z.boolean(),
+    label: nullableText(240),
+  })
+  .strict();
+
 const orderLineWireSchema = z
   .object({
     id: identifierSchema,
@@ -427,6 +557,7 @@ const orderLineWireSchema = z
       .strict(),
     quantity: z.number().int().min(1).max(20),
     line_total: moneySchema,
+    services: z.array(orderItemServiceWireSchema).max(20),
   })
   .strict();
 
@@ -441,21 +572,53 @@ const shipmentWireSchema = z
   })
   .strict();
 
+const shipmentLegWireSchema = z
+  .object({
+    id: identifierSchema,
+    route_type: boundedText(100),
+    sequence: z.number().int().min(1).max(100),
+    status: boundedText(100),
+    carrier: nullableText(120),
+    tracking_code: nullableText(200),
+    total_amount: moneySchema,
+    currency: currencySchema,
+    planned_at: isoDateTimeSchema.nullable().optional(),
+    picked_up_at: isoDateTimeSchema.nullable().optional(),
+    delivered_at: isoDateTimeSchema.nullable().optional(),
+  })
+  .strict();
+
+const orderEventWireSchema = z
+  .object({
+    id: identifierSchema,
+    sub_order_id: identifierSchema.nullable().optional(),
+    type: boundedText(160),
+    previous_state: nullableText(160),
+    next_state: nullableText(160),
+    title: boundedText(300),
+    description: nullableText(1000),
+    occurred_at: isoDateTimeSchema,
+  })
+  .strict();
+
 const subOrderWireSchema = z
   .object({
     id: identifierSchema,
     status: subOrderStatusSchema,
-    roastery: z
-      .object({
-        id: identifierSchema,
-        name: boundedText(160),
-        slug: slugSchema,
-      })
-      .strict(),
+    acceptance_status: boundedText(100),
+    customer_cancellable: z.boolean(),
+    roastery: z.object({ id: identifierSchema, name: boundedText(160), slug: slugSchema }).strict(),
     items: z.array(orderLineWireSchema).min(1).max(100),
     subtotal: moneySchema,
+    packaging_total: moneySchema,
+    grinding_total: moneySchema,
     shipping_total: moneySchema,
+    discount_total: moneySchema,
+    tax_total: moneySchema,
+    grand_total: moneySchema,
+    currency: currencySchema,
     shipment: shipmentWireSchema.nullable().optional(),
+    shipment_legs: z.array(shipmentLegWireSchema).max(100),
   })
   .strict();
 
@@ -466,7 +629,8 @@ const orderBaseFields = {
   placed_at: isoDateTimeSchema.nullable().optional(),
   grand_total: moneySchema,
   currency: currencySchema,
-  sub_orders: z.array(subOrderWireSchema).min(1).max(1),
+  sub_orders: z.array(subOrderWireSchema).min(1).max(50),
+  events: z.array(orderEventWireSchema).max(500),
 };
 
 export const orderSummaryWireSchema = z.object(orderBaseFields).strict();
@@ -475,34 +639,13 @@ export const orderDetailWireSchema = z
     ...orderBaseFields,
     address: addressWireSchema.nullable(),
     subtotal: moneySchema,
+    packaging_total: moneySchema,
     shipping_total: moneySchema,
     discount_total: moneySchema,
   })
-  .strict()
-  .refine(
-    (value) => value.subtotal + value.shipping_total - value.discount_total === value.grand_total,
-    "جمع سفارش ناسازگار است.",
-  );
+  .strict();
 
-export const createdOrderWireSchema = z
-  .object({
-    id: identifierSchema,
-    order_number: boundedText(120),
-    status: orderStatusSchema,
-    placed_at: isoDateTimeSchema.nullable().optional(),
-    subtotal: moneySchema,
-    shipping_total: moneySchema,
-    discount_total: moneySchema,
-    grand_total: moneySchema,
-    currency: currencySchema,
-    address: addressWireSchema.nullable(),
-    sub_orders: z.array(subOrderWireSchema).max(1),
-  })
-  .strict()
-  .refine(
-    (value) => value.subtotal + value.shipping_total - value.discount_total === value.grand_total,
-    "جمع سفارش ایجادشده ناسازگار است.",
-  );
+export const createdOrderWireSchema = orderDetailWireSchema;
 
 export const paymentRequestWireSchema = z
   .object({

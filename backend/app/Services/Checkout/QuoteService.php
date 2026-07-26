@@ -9,12 +9,14 @@ use App\Models\Address;
 use App\Models\CheckoutQuote;
 use App\Models\CheckoutQuoteGroup;
 use App\Models\CheckoutQuoteItem;
+use App\Models\CheckoutQuoteItemService;
 use App\Models\MediaAsset;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\RoastBatch;
 use App\Models\Roastery;
 use App\Models\User;
+use App\Services\Catalog\ProductPackagingPolicy;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +30,7 @@ final class QuoteService
         private readonly CheckoutHasher $hasher,
         private readonly CouponService $coupons,
         private readonly ShippingQuoteService $shipping,
+        private readonly ProductPackagingPolicy $packaging,
     ) {}
 
     /**
@@ -116,12 +119,15 @@ final class QuoteService
          * @var array<string, array{
          *     roastery: Roastery,
          *     subtotal: int,
+         *     packaging_total: int,
          *     items: list<array{
          *         product: Product,
          *         variant: ProductVariant,
          *         batch: RoastBatch|null,
          *         quantity: int,
-         *         line_total: int
+         *         line_total: int,
+         *         unit_packaging_fee: int,
+         *         line_packaging_total: int
          *     }>
          * }> $resolvedGroups
          */
@@ -164,6 +170,8 @@ final class QuoteService
             }
 
             $lineTotal = $this->multiplyMoney($variant->price, $quantity);
+            $unitPackagingFee = $product->packagingFee();
+            $linePackagingTotal = $this->multiplyMoney($unitPackagingFee, $quantity);
             $subtotal = $this->addMoney($subtotal, $lineTotal);
             $roasteryId = (string) $product->roastery_id;
 
@@ -171,6 +179,7 @@ final class QuoteService
                 $resolvedGroups[$roasteryId] = [
                     'roastery' => $product->roastery,
                     'subtotal' => 0,
+                    'packaging_total' => 0,
                     'items' => [],
                 ];
             }
@@ -179,12 +188,18 @@ final class QuoteService
                 $resolvedGroups[$roasteryId]['subtotal'],
                 $lineTotal,
             );
+            $resolvedGroups[$roasteryId]['packaging_total'] = $this->addMoney(
+                $resolvedGroups[$roasteryId]['packaging_total'],
+                $linePackagingTotal,
+            );
             $resolvedGroups[$roasteryId]['items'][] = [
                 'product' => $product,
                 'variant' => $variant,
                 'batch' => $product->latestRoastBatch,
                 'quantity' => $quantity,
                 'line_total' => $lineTotal,
+                'unit_packaging_fee' => $unitPackagingFee,
+                'line_packaging_total' => $linePackagingTotal,
             ];
         }
 
@@ -238,7 +253,10 @@ final class QuoteService
         foreach ($resolvedGroups as $roasteryId => &$group) {
             $group['discount_total'] = $discounts[$roasteryId] ?? 0;
             $group['grand_total'] = $this->addMoney(
-                $group['subtotal'] - $group['discount_total'],
+                $this->addMoney(
+                    $group['subtotal'] - $group['discount_total'],
+                    $group['packaging_total'],
+                ),
                 $group['shipping_total'],
             );
             $grandTotal = $this->addMoney($grandTotal, $group['grand_total']);
@@ -297,7 +315,7 @@ final class QuoteService
                     'quote_id' => $quote->id,
                     'roastery_id' => $group['roastery']->id,
                     'subtotal' => $group['subtotal'],
-                    'packaging_total' => 0,
+                    'packaging_total' => $group['packaging_total'],
                     'grinding_total' => 0,
                     'shipping_total' => $group['shipping_total'],
                     'discount_total' => $group['discount_total'],
@@ -305,7 +323,7 @@ final class QuoteService
                     'grand_total' => $group['grand_total'],
                     'currency' => 'IRR',
                     'pricing_snapshot' => [
-                        'version' => 'r5c-marketplace-v1',
+                        'version' => 'r5d-product-packaging-v1',
                         'shipping' => $group['shipping_snapshot'],
                     ],
                 ]);
@@ -315,7 +333,7 @@ final class QuoteService
                     $variant = $resolved['variant'];
                     $batch = $resolved['batch'];
 
-                    CheckoutQuoteItem::query()->create([
+                    $quoteItem = CheckoutQuoteItem::query()->create([
                         'quote_id' => $quote->id,
                         'group_id' => $quoteGroup->id,
                         'product_id' => $product->id,
@@ -331,13 +349,36 @@ final class QuoteService
                             ? null
                             : $this->batchSnapshot($batch),
                     ]);
+
+                    $packagingSnapshot = $this->packaging->snapshot($product);
+                    CheckoutQuoteItemService::query()->create([
+                        'quote_group_id' => $quoteGroup->id,
+                        'quote_item_id' => $quoteItem->id,
+                        'service_type' => 'packaging',
+                        'provider_type' => 'roastery',
+                        'provider_roastery_id' => $product->roastery_id,
+                        'grinding_profile_id' => null,
+                        'service_fee' => 0,
+                        'packaging_fee' => $resolved['line_packaging_total'],
+                        'shipping_fee' => 0,
+                        'tax_amount' => 0,
+                        'total_amount' => $resolved['line_packaging_total'],
+                        'currency' => 'IRR',
+                        'pricing_snapshot' => [
+                            'version' => 'r5d-product-packaging-v1',
+                            'unit_fee' => $resolved['unit_packaging_fee'],
+                            'quantity' => $resolved['quantity'],
+                            'line_total' => $resolved['line_packaging_total'],
+                        ],
+                        'service_snapshot' => $packagingSnapshot,
+                    ]);
                 }
             }
 
             return $quote->load([
                 'groups.roastery.logo',
                 'groups.roastery.cover',
-                'groups.items',
+                'groups.items.services',
                 'items',
             ]);
         });
@@ -478,6 +519,7 @@ final class QuoteService
             'roast_level' => $product->roast_level->value,
             'arabica_percentage' => $product->arabica_percentage,
             'tasting_notes' => array_values($product->tasting_notes ?? []),
+            'packaging' => $this->packaging->snapshot($product),
             'primary_image' => $this->mediaSnapshot($product->primaryImage),
             'roastery' => [
                 'id' => $product->roastery->id,

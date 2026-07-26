@@ -33,7 +33,7 @@
     "bundle:check": "node scripts/check-bundle-size.mjs",
     "release:manifest": "node scripts/create-release-manifest.mjs .output release-manifest.json",
     "release:verify": "bun run check && bun run release:manifest",
-    "check": "bun run routes:generate && bun run audit:phase6 && bun run audit:seo && bun run audit:phase16 && bun run audit:phase17 && bun run audit:admin-finance && bun run audit:seller-operations && bun run audit:admin-operations && bun run audit:phase20 && bun run audit:phase21 && bun run audit:phase22 && bun run audit:r3b && bun run audit:r3c && bun run audit:r3c2 && bun run audit:r3d && bun run audit:r4a && bun run audit:r5a && bun run test:unit && bun run typecheck && bun run lint && bun run build && bun run bundle:check",
+    "check": "bun run routes:generate && bun run audit:phase6 && bun run audit:seo && bun run audit:phase16 && bun run audit:phase17 && bun run audit:admin-finance && bun run audit:seller-operations && bun run audit:admin-operations && bun run audit:phase20 && bun run audit:phase21 && bun run audit:phase22 && bun run audit:r3b && bun run audit:r3c && bun run audit:r3c2 && bun run audit:r3d && bun run audit:r4a && bun run audit:r5a && bun run audit:r5d && bun run test:unit && bun run typecheck && bun run lint && bun run build && bun run bundle:check",
     "check:backend": "cd backend && composer check",
     "check:all": "bun run check && bun run check:backend",
     "backend:setup": "bash backend/scripts/setup.sh",
@@ -46,7 +46,8 @@
     "staging:backup": "bash deploy/staging/backup.sh",
     "staging:rollback": "bash deploy/staging/rollback.sh",
     "staging:restore": "bash deploy/staging/restore-backup.sh",
-    "staging:rehearse": "ROSTA_ALLOW_REHEARSAL=true bash deploy/staging/rehearsal.sh"
+    "staging:rehearse": "ROSTA_ALLOW_REHEARSAL=true bash deploy/staging/rehearsal.sh",
+    "audit:r5d": "node scripts/audit-r5d-product-packaging.mjs"
   },
   "dependencies": {
     "@fontsource-variable/playfair-display": "^5.2.8",

@@ -3,7 +3,12 @@
   "name": "rosta/backend",
   "type": "project",
   "description": "Security-first Laravel API for the Rosta whole-bean coffee marketplace.",
-  "keywords": ["laravel", "rosta", "marketplace", "coffee"],
+  "keywords": [
+    "laravel",
+    "rosta",
+    "marketplace",
+    "coffee"
+  ],
   "license": "proprietary",
   "require": {
     "php": "^8.3",
@@ -102,10 +107,12 @@
       "@audit:r3c2",
       "@audit:r5b",
       "@audit:r5c",
+      "@audit:r5d",
       "@php artisan test",
       "@php vendor/bin/phpstan analyse --memory-limit=1G",
       "@php vendor/bin/pint --parallel --test"
-    ]
+    ],
+    "audit:r5d": "@php scripts/audit-r5d-product-packaging.php"
   },
   "config": {
     "optimize-autoloader": true,
