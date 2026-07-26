@@ -83,6 +83,13 @@ describe("versioned cart persistence", () => {
       items: [{ ...item, unitPriceSnapshot: -1 }],
     };
     expect(parseStoredCart(JSON.stringify(negativePrice))).toEqual([]);
+
+    expect(() =>
+      serializeStoredCart([{ ...item, packagingFeeMode: "fixed", packagingFeeAmount: 0 }]),
+    ).toThrow();
+    expect(() =>
+      serializeStoredCart([{ ...item, packagingFeeMode: "free", packagingFeeAmount: 1 }]),
+    ).toThrow();
   });
 
   test("rejects duplicate Variants and supports multiple roasteries", () => {
@@ -115,15 +122,39 @@ describe("versioned cart persistence", () => {
     );
   });
 
+  test("migrates the previous v3 envelope without losing the cart", () => {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      "rosta_cart_v3",
+      JSON.stringify({
+        version: 3,
+        updatedAt: 1_750_000_000_100,
+        items: [legacyItem],
+      }),
+    );
+    expect(readCartStorage(storage)).toEqual([item]);
+    expect(JSON.parse(storage.getItem(CART_STORAGE_KEY) ?? "{}").version).toBe(4);
+  });
+
   test("drops invalid and duplicate legacy entries instead of trusting them", () => {
     const storage = new MemoryStorage();
     storage.setItem(
       "rosta_cart_v3",
-      JSON.stringify([
-        legacyItem,
-        { ...legacyItem, variantId: "variant-bad", weightGrams: 333 },
-        { ...legacyItem },
-      ]),
+      JSON.stringify({
+        version: 3,
+        updatedAt: 1_750_000_000_100,
+        items: [
+          legacyItem,
+          { ...legacyItem, variantId: "variant-bad", weightGrams: 333 },
+          { ...legacyItem },
+          {
+            ...legacyItem,
+            variantId: "variant-invalid-package",
+            packagingFeeMode: "fixed",
+            packagingFeeAmount: 0,
+          },
+        ],
+      }),
     );
     expect(readCartStorage(storage)).toEqual([item]);
   });
