@@ -1,0 +1,56 @@
+name: R5D Seller Patch
+
+on:
+  pull_request:
+    branches:
+      - integration/rosta-r5-marketplace
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]' && github.head_ref == 'program/r5d-product-packaging'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: program/r5d-product-packaging
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Patch seller product PATCH allowlist
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/lib/api/seller-operations.ts')
+          text = path.read_text()
+          old = '''        brewing_suggestions: "brewingSuggestions",
+        seo_title: "seoTitle",'''
+          new = '''        brewing_suggestions: "brewingSuggestions",
+        packaging_fee_mode: "packagingFeeMode",
+        packaging_fee_amount: "packagingFeeAmount",
+        seo_title: "seoTitle",'''
+          if old not in text:
+              raise SystemExit('seller PATCH allowlist anchor missing')
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+      - name: Validate focused seller contract
+        run: |
+          bun install --frozen-lockfile
+          bunx prettier --write src/lib/api/seller-operations.ts
+          bun run audit:r5d
+          bun run typecheck
+          bun run lint
+
+      - name: Commit production fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/api/seller-operations.ts
+          git commit -m "R5D preserve packaging fields in seller PATCH"
+          git push origin HEAD:program/r5d-product-packaging
