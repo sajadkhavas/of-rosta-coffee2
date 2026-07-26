@@ -6,7 +6,7 @@ use App\Enums\CouponType;
 use App\Exceptions\ApiDomainException;
 use App\Models\Coupon;
 use App\Models\Roastery;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 final class CouponService
 {
@@ -18,6 +18,21 @@ final class CouponService
         Roastery $roastery,
         int $subtotal,
     ): array {
+        /** @var EloquentCollection<int, Roastery> $roasteries */
+        $roasteries = new EloquentCollection([$roastery]);
+
+        return $this->resolveMarketplace($code, $roasteries, $subtotal);
+    }
+
+    /**
+     * @param  EloquentCollection<int, Roastery>  $roasteries
+     * @return array{coupon: Coupon|null, discount: int}
+     */
+    public function resolveMarketplace(
+        ?string $code,
+        EloquentCollection $roasteries,
+        int $subtotal,
+    ): array {
         $normalized = strtoupper(trim((string) $code));
         if ($normalized === '') {
             return ['coupon' => null, 'discount' => 0];
@@ -26,10 +41,6 @@ final class CouponService
         $coupon = Coupon::query()
             ->where('code', $normalized)
             ->where('is_active', true)
-            ->where(static function (Builder $query) use ($roastery): void {
-                $query->whereNull('roastery_id')
-                    ->orWhere('roastery_id', $roastery->id);
-            })
             ->first();
 
         if (! $coupon instanceof Coupon) {
@@ -38,6 +49,16 @@ final class CouponService
                 'کد تخفیف معتبر نیست.',
                 422,
             );
+        }
+
+        if ($coupon->roastery_id !== null) {
+            if ($roasteries->count() !== 1 || $roasteries->first()?->id !== $coupon->roastery_id) {
+                throw new ApiDomainException(
+                    'checkout.coupon_scope_invalid',
+                    'این کد تخفیف فقط برای سفارش همان روستری قابل استفاده است.',
+                    409,
+                );
+            }
         }
 
         if (
