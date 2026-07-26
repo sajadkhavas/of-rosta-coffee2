@@ -55,6 +55,8 @@ final class OrderResource extends JsonResource
     /** @return array<string, mixed> */
     private function subOrderPayload(SubOrder $subOrder): array
     {
+        $legacyShipment = $subOrder->shipment;
+
         return [
             'id' => $subOrder->id,
             'status' => $subOrder->status->value,
@@ -77,6 +79,16 @@ final class OrderResource extends JsonResource
             'tax_total' => $subOrder->tax_total,
             'grand_total' => $subOrder->grand_total,
             'currency' => $subOrder->currency,
+            'shipment' => $legacyShipment === null
+                ? null
+                : [
+                    'id' => $legacyShipment->id,
+                    'carrier' => $legacyShipment->carrier,
+                    'tracking_code' => $legacyShipment->tracking_code,
+                    'status' => $legacyShipment->status,
+                    'shipped_at' => $legacyShipment->shipped_at?->toIso8601String(),
+                    'delivered_at' => $legacyShipment->delivered_at?->toIso8601String(),
+                ],
             'shipment_legs' => $subOrder->shipmentLegs
                 ->map(static fn (ShipmentLeg $leg): array => [
                     'id' => $leg->id,
