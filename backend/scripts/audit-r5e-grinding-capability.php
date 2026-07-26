@@ -9,11 +9,10 @@ $files = [
     'profile_model' => $root.'/app/Models/GrindingProfile.php',
     'policy' => $root.'/app/Services/Catalog/RoasteryGrindingPolicy.php',
     'request' => $root.'/app/Http/Requests/Catalog/UpsertGrindingCapabilityRequest.php',
-    'controller' => $root.'/app/Http/Controllers/Seller/SellerGrindingCapabilityController.php',
+    'seller_controller' => $root.'/app/Http/Controllers/Seller/SellerGrindingCapabilityController.php',
+    'public_controller' => $root.'/app/Http/Controllers/Catalog/RoasteryGrindingCapabilityController.php',
     'routes' => $root.'/routes/seller-bootstrap.php',
     'resource' => $root.'/app/Http/Resources/GrindingCapabilityResource.php',
-    'roastery_resource' => $root.'/app/Http/Resources/RoasterySummaryResource.php',
-    'public_controller' => $root.'/app/Http/Controllers/Catalog/RoasteryController.php',
     'test' => $root.'/tests/Feature/R5EGrindingCapabilityTest.php',
     'composer' => $root.'/composer.json',
     'contract' => dirname($root).'/docs/r5/R5E_ROASTERY_GRINDING_CAPABILITY.md',
@@ -90,7 +89,7 @@ $gate(
 
 $gate(
     'seller_scope_and_audit',
-    $hasAll($sources['controller'], [
+    $hasAll($sources['seller_controller'], [
         'assertRoasteryAccess',
         'Role::RoasteryOwner',
         'Role::RoasteryManager',
@@ -111,12 +110,16 @@ $gate(
         "'supported_weights'",
         "'profiles'",
         'آسیاب روستری رایگان',
-    ]) && $hasAll($sources['roastery_resource'], [
-        "'grinding_capability'",
+    ]) && $hasAll($sources['public_controller'], [
+        "where('status', 'verified')",
+        "where('is_active', true)",
         'GrindingCapabilityResource',
-        'grindingCapability?->is_active',
-    ]) && $hasAll($sources['public_controller'], ['grindingCapability.profiles']),
-    'Public roastery resources must expose only the active authoritative capability.',
+        "'profiles' => static fn",
+    ]) && $hasAll($sources['routes'], [
+        '/roasteries/{roasterySlug}/grinding-capability',
+        'RoasteryGrindingCapabilityController',
+    ]),
+    'A dedicated public endpoint must expose only an active capability for a verified roastery.',
 );
 
 $gate(
@@ -138,9 +141,10 @@ $gate(
         'test_owner_can_publish_a_scoped_free_grinding_capability',
         'test_fixed_grinding_requires_positive_money',
         'assertNotFound()',
-        'data.grinding_capability.is_available',
+        "'/grinding-capability'",
+        "'action' => 'catalog.roastery_grinding_capability.updated'",
     ]),
-    'Feature tests must cover catalogue, scope, money normalization and public publication.',
+    'Feature tests must cover catalogue, scope, money normalization, audit and public publication.',
 );
 
 $failed = array_values(array_filter(
