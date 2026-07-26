@@ -445,7 +445,9 @@ function toggleNumber<T extends number>(values: T[], value: T): T[] {
 }
 
 function toggleString(values: string[], value: string): string[] {
-  return values.includes(value) ? values.filter((current) => current !== value) : [...values, value];
+  return values.includes(value)
+    ? values.filter((current) => current !== value)
+    : [...values, value];
 }
 
 function errorMessage(error: unknown): string {
