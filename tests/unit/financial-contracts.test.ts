@@ -27,6 +27,14 @@ const variant = {
   available_quantity: 10,
 };
 
+const packaging = {
+  mode: "free",
+  fee_amount: 0,
+  currency: "IRR",
+  is_free: true,
+  label: "بسته‌بندی روستری رایگان",
+};
+
 const product = {
   id: "product-1",
   name: "قهوه نمونه",
@@ -37,6 +45,7 @@ const product = {
   roast_level: "light",
   arabica_percentage: 100,
   tasting_notes: ["مرکبات"],
+  packaging,
   primary_image: null,
   roastery,
   variants: [variant],
@@ -49,6 +58,34 @@ const product = {
   status: "published",
 };
 
+const quotePackagingService = {
+  id: "quote-packaging-1",
+  type: "packaging",
+  provider_type: "roastery",
+  packaging_fee: 0,
+  tax_amount: 0,
+  total_amount: 0,
+  currency: "IRR",
+  is_free: true,
+  label: "بسته‌بندی روستری رایگان",
+};
+
+const orderPackagingService = {
+  id: "order-packaging-1",
+  type: "packaging",
+  provider_type: "roastery",
+  status: "requested",
+  grinding_profile: null,
+  service_fee: 0,
+  packaging_fee: 0,
+  shipping_fee: 0,
+  tax_amount: 0,
+  total_amount: 0,
+  currency: "IRR",
+  is_free: true,
+  label: "بسته‌بندی روستری رایگان",
+};
+
 function quoteFixture() {
   return {
     id: "quote-1",
@@ -56,6 +93,7 @@ function quoteFixture() {
     roastery_id: roastery.id,
     groups: [
       {
+        id: "quote-group-1",
         roastery,
         items: [
           {
@@ -64,13 +102,21 @@ function quoteFixture() {
             variant,
             quantity: 2,
             line_total: 1_000_000,
+            services: [quotePackagingService],
           },
         ],
         subtotal: 1_000_000,
-        shipping_cost: 100_000,
+        packaging_total: 0,
+        grinding_total: 0,
+        shipping_total: 100_000,
+        discount_total: 50_000,
+        tax_total: 0,
+        grand_total: 1_050_000,
+        currency: "IRR",
       },
     ],
     subtotal: 1_000_000,
+    packaging_total: 0,
     shipping_total: 100_000,
     discount_total: 50_000,
     grand_total: 1_050_000,
@@ -86,6 +132,7 @@ function orderFixture() {
     status: "processing",
     placed_at: "2026-07-21T10:00:00Z",
     subtotal: 1_000_000,
+    packaging_total: 0,
     shipping_total: 100_000,
     discount_total: 50_000,
     grand_total: 1_050_000,
@@ -105,6 +152,8 @@ function orderFixture() {
       {
         id: "sub-order-1",
         status: "preparing",
+        acceptance_status: "accepted",
+        customer_cancellable: false,
         roastery: { id: roastery.id, name: roastery.name, slug: roastery.slug },
         items: [
           {
@@ -124,18 +173,27 @@ function orderFixture() {
             },
             quantity: 2,
             line_total: 1_000_000,
+            services: [orderPackagingService],
           },
         ],
         subtotal: 1_000_000,
+        packaging_total: 0,
+        grinding_total: 0,
         shipping_total: 100_000,
+        discount_total: 50_000,
+        tax_total: 0,
+        grand_total: 1_050_000,
+        currency: "IRR",
         shipment: null,
+        shipment_legs: [],
       },
     ],
+    events: [],
   };
 }
 
 describe("authoritative financial contracts", () => {
-  test("accepts internally consistent single-roastery quote and order", () => {
+  test("accepts internally consistent marketplace quote and order", () => {
     expect(authoritativeQuoteWireSchema.parse(quoteFixture()).id).toBe("quote-1");
     expect(authoritativeOrderDetailWireSchema.parse(orderFixture()).id).toBe("order-1");
   });
@@ -146,7 +204,7 @@ describe("authoritative financial contracts", () => {
     expect(() => authoritativeQuoteWireSchema.parse(invalidLine)).toThrow();
 
     const invalidShipping = quoteFixture();
-    invalidShipping.groups[0].shipping_cost += 1;
+    invalidShipping.groups[0].shipping_total += 1;
     expect(() => authoritativeQuoteWireSchema.parse(invalidShipping)).toThrow();
   });
 
