@@ -113,13 +113,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
           ]);
         }
         const next = current.slice();
-        next[index] = {
-          ...next[index],
-          productName: input.product.name,
-          roasteryName: input.product.roastery.name,
-          unitPriceSnapshot: input.variant.price,
-          quantity: clampQuantity(next[index].quantity + quantity),
-        };
+        next[index] = createCartSnapshot(
+          input.product,
+          input.variant,
+          clampQuantity(next[index].quantity + quantity),
+          next[index].addedAt,
+        );
         return safelyNormalize(next);
       });
       return { status: "added" };
