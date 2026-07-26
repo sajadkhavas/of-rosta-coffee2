@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\Role;
 use App\Models\GrindingProfile;
 use App\Models\Roastery;
+use App\Models\RoasteryGrindingCapability;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\AuthenticatesRecordedSession;
@@ -58,15 +59,18 @@ final class R5EGrindingCapabilityTest extends TestCase
             ->assertJsonPath('data.supported_weights', [250, 500])
             ->assertJsonCount(3, 'data.profiles');
 
-        $this->getJson('/api/v1/roasteries/'.$owned->slug)
+        $this->getJson('/api/v1/roasteries/'.$owned->slug.'/grinding-capability')
             ->assertOk()
-            ->assertJsonPath('data.grinding_capability.is_available', true)
-            ->assertJsonPath('data.grinding_capability.label', 'آسیاب روستری رایگان')
-            ->assertJsonCount(3, 'data.grinding_capability.profiles');
+            ->assertJsonPath('data.is_available', true)
+            ->assertJsonPath('data.label', 'آسیاب روستری رایگان')
+            ->assertJsonCount(3, 'data.profiles');
 
+        $capability = RoasteryGrindingCapability::query()
+            ->where('roastery_id', $owned->id)
+            ->firstOrFail();
         $this->assertDatabaseHas('audit_logs', [
-            'event' => 'catalog.roastery_grinding_capability.updated',
-            'auditable_type' => 'roastery_grinding_capability',
+            'action' => 'catalog.roastery_grinding_capability.updated',
+            'auditable_id' => $capability->id,
         ]);
     }
 
