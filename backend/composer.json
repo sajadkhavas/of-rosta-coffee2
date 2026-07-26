@@ -108,11 +108,13 @@
       "@audit:r5b",
       "@audit:r5c",
       "@audit:r5d",
+      "@audit:r5e",
       "@php artisan test",
       "@php vendor/bin/phpstan analyse --memory-limit=1G",
       "@php vendor/bin/pint --parallel --test"
     ],
-    "audit:r5d": "@php scripts/audit-r5d-product-packaging.php"
+    "audit:r5d": "@php scripts/audit-r5d-product-packaging.php",
+    "audit:r5e": "@php scripts/audit-r5e-grinding-capability.php"
   },
   "config": {
     "optimize-autoloader": true,

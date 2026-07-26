@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, notFound } from "@tanstack/react-router";
 import { Breadcrumb, breadcrumbJsonLd } from "@/components/Breadcrumb";
 import { CatalogProductCard } from "@/components/catalog/CatalogProductCard";
+import { RoasteryGrindingCapability } from "@/components/catalog/RoasteryGrindingCapability";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import { absoluteUrl, siteConfig } from "@/config/site";
@@ -165,14 +166,17 @@ function RoasteryPage() {
                 {roastery.description}
               </p>
             </div>
-            {roastery.shippingPolicy ? (
-              <aside className="rounded-2xl border border-[color:var(--mid)] bg-[color:var(--night)] p-4">
-                <h2 className="text-sm font-bold">سیاست ارسال</h2>
-                <p className="mt-2 text-xs leading-7 text-[color:var(--light)]">
-                  {roastery.shippingPolicy}
-                </p>
-              </aside>
-            ) : null}
+            <div className="grid content-start gap-4">
+              <RoasteryGrindingCapability roasterySlug={roastery.slug} />
+              {roastery.shippingPolicy ? (
+                <aside className="rounded-2xl border border-[color:var(--mid)] bg-[color:var(--night)] p-4">
+                  <h2 className="text-sm font-bold">سیاست ارسال</h2>
+                  <p className="mt-2 text-xs leading-7 text-[color:var(--light)]">
+                    {roastery.shippingPolicy}
+                  </p>
+                </aside>
+              ) : null}
+            </div>
           </div>
         </section>
 
