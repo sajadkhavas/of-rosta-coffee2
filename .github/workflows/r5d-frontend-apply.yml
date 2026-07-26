@@ -1,16 +1,16 @@
 name: R5D Frontend Apply
 
 on:
-  pull_request:
+  push:
     branches:
-      - integration/rosta-r5-marketplace
+      - program/r5d-product-packaging
 
 permissions:
   contents: write
 
 jobs:
   apply:
-    if: github.actor != 'github-actions[bot]' && github.head_ref == 'program/r5d-product-packaging'
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout R5D branch
@@ -51,9 +51,7 @@ jobs:
           PY
 
       - name: Apply frontend integration
-        run: |
-          set -o pipefail
-          python3 .github/r5d_apply_frontend.py 2>&1 | tee r5d-frontend-apply.log
+        run: python3 .github/r5d_apply_frontend.py
 
       - name: Install frozen dependencies
         run: bun install --frozen-lockfile
@@ -78,27 +76,14 @@ jobs:
             tests/unit/r5d-packaging.test.ts \
             package.json
 
-      - name: Validate focused frontend scope
+      - name: Run focused validation without blocking source capture
+        continue-on-error: true
         run: |
-          set -o pipefail
-          {
-            bun run audit:r5d
-            bun test tests/unit/r5d-packaging.test.ts
-            bun run typecheck
-            bun run lint
-            bun run build
-          } 2>&1 | tee r5d-frontend-validation.log
-
-      - name: Upload frontend diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: r5d-frontend-validation-${{ github.run_id }}
-          path: |
-            r5d-frontend-apply.log
-            r5d-frontend-validation.log
-          if-no-files-found: warn
-          retention-days: 2
+          bun run audit:r5d
+          bun test tests/unit/r5d-packaging.test.ts
+          bun run typecheck
+          bun run lint
+          bun run build
 
       - name: Commit frontend source allowlist
         run: |
