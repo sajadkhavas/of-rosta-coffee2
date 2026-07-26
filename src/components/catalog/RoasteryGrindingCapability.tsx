@@ -68,7 +68,8 @@ export function RoasteryGrindingCapability({ roasterySlug }: { roasterySlug: str
           </p>
         ) : null}
         <p>
-          وزن‌های پشتیبانی‌شده: {capability.supportedWeights.map((value) => `${toFa(value)} گرم`).join("، ")}
+          وزن‌های پشتیبانی‌شده:{" "}
+          {capability.supportedWeights.map((value) => `${toFa(value)} گرم`).join("، ")}
         </p>
       </div>
 
