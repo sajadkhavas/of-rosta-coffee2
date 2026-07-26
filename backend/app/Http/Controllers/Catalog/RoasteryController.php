@@ -18,13 +18,7 @@ final class RoasteryController
         ]);
 
         $roasteries = Roastery::query()
-            ->with([
-                'logo',
-                'cover',
-                'grindingCapability.profiles' => static fn ($query) => $query
-                    ->where('is_active', true)
-                    ->orderBy('public_name'),
-            ])
+            ->with(['logo', 'cover'])
             ->where('status', 'verified')
             ->whereNotNull('verified_at')
             ->orderByDesc('rating_value')
@@ -41,13 +35,7 @@ final class RoasteryController
     public function show(string $slug): RoasteryDetailResource
     {
         $roastery = Roastery::query()
-            ->with([
-                'logo',
-                'cover',
-                'grindingCapability.profiles' => static fn ($query) => $query
-                    ->where('is_active', true)
-                    ->orderBy('public_name'),
-            ])
+            ->with(['logo', 'cover'])
             ->where('status', 'verified')
             ->whereNotNull('verified_at')
             ->where('slug', $slug)
