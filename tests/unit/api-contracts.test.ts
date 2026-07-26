@@ -48,6 +48,14 @@ const variant = {
   available_quantity: 8,
 };
 
+const packaging = {
+  mode: "free",
+  fee_amount: 0,
+  currency: "IRR",
+  is_free: true,
+  label: "بسته‌بندی روستری رایگان",
+};
+
 const product = {
   id: "product-1",
   name: "قهوه اتیوپی",
@@ -58,6 +66,7 @@ const product = {
   roast_level: "light",
   arabica_percentage: 100,
   tasting_notes: ["مرکبات", "گل"],
+  packaging,
   primary_image: media,
   roastery,
   variants: [variant],
@@ -70,6 +79,18 @@ const product = {
   status: "published",
 };
 
+const freePackagingService = {
+  id: "service-packaging-1",
+  type: "packaging",
+  provider_type: "roastery",
+  packaging_fee: 0,
+  tax_amount: 0,
+  total_amount: 0,
+  currency: "IRR",
+  is_free: true,
+  label: "بسته‌بندی روستری رایگان",
+};
+
 function quoteFixture() {
   return {
     id: "quote-1",
@@ -77,6 +98,7 @@ function quoteFixture() {
     roastery_id: roastery.id,
     groups: [
       {
+        id: "quote-group-1",
         roastery,
         items: [
           {
@@ -85,13 +107,21 @@ function quoteFixture() {
             variant,
             quantity: 2,
             line_total: 1_000_000,
+            services: [freePackagingService],
           },
         ],
         subtotal: 1_000_000,
-        shipping_cost: 80_000,
+        packaging_total: 0,
+        grinding_total: 0,
+        shipping_total: 80_000,
+        discount_total: 50_000,
+        tax_total: 0,
+        grand_total: 1_030_000,
+        currency: "IRR",
       },
     ],
     subtotal: 1_000_000,
+    packaging_total: 0,
     shipping_total: 80_000,
     discount_total: 50_000,
     grand_total: 1_030_000,
@@ -127,6 +157,21 @@ describe("Rosta runtime API contracts", () => {
       productSummaryWireSchema.parse({
         ...product,
         variants: [{ ...variant, is_available: true, available_quantity: 0 }],
+      }),
+    ).toThrow();
+  });
+
+  test("rejects invalid packaging truth", () => {
+    expect(() =>
+      productSummaryWireSchema.parse({
+        ...product,
+        packaging: { ...packaging, mode: "fixed", fee_amount: 0, is_free: false },
+      }),
+    ).toThrow();
+    expect(() =>
+      productSummaryWireSchema.parse({
+        ...product,
+        packaging: { ...packaging, fee_amount: 10_000 },
       }),
     ).toThrow();
   });
