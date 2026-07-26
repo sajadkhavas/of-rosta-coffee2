@@ -1,16 +1,16 @@
 name: R5D Seller Patch
 
 on:
-  pull_request:
+  push:
     branches:
-      - integration/rosta-r5-marketplace
+      - program/r5d-product-packaging
 
 permissions:
   contents: write
 
 jobs:
   patch:
-    if: github.actor != 'github-actions[bot]' && github.head_ref == 'program/r5d-product-packaging'
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
