@@ -46,6 +46,7 @@ final class AppServiceProvider extends ServiceProvider
             'finance.php',
             'admin-operations.php',
             'seller-bootstrap.php',
+            'grinding-capability.php',
         ] as $routes) {
             Route::prefix('api/v1')
                 ->middleware('api')
