@@ -101,8 +101,7 @@ const report = {
 };
 await writeFile(
   "r5d-product-packaging-frontend-audit.json",
-  `${JSON.stringify(report, null, 2)}
-`,
+  `${JSON.stringify(report, null, 2)}\n`,
 );
 if (failed.length) {
   for (const item of failed) console.error(`- ${item.name}: ${item.evidence}`);
