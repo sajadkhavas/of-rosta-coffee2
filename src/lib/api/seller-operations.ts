@@ -414,6 +414,8 @@ export async function updateSellerProduct(
         arabica_percentage: "arabicaPercentage",
         tasting_notes: "tastingNotes",
         brewing_suggestions: "brewingSuggestions",
+        packaging_fee_mode: "packagingFeeMode",
+        packaging_fee_amount: "packagingFeeAmount",
         seo_title: "seoTitle",
         seo_description: "seoDescription",
         status: "status",
