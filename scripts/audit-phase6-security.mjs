@@ -91,20 +91,31 @@ requirePattern(
 );
 for (const required of [
   /expectedLineTotal/,
-  /group\.subtotal !== computedGroupSubtotal/,
-  /value\.subtotal !== subOrder\.subtotal/,
+  /computedSubtotal !== subOrder\.subtotal/,
+  /packagingTotal !== subOrder\.packaging_total/,
+  /childGrand !== value\.grand_total/,
   /ALLOWED_WHOLE_BEAN_WEIGHTS/,
 ]) {
   requirePattern(
     "src/lib/api/financial-contracts.ts",
     required,
-    "financial contracts must reconcile line, group, order and whole-bean weight truth",
+    "financial contracts must reconcile line, service, sub-order, parent-order and whole-bean weight truth",
   );
 }
 requirePattern(
   "src/lib/cart-storage.ts",
-  /CART_STORAGE_VERSION = 3/,
-  "cart persistence must be explicitly versioned",
+  /CART_STORAGE_VERSION = 4 as const/,
+  "cart persistence must use the R5D versioned envelope",
+);
+requirePattern(
+  "src/lib/cart-storage.ts",
+  /CART_STORAGE_KEY = "rosta_cart_v4"/,
+  "the current R5D cart key must be explicitly versioned",
+);
+requirePattern(
+  "src/lib/cart-storage.ts",
+  /LEGACY_CART_STORAGE_KEYS = \["rosta_cart", "rosta_cart_v2", "rosta_cart_v3"\]/,
+  "R5D cart migration must retain all previous cart keys",
 );
 requirePattern(
   "src/lib/cart-storage.ts",
@@ -118,8 +129,8 @@ requirePattern(
 );
 forbidPattern(
   "src/lib/cart-context.tsx",
-  /setItem\("rosta_cart(?:_v2)?"/,
-  "legacy unversioned cart keys must never be written",
+  /setItem\("rosta_cart(?:_v2|_v3)?"/,
+  "legacy cart keys must never be written",
 );
 
 const serviceWorker = read("public/sw.js");
