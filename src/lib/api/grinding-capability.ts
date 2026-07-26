@@ -13,7 +13,7 @@ const weight = z.union([
   z.literal(1000),
 ]);
 
-const grindingProfileWireSchema = z
+export const grindingProfileWireSchema = z
   .object({
     id: identifier,
     code: z.string().trim().min(1).max(100),
@@ -23,7 +23,7 @@ const grindingProfileWireSchema = z
   })
   .strict();
 
-const grindingCapabilityWireSchema = z
+export const grindingCapabilityWireSchema = z
   .object({
     availability: z.enum(["available", "unavailable"]),
     is_available: z.boolean(),
@@ -76,16 +76,6 @@ const grindingCapabilityWireSchema = z
       });
     }
   });
-
-const publicRoasteryCapabilitySchema = z
-  .object({
-    data: z
-      .object({
-        grinding_capability: grindingCapabilityWireSchema.nullable(),
-      })
-      .passthrough(),
-  })
-  .passthrough();
 
 export interface GrindingProfile {
   id: string;
@@ -164,13 +154,13 @@ export async function getPublicGrindingCapability(
   roasterySlug: string,
 ): Promise<GrindingCapability | null> {
   const response = parseContract(
-    publicRoasteryCapabilitySchema,
-    await apiFetch<unknown>(`/roasteries/${encodeURIComponent(roasterySlug)}`),
+    resourceSchema(grindingCapabilityWireSchema.nullable()),
+    await apiFetch<unknown>(
+      `/roasteries/${encodeURIComponent(roasterySlug)}/grinding-capability`,
+    ),
     "قابلیت آسیاب روستری",
   );
-  return response.data.grinding_capability
-    ? mapGrindingCapability(response.data.grinding_capability)
-    : null;
+  return response.data ? mapGrindingCapability(response.data) : null;
 }
 
 export async function getSellerGrindingCapability(
