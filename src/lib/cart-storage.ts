@@ -57,7 +57,23 @@ export const cartItemSchema = z
     quantity: z.number().int().min(1).max(MAX_CART_QUANTITY),
     addedAt: z.number().int().positive().max(4_102_444_800_000),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (value.packagingFeeMode === "free" && value.packagingFeeAmount !== 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["packagingFeeAmount"],
+        message: "بسته‌بندی رایگان باید مبلغ صفر داشته باشد.",
+      });
+    }
+    if (value.packagingFeeMode === "fixed" && value.packagingFeeAmount <= 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["packagingFeeAmount"],
+        message: "هزینه ثابت بسته‌بندی باید مثبت باشد.",
+      });
+    }
+  });
 
 export type CartItem = z.infer<typeof cartItemSchema>;
 
@@ -121,8 +137,7 @@ function normalizeLegacyItems(raw: unknown): CartItem[] {
           ? Number(candidate.addedAt)
           : Date.now(),
     });
-    if (!parsed.success) continue;
-    if (variants.has(parsed.data.variantId)) continue;
+    if (!parsed.success || variants.has(parsed.data.variantId)) continue;
 
     variants.add(parsed.data.variantId);
     items.push(parsed.data);
@@ -131,13 +146,23 @@ function normalizeLegacyItems(raw: unknown): CartItem[] {
   return items;
 }
 
+function normalizeLegacyPayload(raw: unknown): CartItem[] {
+  if (Array.isArray(raw)) return normalizeLegacyItems(raw);
+  if (!raw || typeof raw !== "object") return [];
+
+  const candidate = raw as Record<string, unknown>;
+  const version = Number(candidate.version);
+  if (!Number.isInteger(version) || version < 1 || version >= CART_STORAGE_VERSION) return [];
+  return normalizeLegacyItems(candidate.items);
+}
+
 export function parseStoredCart(raw: string | null): CartItem[] {
   if (!raw || byteLength(raw) > MAX_CART_STORAGE_BYTES) return [];
   try {
     const decoded: unknown = JSON.parse(raw);
     const envelope = cartEnvelopeSchema.safeParse(decoded);
     if (envelope.success) return envelope.data.items;
-    return normalizeLegacyItems(decoded);
+    return normalizeLegacyPayload(decoded);
   } catch {
     return [];
   }
