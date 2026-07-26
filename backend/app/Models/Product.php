@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PackagingFeeMode;
 use App\Enums\ProcessingMethod;
 use App\Enums\ProductStatus;
 use App\Enums\RoastLevel;
@@ -29,6 +30,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property int $arabica_percentage
  * @property array<mixed> $tasting_notes
  * @property array<mixed> $brewing_suggestions
+ * @property PackagingFeeMode $packaging_fee_mode
+ * @property int $packaging_fee_amount
  * @property string|null $seo_title
  * @property string|null $seo_description
  * @property ProductStatus $status
@@ -62,6 +65,8 @@ final class Product extends Model
         'arabica_percentage',
         'tasting_notes',
         'brewing_suggestions',
+        'packaging_fee_mode',
+        'packaging_fee_amount',
         'seo_title',
         'seo_description',
         'status',
@@ -77,8 +82,22 @@ final class Product extends Model
             'arabica_percentage' => 'integer',
             'tasting_notes' => 'array',
             'brewing_suggestions' => 'array',
+            'packaging_fee_mode' => PackagingFeeMode::class,
+            'packaging_fee_amount' => 'integer',
             'published_at' => 'immutable_datetime',
         ];
+    }
+
+    public function packagingFee(): int
+    {
+        return $this->packaging_fee_mode === PackagingFeeMode::Fixed
+            ? $this->packaging_fee_amount
+            : 0;
+    }
+
+    public function packagingIsFree(): bool
+    {
+        return $this->packagingFee() === 0;
     }
 
     /** @return BelongsTo<Roastery, $this> */

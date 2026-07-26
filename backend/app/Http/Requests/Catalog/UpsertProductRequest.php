@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Catalog;
 
+use App\Enums\PackagingFeeMode;
 use App\Enums\ProcessingMethod;
 use App\Enums\ProductStatus;
 use App\Enums\RoastLevel;
@@ -27,6 +28,8 @@ final class UpsertProductRequest extends FormRequest
             'arabica_percentage',
             'tasting_notes',
             'brewing_suggestions',
+            'packaging_fee_mode',
+            'packaging_fee_amount',
             'seo_title',
             'seo_description',
             'status',
@@ -58,6 +61,8 @@ final class UpsertProductRequest extends FormRequest
             'tasting_notes.*' => ['string', 'min:1', 'max:100'],
             'brewing_suggestions' => ['sometimes', 'array', 'max:30'],
             'brewing_suggestions.*' => ['string', 'min:1', 'max:500'],
+            'packaging_fee_mode' => ['sometimes', Rule::enum(PackagingFeeMode::class)],
+            'packaging_fee_amount' => ['sometimes', 'integer', 'min:0', 'max:9007199254740991'],
             'seo_title' => ['nullable', 'string', 'max:180'],
             'seo_description' => ['nullable', 'string', 'max:500'],
             'status' => ['sometimes', Rule::in([

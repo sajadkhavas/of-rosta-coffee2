@@ -3,6 +3,7 @@
 namespace App\Services\Checkout;
 
 use App\Enums\IdempotencyStatus;
+use App\Enums\OrderItemServiceStatus;
 use App\Enums\OrderStatus;
 use App\Enums\ProductStatus;
 use App\Enums\QuotePurpose;
@@ -19,6 +20,7 @@ use App\Models\Order;
 use App\Models\OrderEvent;
 use App\Models\OrderIdempotencyKey;
 use App\Models\OrderItem;
+use App\Models\OrderItemService;
 use App\Models\ProductVariant;
 use App\Models\RoastBatch;
 use App\Models\SettlementAllocation;
@@ -105,7 +107,7 @@ final class OrderService
 
             $quote = CheckoutQuote::query()
                 ->with([
-                    'groups.items',
+                    'groups.items.services',
                     'groups.roastery',
                     'items',
                 ])
@@ -340,6 +342,53 @@ final class OrderService
                             'quote_group_id' => $group->id,
                         ],
                     ]);
+
+                    foreach ($quoteItem->services as $quoteService) {
+                        $orderService = OrderItemService::query()->create([
+                            'order_id' => $order->id,
+                            'sub_order_id' => $subOrder->id,
+                            'order_item_id' => $orderItem->id,
+                            'service_type' => $quoteService->service_type,
+                            'provider_type' => $quoteService->provider_type,
+                            'provider_roastery_id' => $quoteService->provider_roastery_id,
+                            'grinding_profile_id' => $quoteService->grinding_profile_id,
+                            'status' => OrderItemServiceStatus::Requested,
+                            'service_fee' => $quoteService->service_fee,
+                            'packaging_fee' => $quoteService->packaging_fee,
+                            'shipping_fee' => $quoteService->shipping_fee,
+                            'tax_amount' => $quoteService->tax_amount,
+                            'total_amount' => $quoteService->total_amount,
+                            'currency' => $quoteService->currency,
+                            'pricing_snapshot' => $quoteService->pricing_snapshot,
+                            'service_snapshot' => $quoteService->service_snapshot,
+                        ]);
+
+                        if ($orderService->packaging_fee > 0) {
+                            SettlementAllocation::query()->create([
+                                'order_id' => $order->id,
+                                'sub_order_id' => $subOrder->id,
+                                'order_item_id' => $orderItem->id,
+                                'order_item_service_id' => $orderService->id,
+                                'allocation_type' => 'packaging',
+                                'owner_type' => 'roastery',
+                                'owner_id' => $group->roastery_id,
+                                'status' => SettlementAllocationStatus::Held,
+                                'gross_amount' => $orderService->packaging_fee,
+                                'discount_amount' => 0,
+                                'tax_amount' => $orderService->tax_amount,
+                                'net_amount' => $orderService->total_amount,
+                                'currency' => $orderService->currency,
+                                'pricing_version' => 'r5d-product-packaging-v1',
+                                'source_reference' => 'quote_service:'.$quoteService->id,
+                                'idempotency_key' => 'order:'.$order->id.':service:'.$orderService->id.':packaging',
+                                'metadata' => [
+                                    'quote_id' => $quote->id,
+                                    'quote_group_id' => $group->id,
+                                    'quote_item_service_id' => $quoteService->id,
+                                ],
+                            ]);
+                        }
+                    }
                 }
 
                 $shipmentLeg = ShipmentLeg::query()->create([

@@ -14,6 +14,7 @@ use App\Models\Roastery;
 use App\Models\User;
 use App\Services\AuditRecorder;
 use App\Services\Catalog\CatalogAccess;
+use App\Services\Catalog\ProductPackagingPolicy;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -53,6 +54,7 @@ final class SellerProductController
         string $roasteryId,
         CatalogAccess $access,
         AuditRecorder $audit,
+        ProductPackagingPolicy $packaging,
     ): JsonResponse {
         /** @var User $user */
         $user = $request->user();
@@ -62,7 +64,7 @@ final class SellerProductController
             Role::RoasteryManager,
         ]);
 
-        $product = DB::transaction(function () use ($request, $roastery, $user, $audit): Product {
+        $product = DB::transaction(function () use ($request, $roastery, $user, $audit, $packaging): Product {
             $lockedRoastery = Roastery::query()
                 ->lockForUpdate()
                 ->findOrFail($roastery->id);
@@ -75,7 +77,7 @@ final class SellerProductController
                 );
             }
 
-            $data = $request->validated();
+            $data = $packaging->normalize($request->validated());
             $galleryIds = array_values(array_unique($data['gallery_media_ids'] ?? []));
             unset($data['gallery_media_ids']);
 
@@ -135,6 +137,7 @@ final class SellerProductController
         string $productId,
         CatalogAccess $access,
         AuditRecorder $audit,
+        ProductPackagingPolicy $packaging,
     ): ProductDetailResource {
         /** @var User $user */
         $user = $request->user();
@@ -148,8 +151,8 @@ final class SellerProductController
             ->where('roastery_id', $roastery->id)
             ->findOrFail($productId);
 
-        DB::transaction(function () use ($request, $roastery, $product, $user, $audit): void {
-            $data = $request->validated();
+        DB::transaction(function () use ($request, $roastery, $product, $user, $audit, $packaging): void {
+            $data = $packaging->normalize($request->validated(), $product);
             $galleryProvided = array_key_exists('gallery_media_ids', $data);
             $galleryIds = array_values(array_unique($data['gallery_media_ids'] ?? []));
             unset($data['gallery_media_ids']);
