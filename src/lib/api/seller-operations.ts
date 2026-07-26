@@ -146,6 +146,8 @@ export interface UpsertProductInput {
   arabicaPercentage: number;
   tastingNotes: string[];
   brewingSuggestions?: string[];
+  packagingFeeMode?: "free" | "fixed";
+  packagingFeeAmount?: number;
   seoTitle?: string | null;
   seoDescription?: string | null;
   status?: "draft" | "review" | "archived";
@@ -246,6 +248,13 @@ function mapProduct(value: ProductSummaryWire): ProductSummary {
     roastLevel: value.roast_level,
     arabicaPercentage: value.arabica_percentage,
     tastingNotes: value.tasting_notes,
+    packaging: {
+      mode: value.packaging.mode,
+      feeAmount: value.packaging.fee_amount,
+      currency: value.packaging.currency,
+      isFree: value.packaging.is_free,
+      label: value.packaging.label,
+    },
     primaryImage: parseOptionalMedia(value.primary_image),
     roastery: {
       id: value.roastery.id,
@@ -297,6 +306,8 @@ function productBody(input: UpsertProductInput) {
     arabica_percentage: input.arabicaPercentage,
     tasting_notes: uniqueStrings(input.tastingNotes, 30),
     brewing_suggestions: uniqueStrings(input.brewingSuggestions ?? [], 30),
+    packaging_fee_mode: input.packagingFeeMode ?? "free",
+    packaging_fee_amount: input.packagingFeeMode === "fixed" ? (input.packagingFeeAmount ?? 0) : 0,
     seo_title: input.seoTitle?.trim() || null,
     seo_description: input.seoDescription?.trim() || null,
     status: input.status ?? "draft",

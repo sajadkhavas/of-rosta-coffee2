@@ -28,6 +28,15 @@ export interface ApiResource<T> {
 export type ProductStatus = "draft" | "review" | "published" | "archived";
 export type RoastLevel = "light" | "medium" | "dark";
 export type ProcessingMethod = "washed" | "natural" | "honey" | "other";
+export type PackagingFeeMode = "free" | "fixed";
+
+export interface PackagingPolicy {
+  mode: PackagingFeeMode;
+  feeAmount: number;
+  currency: CurrencyCode;
+  isFree: boolean;
+  label: string;
+}
 
 export interface MediaAsset {
   id: string;
@@ -82,6 +91,7 @@ export interface ProductSummary {
   roastLevel: RoastLevel;
   arabicaPercentage: number;
   tastingNotes: string[];
+  packaging: PackagingPolicy;
   primaryImage?: MediaAsset | null;
   roastery: RoasterySummary;
   variants: ProductVariant[];
@@ -124,19 +134,40 @@ export interface ProductFilters {
   perPage?: number;
 }
 
+export interface CommerceServiceLine {
+  id: string;
+  type: string;
+  providerType: string;
+  packagingFee: number;
+  taxAmount: number;
+  totalAmount: number;
+  currency: CurrencyCode;
+  isFree: boolean;
+  label?: string | null;
+}
+
 export interface CartLine {
   id: string;
   product: ProductSummary;
   variant: ProductVariant;
   quantity: number;
   lineTotal: number;
+  services: CommerceServiceLine[];
 }
 
 export interface CartShipmentGroup {
+  id: string;
   roastery: RoasterySummary;
   items: CartLine[];
   subtotal: number;
+  packagingTotal: number;
+  grindingTotal: number;
   shippingCost?: number | null;
+  shippingTotal: number;
+  discountTotal: number;
+  taxTotal: number;
+  grandTotal: number;
+  currency: CurrencyCode;
 }
 
 export interface CartQuote {
@@ -145,6 +176,7 @@ export interface CartQuote {
   roasteryId?: string | null;
   groups: CartShipmentGroup[];
   subtotal: number;
+  packagingTotal: number;
   shippingTotal: number;
   discountTotal: number;
   grandTotal: number;
@@ -199,12 +231,28 @@ export interface OrderVariantLine {
   currency: CurrencyCode;
 }
 
+export interface OrderItemServiceSummary {
+  id: string;
+  type: string;
+  providerType: string;
+  status: string;
+  serviceFee: number;
+  packagingFee: number;
+  shippingFee: number;
+  taxAmount: number;
+  totalAmount: number;
+  currency: CurrencyCode;
+  isFree: boolean;
+  label?: string | null;
+}
+
 export interface OrderLine {
   id: string;
   product: OrderProductLine;
   variant: OrderVariantLine;
   quantity: number;
   lineTotal: number;
+  services: OrderItemServiceSummary[];
 }
 
 export interface ShipmentSummary {
@@ -216,14 +264,37 @@ export interface ShipmentSummary {
   deliveredAt?: IsoDateTime | null;
 }
 
+export interface ShipmentLegSummary {
+  id: string;
+  routeType: string;
+  sequence: number;
+  status: string;
+  carrier?: string | null;
+  trackingCode?: string | null;
+  totalAmount: number;
+  currency: CurrencyCode;
+  plannedAt?: IsoDateTime | null;
+  pickedUpAt?: IsoDateTime | null;
+  deliveredAt?: IsoDateTime | null;
+}
+
 export interface SubOrderSummary {
   id: string;
   status: SubOrderStatus;
+  acceptanceStatus: string;
+  customerCancellable: boolean;
   roastery: Pick<RoasterySummary, "id" | "name" | "slug">;
   items: OrderLine[];
   subtotal: number;
+  packagingTotal: number;
+  grindingTotal: number;
   shippingTotal: number;
+  discountTotal: number;
+  taxTotal: number;
+  grandTotal: number;
+  currency: CurrencyCode;
   shipment?: ShipmentSummary | null;
+  shipmentLegs: ShipmentLegSummary[];
 }
 
 export interface OrderSummary {
@@ -239,6 +310,7 @@ export interface OrderSummary {
 export interface OrderDetail extends OrderSummary {
   address?: Address | null;
   subtotal: number;
+  packagingTotal: number;
   shippingTotal: number;
   discountTotal: number;
 }

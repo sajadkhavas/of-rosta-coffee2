@@ -2,9 +2,9 @@ import { z } from "zod";
 import type { ProductSummary, ProductVariant } from "@/lib/api/contracts";
 import { bestMediaUrl } from "@/lib/catalog-format";
 
-export const CART_STORAGE_KEY = "rosta_cart_v3";
-export const LEGACY_CART_STORAGE_KEYS = ["rosta_cart", "rosta_cart_v2"] as const;
-export const CART_STORAGE_VERSION = 3 as const;
+export const CART_STORAGE_KEY = "rosta_cart_v4";
+export const LEGACY_CART_STORAGE_KEYS = ["rosta_cart", "rosta_cart_v2", "rosta_cart_v3"] as const;
+export const CART_STORAGE_VERSION = 4 as const;
 export const MAX_CART_ITEMS = 50;
 export const MAX_CART_QUANTITY = 20;
 export const MAX_CART_STORAGE_BYTES = 64 * 1024;
@@ -52,6 +52,8 @@ export const cartItemSchema = z
     roasterySlug: slugSchema,
     weightGrams: weightSchema,
     unitPriceSnapshot: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+    packagingFeeMode: z.enum(["free", "fixed"]),
+    packagingFeeAmount: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
     quantity: z.number().int().min(1).max(MAX_CART_QUANTITY),
     addedAt: z.number().int().positive().max(4_102_444_800_000),
   })
@@ -68,7 +70,6 @@ const cartEnvelopeSchema = z
   .strict()
   .superRefine((value, context) => {
     const variantIds = new Set<string>();
-    const roasteryId = value.items[0]?.roasteryId;
 
     value.items.forEach((item, index) => {
       if (variantIds.has(item.variantId)) {
@@ -79,13 +80,6 @@ const cartEnvelopeSchema = z
         });
       }
       variantIds.add(item.variantId);
-      if (roasteryId && item.roasteryId !== roasteryId) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["items", index, "roasteryId"],
-          message: "سبد شامل چند روستری است.",
-        });
-      }
     });
   });
 
@@ -110,7 +104,6 @@ function normalizeLegacyItems(raw: unknown): CartItem[] {
   if (!Array.isArray(raw)) return [];
   const items: CartItem[] = [];
   const variants = new Set<string>();
-  let roasteryId: string | undefined;
 
   for (const entry of raw.slice(0, MAX_CART_ITEMS)) {
     if (!entry || typeof entry !== "object") continue;
@@ -118,6 +111,11 @@ function normalizeLegacyItems(raw: unknown): CartItem[] {
     const parsed = cartItemSchema.safeParse({
       ...candidate,
       quantity: clampQuantity(Number(candidate.quantity ?? 1)),
+      packagingFeeMode: candidate.packagingFeeMode === "fixed" ? "fixed" : "free",
+      packagingFeeAmount:
+        candidate.packagingFeeMode === "fixed"
+          ? Math.max(0, Number(candidate.packagingFeeAmount ?? 0))
+          : 0,
       addedAt:
         Number.isInteger(candidate.addedAt) && Number(candidate.addedAt) > 0
           ? Number(candidate.addedAt)
@@ -125,9 +123,7 @@ function normalizeLegacyItems(raw: unknown): CartItem[] {
     });
     if (!parsed.success) continue;
     if (variants.has(parsed.data.variantId)) continue;
-    if (roasteryId && parsed.data.roasteryId !== roasteryId) continue;
 
-    roasteryId ??= parsed.data.roasteryId;
     variants.add(parsed.data.variantId);
     items.push(parsed.data);
   }
@@ -204,6 +200,8 @@ export function createCartSnapshot(
     roasterySlug: product.roastery.slug,
     weightGrams: variant.weightGrams,
     unitPriceSnapshot: variant.price,
+    packagingFeeMode: product.packaging.mode,
+    packagingFeeAmount: product.packaging.feeAmount,
     quantity: clampQuantity(quantity),
     addedAt: now,
   });

@@ -402,7 +402,9 @@ function CheckoutContent() {
 
         <aside className="h-fit rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5 lg:sticky lg:top-20">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="font-bold">خلاصه سفارش</h2>
+            <h2 className="font-bold">
+              خلاصه سفارش · {quote?.groups.length.toLocaleString("fa-IR") ?? "—"} روستری
+            </h2>
             <button
               type="button"
               onClick={() => quoteQuery.refetch()}
@@ -420,7 +422,13 @@ function CheckoutContent() {
                 <div className="min-w-0">
                   <p className="truncate font-bold">{item.productName}</p>
                   <p className="mt-1 text-[color:var(--light)]">
-                    {formatWeight(item.weightGrams)} · ×{item.quantity.toLocaleString("fa-IR")}
+                    {item.roasteryName} · {formatWeight(item.weightGrams)} · ×
+                    {item.quantity.toLocaleString("fa-IR")}
+                  </p>
+                  <p className="mt-1 text-[10px] text-[color:var(--light)]">
+                    {item.packagingFeeAmount === 0
+                      ? "بسته‌بندی رایگان"
+                      : `بسته‌بندی ${formatIrr(item.packagingFeeAmount * item.quantity)}`}
                   </p>
                 </div>
                 <span className="shrink-0 font-mono text-[color:var(--light)]">
@@ -458,6 +466,12 @@ function CheckoutContent() {
                 <div className="flex justify-between text-[color:var(--light)]">
                   <dt>جمع اقلام</dt>
                   <dd className="font-mono">{formatIrr(quote.subtotal)}</dd>
+                </div>
+                <div className="flex justify-between text-[color:var(--light)]">
+                  <dt>بسته‌بندی روستری</dt>
+                  <dd className="font-mono">
+                    {quote.packagingTotal === 0 ? "رایگان" : formatIrr(quote.packagingTotal)}
+                  </dd>
                 </div>
                 <div className="flex justify-between text-[color:var(--light)]">
                   <dt>ارسال</dt>

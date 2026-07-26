@@ -109,6 +109,13 @@ function mapProduct(value: ProductSummaryWire): ProductSummary {
     roastLevel: value.roast_level,
     arabicaPercentage: value.arabica_percentage,
     tastingNotes: value.tasting_notes,
+    packaging: {
+      mode: value.packaging.mode,
+      feeAmount: value.packaging.fee_amount,
+      currency: value.packaging.currency,
+      isFree: value.packaging.is_free,
+      label: value.packaging.label,
+    },
     primaryImage: parseOptionalMedia(value.primary_image),
     roastery: mapRoastery(value.roastery),
     variants: value.variants.map(mapVariant),

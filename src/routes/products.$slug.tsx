@@ -152,7 +152,7 @@ function ProductPage() {
   const [notice, setNotice] = useState("");
   const [noticeVariant, setNoticeVariant] = useState<"success" | "warning">("success");
   const [added, setAdded] = useState(false);
-  const { addItem, replaceWithItem } = useCart();
+  const { addItem } = useCart();
 
   useEffect(() => {
     const firstAvailable = product.variants.find((variant) => variant.isAvailable);
@@ -173,14 +173,7 @@ function ProductPage() {
     if (!selectedVariant?.isAvailable) return;
     const input = { product, variant: selectedVariant };
     const result = addItem(input);
-    if (result.status === "requires_reset") {
-      if (
-        !window.confirm(`سبد شما شامل محصولات ${result.currentRoasteryName} است. سبد قبلی پاک شود؟`)
-      )
-        return;
-      replaceWithItem(input);
-      setNotice("سبد قبلی پاک شد و محصول این روستری جایگزین شد.");
-    } else if (result.status === "limit_reached") {
+    if (result.status === "limit_reached") {
       setNoticeVariant("warning");
       setNotice("تعداد Variantهای سبد به سقف امن رسیده است.");
       return;
@@ -300,8 +293,14 @@ function ProductPage() {
                 ))}
               </div>
             </section>
-            <div className="mt-6 rounded-xl border border-[color:var(--roast)]/40 bg-[color:var(--night)] p-4 text-xs leading-7 text-[color:var(--light)]">
-              رستا فقط دانه کامل می‌فروشد. قیمت نهایی در سبد توسط سرور تأیید می‌شود.
+            <div className="mt-6 grid gap-3 rounded-xl border border-[color:var(--roast)]/40 bg-[color:var(--night)] p-4 text-xs leading-7 text-[color:var(--light)]">
+              <p>رستا فقط دانه کامل می‌فروشد. قیمت نهایی در سبد توسط سرور تأیید می‌شود.</p>
+              <div className="flex items-center justify-between gap-3 border-t border-[color:var(--mid)] pt-3">
+                <span>{product.packaging.label}</span>
+                <strong className="font-mono text-[color:var(--roast)]">
+                  {product.packaging.isFree ? "رایگان" : formatIrr(product.packaging.feeAmount)}
+                </strong>
+              </div>
             </div>
             {notice ? (
               <div className="mt-5">
