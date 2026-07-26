@@ -77,8 +77,7 @@ gate(
     "packaging_fee_amount",
     'packaging_fee_mode: "packagingFeeMode"',
     'packaging_fee_amount: "packagingFeeAmount"',
-  ]) &&
-    hasAll(files.sellerUi, ["هزینه بسته‌بندی", "packagingMutation", "ذخیره بسته‌بندی"]),
+  ]) && hasAll(files.sellerUi, ["هزینه بسته‌بندی", "packagingMutation", "ذخیره بسته‌بندی"]),
   "Owner and manager UI must create and update product packaging through the PATCH allowlist.",
 );
 gate(
