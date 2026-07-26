@@ -74,11 +74,14 @@ $gate(
 
 $gate(
     'customer_safe_shipment_contract',
-    str_contains($files['resource'], "'carrier' => \$shipment->carrier")
-        && str_contains($files['resource'], "'tracking_code' => \$shipment->tracking_code")
+    str_contains($files['resource'], "'shipment_legs' => \$subOrder->shipmentLegs")
+        && str_contains($files['resource'], "'carrier' => \$leg->carrier")
+        && str_contains($files['resource'], "'tracking_code' => \$leg->tracking_code")
+        && str_contains($files['resource'], "'route_type' => \$leg->route_type")
         && ! str_contains($files['resource'], 'internalNotes')
-        && ! str_contains($files['resource'], 'metadata'),
-    'Customers receive shipment tracking without internal notes, actors or audit metadata.',
+        && ! str_contains($files['resource'], 'internal_metadata')
+        && ! str_contains($files['resource'], 'actor_reference'),
+    'Customers receive shipment-leg tracking without internal notes, actors or audit metadata.',
 );
 
 $gate(
