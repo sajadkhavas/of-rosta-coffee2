@@ -17,8 +17,9 @@ final class ProductPackagingPolicy
     public function normalize(array $data, ?Product $product = null): array
     {
         $rawMode = $data['packaging_fee_mode']
-            ?? $product->packaging_fee_mode
-            ?? PackagingFeeMode::Free;
+            ?? ($product instanceof Product
+                ? $product->packaging_fee_mode
+                : PackagingFeeMode::Free);
         $mode = $rawMode instanceof PackagingFeeMode
             ? $rawMode
             : PackagingFeeMode::tryFrom((string) $rawMode);
@@ -34,7 +35,7 @@ final class ProductPackagingPolicy
 
         $amount = array_key_exists('packaging_fee_amount', $data)
             ? (int) $data['packaging_fee_amount']
-            : (int) ($product->packaging_fee_amount ?? 0);
+            : ($product instanceof Product ? $product->packaging_fee_amount : 0);
 
         if ($amount < 0 || $amount > self::MAX_MONEY) {
             throw new ApiDomainException(
