@@ -50,7 +50,7 @@ final class R5EGrindingCapabilityTest extends TestCase
             '/api/v1/seller/roasteries/'.$owned->id.'/grinding-capability',
             $payload,
         )
-            ->assertOk()
+            ->assertSuccessful()
             ->assertJsonPath('data.availability', 'available')
             ->assertJsonPath('data.is_available', true)
             ->assertJsonPath('data.fee_mode', 'free')
@@ -107,7 +107,7 @@ final class R5EGrindingCapabilityTest extends TestCase
                 'grinding_profile_ids' => [$profile->id],
             ],
         )
-            ->assertOk()
+            ->assertSuccessful()
             ->assertJsonPath('data.fee_amount', 100_000)
             ->assertJsonPath('data.is_free', false);
     }
