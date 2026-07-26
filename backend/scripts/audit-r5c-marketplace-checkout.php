@@ -55,6 +55,7 @@ foreach ($contracts as $relativePath => $needles) {
 
     if ($content === false) {
         $failures[] = 'Missing R5C file: '.$relativePath;
+
         continue;
     }
 
