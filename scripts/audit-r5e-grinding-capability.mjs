@@ -10,7 +10,7 @@ const paths = {
   package: "package.json",
   backendPolicy: "backend/app/Services/Catalog/RoasteryGrindingPolicy.php",
   backendController: "backend/app/Http/Controllers/Seller/SellerGrindingCapabilityController.php",
-  backendRoutes: "backend/routes/seller-bootstrap.php",
+  backendRoutes: "backend/routes/grinding-capability.php",
   contract: "docs/r5/R5E_ROASTERY_GRINDING_CAPABILITY.md",
   cart: "src/lib/cart-storage.ts",
   product: "src/lib/api/contracts.ts",
