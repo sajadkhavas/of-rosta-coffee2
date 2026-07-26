@@ -1,0 +1,45 @@
+name: R5C Pint Fix
+
+on:
+  push:
+    branches:
+      - program/r5c-multi-roastery-checkout
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: program/r5c-multi-roastery-checkout
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - name: Install locked backend dependencies
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Format R5C audit with locked Pint
+        working-directory: backend
+        run: vendor/bin/pint scripts/audit-r5c-marketplace-checkout.php
+
+      - name: Commit formatted file
+        run: |
+          if git diff --quiet -- backend/scripts/audit-r5c-marketplace-checkout.php; then
+            echo "No formatting changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/scripts/audit-r5c-marketplace-checkout.php
+          git commit -m "R5C format marketplace checkout audit"
+          git push origin HEAD:program/r5c-multi-roastery-checkout
