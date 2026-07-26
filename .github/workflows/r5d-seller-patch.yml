@@ -1,3 +1,4 @@
+# Temporary workflow; removed immediately after the seller PATCH commit lands.
 name: R5D Seller Patch
 
 on:
