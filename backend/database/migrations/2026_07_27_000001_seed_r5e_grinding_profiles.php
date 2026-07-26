@@ -6,17 +6,17 @@ use Illuminate\Support\Str;
 
 return new class extends Migration
 {
-    /** @var array<string, array{public_name: string, brew_method: string}> */
+    /** @var array<string, array{version: int, public_name: string, brew_method: string}> */
     private const array PROFILES = [
-        'turkish' => ['public_name' => 'قهوه ترک', 'brew_method' => 'turkish'],
-        'home-espresso-pressurised' => ['public_name' => 'اسپرسوساز خانگی با بسکت تحت فشار', 'brew_method' => 'espresso'],
-        'moka-pot' => ['public_name' => 'موکاپات', 'brew_method' => 'moka_pot'],
-        'aeropress' => ['public_name' => 'ائروپرس', 'brew_method' => 'aeropress'],
-        'v60' => ['public_name' => 'V60', 'brew_method' => 'v60'],
-        'chemex' => ['public_name' => 'کمکس', 'brew_method' => 'chemex'],
-        'filter-machine' => ['public_name' => 'قهوه‌ساز فیلتری', 'brew_method' => 'filter_machine'],
-        'french-press' => ['public_name' => 'فرنچ پرس', 'brew_method' => 'french_press'],
-        'cold-brew' => ['public_name' => 'کلد برو', 'brew_method' => 'cold_brew'],
+        'turkish' => ['version' => 1, 'public_name' => 'قهوه ترک', 'brew_method' => 'turkish'],
+        'home-espresso-pressurised' => ['version' => 1, 'public_name' => 'اسپرسوساز خانگی با بسکت تحت فشار', 'brew_method' => 'espresso'],
+        'moka-pot' => ['version' => 1, 'public_name' => 'موکاپات', 'brew_method' => 'moka_pot'],
+        'aeropress' => ['version' => 1, 'public_name' => 'ائروپرس', 'brew_method' => 'aeropress'],
+        'v60' => ['version' => 2, 'public_name' => 'V60', 'brew_method' => 'v60'],
+        'chemex' => ['version' => 1, 'public_name' => 'کمکس', 'brew_method' => 'chemex'],
+        'filter-machine' => ['version' => 1, 'public_name' => 'قهوه‌ساز فیلتری', 'brew_method' => 'filter_machine'],
+        'french-press' => ['version' => 1, 'public_name' => 'فرنچ پرس', 'brew_method' => 'french_press'],
+        'cold-brew' => ['version' => 1, 'public_name' => 'کلد برو', 'brew_method' => 'cold_brew'],
     ];
 
     public function up(): void
@@ -24,7 +24,7 @@ return new class extends Migration
         foreach (self::PROFILES as $code => $profile) {
             $existing = DB::table('grinding_profiles')
                 ->where('code', $code)
-                ->where('version', 1)
+                ->where('version', $profile['version'])
                 ->first();
 
             $values = [
@@ -50,7 +50,7 @@ return new class extends Migration
             DB::table('grinding_profiles')->insert([
                 'id' => (string) Str::ulid(),
                 'code' => $code,
-                'version' => 1,
+                'version' => $profile['version'],
                 ...$values,
                 'created_at' => now(),
             ]);
@@ -59,9 +59,11 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::table('grinding_profiles')
-            ->where('version', 1)
-            ->whereIn('code', array_keys(self::PROFILES))
-            ->delete();
+        foreach (self::PROFILES as $code => $profile) {
+            DB::table('grinding_profiles')
+                ->where('code', $code)
+                ->where('version', $profile['version'])
+                ->delete();
+        }
     }
 };
