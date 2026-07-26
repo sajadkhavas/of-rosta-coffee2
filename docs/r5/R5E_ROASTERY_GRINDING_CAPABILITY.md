@@ -12,8 +12,8 @@ R5E publishes and manages each roastery's grinding capability without changing t
 - A roastery owner or manager can declare grinding as available or unavailable.
 - An available capability declares supported profiles, supported whole-bean weights, free or fixed service fee, preparation time and optional daily capacity.
 - Free grinding is represented explicitly with a zero amount.
-- Public roastery resources expose the active capability and supported profiles.
-- Inactive capability records are not published on customer-facing roastery resources.
+- A dedicated public roastery capability endpoint exposes the active capability and supported profiles without changing existing strict catalogue responses.
+- Inactive capability records are not published on the customer-facing roastery page.
 - All seller writes are validated, scoped to the roastery and recorded in the append-only audit log.
 
 ## Initial approved profiles
@@ -39,7 +39,7 @@ Rosta Hub eligibility, Tehran/Karaj service-zone validation, Hub packaging and r
 - approved profiles are seeded idempotently;
 - public profile catalogue is available;
 - owner/manager capability writes are scoped and authoritative;
-- public roastery detail displays the active capability;
+- public roastery page displays the active capability through the dedicated endpoint;
 - frontend contracts reject malformed capability data;
 - permanent backend and frontend audits pass;
 - no grinding variant, SKU or stock dimension is introduced.
