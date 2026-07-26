@@ -1,8 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  grindingCapabilityWireSchema,
-  mapGrindingCapability,
-} from "@/lib/api/grinding-capability";
+import { grindingCapabilityWireSchema, mapGrindingCapability } from "@/lib/api/grinding-capability";
 
 const validCapability = {
   availability: "available" as const,
