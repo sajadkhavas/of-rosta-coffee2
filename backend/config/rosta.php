@@ -13,9 +13,9 @@ $zarinpalSandbox = $boolean('ZARINPAL_SANDBOX', true);
 
 return [
     'api_version' => env('ROSTA_API_VERSION', 'v1'),
-    'contract_version' => env('ROSTA_CONTRACT_VERSION', '2026-07-21-phase-6'),
+    'contract_version' => env('ROSTA_CONTRACT_VERSION', '2026-07-26-r5c'),
     'whole_bean_weights' => [50, 100, 250, 500, 1000],
-    'single_roastery_orders' => true,
+    'single_roastery_orders' => false,
     'payment_enabled' => $paymentEnabled,
     'refund_enabled' => $refundEnabled,
     'sms_enabled' => $smsEnabled,

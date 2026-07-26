@@ -7,6 +7,7 @@ use App\Enums\QuotePurpose;
 use App\Exceptions\ApiDomainException;
 use App\Models\Address;
 use App\Models\CheckoutQuote;
+use App\Models\CheckoutQuoteGroup;
 use App\Models\CheckoutQuoteItem;
 use App\Models\MediaAsset;
 use App\Models\Product;
@@ -14,6 +15,7 @@ use App\Models\ProductVariant;
 use App\Models\RoastBatch;
 use App\Models\Roastery;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use LogicException;
@@ -94,7 +96,9 @@ final class QuoteService
                 'product.latestRoastBatch',
                 'product.roastery.logo',
                 'product.roastery.cover',
-                'product.variants' => static fn ($query) => $query->where('is_active', true)->orderBy('weight_grams'),
+                'product.variants' => static fn ($query) => $query
+                    ->where('is_active', true)
+                    ->orderBy('weight_grams'),
             ])
             ->whereIn('id', $normalizedItems->pluck('variant_id'))
             ->get()
@@ -108,9 +112,21 @@ final class QuoteService
             );
         }
 
-        $roastery = null;
+        /**
+         * @var array<string, array{
+         *     roastery: Roastery,
+         *     subtotal: int,
+         *     items: list<array{
+         *         product: Product,
+         *         variant: ProductVariant,
+         *         batch: RoastBatch|null,
+         *         quantity: int,
+         *         line_total: int
+         *     }>
+         * }> $resolvedGroups
+         */
+        $resolvedGroups = [];
         $subtotal = 0;
-        $resolvedItems = [];
 
         foreach ($normalizedItems as $item) {
             /** @var ProductVariant|null $variant */
@@ -137,16 +153,6 @@ final class QuoteService
                 );
             }
 
-            if ($roastery === null) {
-                $roastery = $product->roastery;
-            } elseif ($roastery->id !== $product->roastery_id) {
-                throw new ApiDomainException(
-                    'cart.multiple_roasteries',
-                    'هر سفارش باید فقط شامل محصولات یک روستری باشد.',
-                    409,
-                );
-            }
-
             $quantity = $item['quantity'];
             if ($variant->availableQuantity() < $quantity) {
                 throw new ApiDomainException(
@@ -159,8 +165,21 @@ final class QuoteService
 
             $lineTotal = $this->multiplyMoney($variant->price, $quantity);
             $subtotal = $this->addMoney($subtotal, $lineTotal);
+            $roasteryId = (string) $product->roastery_id;
 
-            $resolvedItems[] = [
+            if (! isset($resolvedGroups[$roasteryId])) {
+                $resolvedGroups[$roasteryId] = [
+                    'roastery' => $product->roastery,
+                    'subtotal' => 0,
+                    'items' => [],
+                ];
+            }
+
+            $resolvedGroups[$roasteryId]['subtotal'] = $this->addMoney(
+                $resolvedGroups[$roasteryId]['subtotal'],
+                $lineTotal,
+            );
+            $resolvedGroups[$roasteryId]['items'][] = [
                 'product' => $product,
                 'variant' => $variant,
                 'batch' => $product->latestRoastBatch,
@@ -169,7 +188,7 @@ final class QuoteService
             ];
         }
 
-        if (! $roastery instanceof Roastery) {
+        if ($resolvedGroups === []) {
             throw new ApiDomainException(
                 'cart.empty',
                 'سبد خرید خالی است.',
@@ -177,21 +196,54 @@ final class QuoteService
             );
         }
 
+        ksort($resolvedGroups);
+
+        /** @var EloquentCollection<int, Roastery> $roasteries */
+        $roasteries = new EloquentCollection(array_map(
+            static fn (array $group): Roastery => $group['roastery'],
+            array_values($resolvedGroups),
+        ));
+
         $couponResult = $purpose === QuotePurpose::Checkout
-            ? $this->coupons->resolve($couponCode, $roastery, $subtotal)
+            ? $this->coupons->resolveMarketplace($couponCode, $roasteries, $subtotal)
             : ['coupon' => null, 'discount' => 0];
 
-        $shippingResult = $purpose === QuotePurpose::Checkout
-            ? $this->shipping->quote($roastery, $address, $subtotal)
-            : ['total' => 0, 'snapshot' => null];
+        $groupSubtotals = [];
+        $shippingTotal = 0;
+        $shippingSnapshots = [];
 
-        $shippingTotal = (int) $shippingResult['total'];
-        $beforeDiscount = $this->addMoney($subtotal, $shippingTotal);
-        $discountTotal = min(
-            $beforeDiscount,
-            (int) $couponResult['discount'],
-        );
-        $grandTotal = $beforeDiscount - $discountTotal;
+        foreach ($resolvedGroups as $roasteryId => &$group) {
+            $shippingResult = $purpose === QuotePurpose::Checkout
+                ? $this->shipping->quote($group['roastery'], $address, $group['subtotal'])
+                : ['total' => 0, 'snapshot' => null];
+
+            $group['shipping_total'] = (int) $shippingResult['total'];
+            $group['shipping_snapshot'] = $shippingResult['snapshot'];
+            $shippingTotal = $this->addMoney($shippingTotal, $group['shipping_total']);
+            $groupSubtotals[$roasteryId] = $group['subtotal'];
+
+            if ($purpose === QuotePurpose::Checkout) {
+                $shippingSnapshots[] = [
+                    'roastery_id' => $roasteryId,
+                    'snapshot' => $shippingResult['snapshot'],
+                ];
+            }
+        }
+        unset($group);
+
+        $discountTotal = min($subtotal, (int) $couponResult['discount']);
+        $discounts = $this->allocateMoney($discountTotal, $groupSubtotals);
+        $grandTotal = 0;
+
+        foreach ($resolvedGroups as $roasteryId => &$group) {
+            $group['discount_total'] = $discounts[$roasteryId] ?? 0;
+            $group['grand_total'] = $this->addMoney(
+                $group['subtotal'] - $group['discount_total'],
+                $group['shipping_total'],
+            );
+            $grandTotal = $this->addMoney($grandTotal, $group['grand_total']);
+        }
+        unset($group);
 
         $payload = [
             'purpose' => $purpose->value,
@@ -205,20 +257,23 @@ final class QuoteService
             $purpose,
             $user,
             $address,
-            $roastery,
             $couponResult,
             $payload,
             $subtotal,
             $shippingTotal,
             $discountTotal,
             $grandTotal,
-            $shippingResult,
-            $resolvedItems,
+            $shippingSnapshots,
+            $resolvedGroups,
         ): CheckoutQuote {
+            $singleRoasteryId = count($resolvedGroups) === 1
+                ? array_key_first($resolvedGroups)
+                : null;
+
             $quote = CheckoutQuote::query()->create([
                 'user_id' => $user?->id,
                 'address_id' => $address?->id,
-                'roastery_id' => $roastery->id,
+                'roastery_id' => $singleRoasteryId,
                 'coupon_id' => $couponResult['coupon']?->id,
                 'purpose' => $purpose,
                 'payload_hash' => $this->hasher->hash($payload),
@@ -230,41 +285,59 @@ final class QuoteService
                 'address_snapshot' => $address === null
                     ? null
                     : $this->addressSnapshot($address),
-                'shipping_snapshot' => $shippingResult['snapshot'],
+                'shipping_snapshot' => ['groups' => $shippingSnapshots],
                 'warnings' => [],
                 'expires_at' => now()->addMinutes(
                     (int) config('rosta.checkout.quote_ttl_minutes', 15),
                 ),
             ]);
 
-            foreach ($resolvedItems as $resolved) {
-                /** @var Product $product */
-                $product = $resolved['product'];
-                /** @var ProductVariant $variant */
-                $variant = $resolved['variant'];
-                /** @var RoastBatch|null $batch */
-                $batch = $resolved['batch'];
-
-                CheckoutQuoteItem::query()->create([
+            foreach ($resolvedGroups as $group) {
+                $quoteGroup = CheckoutQuoteGroup::query()->create([
                     'quote_id' => $quote->id,
-                    'product_id' => $product->id,
-                    'variant_id' => $variant->id,
-                    'roast_batch_id' => $batch?->id,
-                    'quantity' => $resolved['quantity'],
-                    'unit_price' => $variant->price,
-                    'compare_at_price' => $variant->compare_at_price,
-                    'line_total' => $resolved['line_total'],
-                    'product_snapshot' => $this->productSnapshot($product),
-                    'variant_snapshot' => $this->variantSnapshot($variant),
-                    'roast_batch_snapshot' => $batch === null
-                        ? null
-                        : $this->batchSnapshot($batch),
+                    'roastery_id' => $group['roastery']->id,
+                    'subtotal' => $group['subtotal'],
+                    'packaging_total' => 0,
+                    'grinding_total' => 0,
+                    'shipping_total' => $group['shipping_total'],
+                    'discount_total' => $group['discount_total'],
+                    'tax_total' => 0,
+                    'grand_total' => $group['grand_total'],
+                    'currency' => 'IRR',
+                    'pricing_snapshot' => [
+                        'version' => 'r5c-marketplace-v1',
+                        'shipping' => $group['shipping_snapshot'],
+                    ],
                 ]);
+
+                foreach ($group['items'] as $resolved) {
+                    $product = $resolved['product'];
+                    $variant = $resolved['variant'];
+                    $batch = $resolved['batch'];
+
+                    CheckoutQuoteItem::query()->create([
+                        'quote_id' => $quote->id,
+                        'group_id' => $quoteGroup->id,
+                        'product_id' => $product->id,
+                        'variant_id' => $variant->id,
+                        'roast_batch_id' => $batch?->id,
+                        'quantity' => $resolved['quantity'],
+                        'unit_price' => $variant->price,
+                        'compare_at_price' => $variant->compare_at_price,
+                        'line_total' => $resolved['line_total'],
+                        'product_snapshot' => $this->productSnapshot($product),
+                        'variant_snapshot' => $this->variantSnapshot($variant),
+                        'roast_batch_snapshot' => $batch === null
+                            ? null
+                            : $this->batchSnapshot($batch),
+                    ]);
+                }
             }
 
             return $quote->load([
-                'roastery.logo',
-                'roastery.cover',
+                'groups.roastery.logo',
+                'groups.roastery.cover',
+                'groups.items',
                 'items',
             ]);
         });
@@ -305,8 +378,74 @@ final class QuoteService
     }
 
     /**
-     * @return array<string, mixed>
+     * @param  array<string, int>  $bases
+     * @return array<string, int>
      */
+    private function allocateMoney(int $amount, array $bases): array
+    {
+        if ($amount === 0) {
+            return array_fill_keys(array_keys($bases), 0);
+        }
+
+        $remainingAmount = $amount;
+        $remainingBase = array_sum($bases);
+        $allocations = [];
+        $lastKey = array_key_last($bases);
+
+        foreach ($bases as $key => $base) {
+            if ($key === $lastKey) {
+                $allocations[$key] = $remainingAmount;
+                break;
+            }
+
+            $share = $this->multiplyDivideFloor($remainingAmount, $base, $remainingBase);
+            $allocations[$key] = $share;
+            $remainingAmount -= $share;
+            $remainingBase -= $base;
+        }
+
+        return $allocations;
+    }
+
+    private function multiplyDivideFloor(int $left, int $right, int $divisor): int
+    {
+        if ($left < 0 || $right < 0 || $divisor <= 0) {
+            throw new LogicException('Money ratio operands are invalid.');
+        }
+
+        $partWhole = intdiv($left, $divisor);
+        $partRemainder = $left % $divisor;
+        $totalWhole = 0;
+        $totalRemainder = 0;
+        $multiplier = $right;
+
+        while ($multiplier > 0) {
+            if (($multiplier & 1) === 1) {
+                $totalWhole += $partWhole;
+                $totalRemainder += $partRemainder;
+                if ($totalRemainder >= $divisor) {
+                    $totalWhole++;
+                    $totalRemainder -= $divisor;
+                }
+            }
+
+            $multiplier = intdiv($multiplier, 2);
+            if ($multiplier === 0) {
+                break;
+            }
+
+            $partWhole *= 2;
+            $partRemainder *= 2;
+            if ($partRemainder >= $divisor) {
+                $partWhole++;
+                $partRemainder -= $divisor;
+            }
+        }
+
+        return $totalWhole;
+    }
+
+    /** @return array<string, mixed> */
     private function addressSnapshot(Address $address): array
     {
         return [
@@ -322,9 +461,7 @@ final class QuoteService
         ];
     }
 
-    /**
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     private function productSnapshot(Product $product): array
     {
         return [
@@ -375,9 +512,7 @@ final class QuoteService
         ];
     }
 
-    /**
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     private function variantSnapshot(ProductVariant $variant): array
     {
         return [
@@ -392,9 +527,7 @@ final class QuoteService
         ];
     }
 
-    /**
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     private function batchSnapshot(RoastBatch $batch): array
     {
         return [
@@ -405,9 +538,7 @@ final class QuoteService
         ];
     }
 
-    /**
-     * @return array<string, mixed>|null
-     */
+    /** @return array<string, mixed>|null */
     private function mediaSnapshot(?MediaAsset $media): ?array
     {
         if (! $media instanceof MediaAsset) {

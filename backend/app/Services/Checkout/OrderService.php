@@ -7,22 +7,29 @@ use App\Enums\OrderStatus;
 use App\Enums\ProductStatus;
 use App\Enums\QuotePurpose;
 use App\Enums\ReservationStatus;
+use App\Enums\SettlementAllocationStatus;
+use App\Enums\ShipmentLegStatus;
+use App\Enums\SubOrderAcceptanceStatus;
 use App\Enums\SubOrderStatus;
 use App\Exceptions\ApiDomainException;
 use App\Models\CheckoutQuote;
 use App\Models\Coupon;
 use App\Models\InventoryReservation;
 use App\Models\Order;
+use App\Models\OrderEvent;
 use App\Models\OrderIdempotencyKey;
 use App\Models\OrderItem;
 use App\Models\ProductVariant;
 use App\Models\RoastBatch;
+use App\Models\SettlementAllocation;
+use App\Models\ShipmentLeg;
 use App\Models\SubOrder;
 use App\Models\User;
 use App\Services\AuditRecorder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use LogicException;
 
 final class OrderService
 {
@@ -97,7 +104,11 @@ final class OrderService
             ]);
 
             $quote = CheckoutQuote::query()
-                ->with('items')
+                ->with([
+                    'groups.items',
+                    'groups.roastery',
+                    'items',
+                ])
                 ->lockForUpdate()
                 ->findOrFail($quoteId);
 
@@ -124,16 +135,19 @@ final class OrderService
                 );
             }
 
-            if ($quote->items->isEmpty()) {
+            if ($quote->groups->isEmpty() || $quote->items->isEmpty()) {
                 throw new ApiDomainException(
                     'checkout.quote_empty',
-                    'Quote فاقد آیتم معتبر است.',
+                    'Quote فاقد گروه یا آیتم معتبر است.',
                     409,
                 );
             }
 
+            $this->assertQuoteTotals($quote);
+
             $variantIds = $quote->items
                 ->pluck('variant_id')
+                ->filter()
                 ->sort()
                 ->values();
 
@@ -153,87 +167,78 @@ final class OrderService
                 );
             }
 
-            foreach ($quote->items as $quoteItem) {
-                /** @var ProductVariant|null $variant */
-                $variant = $variants->get($quoteItem->variant_id);
-                if (! $variant instanceof ProductVariant) {
-                    throw new ApiDomainException(
-                        'checkout.variant_changed',
-                        'یکی از گزینه‌های Quote دیگر وجود ندارد.',
-                        409,
-                    );
-                }
-
-                $product = $variant->product;
-                if (
-                    ! $variant->is_active
-                    || $variant->price !== $quoteItem->unit_price
-                    || $product->status !== ProductStatus::Published
-                    || $product->published_at === null
-                    || $product->roastery_id !== $quote->roastery_id
-                    || ! $product->roastery->isPubliclyVisible()
-                ) {
+            foreach ($quote->groups as $group) {
+                if (! $group->roastery?->isPubliclyVisible()) {
                     throw new ApiDomainException(
                         'checkout.catalog_changed',
-                        'قیمت یا وضعیت یکی از محصولات تغییر کرده است.',
+                        'یکی از روستری‌های سفارش دیگر فعال نیست.',
                         409,
                     );
                 }
 
-                if ($variant->availableQuantity() < $quoteItem->quantity) {
-                    throw new ApiDomainException(
-                        'checkout.insufficient_stock',
-                        'موجودی یکی از گزینه‌ها برای ثبت سفارش کافی نیست.',
-                        409,
-                        ['variant_id' => [$variant->id]],
-                    );
-                }
-
-                if ($quoteItem->roast_batch_id !== null) {
-                    $batch = RoastBatch::query()
-                        ->where('id', $quoteItem->roast_batch_id)
-                        ->where('product_id', $product->id)
-                        ->where('is_active', true)
-                        ->lockForUpdate()
-                        ->first();
-
-                    if (! $batch instanceof RoastBatch) {
+                foreach ($group->items as $quoteItem) {
+                    $variant = $variants->get($quoteItem->variant_id);
+                    if (! $variant instanceof ProductVariant) {
                         throw new ApiDomainException(
-                            'checkout.roast_batch_changed',
-                            'بچ رست انتخاب‌شده دیگر قابل استفاده نیست.',
+                            'checkout.variant_changed',
+                            'یکی از گزینه‌های Quote دیگر وجود ندارد.',
                             409,
                         );
+                    }
+
+                    $product = $variant->product;
+                    if (
+                        ! $variant->is_active
+                        || $variant->price !== $quoteItem->unit_price
+                        || $product->status !== ProductStatus::Published
+                        || $product->published_at === null
+                        || $product->roastery_id !== $group->roastery_id
+                        || ! $product->roastery->isPubliclyVisible()
+                    ) {
+                        throw new ApiDomainException(
+                            'checkout.catalog_changed',
+                            'قیمت یا وضعیت یکی از محصولات تغییر کرده است.',
+                            409,
+                        );
+                    }
+
+                    if ($variant->availableQuantity() < $quoteItem->quantity) {
+                        throw new ApiDomainException(
+                            'checkout.insufficient_stock',
+                            'موجودی یکی از گزینه‌ها برای ثبت سفارش کافی نیست.',
+                            409,
+                            ['variant_id' => [$variant->id]],
+                        );
+                    }
+
+                    if ($quoteItem->roast_batch_id !== null) {
+                        $batch = RoastBatch::query()
+                            ->where('id', $quoteItem->roast_batch_id)
+                            ->where('product_id', $product->id)
+                            ->where('is_active', true)
+                            ->lockForUpdate()
+                            ->first();
+
+                        if (! $batch instanceof RoastBatch) {
+                            throw new ApiDomainException(
+                                'checkout.roast_batch_changed',
+                                'بچ رست انتخاب‌شده دیگر قابل استفاده نیست.',
+                                409,
+                            );
+                        }
                     }
                 }
             }
 
-            if ($quote->coupon_id !== null) {
-                $coupon = Coupon::query()
-                    ->lockForUpdate()
-                    ->findOrFail($quote->coupon_id);
+            $this->reserveCoupon($quote);
 
-                if (
-                    ! $coupon->is_active
-                    || ($coupon->starts_at !== null && $coupon->starts_at->isFuture())
-                    || ($coupon->ends_at !== null && $coupon->ends_at->isPast())
-                    || (
-                        $coupon->max_redemptions !== null
-                        && $coupon->redemption_count >= $coupon->max_redemptions
-                    )
-                ) {
-                    throw new ApiDomainException(
-                        'checkout.coupon_unavailable',
-                        'کد تخفیف Quote دیگر قابل استفاده نیست.',
-                        409,
-                    );
-                }
-
-                $coupon->increment('redemption_count');
-            }
+            $singleRoasteryId = $quote->groups->count() === 1
+                ? $quote->groups->first()?->roastery_id
+                : null;
 
             $order = new Order([
                 'user_id' => $user->id,
-                'roastery_id' => $quote->roastery_id,
+                'roastery_id' => $singleRoasteryId,
                 'quote_id' => $quote->id,
                 'status' => OrderStatus::AwaitingPayment,
                 'address_snapshot' => $quote->address_snapshot,
@@ -249,50 +254,157 @@ final class OrderService
             $order->order_number = 'R-'.now()->format('ymd').'-'.strtoupper(substr($order->id, -8));
             $order->save();
 
-            $subOrder = SubOrder::query()->create([
-                'order_id' => $order->id,
-                'roastery_id' => $quote->roastery_id,
-                'status' => SubOrderStatus::PendingAcceptance,
-                'subtotal' => $quote->subtotal,
-                'shipping_total' => $quote->shipping_total,
-            ]);
-
             $reservationExpiresAt = now()->addMinutes(
                 (int) config('rosta.checkout.reservation_ttl_minutes', 20),
             );
+            $shipmentSequence = 1;
 
-            foreach ($quote->items as $quoteItem) {
-                /** @var ProductVariant $variant */
-                $variant = $variants->get($quoteItem->variant_id);
+            foreach ($quote->groups as $group) {
+                $subOrder = SubOrder::query()->create([
+                    'order_id' => $order->id,
+                    'roastery_id' => $group->roastery_id,
+                    'status' => SubOrderStatus::PendingAcceptance,
+                    'acceptance_status' => SubOrderAcceptanceStatus::AwaitingRoasteryAcceptance,
+                    'subtotal' => $group->subtotal,
+                    'shipping_total' => $group->shipping_total,
+                    'packaging_total' => $group->packaging_total,
+                    'grinding_total' => $group->grinding_total,
+                    'discount_total' => $group->discount_total,
+                    'tax_total' => $group->tax_total,
+                    'grand_total' => $group->grand_total,
+                    'commission_total' => 0,
+                    'payable_total' => $group->grand_total,
+                    'currency' => $group->currency,
+                ]);
 
-                $orderItem = OrderItem::query()->create([
+                $itemBases = $group->items
+                    ->mapWithKeys(static fn ($item): array => [
+                        (string) $item->id => (int) $item->line_total,
+                    ])
+                    ->all();
+                $itemDiscounts = $this->allocateMoney($group->discount_total, $itemBases);
+
+                foreach ($group->items as $quoteItem) {
+                    $variant = $variants->get($quoteItem->variant_id);
+                    if (! $variant instanceof ProductVariant) {
+                        throw new LogicException('Locked quote variant disappeared.');
+                    }
+
+                    $orderItem = OrderItem::query()->create([
+                        'order_id' => $order->id,
+                        'sub_order_id' => $subOrder->id,
+                        'product_id' => $quoteItem->product_id,
+                        'variant_id' => $quoteItem->variant_id,
+                        'roast_batch_id' => $quoteItem->roast_batch_id,
+                        'quantity' => $quoteItem->quantity,
+                        'unit_price' => $quoteItem->unit_price,
+                        'line_total' => $quoteItem->line_total,
+                        'product_snapshot' => $quoteItem->product_snapshot,
+                        'variant_snapshot' => $quoteItem->variant_snapshot,
+                        'roast_batch_snapshot' => $quoteItem->roast_batch_snapshot,
+                    ]);
+
+                    $variant->forceFill([
+                        'stock_reserved' => $variant->stock_reserved + $quoteItem->quantity,
+                    ])->save();
+
+                    InventoryReservation::query()->create([
+                        'order_id' => $order->id,
+                        'order_item_id' => $orderItem->id,
+                        'variant_id' => $variant->id,
+                        'roast_batch_id' => $quoteItem->roast_batch_id,
+                        'quantity' => $quoteItem->quantity,
+                        'status' => ReservationStatus::Active,
+                        'expires_at' => $reservationExpiresAt,
+                    ]);
+
+                    $discount = $itemDiscounts[(string) $quoteItem->id] ?? 0;
+                    SettlementAllocation::query()->create([
+                        'order_id' => $order->id,
+                        'sub_order_id' => $subOrder->id,
+                        'order_item_id' => $orderItem->id,
+                        'allocation_type' => 'product',
+                        'owner_type' => 'roastery',
+                        'owner_id' => $group->roastery_id,
+                        'status' => SettlementAllocationStatus::Held,
+                        'gross_amount' => $quoteItem->line_total,
+                        'discount_amount' => $discount,
+                        'tax_amount' => 0,
+                        'net_amount' => $quoteItem->line_total - $discount,
+                        'currency' => $group->currency,
+                        'pricing_version' => 'r5c-marketplace-v1',
+                        'source_reference' => 'quote_item:'.$quoteItem->id,
+                        'idempotency_key' => 'order:'.$order->id.':item:'.$orderItem->id.':product',
+                        'metadata' => [
+                            'quote_id' => $quote->id,
+                            'quote_group_id' => $group->id,
+                        ],
+                    ]);
+                }
+
+                $shipmentLeg = ShipmentLeg::query()->create([
                     'order_id' => $order->id,
                     'sub_order_id' => $subOrder->id,
-                    'product_id' => $quoteItem->product_id,
-                    'variant_id' => $quoteItem->variant_id,
-                    'roast_batch_id' => $quoteItem->roast_batch_id,
-                    'quantity' => $quoteItem->quantity,
-                    'unit_price' => $quoteItem->unit_price,
-                    'line_total' => $quoteItem->line_total,
-                    'product_snapshot' => $quoteItem->product_snapshot,
-                    'variant_snapshot' => $quoteItem->variant_snapshot,
-                    'roast_batch_snapshot' => $quoteItem->roast_batch_snapshot,
+                    'route_type' => 'roastery_to_customer',
+                    'sequence' => $shipmentSequence++,
+                    'status' => ShipmentLegStatus::Planned,
+                    'charge_owner_type' => 'roastery',
+                    'charge_owner_id' => $group->roastery_id,
+                    'gross_amount' => $group->shipping_total,
+                    'tax_amount' => 0,
+                    'total_amount' => $group->shipping_total,
+                    'currency' => $group->currency,
+                    'origin_snapshot' => [
+                        'type' => 'roastery',
+                        'id' => $group->roastery_id,
+                        'name' => $group->roastery?->name,
+                        'city' => $group->roastery?->city,
+                    ],
+                    'destination_snapshot' => $quote->address_snapshot,
+                    'planned_at' => now(),
                 ]);
 
-                $variant->forceFill([
-                    'stock_reserved' => $variant->stock_reserved + $quoteItem->quantity,
-                ])->save();
-
-                InventoryReservation::query()->create([
+                SettlementAllocation::query()->create([
                     'order_id' => $order->id,
-                    'order_item_id' => $orderItem->id,
-                    'variant_id' => $variant->id,
-                    'roast_batch_id' => $quoteItem->roast_batch_id,
-                    'quantity' => $quoteItem->quantity,
-                    'status' => ReservationStatus::Active,
-                    'expires_at' => $reservationExpiresAt,
+                    'sub_order_id' => $subOrder->id,
+                    'shipment_leg_id' => $shipmentLeg->id,
+                    'allocation_type' => 'shipping',
+                    'owner_type' => 'roastery',
+                    'owner_id' => $group->roastery_id,
+                    'status' => SettlementAllocationStatus::Held,
+                    'gross_amount' => $group->shipping_total,
+                    'discount_amount' => 0,
+                    'tax_amount' => 0,
+                    'net_amount' => $group->shipping_total,
+                    'currency' => $group->currency,
+                    'pricing_version' => 'r5c-marketplace-v1',
+                    'source_reference' => 'quote_group:'.$group->id.':shipping',
+                    'idempotency_key' => 'order:'.$order->id.':sub-order:'.$subOrder->id.':shipping',
+                    'metadata' => [
+                        'quote_id' => $quote->id,
+                        'quote_group_id' => $group->id,
+                    ],
                 ]);
+
+                $this->appendEvent(
+                    order: $order,
+                    user: $user,
+                    request: $request,
+                    type: 'sub_order.awaiting_roastery_acceptance',
+                    title: 'سفارش برای روستری ثبت شد',
+                    nextState: SubOrderAcceptanceStatus::AwaitingRoasteryAcceptance->value,
+                    subOrder: $subOrder,
+                );
             }
+
+            $this->appendEvent(
+                order: $order,
+                user: $user,
+                request: $request,
+                type: 'order.created',
+                title: 'سفارش ثبت شد',
+                nextState: OrderStatus::AwaitingPayment->value,
+            );
 
             $quote->forceFill(['consumed_at' => now()])->save();
 
@@ -302,12 +414,12 @@ final class OrderService
             ])->save();
 
             $this->audit->record(
-                'checkout.order.created',
+                'checkout.marketplace_order.created',
                 actor: $user,
                 auditable: $order,
                 metadata: [
                     'quote_id' => $quote->id,
-                    'roastery_id' => $quote->roastery_id,
+                    'roastery_count' => $quote->groups->count(),
                     'grand_total' => $quote->grand_total,
                     'reservation_expires_at' => $reservationExpiresAt->toIso8601String(),
                 ],
@@ -321,11 +433,190 @@ final class OrderService
     public function loadOrder(Order $order): Order
     {
         return $order->load([
-            'subOrder.roastery.logo',
-            'subOrder.roastery.cover',
-            'subOrder.items',
+            'subOrders.roastery.logo',
+            'subOrders.roastery.cover',
+            'subOrders.items.services.grindingProfile',
+            'subOrders.shipmentLegs',
             'items',
             'reservations',
+            'settlementAllocations',
+            'events',
+        ]);
+    }
+
+    private function reserveCoupon(CheckoutQuote $quote): void
+    {
+        if ($quote->coupon_id === null) {
+            return;
+        }
+
+        $coupon = Coupon::query()
+            ->lockForUpdate()
+            ->findOrFail($quote->coupon_id);
+
+        if (
+            ! $coupon->is_active
+            || ($coupon->starts_at !== null && $coupon->starts_at->isFuture())
+            || ($coupon->ends_at !== null && $coupon->ends_at->isPast())
+            || (
+                $coupon->max_redemptions !== null
+                && $coupon->redemption_count >= $coupon->max_redemptions
+            )
+        ) {
+            throw new ApiDomainException(
+                'checkout.coupon_unavailable',
+                'کد تخفیف Quote دیگر قابل استفاده نیست.',
+                409,
+            );
+        }
+
+        if ($coupon->roastery_id !== null) {
+            if ($quote->groups->count() !== 1 || $quote->groups->first()?->roastery_id !== $coupon->roastery_id) {
+                throw new ApiDomainException(
+                    'checkout.coupon_scope_invalid',
+                    'محدوده کد تخفیف با گروه‌های سفارش سازگار نیست.',
+                    409,
+                );
+            }
+        }
+
+        $coupon->increment('redemption_count');
+    }
+
+    private function assertQuoteTotals(CheckoutQuote $quote): void
+    {
+        $subtotal = $quote->groups->sum('subtotal');
+        $shipping = $quote->groups->sum('shipping_total');
+        $discount = $quote->groups->sum('discount_total');
+        $grand = $quote->groups->sum('grand_total');
+
+        if (
+            $subtotal !== $quote->subtotal
+            || $shipping !== $quote->shipping_total
+            || $discount !== $quote->discount_total
+            || $grand !== $quote->grand_total
+        ) {
+            throw new ApiDomainException(
+                'mixed_state_conflict',
+                'مبالغ گروه‌های Quote با مبلغ نهایی سازگار نیست.',
+                409,
+            );
+        }
+
+        foreach ($quote->groups as $group) {
+            $itemSubtotal = $group->items->sum('line_total');
+            $expectedGrand = $group->subtotal
+                + $group->packaging_total
+                + $group->grinding_total
+                + $group->shipping_total
+                + $group->tax_total
+                - $group->discount_total;
+
+            if ($itemSubtotal !== $group->subtotal || $expectedGrand !== $group->grand_total) {
+                throw new ApiDomainException(
+                    'mixed_state_conflict',
+                    'یکی از گروه‌های Quote دارای جمع ناسازگار است.',
+                    409,
+                );
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, int>  $bases
+     * @return array<string, int>
+     */
+    private function allocateMoney(int $amount, array $bases): array
+    {
+        if ($amount === 0) {
+            return array_fill_keys(array_keys($bases), 0);
+        }
+
+        $remainingAmount = $amount;
+        $remainingBase = array_sum($bases);
+        $allocations = [];
+        $lastKey = array_key_last($bases);
+
+        foreach ($bases as $key => $base) {
+            if ($key === $lastKey) {
+                $allocations[$key] = $remainingAmount;
+                break;
+            }
+
+            $share = $this->multiplyDivideFloor($remainingAmount, $base, $remainingBase);
+            $allocations[$key] = $share;
+            $remainingAmount -= $share;
+            $remainingBase -= $base;
+        }
+
+        return $allocations;
+    }
+
+    private function multiplyDivideFloor(int $left, int $right, int $divisor): int
+    {
+        if ($left < 0 || $right < 0 || $divisor <= 0) {
+            throw new LogicException('Money ratio operands are invalid.');
+        }
+
+        $partWhole = intdiv($left, $divisor);
+        $partRemainder = $left % $divisor;
+        $totalWhole = 0;
+        $totalRemainder = 0;
+        $multiplier = $right;
+
+        while ($multiplier > 0) {
+            if (($multiplier & 1) === 1) {
+                $totalWhole += $partWhole;
+                $totalRemainder += $partRemainder;
+                if ($totalRemainder >= $divisor) {
+                    $totalWhole++;
+                    $totalRemainder -= $divisor;
+                }
+            }
+
+            $multiplier = intdiv($multiplier, 2);
+            if ($multiplier === 0) {
+                break;
+            }
+
+            $partWhole *= 2;
+            $partRemainder *= 2;
+            if ($partRemainder >= $divisor) {
+                $partWhole++;
+                $partRemainder -= $divisor;
+            }
+        }
+
+        return $totalWhole;
+    }
+
+    private function appendEvent(
+        Order $order,
+        User $user,
+        Request $request,
+        string $type,
+        string $title,
+        string $nextState,
+        ?SubOrder $subOrder = null,
+    ): void {
+        $occurredAt = now();
+
+        OrderEvent::query()->create([
+            'order_id' => $order->id,
+            'sub_order_id' => $subOrder?->id,
+            'event_type' => $type,
+            'previous_state' => null,
+            'next_state' => $nextState,
+            'actor_type' => 'customer',
+            'actor_user_id' => $user->id,
+            'request_id' => $request->headers->get('X-Request-ID'),
+            'customer_title' => $title,
+            'customer_description' => null,
+            'internal_metadata' => [
+                'quote_id' => $order->quote_id,
+            ],
+            'occurred_at' => $occurredAt,
+            'created_at' => $occurredAt,
         ]);
     }
 }

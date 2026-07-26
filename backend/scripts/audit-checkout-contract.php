@@ -32,6 +32,9 @@ foreach (['quote_ttl_minutes', 'reservation_ttl_minutes', 'idempotency_ttl_hours
         $failures[] = 'Missing checkout setting: '.$setting;
     }
 }
+if (! str_contains($config, "'single_roastery_orders' => false")) {
+    $failures[] = 'Marketplace checkout must allow multiple roasteries.';
+}
 
 $migration = 'database/migrations/2026_07_21_030001_create_transactional_checkout_tables.php';
 foreach ([
@@ -46,9 +49,14 @@ foreach ([
     $requireContains($migration, $table, 'Missing checkout schema: '.$table);
 }
 $requireContains(
-    $migration,
-    "foreignUlid('order_id')->unique()",
-    'Single-roastery orders must have exactly one sub-order.',
+    'database/migrations/2026_07_25_230001_create_r5b_marketplace_schema.php',
+    "dropUnique('sub_orders_order_id_unique')",
+    'Marketplace orders must allow multiple sub-orders.',
+);
+$requireContains(
+    'database/migrations/2026_07_25_230001_create_r5b_marketplace_schema.php',
+    "Schema::create('checkout_quote_groups'",
+    'Marketplace quote-group schema is missing.',
 );
 $requireContains(
     $migration,
@@ -63,8 +71,13 @@ $requireContains(
 
 $requireContains(
     'app/Services/Checkout/QuoteService.php',
-    'cart.multiple_roasteries',
-    'Cart validation must reject multiple roasteries.',
+    'CheckoutQuoteGroup::query()->create',
+    'Quote validation must persist one authoritative group per roastery.',
+);
+$requireContains(
+    'app/Services/Checkout/QuoteService.php',
+    'resolveMarketplace(',
+    'Marketplace coupon scope must be resolved across quote groups.',
 );
 $requireContains(
     'app/Services/Checkout/QuoteService.php',
@@ -99,9 +112,19 @@ $requireContains(
     'Quote totals must use checked addition.',
 );
 $requireContains(
+    'app/Services/Checkout/QuoteService.php',
+    'allocateMoney(',
+    'Marketplace discounts must be deterministically allocated to groups.',
+);
+$requireContains(
     'app/Services/Checkout/CouponService.php',
     '$subtotal % 10_000',
     'Percentage discounts must avoid integer overflow.',
+);
+$requireContains(
+    'app/Services/Checkout/CouponService.php',
+    'checkout.coupon_scope_invalid',
+    'Roastery-scoped coupons must fail closed for mixed carts.',
 );
 
 $requireContains(
@@ -121,6 +144,11 @@ $requireContains(
 );
 $requireContains(
     'app/Services/Checkout/OrderService.php',
+    'foreach ($quote->groups as $group)',
+    'Order creation must fan out quote groups into sub-orders.',
+);
+$requireContains(
+    'app/Services/Checkout/OrderService.php',
     "'stock_reserved' => \$variant->stock_reserved + \$quoteItem->quantity",
     'Order creation must reserve stock atomically.',
 );
@@ -128,6 +156,21 @@ $requireContains(
     'app/Services/Checkout/OrderService.php',
     'InventoryReservation::query()->create',
     'Every order line must have an explicit inventory reservation.',
+);
+$requireContains(
+    'app/Services/Checkout/OrderService.php',
+    'SettlementAllocation::query()->create',
+    'Marketplace allocations must be persisted in the order transaction.',
+);
+$requireContains(
+    'app/Services/Checkout/OrderService.php',
+    'ShipmentLeg::query()->create',
+    'Every sub-order must receive a shipment plan.',
+);
+$requireContains(
+    'app/Services/Checkout/OrderService.php',
+    'OrderEvent::query()->create',
+    'Order creation must append marketplace timeline events.',
 );
 $requireContains(
     'app/Services/Checkout/OrderService.php',

@@ -56,7 +56,7 @@ foreach (['50', '100', '250', '500', '1000'] as $weight) {
     }
 }
 foreach ([
-    "'single_roastery_orders' => true" => 'Single-roastery order boundary is not locked.',
+    "'single_roastery_orders' => false" => 'Marketplace multi-roastery order boundary is not enabled.',
     "'allowed_media_hosts'" => 'Media host allowlist is missing.',
     "'quote_ttl_minutes'" => 'Quote TTL is missing.',
     "'reservation_ttl_minutes'" => 'Reservation TTL is missing.',
@@ -126,7 +126,8 @@ $checks = [
         'in_array($host, $allowedHosts, true)' => 'Media hosts must be allowlisted.',
     ],
     'app/Services/Checkout/QuoteService.php' => [
-        'cart.multiple_roasteries' => 'Cart validation must reject multiple roasteries.',
+        'CheckoutQuoteGroup::query()->create' => 'Quote creation must persist one group per roastery.',
+        'resolveMarketplace(' => 'Marketplace coupons must be resolved against all roasteries.',
         'availableQuantity()' => 'Quotes must use authoritative stock.',
         "'unit_price' => \$variant->price" => 'Quotes must use authoritative prices.',
         'private const int MAX_MONEY' => 'Money calculations need a safe upper bound.',
@@ -138,12 +139,16 @@ $checks = [
     ],
     'app/Services/Checkout/CouponService.php' => [
         '$subtotal % 10_000' => 'Percentage discounts must avoid integer overflow.',
+        'resolveMarketplace(' => 'Coupon scope must understand marketplace groups.',
     ],
     'app/Services/Checkout/OrderService.php' => [
         'User::query()->lockForUpdate()' => 'Order creation must serialize per customer.',
         'order.idempotency_conflict' => 'Order idempotency must be payload-bound.',
         "'stock_reserved' => \$variant->stock_reserved + \$quoteItem->quantity" => 'Order creation must reserve stock.',
         'InventoryReservation::query()->create' => 'Explicit reservations are required.',
+        'SettlementAllocation::query()->create' => 'Marketplace order creation must persist allocation truth.',
+        'ShipmentLeg::query()->create' => 'Marketplace order creation must persist shipment plans.',
+        'OrderEvent::query()->create' => 'Marketplace order creation must append customer-visible events.',
         "'consumed_at' => now()" => 'Quotes must be consumed once.',
         "config('rosta.checkout.idempotency_ttl_hours'" => 'Order idempotency must use configured retention.',
     ],
@@ -186,9 +191,14 @@ foreach ([
     $requireContains($checkoutMigration, $table, 'Missing checkout table: '.$table);
 }
 $requireContains(
-    $checkoutMigration,
-    "foreignUlid('order_id')->unique()",
-    'Single-roastery orders must have one sub-order.',
+    'database/migrations/2026_07_25_230001_create_r5b_marketplace_schema.php',
+    "dropUnique('sub_orders_order_id_unique')",
+    'R5B must remove the historical one-sub-order constraint.',
+);
+$requireContains(
+    'database/migrations/2026_07_25_230001_create_r5b_marketplace_schema.php',
+    "Schema::create('checkout_quote_groups'",
+    'Marketplace quote groups are missing.',
 );
 $requireContains(
     $checkoutMigration,

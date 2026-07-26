@@ -177,7 +177,7 @@ final class TransactionalCheckoutTest extends TestCase
         ]);
     }
 
-    public function test_cart_rejects_multiple_roasteries_and_order_ownership_is_hidden(): void
+    public function test_cart_groups_multiple_roasteries_and_order_ownership_is_hidden(): void
     {
         [$user, $address, , $variant] = $this->fixture(stock: 5);
         [, , , $foreignVariant] = $this->fixture(stock: 5, suffix: 'foreign');
@@ -188,8 +188,12 @@ final class TransactionalCheckoutTest extends TestCase
                 ['variant_id' => $foreignVariant->id, 'quantity' => 1],
             ],
         ])
-            ->assertConflict()
-            ->assertJsonPath('error.code', 'cart.multiple_roasteries');
+            ->assertOk()
+            ->assertJsonCount(2, 'data.groups')
+            ->assertJsonPath('data.roastery_id', null)
+            ->assertJsonPath('data.subtotal', 4_000_000)
+            ->assertJsonPath('data.shipping_total', 0)
+            ->assertJsonPath('data.grand_total', 4_000_000);
 
         $this->authenticateWithRole($user, Role::Customer);
         $quote = $this->checkoutQuote($address, $variant, 1);
