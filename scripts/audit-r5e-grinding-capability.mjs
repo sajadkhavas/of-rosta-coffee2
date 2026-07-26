@@ -6,6 +6,7 @@ const paths = {
   page: "src/routes/roasteries.$slug.tsx",
   package: "package.json",
   backendPolicy: "backend/app/Services/Catalog/RoasteryGrindingPolicy.php",
+  backendController: "backend/app/Http/Controllers/Seller/SellerGrindingCapabilityController.php",
   backendRoutes: "backend/routes/seller-bootstrap.php",
   contract: "docs/r5/R5E_ROASTERY_GRINDING_CAPABILITY.md",
   cart: "src/lib/cart-storage.ts",
@@ -35,7 +36,8 @@ gate(
     'fee_mode: z.enum(["free", "fixed"])',
     "supported_weights: z.array(weight).max(5)",
     "profiles: z.array(grindingProfileWireSchema).max(20)",
-    "value.is_free !== (value.fee_mode === \"free\" || value.fee_amount === 0)",
+    'value.is_free !== (value.fee_mode === "free" || value.fee_amount === 0)',
+    "/grinding-capability",
   ]),
   "Browser contracts must reject inconsistent grinding availability and money.",
 );
@@ -47,10 +49,8 @@ gate(
     "محصولات همچنان به‌صورت دانه کامل",
     "capability.supportedWeights",
     "capability.profiles.map",
-  ]) && hasAll(files.page, [
-    "RoasteryGrindingCapability",
-    "roasterySlug={roastery.slug}",
-  ]),
+  ]) &&
+    hasAll(files.page, ["RoasteryGrindingCapability", "roasterySlug={roastery.slug}"]),
   "The public roastery page must show availability, fee, weights and profiles.",
 );
 gate(
@@ -60,14 +60,18 @@ gate(
     "updateSellerGrindingCapability",
     "grinding_profile_ids",
     "supported_weights",
-  ]) && hasAll(files.backendRoutes, [
-    "/grinding-capability",
-    "roastery_owner,roastery_manager,roastery_staff,administrator",
-  ]) && hasAll(files.backendPolicy, [
-    "profiles()->sync",
-    "Role",
-  ]) === false,
-  "Frontend writes must target the scoped Laravel capability endpoint; role enforcement stays in the controller.",
+  ]) &&
+    hasAll(files.backendRoutes, [
+      "/grinding-capability",
+      "roastery_owner,roastery_manager,roastery_staff,administrator",
+    ]) &&
+    hasAll(files.backendPolicy, ["profiles()->sync", "ValidationException::withMessages"]) &&
+    hasAll(files.backendController, [
+      "Role::RoasteryOwner",
+      "Role::RoasteryManager",
+      "assertRoasteryAccess",
+    ]),
+  "Frontend writes must target the scoped Laravel capability endpoint with controller-enforced roles.",
 );
 gate(
   "whole_bean_boundary",
