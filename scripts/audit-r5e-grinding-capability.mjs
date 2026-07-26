@@ -2,8 +2,11 @@ import { readFile, writeFile } from "node:fs/promises";
 
 const paths = {
   api: "src/lib/api/grinding-capability.ts",
-  panel: "src/components/catalog/RoasteryGrindingCapability.tsx",
-  page: "src/routes/roasteries.$slug.tsx",
+  publicPanel: "src/components/catalog/RoasteryGrindingCapability.tsx",
+  publicPage: "src/routes/roasteries.$slug.tsx",
+  sellerPage: "src/routes/panel.grinding.tsx",
+  panelIndex: "src/routes/panel.index.tsx",
+  unitTest: "tests/unit/r5e-grinding-capability.test.ts",
   package: "package.json",
   backendPolicy: "backend/app/Services/Catalog/RoasteryGrindingPolicy.php",
   backendController: "backend/app/Http/Controllers/Seller/SellerGrindingCapabilityController.php",
@@ -38,20 +41,37 @@ gate(
     "profiles: z.array(grindingProfileWireSchema).max(20)",
     'value.is_free !== (value.fee_mode === "free" || value.fee_amount === 0)',
     "/grinding-capability",
-  ]),
-  "Browser contracts must reject inconsistent grinding availability and money.",
+  ]) &&
+    hasAll(files.unitTest, [
+      "rejects inconsistent free money",
+      "rejects an available capability without profiles",
+      "keeps grinding outside product and inventory identity",
+    ]),
+  "Browser contracts and unit tests must reject inconsistent capability data.",
 );
 gate(
   "public_capability_surface",
-  hasAll(files.panel, [
+  hasAll(files.publicPanel, [
     "سرویس آسیاب روستری",
     "پروفایل‌های قابل ارائه",
     "محصولات همچنان به‌صورت دانه کامل",
     "capability.supportedWeights",
     "capability.profiles.map",
   ]) &&
-    hasAll(files.page, ["RoasteryGrindingCapability", "roasterySlug={roastery.slug}"]),
+    hasAll(files.publicPage, ["RoasteryGrindingCapability", "roasterySlug={roastery.slug}"]),
   "The public roastery page must show availability, fee, weights and profiles.",
+);
+gate(
+  "seller_capability_surface",
+  hasAll(files.sellerPage, [
+    'createFileRoute("/panel/grinding")',
+    "updateSellerGrindingCapability",
+    "grindingProfilesQueryOptions",
+    "وزن‌های دانه کامل قابل آسیاب",
+    "پروفایل‌های تأییدشده رستا",
+    "محصول، SKU، بچ رست و موجودی همچنان",
+  ]) && hasAll(files.panelIndex, ['to="/panel/grinding"', "تنظیم سرویس آسیاب"]),
+  "Owner and manager must have a linked workspace for capability configuration.",
 );
 gate(
   "seller_api_contract",
