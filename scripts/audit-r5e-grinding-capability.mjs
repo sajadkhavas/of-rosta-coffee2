@@ -57,8 +57,7 @@ gate(
     "محصولات همچنان به‌صورت دانه کامل",
     "capability.supportedWeights",
     "capability.profiles.map",
-  ]) &&
-    hasAll(files.publicPage, ["RoasteryGrindingCapability", "roasterySlug={roastery.slug}"]),
+  ]) && hasAll(files.publicPage, ["RoasteryGrindingCapability", "roasterySlug={roastery.slug}"]),
   "The public roastery page must show availability, fee, weights and profiles.",
 );
 gate(
