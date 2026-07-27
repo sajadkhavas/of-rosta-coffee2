@@ -32,7 +32,7 @@ const r5fServiceSelectionIsGated =
   files.r5fAudit.includes("ROSTA_R5F_ROASTERY_GRINDING_FRONTEND_COMPLETE") &&
   files.cart.includes("grindingProfileId");
 
- gate(
+gate(
   "permanent_frontend_gate",
   scripts["audit:r5e"] === "node scripts/audit-r5e-grinding-capability.mjs" &&
     scripts.check.includes("audit:r5e"),
