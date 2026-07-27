@@ -1,0 +1,144 @@
+name: Temporary R5G MySQL Index Fix
+
+on:
+  push:
+    branches:
+      - program/r5g-rosta-hub-grinding-routing
+
+permissions:
+  contents: write
+
+jobs:
+  fix-migration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Repair MySQL foreign-key index transition
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('backend/database/migrations/2026_07_27_120001_create_r5g_rosta_hub_schema.php')
+          text = path.read_text()
+          old = """        Schema::table('checkout_quote_item_services', function (Blueprint $table): void {
+              $table->dropUnique('checkout_quote_item_services_quote_item_id_service_type_unique');
+              $table->foreignUlid('provider_hub_id')
+                  ->nullable()
+                  ->after('provider_roastery_id')
+                  ->constrained('rosta_hubs')
+                  ->nullOnDelete();
+              $table->unique(
+                  ['quote_item_id', 'service_type', 'provider_type'],
+                  'quote_item_service_provider_unique',
+              );
+          });
+
+          Schema::table('order_item_services', function (Blueprint $table): void {
+              $table->dropUnique('order_item_services_order_item_id_service_type_unique');
+              $table->foreignUlid('provider_hub_id')
+                  ->nullable()
+                  ->after('provider_roastery_id')
+                  ->constrained('rosta_hubs')
+                  ->nullOnDelete();
+              $table->unique(
+                  ['order_item_id', 'service_type', 'provider_type'],
+                  'order_item_service_provider_unique',
+              );
+          });
+"""
+          new = """        Schema::table('checkout_quote_item_services', function (Blueprint $table): void {
+              $table->index('quote_item_id', 'r5g_quote_item_fk_support');
+          });
+          Schema::table('checkout_quote_item_services', function (Blueprint $table): void {
+              $table->dropUnique('checkout_quote_item_services_quote_item_id_service_type_unique');
+              $table->foreignUlid('provider_hub_id')
+                  ->nullable()
+                  ->after('provider_roastery_id')
+                  ->constrained('rosta_hubs')
+                  ->nullOnDelete();
+              $table->unique(
+                  ['quote_item_id', 'service_type', 'provider_type'],
+                  'quote_item_service_provider_unique',
+              );
+          });
+          Schema::table('checkout_quote_item_services', function (Blueprint $table): void {
+              $table->dropIndex('r5g_quote_item_fk_support');
+          });
+
+          Schema::table('order_item_services', function (Blueprint $table): void {
+              $table->index('order_item_id', 'r5g_order_item_fk_support');
+          });
+          Schema::table('order_item_services', function (Blueprint $table): void {
+              $table->dropUnique('order_item_services_order_item_id_service_type_unique');
+              $table->foreignUlid('provider_hub_id')
+                  ->nullable()
+                  ->after('provider_roastery_id')
+                  ->constrained('rosta_hubs')
+                  ->nullOnDelete();
+              $table->unique(
+                  ['order_item_id', 'service_type', 'provider_type'],
+                  'order_item_service_provider_unique',
+              );
+          });
+          Schema::table('order_item_services', function (Blueprint $table): void {
+              $table->dropIndex('r5g_order_item_fk_support');
+          });
+"""
+          if old not in text:
+              raise SystemExit('up migration anchor not found')
+          text = text.replace(old, new, 1)
+
+          old_down = """        Schema::table('order_item_services', function (Blueprint $table): void {
+              $table->dropUnique('order_item_service_provider_unique');
+              $table->dropConstrainedForeignId('provider_hub_id');
+              $table->unique(['order_item_id', 'service_type']);
+          });
+
+          Schema::table('checkout_quote_item_services', function (Blueprint $table): void {
+              $table->dropUnique('quote_item_service_provider_unique');
+              $table->dropConstrainedForeignId('provider_hub_id');
+              $table->unique(['quote_item_id', 'service_type']);
+          });
+"""
+          new_down = """        Schema::table('order_item_services', function (Blueprint $table): void {
+              $table->index('order_item_id', 'r5g_order_item_fk_support');
+          });
+          Schema::table('order_item_services', function (Blueprint $table): void {
+              $table->dropUnique('order_item_service_provider_unique');
+              $table->dropConstrainedForeignId('provider_hub_id');
+              $table->unique(['order_item_id', 'service_type']);
+          });
+          Schema::table('order_item_services', function (Blueprint $table): void {
+              $table->dropIndex('r5g_order_item_fk_support');
+          });
+
+          Schema::table('checkout_quote_item_services', function (Blueprint $table): void {
+              $table->index('quote_item_id', 'r5g_quote_item_fk_support');
+          });
+          Schema::table('checkout_quote_item_services', function (Blueprint $table): void {
+              $table->dropUnique('quote_item_service_provider_unique');
+              $table->dropConstrainedForeignId('provider_hub_id');
+              $table->unique(['quote_item_id', 'service_type']);
+          });
+          Schema::table('checkout_quote_item_services', function (Blueprint $table): void {
+              $table->dropIndex('r5g_quote_item_fk_support');
+          });
+"""
+          if old_down not in text:
+              raise SystemExit('down migration anchor not found')
+          path.write_text(text.replace(old_down, new_down, 1))
+          PY
+
+      - name: Format and commit fix
+        run: |
+          composer install --working-dir=backend --no-interaction --no-progress --prefer-dist
+          (cd backend && vendor/bin/pint database/migrations/2026_07_27_120001_create_r5g_rosta_hub_schema.php)
+          rm -f .github/workflows/r5g-mysql-index-fix.yml
+          git config user.name "Rosta R5G Fix"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "R5G preserve MySQL foreign-key support while replacing service uniqueness"
+          git push origin HEAD:program/r5g-rosta-hub-grinding-routing
