@@ -28,6 +28,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('scripts/r5h-parts/part-01.b64')
+          payload = path.read_bytes()
+          assert len(payload) == 3001, len(payload)
+          marker = b'RWaaPamata'
+          assert payload.count(marker) == 1, payload.count(marker)
+          path.write_bytes(payload.replace(marker, b'RWaaPmata', 1))
+          PY
+          test "$(git hash-object scripts/r5h-parts/part-01.b64)" = "13c083d598ac5b46f81b2eb8b7269ebeb301d69d"
           cat scripts/r5h-parts/part-*.b64 > /tmp/r5h-product.patch.gz.b64
           test "$(wc -c < /tmp/r5h-product.patch.gz.b64)" = "32156"
           test "$(git hash-object /tmp/r5h-product.patch.gz.b64)" = "b86ad9ecc6e818d467865a2b61765c2151a5d78e"
