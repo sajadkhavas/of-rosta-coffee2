@@ -37,5 +37,22 @@ jobs:
           coverage: none
 
       - name: Apply, verify and publish R5I
+        id: final_executor
+        continue-on-error: true
         shell: bash
-        run: bash scripts/run-r5i-final-executor.sh
+        run: bash scripts/run-r5i-final-executor.sh > /tmp/r5i-final-executor.log 2>&1
+
+      - name: Upload complete executor log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r5i-final-executor-log-${{ github.sha }}
+          path: /tmp/r5i-final-executor.log
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Enforce final executor
+        if: always()
+        run: |
+          tail -n 200 /tmp/r5i-final-executor.log || true
+          test "${{ steps.final_executor.outcome }}" = "success"
