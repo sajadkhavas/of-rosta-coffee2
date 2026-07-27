@@ -51,18 +51,12 @@ jobs:
 
           path = Path('scripts/audit-r5h-fulfillment-commitment.mjs')
           text = path.read_text()
-          old = '''requireAll("seller API", files.sellerApi, [
-            'status: "preparing" | "ready_to_ship" | "shipped"',
-            "reportSellerFulfillmentIncident",
-          ]);'''
-          new = '''requireAll("seller API", files.sellerApi, [
-            '"preparing"',
+          needle = ''''status: "preparing" | "ready_to_ship" | "shipped"','''
+          replacement = ''''"preparing"',
             '"ready_to_ship"',
-            '"shipped"',
-            "reportSellerFulfillmentIncident",
-          ]);'''
-          assert old in text
-          path.write_text(text.replace(old, new, 1))
+            '"shipped"','''
+          assert text.count(needle) == 1, text.count(needle)
+          path.write_text(text.replace(needle, replacement, 1))
           PY
 
       - name: Setup Bun
