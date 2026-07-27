@@ -5,10 +5,7 @@ const files = {
   ordersApi: fs.readFileSync("src/lib/api/orders.ts", "utf8"),
   contracts: fs.readFileSync("src/lib/api/contracts.ts", "utf8"),
   schema: fs.readFileSync("src/lib/api/schemas.ts", "utf8"),
-  seller: fs.readFileSync(
-    "src/components/seller/SellerOperationsDashboard.tsx",
-    "utf8",
-  ),
+  seller: fs.readFileSync("src/components/seller/SellerOperationsDashboard.tsx", "utf8"),
   sellerApi: fs.readFileSync("src/lib/api/seller-operations.ts", "utf8"),
   admin: fs.readFileSync("src/routes/admin.operations.tsx", "utf8"),
   adminApi: fs.readFileSync("src/lib/api/admin-finance.ts", "utf8"),
