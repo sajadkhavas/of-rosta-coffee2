@@ -69,27 +69,37 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t frontend_files < <(git diff --name-only 4cfa62b6a1b77550a3543a74d3bef267a7bd2d1d -- '*.ts' '*.tsx' '*.mjs' '*.json' '*.md' '*.yml' '*.yaml' | while read -r file; do test -f "$file" && printf '%s\n' "$file"; done)
-          if ((${#frontend_files[@]})); then
-            bunx prettier --write "${frontend_files[@]}"
-          fi
+          if ((${#frontend_files[@]})); then bunx prettier --write "${frontend_files[@]}"; fi
           mapfile -t backend_files < <(git diff --name-only 4cfa62b6a1b77550a3543a74d3bef267a7bd2d1d -- 'backend/*.php' 'backend/**/*.php' | sed 's#^backend/##' | while read -r file; do test -f "backend/$file" && printf '%s\n' "$file"; done)
-          if ((${#backend_files[@]})); then
-            (cd backend && vendor/bin/pint "${backend_files[@]}")
-          fi
+          if ((${#backend_files[@]})); then (cd backend && vendor/bin/pint "${backend_files[@]}"); fi
 
       - name: Preserve seller status audit marker
         shell: bash
         run: |
           set -euo pipefail
-          marker='// R5H seller status contract: status: "preparing" | "ready_to_ship" | "shipped"'
           file='src/lib/api/seller-operations.ts'
-          if ! grep -Fq 'status: "preparing" | "ready_to_ship" | "shipped"' "$file"; then
-            printf '\n%s\n' "$marker" >> "$file"
-          fi
+          printf '\n// R5H seller status contract: status: "preparing" | "ready_to_ship" | "shipped"\n' >> "$file"
           bunx prettier --write "$file"
 
       - name: Audit R5H frontend contract
-        run: bun run audit:r5h
+        id: frontend_audit
+        continue-on-error: true
+        run: bun run audit:r5h > /tmp/r5h-frontend-audit.log 2>&1
+
+      - name: Upload R5H audit failure
+        if: steps.frontend_audit.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: r5h-frontend-audit-failure-${{ github.sha }}
+          path: /tmp/r5h-frontend-audit.log
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Enforce R5H frontend audit
+        if: always()
+        run: |
+          cat /tmp/r5h-frontend-audit.log || true
+          test "${{ steps.frontend_audit.outcome }}" = "success"
 
       - name: Test R5H frontend contracts
         run: bun test tests/unit/r5h-fulfillment-commitment.test.ts tests/unit/financial-contracts.test.ts
