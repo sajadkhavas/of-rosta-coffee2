@@ -35,12 +35,12 @@ apply_correction \
   cb7b49d095b34f43197a61bc0a406ac8c6d10dd2 \
   /tmp/r5i-correction.patch
 
-apply_correction \
-  scripts/r5i-correct/r5i-correction-2.patch.gz.b64 \
-  624 \
-  2e123bd26adf67d3c9b0236057f8d192e59b9eb681793d2290ec1ed8cf4b782c \
-  f04c759335759acbc83e2fb6ba1dbc3f0dc89745 \
-  /tmp/r5i-correction-2.patch
+raw_correction='scripts/r5i-correct/r5i-correction-2.patch'
+test "$(wc -c < "$raw_correction")" = "1319"
+test "$(sha256sum "$raw_correction" | awk '{print $1}')" = "1a3d25b6a9c6183094a36f2f3e5b17234c10b82f753549322b06da7800c352ea"
+test "$(git hash-object "$raw_correction")" = "fc9ce761146f44583bff0b6513829ed86df3e7b9"
+git apply --check "$raw_correction"
+git apply "$raw_correction"
 
 bun install --frozen-lockfile
 (
