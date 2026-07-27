@@ -29,7 +29,8 @@ export const orderStatusLabels: Record<OrderStatus, string> = {
 };
 
 export const subOrderStatusLabels: Record<SubOrderStatus, string> = {
-  pending_acceptance: "در انتظار تأیید روستری",
+  awaiting_payment: "در انتظار پرداخت",
+  pending_acceptance: "در انتظار پرداخت (قدیمی)",
   accepted: "تأییدشده",
   rejected: "ردشده",
   preparing: "در حال آماده‌سازی",

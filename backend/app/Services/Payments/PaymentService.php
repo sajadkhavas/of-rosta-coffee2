@@ -13,6 +13,7 @@ use App\Models\PaymentAttempt;
 use App\Models\ProductVariant;
 use App\Models\User;
 use App\Services\AuditRecorder;
+use App\Services\Fulfillment\FulfillmentCommitmentService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -25,6 +26,7 @@ final class PaymentService
     public function __construct(
         private readonly PaymentProviderManager $providers,
         private readonly AuditRecorder $audit,
+        private readonly FulfillmentCommitmentService $fulfillmentCommitments,
     ) {}
 
     /**
@@ -462,6 +464,7 @@ final class PaymentService
                 'status' => OrderStatus::Paid,
                 'paid_at' => now(),
             ])->save();
+            $this->fulfillmentCommitments->commitPaidOrder($order, $order->user, $request);
 
             $lockedAttempt->forceFill([
                 'status' => PaymentAttemptStatus::Verified,

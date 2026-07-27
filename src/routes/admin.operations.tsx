@@ -8,15 +8,18 @@ import { Navbar } from "@/components/Navbar";
 import { Alert, Button, EmptyState, Skeleton } from "@/components/system";
 import {
   adminAuditsQuery,
+  adminFulfillmentIncidentsQuery,
   adminInquiriesQuery,
   adminNotificationsQuery,
   adminProductsQuery,
   adminReviewsQuery,
   adminRoasteriesQuery,
   moderateReview,
+  resolveAdminFulfillmentIncident,
   setInquiryStatus,
   setProductStatus,
   setRoasteryStatus,
+  type AdminFulfillmentIncidentStatus,
   type AdminInquiryStatus,
   type AdminNotificationStatus,
   type AdminProductStatus,
@@ -36,10 +39,18 @@ export const Route = createFileRoute("/admin/operations")({
   component: AdminOperationsPage,
 });
 
-type Tab = "roasteries" | "products" | "reviews" | "inquiries" | "notifications" | "audits";
+type Tab =
+  | "roasteries"
+  | "products"
+  | "incidents"
+  | "reviews"
+  | "inquiries"
+  | "notifications"
+  | "audits";
 const tabs: Array<{ id: Tab; label: string }> = [
   { id: "roasteries", label: "روستری‌ها" },
   { id: "products", label: "محصولات" },
+  { id: "incidents", label: "مشکلات ارسال" },
   { id: "reviews", label: "نظرات" },
   { id: "inquiries", label: "پشتیبانی" },
   { id: "notifications", label: "اعلان‌ها" },
@@ -124,6 +135,7 @@ function Dashboard() {
       </nav>
       {tab === "roasteries" ? <RoasteriesQueue /> : null}
       {tab === "products" ? <ProductsQueue /> : null}
+      {tab === "incidents" ? <FulfillmentIncidentsQueue /> : null}
       {tab === "reviews" ? <ReviewsQueue /> : null}
       {tab === "inquiries" ? <InquiriesQueue /> : null}
       {tab === "notifications" ? <NotificationsQueue /> : null}
@@ -313,6 +325,145 @@ function ProductsQueue() {
       {mutation.isError ? (
         <p className="mt-4 text-sm text-red-300">{errorMessage(mutation.error)}</p>
       ) : null}
+    </Panel>
+  );
+}
+
+function FulfillmentIncidentsQueue() {
+  const client = useQueryClient();
+  const [status, setStatus] = useState<AdminFulfillmentIncidentStatus>("open");
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [extensions, setExtensions] = useState<Record<string, number>>({});
+  const query = useQuery(adminFulfillmentIncidentsQuery(status));
+  const mutation = useMutation({
+    mutationFn: ({
+      id,
+      resolution,
+    }: {
+      id: string;
+      resolution: "resume_fulfillment" | "cancel_and_refund";
+    }) =>
+      resolveAdminFulfillmentIncident(id, {
+        resolution,
+        note: notes[id] || "تعیین تکلیف عملیاتی توسط پشتیبانی رستا",
+        extendSlaHours: extensions[id] ?? 24,
+      }),
+    onSuccess: async () => {
+      await client.invalidateQueries({
+        queryKey: ["admin", "operations", "fulfillment-incidents"],
+      });
+    },
+  });
+
+  return (
+    <Panel>
+      <header className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold">Incidentهای تعهد ارسال</h2>
+          <p className="mt-1 max-w-3xl text-sm leading-7 text-[color:var(--light)]">
+            روستری امکان رد مستقیم ندارد. ادامه آماده‌سازی یا لغو و بازپرداخت دقیق فقط توسط ادمین
+            رستا ثبت می‌شود.
+          </p>
+        </div>
+        <select
+          value={status}
+          onChange={(event) => setStatus(event.target.value as AdminFulfillmentIncidentStatus)}
+          className={selectClass}
+        >
+          <option value="open">باز</option>
+          <option value="resolved">بسته‌شده</option>
+        </select>
+      </header>
+      {query.isLoading ? (
+        <LoadingRows />
+      ) : query.isError ? (
+        <Alert variant="danger">{errorMessage(query.error)}</Alert>
+      ) : !query.data?.length ? (
+        <EmptyState title="Incidentی در این وضعیت نیست" />
+      ) : (
+        <div className="grid gap-4">
+          {query.data.map((item) => (
+            <article
+              key={item.id}
+              className="rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] p-4"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-bold">
+                    {item.roastery.name || "روستری"} · سفارش {item.order_number || item.order_id}
+                  </h3>
+                  <p className="mt-1 text-xs text-[color:var(--light)]">
+                    {item.code} · شدت {item.severity} · SLA {item.sla_status || "-"}
+                  </p>
+                </div>
+                <span className="rounded-full border border-[color:var(--mid)] px-3 py-1 text-xs">
+                  {item.status}
+                </span>
+              </div>
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[color:var(--light)]">
+                {item.description}
+              </p>
+              <p className="mt-2 text-xs text-[color:var(--light)]">
+                مهلت تحویل به حمل: {item.handoff_due_at || "ثبت نشده"}
+              </p>
+              {item.status === "open" ? (
+                <div className="mt-4 grid gap-3 border-t border-[color:var(--mid)] pt-4">
+                  <textarea
+                    value={notes[item.id] || ""}
+                    onChange={(event) =>
+                      setNotes((current) => ({ ...current, [item.id]: event.target.value }))
+                    }
+                    placeholder="یادداشت تصمیم ادمین"
+                    className="min-h-24 w-full rounded-xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-3 text-sm"
+                  />
+                  <label className="grid gap-2 text-sm font-bold">
+                    تمدید SLA برای ادامه آماده‌سازی
+                    <input
+                      type="number"
+                      min={0}
+                      max={168}
+                      value={extensions[item.id] ?? 24}
+                      onChange={(event) =>
+                        setExtensions((current) => ({
+                          ...current,
+                          [item.id]: Number(event.target.value),
+                        }))
+                      }
+                      className={selectClass}
+                    />
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      loading={mutation.isPending}
+                      onClick={() =>
+                        mutation.mutate({ id: item.id, resolution: "resume_fulfillment" })
+                      }
+                    >
+                      رفع مشکل و ادامه ارسال
+                    </Button>
+                    <Button
+                      variant="danger"
+                      loading={mutation.isPending}
+                      onClick={() =>
+                        mutation.mutate({ id: item.id, resolution: "cancel_and_refund" })
+                      }
+                    >
+                      لغو همین زیرسفارش و ثبت بازپرداخت
+                    </Button>
+                  </div>
+                  {mutation.isError ? (
+                    <Alert variant="danger">{errorMessage(mutation.error)}</Alert>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-[color:var(--light)]">
+                  نتیجه: {item.resolution || "ثبت نشده"} · {item.resolution_note || "بدون یادداشت"}
+                </p>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
     </Panel>
   );
 }

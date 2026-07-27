@@ -89,7 +89,8 @@ final class R5CMultiRoasteryCheckoutTest extends TestCase
         $this->assertDatabaseHas('sub_orders', [
             'order_id' => $order['id'],
             'roastery_id' => $firstRoastery->id,
-            'acceptance_status' => 'awaiting_roastery_acceptance',
+            'status' => 'awaiting_payment',
+            'acceptance_status' => 'awaiting_payment',
             'subtotal' => 4_000_000,
             'shipping_total' => 250_000,
             'grand_total' => 4_250_000,
@@ -97,7 +98,8 @@ final class R5CMultiRoasteryCheckoutTest extends TestCase
         $this->assertDatabaseHas('sub_orders', [
             'order_id' => $order['id'],
             'roastery_id' => $secondRoastery->id,
-            'acceptance_status' => 'awaiting_roastery_acceptance',
+            'status' => 'awaiting_payment',
+            'acceptance_status' => 'awaiting_payment',
             'subtotal' => 3_000_000,
             'shipping_total' => 350_000,
             'grand_total' => 3_350_000,

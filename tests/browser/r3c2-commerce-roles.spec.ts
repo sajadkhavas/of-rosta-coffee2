@@ -277,15 +277,34 @@ test("R3C2 completes commerce, scoped seller, administrator and adversarial jour
   });
   expect(invalidDelivered.status).toBe(409);
 
+  const manualAcceptance = await api(seller.page, fulfillmentPath, "PATCH", {
+    status: "accepted",
+  });
+  expect(manualAcceptance.status).toBe(422);
+
   for (const transition of [
-    { status: "accepted" },
     { status: "preparing" },
     { status: "ready_to_ship" },
     { status: "shipped", carrier: "پست", tracking_code: "R3C2TRACK001" },
-    { status: "delivered" },
   ]) {
     expect((await api(seller.page, fulfillmentPath, "PATCH", transition)).status).toBe(200);
   }
+
+  const sellerDelivery = await api(seller.page, fulfillmentPath, "PATCH", { status: "delivered" });
+  expect(sellerDelivery.status).toBe(409);
+
+  const administrator = await rolePage(browser, "09120000001", "/admin/operations");
+  expect(array(administrator.user.roles, "administrator roles")).toContain("administrator");
+  await expect(
+    administrator.page.getByRole("heading", { name: "نظارت کاتالوگ، پشتیبانی و سلامت عملیات" }),
+  ).toBeVisible();
+  const adminDelivery = await api(
+    administrator.page,
+    `/admin/orders/${encodeURIComponent(orderId)}/fulfillment`,
+    "PATCH",
+    { status: "delivered" },
+  );
+  expect(adminDelivery.status).toBe(200);
 
   const deliveredOrder = await api(customer.page, `/orders/${encodeURIComponent(orderId)}`);
   expect(deliveredOrder.status).toBe(200);
@@ -311,12 +330,6 @@ test("R3C2 completes commerce, scoped seller, administrator and adversarial jour
     body: "این ارسال تکراری باید به صورت قطعی رد شود.",
   });
   expect(duplicateReview.status).toBe(409);
-
-  const administrator = await rolePage(browser, "09120000001", "/admin/operations");
-  expect(array(administrator.user.roles, "administrator roles")).toContain("administrator");
-  await expect(
-    administrator.page.getByRole("heading", { name: "نظارت کاتالوگ، پشتیبانی و سلامت عملیات" }),
-  ).toBeVisible();
 
   const adminRoasteries = await api(
     administrator.page,

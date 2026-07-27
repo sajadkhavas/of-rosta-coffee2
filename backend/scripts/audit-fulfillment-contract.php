@@ -3,6 +3,8 @@
 $root = dirname(__DIR__);
 $files = [
     'service' => file_get_contents($root.'/app/Services/Fulfillment/FulfillmentService.php'),
+    'commitment' => file_get_contents($root.'/app/Services/Fulfillment/FulfillmentCommitmentService.php'),
+    'incident' => file_get_contents($root.'/app/Services/Fulfillment/FulfillmentIncidentService.php'),
     'request' => file_get_contents($root.'/app/Http/Requests/Fulfillment/UpdateFulfillmentRequest.php'),
     'routes' => file_get_contents($root.'/routes/fulfillment.php'),
     'seller' => file_get_contents($root.'/app/Http/Controllers/Seller/SellerOrderController.php'),
@@ -11,6 +13,7 @@ $files = [
     'note' => file_get_contents($root.'/app/Models/OrderInternalNote.php'),
     'restock' => file_get_contents($root.'/app/Models/InventoryRestock.php'),
     'migration' => file_get_contents($root.'/database/migrations/2026_07_22_200001_create_fulfillment_tables.php'),
+    'r5hMigration' => file_get_contents($root.'/database/migrations/2026_07_27_160001_create_r5h_fulfillment_commitments_and_incidents.php'),
     'resource' => file_get_contents($root.'/app/Http/Resources/OrderResource.php'),
 ];
 
@@ -28,12 +31,21 @@ $gate(
 );
 
 $gate(
-    'single_domain_state_machine',
-    str_contains($files['seller'], 'FulfillmentService')
-        && str_contains($files['admin'], 'FulfillmentService')
-        && str_contains($files['service'], 'assertTransitionAllowed')
+    'contractual_auto_commitment',
+    str_contains($files['commitment'], 'payment_verified_contractual_commitment')
+        && str_contains($files['commitment'], 'SubOrderStatus::Accepted')
+        && str_contains($files['commitment'], 'preparation_due_at')
+        && str_contains($files['commitment'], 'handoff_due_at'),
+    'Paid sub-orders must be accepted automatically with immutable operational deadlines.',
+);
+
+$gate(
+    'seller_cannot_accept_or_reject',
+    ! str_contains($files['request'], "'accepted'")
+        && ! str_contains($files['request'], "'rejected'")
+        && str_contains($files['service'], 'allowDelivery')
         && str_contains($files['service'], 'fulfillment.transition_invalid'),
-    'Seller and administrator transitions must use one controlled domain service.',
+    'Seller actions are preparation, ready-to-ship and handoff only; acceptance/rejection is forbidden.',
 );
 
 $gate(
@@ -41,25 +53,27 @@ $gate(
     str_contains($files['request'], 'required_if:status,shipped')
         && str_contains($files['service'], 'fulfillment.tracking_required')
         && str_contains($files['service'], "'tracking_code' => \$trackingCode"),
-    'Shipment carrier and tracking code are mandatory before shipped status.',
+    'Shipment carrier and tracking code are mandatory before handoff.',
 );
 
 $gate(
-    'refund_pending_is_not_fake_cancellation',
-    str_contains($files['service'], 'OrderStatus::RefundPending')
-        && str_contains($files['service'], 'SubOrderStatus::RefundPending')
-        && ! str_contains($files['service'], 'SubOrderStatus::Rejected => OrderStatus::Cancelled'),
-    'A paid rejected order must remain financially pending until a real refund is recorded.',
+    'incident_is_non_destructive_until_admin_resolution',
+    str_contains($files['incident'], 'fulfillment.incident_reported')
+        && str_contains($files['incident'], 'FulfillmentSlaStatus::ExceptionOpen')
+        && str_contains($files['service'], 'fulfillment.incident_resolution_required')
+        && str_contains($files['routes'], '/orders/{orderId}/incidents'),
+    'Seller incidents pause operational transitions without self-cancelling, refunding or restocking.',
 );
 
 $gate(
-    'exactly_once_restock',
-    str_contains($files['migration'], "unique(['order_item_id', 'reason'])")
-        && str_contains($files['service'], 'restockPaidOrderExactlyOnce')
-        && str_contains($files['service'], 'InventoryRestock::query()')
-        && str_contains($files['service'], 'StockReason::Return')
-        && str_contains($files['service'], 'stock_on_hand'),
-    'Paid rejected items must be restocked once with an append-only stock ledger entry.',
+    'admin_scoped_refund_and_exactly_once_restock',
+    str_contains($files['incident'], 'restockExactlyOnce')
+        && str_contains($files['incident'], 'reverseAllocations')
+        && str_contains($files['incident'], "'amount' => \$subOrder->grand_total")
+        && str_contains($files['migration'], "unique(['order_item_id', 'reason'])")
+        && str_contains($files['incident'], 'InventoryRestock::query()')
+        && str_contains($files['incident'], 'StockReason::Return'),
+    'Only an administrator may refund the affected sub-order and restock each order item once.',
 );
 
 $gate(
@@ -67,27 +81,24 @@ $gate(
     str_contains($files['history'], 'append-only')
         && str_contains($files['note'], 'append-only')
         && str_contains($files['restock'], 'append-only')
-        && str_contains($files['migration'], "Schema::create('sub_order_status_history'")
-        && str_contains($files['migration'], "Schema::create('order_internal_notes'"),
-    'Status history, internal notes and restock evidence must not be mutable.',
+        && str_contains($files['r5hMigration'], "Schema::create('fulfillment_incidents'"),
+    'Status history, notes, restocks and incidents preserve operational evidence.',
 );
 
 $gate(
-    'customer_safe_shipment_contract',
+    'customer_safe_shipment_and_incident_contract',
     str_contains($files['resource'], "'shipment_legs' => \$subOrder->shipmentLegs")
-        && str_contains($files['resource'], "'carrier' => \$leg->carrier")
-        && str_contains($files['resource'], "'tracking_code' => \$leg->tracking_code")
-        && str_contains($files['resource'], "'route_type' => \$leg->route_type")
-        && ! str_contains($files['resource'], 'internalNotes')
-        && ! str_contains($files['resource'], 'internal_metadata')
-        && ! str_contains($files['resource'], 'actor_reference'),
-    'Customers receive shipment-leg tracking without internal notes, actors or audit metadata.',
+        && str_contains($files['resource'], "'incidents'")
+        && ! str_contains($files['resource'], 'resolution_note')
+        && ! str_contains($files['resource'], "'description' => \$incident->description")
+        && ! str_contains($files['resource'], 'internalNotes'),
+    'Customers receive truthful tracking and safe incident state without private operational notes.',
 );
 
 $gate(
     'whole_bean_boundary',
     ! preg_match('/grind[_-]?(selector|state)|grind_option/i', implode("\n", $files)),
-    'Fulfillment work must not introduce grind selection or grind state.',
+    'Fulfillment work must not introduce product or inventory grind state.',
 );
 
 $failed = array_values(array_filter($gates, static fn (array $item): bool => ! $item['passed']));

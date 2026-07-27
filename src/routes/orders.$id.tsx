@@ -191,6 +191,21 @@ function OrderContent() {
                   {subOrderStatusLabels[subOrder.status]}
                 </span>
               </div>
+              <div className="mt-4 grid gap-3">
+                {subOrder.fulfillment.acceptanceMode === "automatic_contractual" ? (
+                  <Alert variant="info" title="تعهد ارسال روستری فعال است">
+                    این زیرسفارش پس از پرداخت به‌صورت خودکار قطعی شده و روستری موظف به آماده‌سازی و
+                    تحویل آن به حمل است. مهلت تحویل به حمل:{" "}
+                    {formatAccountDate(subOrder.fulfillment.handoffDueAt)}
+                  </Alert>
+                ) : null}
+                {subOrder.incidents.some((incident) => incident.status === "open") ? (
+                  <Alert variant="warning" title="بررسی عملیاتی در جریان است">
+                    تیم رستا یک شرایط استثنایی را بررسی می‌کند. سایر زیرسفارش‌های شما بدون توقف
+                    ادامه پیدا می‌کنند.
+                  </Alert>
+                ) : null}
+              </div>
               <ul className="mt-5 divide-y divide-[color:var(--mid)]">
                 {subOrder.items.map((item) => (
                   <li key={item.id} className="py-4 first:pt-0">

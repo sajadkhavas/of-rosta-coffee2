@@ -535,6 +535,7 @@ export const orderStatusSchema = z.enum([
 ]);
 
 export const subOrderStatusSchema = z.enum([
+  "awaiting_payment",
   "pending_acceptance",
   "accepted",
   "rejected",
@@ -631,12 +632,37 @@ const orderEventWireSchema = z
   })
   .strict();
 
+const fulfillmentIncidentWireSchema = z
+  .object({
+    id: identifierSchema,
+    status: z.enum(["open", "resolved"]),
+    code: boundedText(64),
+    severity: z.enum(["medium", "high", "critical"]),
+    resolution: z.enum(["resume_fulfillment", "cancel_and_refund"]).nullable(),
+    reported_at: isoDateTimeSchema,
+    resolved_at: isoDateTimeSchema.nullable().optional(),
+  })
+  .strict();
+
+const fulfillmentCommitmentWireSchema = z
+  .object({
+    acceptance_mode: z.enum(["awaiting_payment", "automatic_contractual"]),
+    committed_at: isoDateTimeSchema.nullable().optional(),
+    preparation_due_at: isoDateTimeSchema.nullable().optional(),
+    handoff_due_at: isoDateTimeSchema.nullable().optional(),
+    sla_status: boundedText(64),
+    is_breached: z.boolean(),
+  })
+  .strict();
+
 const subOrderWireSchema = z
   .object({
     id: identifierSchema,
     status: subOrderStatusSchema,
     acceptance_status: boundedText(100),
     customer_cancellable: z.boolean(),
+    fulfillment: fulfillmentCommitmentWireSchema,
+    incidents: z.array(fulfillmentIncidentWireSchema).max(20),
     roastery: z.object({ id: identifierSchema, name: boundedText(160), slug: slugSchema }).strict(),
     items: z.array(orderLineWireSchema).min(1).max(100),
     subtotal: moneySchema,

@@ -214,6 +214,7 @@ export type OrderStatus =
   | "refunded";
 
 export type SubOrderStatus =
+  | "awaiting_payment"
   | "pending_acceptance"
   | "accepted"
   | "rejected"
@@ -294,11 +295,32 @@ export interface ShipmentLegSummary {
   deliveredAt?: IsoDateTime | null;
 }
 
+export interface FulfillmentIncidentSummary {
+  id: string;
+  status: "open" | "resolved";
+  code: string;
+  severity: "medium" | "high" | "critical";
+  resolution?: "resume_fulfillment" | "cancel_and_refund" | null;
+  reportedAt: IsoDateTime;
+  resolvedAt?: IsoDateTime | null;
+}
+
+export interface FulfillmentCommitmentSummary {
+  acceptanceMode: "awaiting_payment" | "automatic_contractual";
+  committedAt?: IsoDateTime | null;
+  preparationDueAt?: IsoDateTime | null;
+  handoffDueAt?: IsoDateTime | null;
+  slaStatus: string;
+  isBreached: boolean;
+}
+
 export interface SubOrderSummary {
   id: string;
   status: SubOrderStatus;
   acceptanceStatus: string;
   customerCancellable: boolean;
+  fulfillment: FulfillmentCommitmentSummary;
+  incidents: FulfillmentIncidentSummary[];
   roastery: Pick<RoasterySummary, "id" | "name" | "slug">;
   items: OrderLine[];
   subtotal: number;

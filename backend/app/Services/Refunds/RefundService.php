@@ -8,6 +8,7 @@ use App\Enums\RefundStatus;
 use App\Enums\SubOrderStatus;
 use App\Exceptions\ApiDomainException;
 use App\Exceptions\RefundProviderException;
+use App\Models\FulfillmentIncident;
 use App\Models\Order;
 use App\Models\PaymentAttempt;
 use App\Models\RefundAttempt;
@@ -453,19 +454,54 @@ final class RefundService
                 "order:{$order->id}:refunded",
             );
         } else {
-            $order->forceFill(['status' => OrderStatus::RefundPending])->save();
-            $this->reconciliation->openRefundReview(
-                $refund,
-                'partial_refund_balance_open',
-                'بخشی از مبلغ پرداخت بازگردانده شده و مانده نیازمند تصمیم مالی است.',
-                [
-                    'paid_amount' => $payment->amount,
-                    'succeeded_refund_amount' => $succeededAmount,
-                    'remaining_amount' => max(0, $payment->amount - $succeededAmount),
-                ],
-                'high',
-                $actor,
-            );
+            $incident = FulfillmentIncident::query()
+                ->where('refund_attempt_id', $refund->id)
+                ->lockForUpdate()
+                ->first();
+            if ($incident instanceof FulfillmentIncident) {
+                $subOrder = SubOrder::query()->whereKey($incident->sub_order_id)->lockForUpdate()->firstOrFail();
+                if ($subOrder->status !== SubOrderStatus::Refunded) {
+                    $from = $subOrder->status;
+                    $subOrder->forceFill(['status' => SubOrderStatus::Refunded])->save();
+                    SubOrderStatusHistory::query()->create([
+                        'sub_order_id' => $subOrder->id,
+                        'actor_id' => $actor->id,
+                        'from_status' => $from->value,
+                        'to_status' => SubOrderStatus::Refunded->value,
+                        'reason' => 'incident_partial_refund_succeeded',
+                        'metadata' => [
+                            'refund_attempt_id' => $refund->id,
+                            'incident_id' => $incident->id,
+                        ],
+                        'created_at' => now(),
+                    ]);
+                }
+                $order->forceFill(['status' => OrderStatus::PartiallyCancelled])->save();
+                $this->outbox->queueOrder(
+                    $order,
+                    'order.sub_order_refunded',
+                    [
+                        'refund_reference' => $providerReference,
+                        'sub_order_id' => $subOrder->id,
+                    ],
+                    $subOrder,
+                    "sub-order:{$subOrder->id}:refunded",
+                );
+            } else {
+                $order->forceFill(['status' => OrderStatus::RefundPending])->save();
+                $this->reconciliation->openRefundReview(
+                    $refund,
+                    'partial_refund_balance_open',
+                    'بخشی از مبلغ پرداخت بازگردانده شده و مانده نیازمند تصمیم مالی است.',
+                    [
+                        'paid_amount' => $payment->amount,
+                        'succeeded_refund_amount' => $succeededAmount,
+                        'remaining_amount' => max(0, $payment->amount - $succeededAmount),
+                    ],
+                    'high',
+                    $actor,
+                );
+            }
         }
 
         $this->audit->record(

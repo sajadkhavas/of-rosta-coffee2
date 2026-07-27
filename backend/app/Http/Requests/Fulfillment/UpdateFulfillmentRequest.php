@@ -14,7 +14,6 @@ final class UpdateFulfillmentRequest extends FormRequest
     {
         $this->rejectUnexpected([
             'status',
-            'reason',
             'carrier',
             'tracking_code',
             'internal_note',
@@ -33,15 +32,12 @@ final class UpdateFulfillmentRequest extends FormRequest
                 'required',
                 'string',
                 Rule::in([
-                    'accepted',
-                    'rejected',
                     'preparing',
                     'ready_to_ship',
                     'shipped',
                     'delivered',
                 ]),
             ],
-            'reason' => ['nullable', 'string', 'max:1000', 'required_if:status,rejected'],
             'carrier' => ['nullable', 'string', 'max:120', 'required_if:status,shipped'],
             'tracking_code' => [
                 'nullable',

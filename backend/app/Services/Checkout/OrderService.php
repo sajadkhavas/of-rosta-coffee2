@@ -288,8 +288,8 @@ final class OrderService
                 $subOrder = SubOrder::query()->create([
                     'order_id' => $order->id,
                     'roastery_id' => $group->roastery_id,
-                    'status' => SubOrderStatus::PendingAcceptance,
-                    'acceptance_status' => SubOrderAcceptanceStatus::AwaitingRoasteryAcceptance,
+                    'status' => SubOrderStatus::AwaitingPayment,
+                    'acceptance_status' => SubOrderAcceptanceStatus::AwaitingPayment,
                     'subtotal' => $group->subtotal,
                     'shipping_total' => $group->shipping_total,
                     'packaging_total' => $group->packaging_total,
@@ -618,9 +618,9 @@ final class OrderService
                     order: $order,
                     user: $user,
                     request: $request,
-                    type: 'sub_order.awaiting_roastery_acceptance',
-                    title: 'سفارش برای روستری ثبت شد',
-                    nextState: SubOrderAcceptanceStatus::AwaitingRoasteryAcceptance->value,
+                    type: 'sub_order.awaiting_payment',
+                    title: 'زیرسفارش در انتظار پرداخت است',
+                    nextState: OrderStatus::AwaitingPayment->value,
                     subOrder: $subOrder,
                 );
             }
@@ -665,6 +665,7 @@ final class OrderService
             'subOrders.roastery.cover',
             'subOrders.items.services.grindingProfile',
             'subOrders.shipmentLegs',
+            'subOrders.fulfillmentIncidents',
             'items',
             'reservations',
             'settlementAllocations',

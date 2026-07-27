@@ -155,6 +155,30 @@ const auditSchema = z
   })
   .strict();
 
+const fulfillmentIncidentStatusSchema = z.enum(["open", "resolved"]);
+const fulfillmentIncidentSchema = z
+  .object({
+    id,
+    order_id: id,
+    order_number: z.string().max(120).nullable().optional(),
+    sub_order_id: id,
+    roastery: z.object({ id, name: z.string().max(160).nullable() }).strict(),
+    sub_order_status: z.string().max(64).nullable().optional(),
+    sla_status: z.string().max(64).nullable().optional(),
+    preparation_due_at: date,
+    handoff_due_at: date,
+    status: fulfillmentIncidentStatusSchema,
+    code: z.string().min(1).max(64),
+    severity: z.enum(["medium", "high", "critical"]),
+    description: z.string().min(1).max(2000),
+    resolution: z.enum(["resume_fulfillment", "cancel_and_refund"]).nullable().optional(),
+    resolution_note: z.string().max(2000).nullable().optional(),
+    refund_attempt_id: id.nullable().optional(),
+    reported_at: z.string().min(1),
+    resolved_at: date,
+  })
+  .strict();
+
 const notificationSchema = z
   .object({
     id,
@@ -183,11 +207,13 @@ export type AdminReview = z.infer<typeof reviewSchema>;
 export type AdminInquiry = z.infer<typeof inquirySchema>;
 export type AdminAudit = z.infer<typeof auditSchema>;
 export type AdminNotification = z.infer<typeof notificationSchema>;
+export type AdminFulfillmentIncident = z.infer<typeof fulfillmentIncidentSchema>;
 export type AdminRoasteryStatus = z.infer<typeof roasteryStatusSchema>;
 export type AdminProductStatus = z.infer<typeof productStatusSchema>;
 export type AdminReviewStatus = z.infer<typeof reviewStatusSchema>;
 export type AdminInquiryStatus = z.infer<typeof inquiryStatusSchema>;
 export type AdminNotificationStatus = z.infer<typeof notificationStatusSchema>;
+export type AdminFulfillmentIncidentStatus = z.infer<typeof fulfillmentIncidentStatusSchema>;
 
 async function list<T>(path: string, schema: z.ZodType<T>, label: string): Promise<T[]> {
   return parseContract(collection(schema), await apiFetch(path), label).data.items;
@@ -213,6 +239,35 @@ export const listAdminNotifications = (status: AdminNotificationStatus) =>
     notificationSchema,
     "صف اعلان‌ها",
   );
+export const listAdminFulfillmentIncidents = (status: AdminFulfillmentIncidentStatus) =>
+  list(
+    `/admin/fulfillment-incidents?status=${status}&per_page=100`,
+    fulfillmentIncidentSchema,
+    "Incidentهای آماده‌سازی",
+  );
+
+export async function resolveAdminFulfillmentIncident(
+  incidentId: string,
+  input: {
+    resolution: "resume_fulfillment" | "cancel_and_refund";
+    note: string;
+    extendSlaHours?: number;
+  },
+) {
+  return parseContract(
+    resourceSchema(z.unknown()),
+    await apiFetch(`/admin/fulfillment-incidents/${encodeURIComponent(incidentId)}/resolve`, {
+      method: "POST",
+      body: {
+        resolution: input.resolution,
+        note: input.note.trim(),
+        extend_sla_hours:
+          input.resolution === "resume_fulfillment" ? (input.extendSlaHours ?? 0) : null,
+      },
+    }),
+    "تعیین تکلیف Incident آماده‌سازی",
+  ).data;
+}
 
 export async function setRoasteryStatus(value: string, status: AdminRoasteryStatus) {
   return parseContract(
@@ -294,4 +349,10 @@ export const adminNotificationsQuery = (status: AdminNotificationStatus) =>
     queryKey: ["admin", "operations", "notifications", status],
     queryFn: () => listAdminNotifications(status),
     staleTime: 10_000,
+  });
+export const adminFulfillmentIncidentsQuery = (status: AdminFulfillmentIncidentStatus) =>
+  queryOptions({
+    queryKey: ["admin", "operations", "fulfillment-incidents", status],
+    queryFn: () => listAdminFulfillmentIncidents(status),
+    staleTime: 5_000,
   });

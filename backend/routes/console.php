@@ -4,6 +4,7 @@ use App\Enums\IdempotencyStatus;
 use App\Models\CheckoutQuote;
 use App\Models\OrderIdempotencyKey;
 use App\Services\Checkout\ReservationExpiryService;
+use App\Services\Fulfillment\FulfillmentSlaMonitorService;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::call(static function (): void {
@@ -11,6 +12,13 @@ Schedule::call(static function (): void {
 })
     ->name('rosta.checkout.expire-reservations')
     ->everyMinute()
+    ->withoutOverlapping();
+
+Schedule::call(static function (): void {
+    app(FulfillmentSlaMonitorService::class)->markBreaches();
+})
+    ->name('rosta.fulfillment.mark-sla-breaches')
+    ->everyTenMinutes()
     ->withoutOverlapping();
 
 Schedule::command('notifications:dispatch --limit=100')

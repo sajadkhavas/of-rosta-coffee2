@@ -39,6 +39,10 @@ return [
             'start_pay_url' => env('ZARINPAL_START_PAY_URL', $zarinpalSandbox ? 'https://sandbox.zarinpal.com/pg/StartPay' : 'https://www.zarinpal.com/pg/StartPay'),
         ],
     ],
+    'fulfillment' => [
+        'preparation_sla_hours' => max(1, min(168, (int) env('ROSTA_PREPARATION_SLA_HOURS', 24))),
+        'handoff_sla_hours' => max(1, min(336, (int) env('ROSTA_HANDOFF_SLA_HOURS', 48))),
+    ],
     'refund' => [
         'enabled' => $refundEnabled,
         'provider' => env('REFUND_DRIVER', 'disabled'),

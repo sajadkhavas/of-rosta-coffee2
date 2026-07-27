@@ -5,14 +5,12 @@ namespace Tests\Feature;
 use App\Enums\OrderStatus;
 use App\Enums\Role;
 use App\Models\CheckoutQuote;
-use App\Models\InventoryRestock;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Origin;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Roastery;
-use App\Models\StockLedgerEntry;
 use App\Models\SubOrder;
 use App\Models\SubOrderStatusHistory;
 use App\Models\User;
@@ -36,16 +34,18 @@ final class FulfillmentLifecycleTest extends TestCase
         ]);
     }
 
-    public function test_seller_must_follow_state_machine_and_tracking_is_required(): void
+    public function test_seller_only_prepares_and_hands_off_a_contractually_accepted_order(): void
     {
         [$seller, $foreignSeller, $roastery, $order] = $this->fixture('flow');
         $this->authenticateWithRole($seller, Role::RoasteryOwner, 'roastery', $roastery->id);
         $endpoint = "/api/v1/seller/roasteries/{$roastery->id}/orders/{$order->id}/fulfillment";
 
         $this->patchJson($endpoint, ['status' => 'accepted'])
-            ->assertOk()
-            ->assertJsonPath('data.status', 'processing')
-            ->assertJsonPath('data.sub_orders.0.status', 'accepted');
+            ->assertUnprocessable()
+            ->assertJsonPath('error.code', 'request.validation_failed');
+        $this->patchJson($endpoint, ['status' => 'rejected'])
+            ->assertUnprocessable()
+            ->assertJsonPath('error.code', 'request.validation_failed');
 
         $this->patchJson($endpoint, [
             'status' => 'shipped',
@@ -57,6 +57,7 @@ final class FulfillmentLifecycleTest extends TestCase
 
         $this->patchJson($endpoint, ['status' => 'preparing'])
             ->assertOk()
+            ->assertJsonPath('data.status', 'processing')
             ->assertJsonPath('data.sub_orders.0.status', 'preparing');
         $this->patchJson($endpoint, ['status' => 'ready_to_ship'])
             ->assertOk()
@@ -78,7 +79,14 @@ final class FulfillmentLifecycleTest extends TestCase
             ->assertJsonPath('data.sub_orders.0.status', 'shipped')
             ->assertJsonPath('data.sub_orders.0.shipment.carrier', 'پست جمهوری اسلامی')
             ->assertJsonPath('data.sub_orders.0.shipment.tracking_code', 'TRACK-001');
+
         $this->patchJson($endpoint, ['status' => 'delivered'])
+            ->assertConflict()
+            ->assertJsonPath('error.code', 'fulfillment.transition_invalid');
+
+        $administrator = User::factory()->create();
+        $this->authenticateWithRole($administrator, Role::Administrator);
+        $this->patchJson("/api/v1/admin/orders/{$order->id}/fulfillment", ['status' => 'delivered'])
             ->assertOk()
             ->assertJsonPath('data.status', 'delivered')
             ->assertJsonPath('data.sub_orders.0.status', 'delivered')
@@ -90,7 +98,7 @@ final class FulfillmentLifecycleTest extends TestCase
             'tracking_code' => 'TRACK-001',
             'status' => 'delivered',
         ]);
-        $this->assertSame(5, SubOrderStatusHistory::query()
+        $this->assertSame(4, SubOrderStatusHistory::query()
             ->where('sub_order_id', $order->subOrder->id)
             ->count());
         $this->assertDatabaseHas('order_internal_notes', [
@@ -99,58 +107,68 @@ final class FulfillmentLifecycleTest extends TestCase
             'actor_id' => $seller->id,
         ]);
 
+        $foreignRoasteryId = (string) Roastery::query()
+            ->where('id', '!=', $roastery->id)
+            ->value('id');
         $this->authenticateWithRole(
             $foreignSeller,
             Role::RoasteryOwner,
             'roastery',
-            (string) Roastery::query()->whereKeyNot($roastery->id)->value('id'),
+            $foreignRoasteryId,
         );
-        $this->patchJson($endpoint, ['status' => 'delivered'])
+        $this->patchJson($endpoint, ['status' => 'preparing'])
             ->assertNotFound();
     }
 
-    public function test_rejection_moves_to_refund_pending_and_restocks_exactly_once(): void
+    public function test_incident_pauses_transitions_without_rejecting_or_mutating_inventory(): void
     {
-        [$seller, , $roastery, $order, $variant] = $this->fixture('reject');
+        [$seller, , $roastery, $order, $variant] = $this->fixture('incident');
         $this->authenticateWithRole($seller, Role::RoasteryOwner, 'roastery', $roastery->id);
-        $endpoint = "/api/v1/seller/roasteries/{$roastery->id}/orders/{$order->id}/fulfillment";
+        $incidentEndpoint = "/api/v1/seller/roasteries/{$roastery->id}/orders/{$order->id}/incidents";
 
-        $this->patchJson($endpoint, [
-            'status' => 'rejected',
-            'reason' => 'امکان آماده‌سازی این بچ رست وجود ندارد.',
+        $response = $this->postJson($incidentEndpoint, [
+            'code' => 'equipment_failure',
+            'description' => 'دستگاه بسته‌بندی دچار خرابی اضطراری شده است.',
+            'severity' => 'high',
         ])
             ->assertOk()
-            ->assertJsonPath('data.sub_orders.0.status', 'refund_pending');
+            ->assertJsonPath('data.sub_orders.0.status', 'accepted')
+            ->assertJsonPath('data.sub_orders.0.fulfillment.sla_status', 'exception_open')
+            ->assertJsonPath('data.sub_orders.0.incidents.0.status', 'open');
 
-        $order->refresh();
+        $incidentId = (string) $response->json('data.sub_orders.0.incidents.0.id');
         $variant->refresh();
-        $this->assertSame(OrderStatus::RefundPending, $order->status);
-        $this->assertSame(5, $variant->stock_on_hand);
-        $this->assertSame(0, $variant->stock_reserved);
-        $this->assertSame(1, InventoryRestock::query()->count());
-        $this->assertSame(1, StockLedgerEntry::query()
-            ->where('reference_type', 'sub_order')
-            ->where('reference_id', $order->subOrder->id)
-            ->count());
-        $this->assertSame(2, SubOrderStatusHistory::query()
-            ->where('sub_order_id', $order->subOrder->id)
-            ->count());
+        $this->assertSame(3, $variant->stock_on_hand);
+        $this->assertDatabaseCount('inventory_restocks', 0);
         $this->assertDatabaseHas('sub_orders', [
             'id' => $order->subOrder->id,
-            'status' => 'refund_pending',
-            'rejection_reason' => 'امکان آماده‌سازی این بچ رست وجود ندارد.',
+            'status' => 'accepted',
+            'sla_status' => 'exception_open',
         ]);
 
-        $this->patchJson($endpoint, [
-            'status' => 'rejected',
-            'reason' => 'تلاش تکراری',
-        ])
+        $this->patchJson(
+            "/api/v1/seller/roasteries/{$roastery->id}/orders/{$order->id}/fulfillment",
+            ['status' => 'preparing'],
+        )
             ->assertConflict()
-            ->assertJsonPath('error.code', 'fulfillment.transition_invalid');
+            ->assertJsonPath('error.code', 'fulfillment.incident_resolution_required');
 
-        $variant->refresh();
-        $this->assertSame(5, $variant->stock_on_hand);
-        $this->assertSame(1, InventoryRestock::query()->count());
+        $administrator = User::factory()->create();
+        $this->authenticateWithRole($administrator, Role::Administrator);
+        $beforeHandoff = $order->subOrder->handoff_due_at;
+        $this->postJson("/api/v1/admin/fulfillment-incidents/{$incidentId}/resolve", [
+            'resolution' => 'resume_fulfillment',
+            'note' => 'تجهیزات جایگزین تأیید شد و آماده‌سازی ادامه دارد.',
+            'extend_sla_hours' => 12,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.sub_orders.0.status', 'accepted')
+            ->assertJsonPath('data.sub_orders.0.fulfillment.sla_status', 'exception_resolved')
+            ->assertJsonPath('data.sub_orders.0.incidents.0.status', 'resolved');
+
+        $order->subOrder->refresh();
+        $this->assertTrue($order->subOrder->handoff_due_at->greaterThan($beforeHandoff));
+        $this->assertDatabaseCount('inventory_restocks', 0);
     }
 
     /**
@@ -259,9 +277,23 @@ final class FulfillmentLifecycleTest extends TestCase
         $subOrder = SubOrder::query()->create([
             'order_id' => $order->id,
             'roastery_id' => $roastery->id,
-            'status' => 'pending_acceptance',
+            'status' => 'accepted',
+            'acceptance_status' => 'accepted',
             'subtotal' => 4_000_000,
             'shipping_total' => 300_000,
+            'packaging_total' => 0,
+            'grinding_total' => 0,
+            'discount_total' => 0,
+            'tax_total' => 0,
+            'grand_total' => 4_300_000,
+            'commission_total' => 0,
+            'payable_total' => 4_300_000,
+            'currency' => 'IRR',
+            'accepted_at' => now(),
+            'fulfillment_committed_at' => now(),
+            'preparation_due_at' => now()->addDay(),
+            'handoff_due_at' => now()->addDays(2),
+            'sla_status' => 'on_track',
         ]);
         OrderItem::query()->create([
             'order_id' => $order->id,

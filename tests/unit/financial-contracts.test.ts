@@ -158,6 +158,15 @@ function orderFixture() {
         status: "preparing",
         acceptance_status: "accepted",
         customer_cancellable: false,
+        fulfillment: {
+          acceptance_mode: "automatic_contractual",
+          committed_at: "2026-07-21T10:01:00Z",
+          preparation_due_at: "2026-07-22T10:01:00Z",
+          handoff_due_at: "2026-07-23T10:01:00Z",
+          sla_status: "preparing",
+          is_breached: false,
+        },
+        incidents: [],
         roastery: { id: roastery.id, name: roastery.name, slug: roastery.slug },
         items: [
           {
