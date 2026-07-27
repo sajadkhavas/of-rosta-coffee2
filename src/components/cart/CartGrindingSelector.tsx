@@ -64,12 +64,4 @@ export function CartGrindingSelector({ item, onChange }: CartGrindingSelectorPro
       <p className="mt-2 text-[10px] leading-5 text-[color:var(--light)]">
         {capability.isFree
           ? "آسیاب روستری رایگان"
-          : `هزینه هر بسته ${formatIrr(capability.feeAmount)}`}{" ""}
-        · آماده‌سازی حدود {capability.preparationMinutes.toLocaleString("fa-IR")} دقیقه
-      </p>
-      <p className="mt-1 text-[10px] leading-5 text-[color:var(--light)]">
-        انتخاب آسیاب فقط یک خدمت سفارش است و SKU، وزن و موجودی محصول را تغییر نمی‌دهد.
-      </p>
-    </div>
-  );
-}
+          : `هزینه هر بسته ${formatIrr(capability.feeAmount)}`}{" 
