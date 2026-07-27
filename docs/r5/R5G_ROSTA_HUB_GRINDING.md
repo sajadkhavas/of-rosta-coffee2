@@ -3,6 +3,7 @@
 Status: **Implementation complete; acceptance pending**
 Program branch: `integration/rosta-r5-marketplace`
 Product branch: `program/r5g-rosta-hub-grinding-routing`
+Acceptance candidate: locked product tree after Laravel Pint normalization
 
 ## Purpose
 
