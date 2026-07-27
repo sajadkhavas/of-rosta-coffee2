@@ -95,10 +95,17 @@ $gate(
 
 $gate(
     'per_package_calculation',
-    $hasAll($sources['quote'], [
-        '$unitPackagingFee = $product->packagingFee()',
-        '$linePackagingTotal = $this->multiplyMoney($unitPackagingFee, $quantity)',
-    ]) && $hasAll($sources['test'], [
+    (
+        $hasAll($sources['quote'], [
+            '$unitPackagingFee = $product->packagingFee()',
+            '$linePackagingTotal = $this->multiplyMoney($unitPackagingFee, $quantity)',
+        ])
+        || $hasAll($sources['quote'], [
+            '$unitPackagingFee = $isHubGrinding ? 0 : $product->packagingFee()',
+            '$linePackagingTotal = $this->multiplyMoney($unitPackagingFee, $quantity)',
+            'r5g-rosta-hub-packaging-override-v1',
+        ])
+    ) && $hasAll($sources['test'], [
         "'quantity' => 3",
         '$quote->groups->sum(\'packaging_total\')',
         "'gross_amount' => 375_000",

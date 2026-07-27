@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $service_type
  * @property string $provider_type
  * @property string|null $provider_roastery_id
+ * @property string|null $provider_hub_id
  * @property string|null $grinding_profile_id
  * @property int $service_fee
  * @property int $packaging_fee
@@ -33,6 +34,7 @@ final class CheckoutQuoteItemService extends Model
         'service_type',
         'provider_type',
         'provider_roastery_id',
+        'provider_hub_id',
         'grinding_profile_id',
         'service_fee',
         'packaging_fee',
@@ -73,6 +75,12 @@ final class CheckoutQuoteItemService extends Model
     public function providerRoastery(): BelongsTo
     {
         return $this->belongsTo(Roastery::class, 'provider_roastery_id');
+    }
+
+    /** @return BelongsTo<RostaHub, $this> */
+    public function providerHub(): BelongsTo
+    {
+        return $this->belongsTo(RostaHub::class, 'provider_hub_id');
     }
 
     /** @return BelongsTo<GrindingProfile, $this> */

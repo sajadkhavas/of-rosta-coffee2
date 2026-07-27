@@ -225,10 +225,15 @@ function OrderContent() {
                               <li key={service.id} className="flex flex-wrap justify-between gap-2">
                                 <span>
                                   {service.type === "grinding"
-                                    ? (service.grindingProfile?.name ??
-                                      service.label ??
-                                      "آسیاب روستری")
-                                    : (service.label ?? "بسته‌بندی روستری")}
+                                    ? (service.label ??
+                                      service.grindingProfile?.name ??
+                                      (service.providerType === "rosta_hub"
+                                        ? "آسیاب هاب رستا"
+                                        : "آسیاب روستری"))
+                                    : (service.label ??
+                                      (service.providerType === "rosta_hub"
+                                        ? "بسته‌بندی هاب رستا"
+                                        : "بسته‌بندی روستری"))}
                                 </span>
                                 <span>
                                   {service.isFree ? "رایگان" : formatIrr(service.totalAmount)}
@@ -243,6 +248,29 @@ function OrderContent() {
                   </li>
                 ))}
               </ul>
+              {subOrder.shipmentLegs.length ? (
+                <div className="mt-5 rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] p-4">
+                  <p className="text-xs font-bold">مسیرهای ارسال</p>
+                  <ol className="mt-3 space-y-2 text-[11px] text-[color:var(--light)]">
+                    {subOrder.shipmentLegs.map((leg) => (
+                      <li
+                        key={leg.id}
+                        className="flex flex-wrap items-center justify-between gap-2"
+                      >
+                        <span>
+                          مرحله {leg.sequence.toLocaleString("fa-IR")} ·{" "}
+                          {leg.routeType === "roastery_to_rosta_hub"
+                            ? "روستری ← هاب رستا"
+                            : leg.routeType === "rosta_hub_to_customer"
+                              ? "هاب رستا ← مشتری"
+                              : "روستری ← مشتری"}
+                        </span>
+                        <span>{leg.totalAmount === 0 ? "رایگان" : formatIrr(leg.totalAmount)}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ) : null}
               {subOrder.shipment ? (
                 <div className="mt-5 rounded-xl border border-[color:var(--roast)]/40 bg-[color:var(--night)] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-4">

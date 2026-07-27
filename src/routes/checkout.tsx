@@ -436,7 +436,7 @@ function CheckoutContent() {
                     ?.services.filter((service) => service.type === "grinding")
                     .map((service) => (
                       <p key={service.id} className="mt-1 text-[10px] text-[color:var(--roast)]">
-                        {service.label ?? service.grindingProfile?.name ?? "آسیاب روستری"} ·{" "}
+                        {service.label ?? service.grindingProfile?.name ?? "سرویس آسیاب"} ·{" "}
                         {service.isFree ? "رایگان" : formatIrr(service.serviceFee)}
                       </p>
                     ))}
@@ -484,7 +484,7 @@ function CheckoutContent() {
                   </dd>
                 </div>
                 <div className="flex justify-between text-[color:var(--light)]">
-                  <dt>آسیاب روستری</dt>
+                  <dt>سرویس آسیاب</dt>
                   <dd className="font-mono">
                     {quote.grindingTotal === 0 ? "—" : formatIrr(quote.grindingTotal)}
                   </dd>
