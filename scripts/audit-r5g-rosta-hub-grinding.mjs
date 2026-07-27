@@ -47,7 +47,8 @@ for (const relative of requestFiles) {
     "settlement_owner",
     "hub_capacity",
   ]) {
-    if (contents.includes(forbidden)) failures.push(`${relative}: browser must not send ${forbidden}`);
+    if (contents.includes(forbidden))
+      failures.push(`${relative}: browser must not send ${forbidden}`);
   }
 }
 
