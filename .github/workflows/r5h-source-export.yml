@@ -1,20 +1,22 @@
 name: Temporary R5H Source Export
 
 on:
-  push:
+  pull_request:
     branches:
-      - program/r5h-fulfilment-sla-incidents
+      - integration/rosta-r5-marketplace
 
 permissions:
   contents: read
 
 jobs:
   export-source:
+    if: github.head_ref == 'program/r5h-fulfilment-sla-incidents'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout exact branch
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
 
       - name: Create bounded source archive
