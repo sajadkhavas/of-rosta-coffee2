@@ -28,7 +28,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat scripts/r5i-full-parts/part-*.b64 > /tmp/r5i-product.patch.gz.b64
+          cat \
+            scripts/r5i-full-parts/part-00.b64 \
+            scripts/r5i-full-parts/part-01.b64 \
+            scripts/r5i-correct/part-02a.b64 \
+            scripts/r5i-correct/part-02b.b64 \
+            scripts/r5i-full-parts/part-03.b64 \
+            > /tmp/r5i-product.patch.gz.b64
           test "$(wc -c < /tmp/r5i-product.patch.gz.b64)" = "45332"
           test "$(sha256sum /tmp/r5i-product.patch.gz.b64 | awk '{print $1}')" = "daa0ab344192986316ab28e197994cf98e89e94721b5e993083317b754ee7f60"
           test "$(git hash-object /tmp/r5i-product.patch.gz.b64)" = "0ee91be1eab9a236b6153178cdc7afe1a459cfdf"
@@ -176,7 +182,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf scripts/r5i-parts scripts/r5i-full-parts
+          rm -rf scripts/r5i-parts scripts/r5i-full-parts scripts/r5i-correct
           rm -f .github/workflows/r5i-source-export.yml .github/workflows/r5i-product-executor.yml
           find backend -maxdepth 1 -type f -name '*audit.json' -delete
           rm -rf backend/.phpstan.cache
