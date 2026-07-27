@@ -28,6 +28,15 @@ apply_correction() {
   git apply "$target"
 }
 
+apply_raw_correction() {
+  local source="$1" bytes="$2" sha256="$3" blob="$4"
+  test "$(wc -c < "$source")" = "$bytes"
+  test "$(sha256sum "$source" | awk '{print $1}')" = "$sha256"
+  test "$(git hash-object "$source")" = "$blob"
+  git apply --check "$source"
+  git apply "$source"
+}
+
 apply_correction \
   scripts/r5i-correct/r5i-correction.patch.gz.b64 \
   1832 \
@@ -35,12 +44,17 @@ apply_correction \
   cb7b49d095b34f43197a61bc0a406ac8c6d10dd2 \
   /tmp/r5i-correction.patch
 
-raw_correction='scripts/r5i-correct/r5i-correction-2.patch'
-test "$(wc -c < "$raw_correction")" = "1319"
-test "$(sha256sum "$raw_correction" | awk '{print $1}')" = "1a3d25b6a9c6183094a36f2f3e5b17234c10b82f753549322b06da7800c352ea"
-test "$(git hash-object "$raw_correction")" = "fc9ce761146f44583bff0b6513829ed86df3e7b9"
-git apply --check "$raw_correction"
-git apply "$raw_correction"
+apply_raw_correction \
+  scripts/r5i-correct/r5i-correction-2.patch \
+  1319 \
+  1a3d25b6a9c6183094a36f2f3e5b17234c10b82f753549322b06da7800c352ea \
+  fc9ce761146f44583bff0b6513829ed86df3e7b9
+
+apply_raw_correction \
+  scripts/r5i-correct/r5i-correction-3.patch \
+  957 \
+  92fc5db1bd22973f55af0337949909199c86f11e6ababc66322bd29c55d4b644 \
+  09f9fc53d2b9cf5f37028f3f4b6af14e9bfd1c47
 
 bun install --frozen-lockfile
 (
