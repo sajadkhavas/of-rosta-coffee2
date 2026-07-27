@@ -1,0 +1,96 @@
+name: Temporary R5H Product Executor
+
+on:
+  push:
+    branches:
+      - program/r5h-fulfilment-sla-incidents
+
+permissions:
+  contents: write
+
+concurrency:
+  group: r5h-product-executor
+  cancel-in-progress: false
+
+jobs:
+  apply-format-test-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact R5H branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Rebuild and verify reviewed product patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat scripts/r5h-parts/part-*.b64 > /tmp/r5h-product.patch.gz.b64
+          test "$(wc -c < /tmp/r5h-product.patch.gz.b64)" = "32156"
+          test "$(git hash-object /tmp/r5h-product.patch.gz.b64)" = "b86ad9ecc6e818d467865a2b61765c2151a5d78e"
+          test "$(sha256sum /tmp/r5h-product.patch.gz.b64 | awk '{print $1}')" = "584abd6c86ed7cd49bce221fbd4f84ac20bea4a34c366eab7dcd6524204a012a"
+          base64 -d /tmp/r5h-product.patch.gz.b64 | gzip -d > /tmp/r5h-product.patch
+          git apply --check /tmp/r5h-product.patch
+          git apply /tmp/r5h-product.patch
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.22
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:2
+          coverage: none
+
+      - name: Install frozen dependencies
+        run: |
+          bun install --frozen-lockfile
+          cd backend
+          composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Format reviewed product diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t frontend_files < <(git diff --name-only 4cfa62b6a1b77550a3543a74d3bef267a7bd2d1d -- '*.ts' '*.tsx' '*.mjs' '*.json' '*.md' '*.yml' '*.yaml' | while read -r file; do test -f "$file" && printf '%s\n' "$file"; done)
+          if ((${#frontend_files[@]})); then
+            bunx prettier --write "${frontend_files[@]}"
+          fi
+          mapfile -t backend_files < <(git diff --name-only 4cfa62b6a1b77550a3543a74d3bef267a7bd2d1d -- 'backend/*.php' 'backend/**/*.php' | sed 's#^backend/##' | while read -r file; do test -f "backend/$file" && printf '%s\n' "$file"; done)
+          if ((${#backend_files[@]})); then
+            (cd backend && vendor/bin/pint "${backend_files[@]}")
+          fi
+
+      - name: Run bounded R5H verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun run audit:r5h
+          bun test tests/unit/r5h-fulfillment-commitment.test.ts tests/unit/financial-contracts.test.ts
+          bun run typecheck
+          cd backend
+          composer audit:r5h
+          composer audit:fulfillment
+          php artisan test --filter=R5HFulfillmentCommitmentTest
+          php artisan test --filter=FulfillmentLifecycleTest
+          php artisan test --filter=PaymentLifecycleTest
+          php artisan test --filter=R5CMultiRoasteryCheckoutTest
+          vendor/bin/phpstan analyse --memory-limit=1G
+          vendor/bin/pint --parallel --test
+
+      - name: Remove temporary transfer assets
+        run: |
+          rm -rf scripts/r5h-parts
+          rm -f .github/workflows/r5h-product-executor.yml
+
+      - name: Commit product implementation
+        run: |
+          git config user.name "Rosta R5H Executor"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "R5H implement contractual fulfilment SLA and exception incidents"
+          git push origin HEAD:program/r5h-fulfilment-sla-incidents
