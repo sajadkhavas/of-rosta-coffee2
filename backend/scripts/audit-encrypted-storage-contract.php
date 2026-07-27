@@ -28,6 +28,10 @@ $contracts = [
         'migration' => 'database/migrations/2026_07_25_230001_create_r5b_marketplace_schema.php',
         'field' => 'origin_snapshot',
     ],
+    'app/Models/ShipmentDeliveryConfirmation.php:proof_payload' => [
+        'migration' => 'database/migrations/2026_07_27_190001_create_r5i_delivery_settlement_payouts.php',
+        'field' => 'proof_payload',
+    ],
     'app/Models/StockLedgerEntry.php:metadata' => [
         'migration' => 'database/migrations/2026_07_21_020001_create_catalog_inventory_tables.php',
         'field' => 'metadata',
@@ -83,7 +87,7 @@ foreach ($models as $model) {
         continue;
     }
 
-    preg_match_all("/'([^']+)'\\s*=>\\s*'encrypted:array'/", $source, $matches);
+    preg_match_all("/'([^']+)'\s*=>\s*'encrypted:array'/", $source, $matches);
     $relative = 'app/Models/'.basename($model->getPathname());
     foreach ($matches[1] as $field) {
         $discovered[] = $relative.':'.$field;
