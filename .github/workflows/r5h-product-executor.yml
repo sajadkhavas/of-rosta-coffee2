@@ -105,7 +105,24 @@ jobs:
         run: bun test tests/unit/r5h-fulfillment-commitment.test.ts tests/unit/financial-contracts.test.ts
 
       - name: Typecheck frontend
-        run: bun run typecheck
+        id: frontend_typecheck
+        continue-on-error: true
+        run: bun run typecheck > /tmp/r5h-frontend-typecheck.log 2>&1
+
+      - name: Upload R5H typecheck failure
+        if: steps.frontend_typecheck.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: r5h-frontend-typecheck-failure-${{ github.sha }}
+          path: /tmp/r5h-frontend-typecheck.log
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Enforce frontend typecheck
+        if: always()
+        run: |
+          cat /tmp/r5h-frontend-typecheck.log || true
+          test "${{ steps.frontend_typecheck.outcome }}" = "success"
 
       - name: Audit R5H backend contract
         working-directory: backend
