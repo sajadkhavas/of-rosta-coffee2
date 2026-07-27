@@ -1,24 +1,27 @@
 name: Temporary R5H Product Executor
 
 on:
-  push:
+  pull_request:
     branches:
-      - program/r5h-fulfilment-sla-incidents
+      - integration/rosta-r5-marketplace
+    types: [opened, reopened, synchronize]
 
 permissions:
   contents: write
 
 concurrency:
-  group: r5h-product-executor
-  cancel-in-progress: false
+  group: r5h-product-executor-pr
+  cancel-in-progress: true
 
 jobs:
   apply-format-test-commit:
+    if: github.head_ref == 'program/r5h-fulfilment-sla-incidents'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout exact R5H branch
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
 
       - name: Rebuild and verify reviewed product patch
