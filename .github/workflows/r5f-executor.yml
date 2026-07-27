@@ -29,6 +29,7 @@ jobs:
         run: |
           set -o pipefail
           python3 scripts/prepare-r5f-executor.py 2>&1 | tee /tmp/r5f-prepare.log
+          python3 scripts/prepare-r5f-order-fix.py 2>&1 | tee -a /tmp/r5f-prepare.log
           python3 scripts/apply-r5f.py 2>&1 | tee /tmp/r5f-apply.log
 
       - name: Upload patch diagnostics
@@ -59,6 +60,7 @@ jobs:
         run: |
           rm -f scripts/apply-r5f.py
           rm -f scripts/prepare-r5f-executor.py
+          rm -f scripts/prepare-r5f-order-fix.py
           rm -f .github/workflows/r5f-executor.yml
 
       - name: Commit product patch
