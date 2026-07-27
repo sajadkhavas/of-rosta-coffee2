@@ -1,0 +1,25 @@
+diff --git a/backend/app/Http/Controllers/Delivery/DeliveryConfirmationController.php b/backend/app/Http/Controllers/Delivery/DeliveryConfirmationController.php
+index 7fbac6a..c384fc4 100644
+--- a/backend/app/Http/Controllers/Delivery/DeliveryConfirmationController.php
++++ b/backend/app/Http/Controllers/Delivery/DeliveryConfirmationController.php
+@@ -13,7 +13,6 @@ use App\Services\Catalog\CatalogAccess;
+ use App\Services\Fulfillment\DeliveryConfirmationService;
+ use App\Support\ApiResponse;
+ use Illuminate\Http\JsonResponse;
+-use Illuminate\Http\Request;
+ use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+ 
+ final class DeliveryConfirmationController
+diff --git a/backend/app/Services/Fulfillment/FulfillmentService.php b/backend/app/Services/Fulfillment/FulfillmentService.php
+index a3b1153..4028dbd 100644
+--- a/backend/app/Services/Fulfillment/FulfillmentService.php
++++ b/backend/app/Services/Fulfillment/FulfillmentService.php
+@@ -282,7 +282,7 @@ final class FulfillmentService
+             $actor,
+             metadata: [
+                 'shipment_id' => $shipment->id,
+-                'shipment_leg_id' => $firstLeg?->id,
++                'shipment_leg_id' => $firstLeg->id,
+                 'carrier' => $carrier,
+                 'tracking_code' => $trackingCode,
+             ],
