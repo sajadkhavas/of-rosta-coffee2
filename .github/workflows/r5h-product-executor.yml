@@ -51,10 +51,8 @@ jobs:
 
           path = Path('scripts/audit-r5h-fulfillment-commitment.mjs')
           text = path.read_text()
-          needle = ''''status: "preparing" | "ready_to_ship" | "shipped"','''
-          replacement = ''''"preparing"',
-            '"ready_to_ship"',
-            '"shipped"','''
+          needle = "'status: \"preparing\" | \"ready_to_ship\" | \"shipped\"',"
+          replacement = "'\"preparing\"',\n    '\"ready_to_ship\"',\n    '\"shipped\"',"
           assert text.count(needle) == 1, text.count(needle)
           path.write_text(text.replace(needle, replacement, 1))
           PY
