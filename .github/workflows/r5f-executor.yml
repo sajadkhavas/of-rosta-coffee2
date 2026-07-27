@@ -31,6 +31,17 @@ jobs:
           python3 scripts/prepare-r5f-executor.py 2>&1 | tee /tmp/r5f-prepare.log
           python3 scripts/apply-r5f.py 2>&1 | tee /tmp/r5f-apply.log
 
+      - name: Upload patch diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r5f-patch-diagnostics-${{ github.run_id }}
+          path: |
+            /tmp/r5f-prepare.log
+            /tmp/r5f-apply.log
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Verify syntax and permanent audits are parseable
         run: |
           php -l backend/app/Services/Checkout/RoasteryGrindingSelection.php
