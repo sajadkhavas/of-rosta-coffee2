@@ -1,0 +1,35 @@
+name: Temporary R5H Source Export
+
+on:
+  push:
+    branches:
+      - program/r5h-fulfilment-sla-incidents
+
+permissions:
+  contents: read
+
+jobs:
+  export-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create bounded source archive
+        run: |
+          tar \
+            --exclude='./node_modules' \
+            --exclude='./backend/vendor' \
+            --exclude='./.output' \
+            --exclude='./backend/storage/logs/*' \
+            -czf /tmp/rosta-r5h-source.tar.gz .
+
+      - name: Upload source archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: rosta-r5h-source-${{ github.sha }}
+          path: /tmp/rosta-r5h-source.tar.gz
+          if-no-files-found: error
+          retention-days: 1
