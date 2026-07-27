@@ -1,6 +1,7 @@
 # R5F — Roastery Grinding Selection
 
-Status: **Implementation and targeted formatting complete; official acceptance in progress**  
+Status: **Complete**  
+Accepted: **2026-07-27**  
 Program branch: `integration/rosta-r5-marketplace`  
 Product branch: `program/r5f-roastery-grinding-selection`
 
@@ -65,11 +66,20 @@ R5F does not implement:
 
 Those remain R5G and later phases.
 
+## Acceptance
+
+The accepted product head passed:
+
+- frontend CI;
+- backend CI with clean MySQL 8.4 migrations and Redis contracts;
+- full-stack integrated runtime acceptance;
+- real browser acceptance;
+- R3 final all-surfaces integration gate;
+- R4 hosted staging package rehearsal, backup, isolated restore, rollback and evidence privacy checks.
+
 ## Exit markers
 
 ```text
 ROSTA_R5F_ROASTERY_GRINDING_COMPLETE
 ROSTA_R5F_ROASTERY_GRINDING_FRONTEND_COMPLETE
 ```
-
-The phase is accepted only after all permanent frontend, backend, integration, browser, R3 and R4 gates pass on the official product PR.
