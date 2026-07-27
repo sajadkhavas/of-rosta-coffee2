@@ -107,7 +107,7 @@ return new class extends Migration
             ->exists();
 
         if ($hasHubQuoteServices || $hasHubOrderServices) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 'R5G rollback refused because Rosta Hub service snapshots already exist.',
             );
         }
