@@ -96,5 +96,27 @@ swap(
     '''''',
 )
 
+checkout_marker = 'checkout_route = "src/routes/checkout.tsx"\n'
+checkout_start = text.index("replace(\n", text.index(checkout_marker) + len(checkout_marker))
+checkout_end = text.index("\nreplace(\n", checkout_start)
+checkout_replacement = '''replace(
+    checkout_route,
+    "</p>\\n                </div>\\n                <span className=\\"shrink-0 font-mono text-[color:var(--light)]\\">",
+    "</p>\\n"
+    "                  {quote?.groups\\n"
+    "                    .flatMap((group) => group.items)\\n"
+    "                    .find((line) => line.variant.id === item.variantId)\\n"
+    "                    ?.services.filter((service) => service.type === \\"grinding\\")\\n"
+    "                    .map((service) => (\\n"
+    "                      <p key={service.id} className=\\"mt-1 text-[10px] text-[color:var(--roast)]\\">\\n"
+    "                        {service.label ?? service.grindingProfile?.name ?? \\"آسیاب روستری\\"} ·{\\" \\"}\\n"
+    "                        {service.isFree ? \\"رایگان\\" : formatIrr(service.serviceFee)}\\n"
+    "                      </p>\\n"
+    "                    ))}\\n"
+    "                </div>\\n"
+    "                <span className=\\"shrink-0 font-mono text-[color:var(--light)]\\">",
+)'''
+text = text[:checkout_start] + checkout_replacement + text[checkout_end:]
+
 path.write_text(text, encoding="utf-8")
 print("R5F executor preparation complete")
