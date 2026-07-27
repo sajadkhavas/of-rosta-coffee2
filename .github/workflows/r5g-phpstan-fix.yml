@@ -1,19 +1,21 @@
 name: Temporary R5G PHPStan Fix
 
 on:
-  push:
+  pull_request:
     branches:
-      - program/r5g-rosta-hub-grinding-routing
+      - integration/rosta-r5-marketplace
 
 permissions:
   contents: write
 
 jobs:
   fix:
+    if: github.head_ref == 'program/r5g-rosta-hub-grinding-routing'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.head_ref }}
           fetch-depth: 0
 
       - name: Apply exact static-analysis repair
