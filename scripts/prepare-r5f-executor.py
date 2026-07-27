@@ -118,5 +118,32 @@ checkout_replacement = '''replace(
 )'''
 text = text[:checkout_start] + checkout_replacement + text[checkout_end:]
 
+order_marker = 'order_route = "src/routes/orders.$id.tsx"\n'
+order_start = text.index("replace(\n", text.index(order_marker) + len(order_marker))
+order_end = text.index("\nreplace(\n", order_start)
+order_replacement = '''replace(
+    order_route,
+    "</p>\\n                       </div>\\n                     </div>\\n                     {canReview",
+    "</p>\\n"
+    "                         {item.services.length ? (\\n"
+    "                           <ul className=\\"mt-3 space-y-1 text-[11px] text-[color:var(--light)]\\">\\n"
+    "                             {item.services.map((service) => (\\n"
+    "                               <li key={service.id} className=\\"flex flex-wrap justify-between gap-2\\">\\n"
+    "                                 <span>\\n"
+    "                                   {service.type === \\"grinding\\"\\n"
+    "                                     ? service.grindingProfile?.name ?? service.label ?? \\"آسیاب روستری\\"\\n"
+    "                                     : service.label ?? \\"بسته‌بندی روستری\\"}\\n"
+    "                                 </span>\\n"
+    "                                 <span>{service.isFree ? \\"رایگان\\" : formatIrr(service.totalAmount)}</span>\\n"
+    "                               </li>\\n"
+    "                             ))}\\n"
+    "                           </ul>\\n"
+    "                         ) : null}\\n"
+    "                       </div>\\n"
+    "                     </div>\\n"
+    "                     {canReview",
+)'''
+text = text[:order_start] + order_replacement + text[order_end:]
+
 path.write_text(text, encoding="utf-8")
 print("R5F executor preparation complete")
