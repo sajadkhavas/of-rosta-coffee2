@@ -1,6 +1,6 @@
 # R5I — Delivery Confirmation, Settlement Release and Roastery Payouts
 
-Status: **Implementation in progress**
+Status: **Implementation in progress — source snapshot prepared**
 Program branch: `integration/rosta-r5-marketplace`
 Product branch: `program/r5i-delivery-settlement-payouts`
 
