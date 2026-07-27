@@ -4,6 +4,7 @@ namespace App\Services\Checkout;
 
 use App\Enums\OrderStatus;
 use App\Enums\ReservationStatus;
+use App\Enums\SubOrderAcceptanceStatus;
 use App\Enums\SubOrderStatus;
 use App\Exceptions\ApiDomainException;
 use App\Models\CheckoutQuote;
@@ -56,8 +57,10 @@ final class OrderCancellationService
                 'cancellation_reason' => $reason,
             ])->save();
 
-            $order->subOrder()->update([
+            $order->subOrders()->update([
                 'status' => SubOrderStatus::Cancelled->value,
+                'acceptance_status' => SubOrderAcceptanceStatus::CancelledByCustomer->value,
+                'customer_cancelled_at' => now(),
             ]);
 
             $this->audit->record(
@@ -92,8 +95,10 @@ final class OrderCancellationService
                 'cancellation_reason' => 'reservation_expired',
             ])->save();
 
-            $locked->subOrder()->update([
+            $locked->subOrders()->update([
                 'status' => SubOrderStatus::Cancelled->value,
+                'acceptance_status' => SubOrderAcceptanceStatus::CancelledByCustomer->value,
+                'customer_cancelled_at' => now(),
             ]);
 
             $this->audit->record(

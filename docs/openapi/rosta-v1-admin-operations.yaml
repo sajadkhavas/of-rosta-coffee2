@@ -10,71 +10,95 @@ paths:
     get:
       summary: List private roastery moderation queue
       parameters:
-        - { name: status, in: query, schema: { type: string, enum: [pending, verified, suspended, rejected] } }
+        - {
+            name: status,
+            in: query,
+            schema: { type: string, enum: [pending, verified, suspended, rejected] },
+          }
       responses:
-        '200': { description: Filtered private roastery queue }
+        "200": { description: Filtered private roastery queue }
   /admin/roasteries/{roasteryId}/status:
     patch:
       summary: Set roastery moderation status
       parameters:
         - { name: roasteryId, in: path, required: true, schema: { type: string } }
       responses:
-        '200': { description: Updated roastery }
+        "200": { description: Updated roastery }
   /admin/products:
     get:
       summary: List private product moderation queue
       parameters:
-        - { name: status, in: query, schema: { type: string, enum: [draft, review, published, archived] } }
+        - {
+            name: status,
+            in: query,
+            schema: { type: string, enum: [draft, review, published, archived] },
+          }
       responses:
-        '200': { description: Filtered private product queue }
+        "200": { description: Filtered private product queue }
   /admin/products/{productId}/status:
     patch:
       summary: Set product publication status
       parameters:
         - { name: productId, in: path, required: true, schema: { type: string } }
       responses:
-        '200': { description: Updated product }
+        "200": { description: Updated product }
   /admin/reviews:
     get:
       summary: List review moderation queue
       responses:
-        '200': { description: Review items and pagination }
+        "200": { description: Review items and pagination }
   /admin/reviews/{reviewId}:
     patch:
       summary: Approve or reject a verified-purchase review
       parameters:
         - { name: reviewId, in: path, required: true, schema: { type: string } }
       responses:
-        '200': { description: Moderated review }
+        "200": { description: Moderated review }
   /admin/inquiries:
     get:
       summary: List support inquiries
       responses:
-        '200': { description: Inquiry items and pagination }
+        "200": { description: Inquiry items and pagination }
   /admin/inquiries/{inquiryId}:
     get:
       summary: Read one support inquiry
       parameters:
         - { name: inquiryId, in: path, required: true, schema: { type: string } }
       responses:
-        '200': { description: Inquiry record }
+        "200": { description: Inquiry record }
     patch:
       summary: Change inquiry lifecycle status
       parameters:
         - { name: inquiryId, in: path, required: true, schema: { type: string } }
       responses:
-        '200': { description: Updated inquiry }
+        "200": { description: Updated inquiry }
   /admin/operations/notifications:
     get:
       summary: List redacted notification outbox health records
       description: Full destinations and encrypted payloads are never returned.
       responses:
-        '200': { description: Redacted outbox items and pagination }
+        "200": { description: Redacted outbox items and pagination }
   /admin/operations/audits:
     get:
       summary: List append-only audit records with recursive metadata redaction
       responses:
-        '200': { description: Read-only audit items and pagination }
+        "200": { description: Read-only audit items and pagination }
+  /admin/fulfillment-incidents:
+    get:
+      summary: List fulfilment exception incidents
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [open, resolved] } }
+      responses:
+        "200": { description: Incident items, SLA context and pagination }
+  /admin/fulfillment-incidents/{incidentId}/resolve:
+    post:
+      summary: Resume fulfilment or cancel and refund only the affected sub-order
+      parameters:
+        - { name: incidentId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Incident resolved with append-only evidence }
+        "409":
+          { description: Incident already resolved, shipped, or requires financial reconciliation }
 components:
   securitySchemes:
     sanctumSession:

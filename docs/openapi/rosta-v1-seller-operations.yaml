@@ -12,115 +12,126 @@ paths:
     get:
       operationId: listAccessibleSellerRoasteries
       responses:
-        '200': { description: Roasteries scoped to the authenticated seller or all for an administrator }
-        '403': { description: Seller or administrator role required }
+        "200":
+          { description: Roasteries scoped to the authenticated seller or all for an administrator }
+        "403": { description: Seller or administrator role required }
     post:
       operationId: createSellerRoastery
       responses:
-        '201': { description: Pending roastery created and owner scope assigned }
+        "201": { description: Pending roastery created and owner scope assigned }
   /seller/origins:
     get:
       operationId: listSellerOrigins
       responses:
-        '200': { description: Origins available for product authoring }
+        "200": { description: Origins available for product authoring }
   /seller/roasteries/{roasteryId}/products:
     get:
       operationId: listSellerProducts
-      parameters: [{ $ref: '#/components/parameters/RoasteryId' }]
+      parameters: [{ $ref: "#/components/parameters/RoasteryId" }]
       responses:
-        '200': { description: Scoped product collection }
-        '404': { description: Roastery is outside the user scope }
+        "200": { description: Scoped product collection }
+        "404": { description: Roastery is outside the user scope }
     post:
       operationId: createSellerProduct
-      parameters: [{ $ref: '#/components/parameters/RoasteryId' }]
+      parameters: [{ $ref: "#/components/parameters/RoasteryId" }]
       responses:
-        '201': { description: Draft/review product created }
-        '403': { description: Owner or manager role required }
+        "201": { description: Draft/review product created }
+        "403": { description: Owner or manager role required }
   /seller/roasteries/{roasteryId}/products/{productId}:
     get:
       operationId: getSellerProduct
       parameters:
-        - { $ref: '#/components/parameters/RoasteryId' }
-        - { $ref: '#/components/parameters/ProductId' }
+        - { $ref: "#/components/parameters/RoasteryId" }
+        - { $ref: "#/components/parameters/ProductId" }
       responses:
-        '200': { description: Scoped product detail }
+        "200": { description: Scoped product detail }
     patch:
       operationId: updateSellerProduct
       parameters:
-        - { $ref: '#/components/parameters/RoasteryId' }
-        - { $ref: '#/components/parameters/ProductId' }
+        - { $ref: "#/components/parameters/RoasteryId" }
+        - { $ref: "#/components/parameters/ProductId" }
       responses:
-        '200': { description: Product updated and verification reset when required }
+        "200": { description: Product updated and verification reset when required }
   /seller/roasteries/{roasteryId}/products/{productId}/variants:
     post:
       operationId: createSellerWholeBeanVariant
       parameters:
-        - { $ref: '#/components/parameters/RoasteryId' }
-        - { $ref: '#/components/parameters/ProductId' }
+        - { $ref: "#/components/parameters/RoasteryId" }
+        - { $ref: "#/components/parameters/ProductId" }
       responses:
-        '201': { description: Whole-bean weight variant created }
+        "201": { description: Whole-bean weight variant created }
   /seller/roasteries/{roasteryId}/products/{productId}/roast-batches:
     get:
       operationId: listSellerRoastBatches
       parameters:
-        - { $ref: '#/components/parameters/RoasteryId' }
-        - { $ref: '#/components/parameters/ProductId' }
+        - { $ref: "#/components/parameters/RoasteryId" }
+        - { $ref: "#/components/parameters/ProductId" }
       responses:
-        '200': { description: Roast batch collection }
+        "200": { description: Roast batch collection }
     post:
       operationId: createSellerRoastBatch
       parameters:
-        - { $ref: '#/components/parameters/RoasteryId' }
-        - { $ref: '#/components/parameters/ProductId' }
+        - { $ref: "#/components/parameters/RoasteryId" }
+        - { $ref: "#/components/parameters/ProductId" }
       responses:
-        '201': { description: Immutable roast batch created }
+        "201": { description: Immutable roast batch created }
   /seller/roasteries/{roasteryId}/variants/{variantId}/stock-ledger:
     get:
       operationId: listSellerStockLedger
       parameters:
-        - { $ref: '#/components/parameters/RoasteryId' }
-        - { $ref: '#/components/parameters/VariantId' }
+        - { $ref: "#/components/parameters/RoasteryId" }
+        - { $ref: "#/components/parameters/VariantId" }
       responses:
-        '200': { description: Append-only stock ledger }
+        "200": { description: Append-only stock ledger }
   /seller/roasteries/{roasteryId}/variants/{variantId}/stock-adjustments:
     post:
       operationId: createSellerStockAdjustment
       parameters:
-        - { $ref: '#/components/parameters/RoasteryId' }
-        - { $ref: '#/components/parameters/VariantId' }
+        - { $ref: "#/components/parameters/RoasteryId" }
+        - { $ref: "#/components/parameters/VariantId" }
       responses:
-        '201': { description: Idempotent stock adjustment recorded }
-        '409': { description: Adjustment would make stock negative or idempotency conflicts }
+        "201": { description: Idempotent stock adjustment recorded }
+        "409": { description: Adjustment would make stock negative or idempotency conflicts }
   /seller/roasteries/{roasteryId}/orders:
     get:
       operationId: listSellerOrders
-      parameters: [{ $ref: '#/components/parameters/RoasteryId' }]
+      parameters: [{ $ref: "#/components/parameters/RoasteryId" }]
       responses:
-        '200': { description: Scoped operational order queue }
+        "200": { description: Scoped operational order queue }
   /seller/roasteries/{roasteryId}/orders/{orderId}/fulfillment:
     patch:
       operationId: transitionSellerFulfillment
       parameters:
-        - { $ref: '#/components/parameters/RoasteryId' }
-        - { $ref: '#/components/parameters/OrderId' }
+        - { $ref: "#/components/parameters/RoasteryId" }
+        - { $ref: "#/components/parameters/OrderId" }
       responses:
-        '200': { description: Valid fulfillment transition applied }
-        '409': { description: Invalid state transition }
+        "200": { description: Valid fulfillment transition applied }
+        "409": { description: Invalid state transition }
+  /seller/roasteries/{roasteryId}/orders/{orderId}/incidents:
+    post:
+      operationId: reportSellerFulfillmentIncident
+      description: Report an exceptional inability to fulfil without rejecting, restocking or refunding the order.
+      parameters:
+        - { $ref: "#/components/parameters/RoasteryId" }
+        - { $ref: "#/components/parameters/OrderId" }
+      responses:
+        "200": { description: Incident recorded and seller transitions paused }
+        "409": { description: Incident already open or sub-order state is not eligible }
   /seller/roasteries/{roasteryId}/media/uploads:
     post:
       operationId: createSellerMediaUploadIntent
-      parameters: [{ $ref: '#/components/parameters/RoasteryId' }]
+      parameters: [{ $ref: "#/components/parameters/RoasteryId" }]
       responses:
-        '201': { description: Signed object upload intent }
-        '503': { description: Media uploads disabled or storage unavailable }
+        "201": { description: Signed object upload intent }
+        "503": { description: Media uploads disabled or storage unavailable }
   /seller/roasteries/{roasteryId}/media/uploads/{uploadId}/complete:
     post:
       operationId: completeSellerMediaUpload
       parameters:
-        - { $ref: '#/components/parameters/RoasteryId' }
-        - { $ref: '#/components/parameters/UploadId' }
+        - { $ref: "#/components/parameters/RoasteryId" }
+        - { $ref: "#/components/parameters/UploadId" }
       responses:
-        '200': { description: Object validated and MediaAsset registered }
+        "200": { description: Object validated and MediaAsset registered }
 components:
   securitySchemes:
     sanctumSession:

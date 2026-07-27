@@ -2,18 +2,18 @@
 
 namespace App\Services\Fulfillment;
 
+use App\Enums\FulfillmentIncidentStatus;
+use App\Enums\FulfillmentSlaStatus;
 use App\Enums\OrderStatus;
-use App\Enums\StockReason;
+use App\Enums\ShipmentLegStatus;
 use App\Enums\SubOrderStatus;
 use App\Exceptions\ApiDomainException;
-use App\Models\InventoryRestock;
+use App\Models\FulfillmentIncident;
 use App\Models\Order;
 use App\Models\OrderInternalNote;
-use App\Models\OrderItem;
-use App\Models\ProductVariant;
 use App\Models\Roastery;
 use App\Models\Shipment;
-use App\Models\StockLedgerEntry;
+use App\Models\ShipmentLeg;
 use App\Models\SubOrder;
 use App\Models\SubOrderStatusHistory;
 use App\Models\User;
@@ -30,7 +30,12 @@ final class FulfillmentService
     ) {}
 
     /**
-     * @param  array{status: string, reason?: string|null, carrier?: string|null, tracking_code?: string|null, internal_note?: string|null}  $input
+     * @param array{
+     *   status: string,
+     *   carrier?: string|null,
+     *   tracking_code?: string|null,
+     *   internal_note?: string|null
+     * } $input
      */
     public function transition(
         User $actor,
@@ -38,6 +43,7 @@ final class FulfillmentService
         string $orderId,
         array $input,
         Request $request,
+        bool $allowDelivery = false,
     ): Order {
         $target = SubOrderStatus::from($input['status']);
 
@@ -48,29 +54,20 @@ final class FulfillmentService
             $input,
             $target,
             $request,
+            $allowDelivery,
         ): Order {
-            $order = Order::query()
-                ->where('roastery_id', $roastery->id)
-                ->whereKey($orderId)
-                ->lockForUpdate()
-                ->firstOrFail();
             $subOrder = SubOrder::query()
-                ->where('order_id', $order->id)
+                ->where('order_id', $orderId)
                 ->where('roastery_id', $roastery->id)
                 ->lockForUpdate()
                 ->firstOrFail();
+            $order = Order::query()->whereKey($subOrder->order_id)->lockForUpdate()->firstOrFail();
 
+            $this->assertNoOpenIncident($subOrder);
             $from = $subOrder->status;
-            $this->assertTransitionAllowed($order, $from, $target);
+            $this->assertTransitionAllowed($order, $from, $target, $allowDelivery);
 
             match ($target) {
-                SubOrderStatus::Accepted => $this->accept($order, $subOrder, $actor),
-                SubOrderStatus::Rejected => $this->reject(
-                    $order,
-                    $subOrder,
-                    $actor,
-                    trim((string) ($input['reason'] ?? '')),
-                ),
                 SubOrderStatus::Preparing => $this->prepare($order, $subOrder, $actor),
                 SubOrderStatus::ReadyToShip => $this->readyToShip($order, $subOrder, $actor),
                 SubOrderStatus::Shipped => $this->ship(
@@ -83,7 +80,7 @@ final class FulfillmentService
                 SubOrderStatus::Delivered => $this->deliver($order, $subOrder, $actor),
                 default => throw new ApiDomainException(
                     'fulfillment.transition_unsupported',
-                    'این تغییر وضعیت پشتیبانی نمی‌شود.',
+                    'روستری فقط می‌تواند مراحل آماده‌سازی و تحویل به حمل را ثبت کند.',
                     422,
                 ),
             };
@@ -98,6 +95,7 @@ final class FulfillmentService
                 ]);
             }
 
+            $this->syncOrderStatus($order);
             $this->audit->record(
                 'fulfillment.transitioned',
                 actor: $actor,
@@ -108,35 +106,42 @@ final class FulfillmentService
                     'from_status' => $from->value,
                     'requested_status' => $target->value,
                     'current_status' => $subOrder->status->value,
+                    'contractual_acceptance' => true,
                 ],
                 request: $request,
             );
 
-            return $order->fresh([
-                'user',
-                'roastery',
-                'subOrder.roastery',
-                'subOrder.items',
-                'subOrder.shipment',
-                'subOrder.statusHistory.actor',
-            ]) ?? $order;
+            return $this->loadOrder($order->refresh());
         }, 3);
+    }
+
+    private function assertNoOpenIncident(SubOrder $subOrder): void
+    {
+        $open = FulfillmentIncident::query()
+            ->where('sub_order_id', $subOrder->id)
+            ->where('status', FulfillmentIncidentStatus::Open->value)
+            ->lockForUpdate()
+            ->exists();
+        if ($open) {
+            throw new ApiDomainException(
+                'fulfillment.incident_resolution_required',
+                'تا تعیین تکلیف Incident باز، تغییر مرحله سفارش مجاز نیست.',
+                409,
+            );
+        }
     }
 
     private function assertTransitionAllowed(
         Order $order,
         SubOrderStatus $from,
         SubOrderStatus $to,
+        bool $allowDelivery,
     ): void {
         $allowed = match ($from) {
-            SubOrderStatus::PendingAcceptance => [
-                SubOrderStatus::Accepted,
-                SubOrderStatus::Rejected,
-            ],
             SubOrderStatus::Accepted => [SubOrderStatus::Preparing],
             SubOrderStatus::Preparing => [SubOrderStatus::ReadyToShip],
             SubOrderStatus::ReadyToShip => [SubOrderStatus::Shipped],
-            SubOrderStatus::Shipped => [SubOrderStatus::Delivered],
+            SubOrderStatus::Shipped => $allowDelivery ? [SubOrderStatus::Delivered] : [],
             default => [],
         };
 
@@ -148,10 +153,13 @@ final class FulfillmentService
             );
         }
 
-        if (
-            in_array($from, [SubOrderStatus::PendingAcceptance, SubOrderStatus::Accepted], true)
-            && ! in_array($order->status, [OrderStatus::Paid, OrderStatus::Processing], true)
-        ) {
+        if (! in_array($order->status, [
+            OrderStatus::Paid,
+            OrderStatus::Processing,
+            OrderStatus::PartiallyShipped,
+            OrderStatus::Shipped,
+            OrderStatus::PartiallyDelivered,
+        ], true)) {
             throw new ApiDomainException(
                 'fulfillment.order_not_paid',
                 'عملیات روستری فقط برای سفارش پرداخت‌شده مجاز است.',
@@ -160,79 +168,17 @@ final class FulfillmentService
         }
     }
 
-    private function accept(
-        Order $order,
-        SubOrder $subOrder,
-        User $actor,
-    ): void {
-        $this->setStatus(
-            $subOrder,
-            SubOrderStatus::Accepted,
-            $actor,
-            timestamps: ['accepted_at' => now()],
-        );
-        $order->forceFill(['status' => OrderStatus::Processing])->save();
-        $this->outbox->queueOrder(
-            $order,
-            'order.accepted',
-            subOrder: $subOrder,
-            deduplicationKey: "sub-order:{$subOrder->id}:accepted",
-        );
-    }
-
-    private function reject(
-        Order $order,
-        SubOrder $subOrder,
-        User $actor,
-        string $reason,
-    ): void {
-        if ($reason === '') {
-            throw new ApiDomainException(
-                'fulfillment.rejection_reason_required',
-                'دلیل رد سفارش الزامی است.',
-                422,
-            );
-        }
-
-        $this->setStatus(
-            $subOrder,
-            SubOrderStatus::Rejected,
-            $actor,
-            reason: $reason,
-            timestamps: [
-                'rejected_at' => now(),
-                'rejection_reason' => $reason,
-            ],
-        );
-        $this->restockPaidOrderExactlyOnce($subOrder, $actor, 'seller_rejected');
-        $this->setStatus(
-            $subOrder,
-            SubOrderStatus::RefundPending,
-            $actor,
-            reason: 'seller_rejected',
-        );
-        $order->forceFill(['status' => OrderStatus::RefundPending])->save();
-        $this->outbox->queueOrder(
-            $order,
-            'order.rejected',
-            ['reason' => $reason],
-            $subOrder,
-            "sub-order:{$subOrder->id}:rejected",
-        );
-    }
-
-    private function prepare(
-        Order $order,
-        SubOrder $subOrder,
-        User $actor,
-    ): void {
+    private function prepare(Order $order, SubOrder $subOrder, User $actor): void
+    {
         $this->setStatus(
             $subOrder,
             SubOrderStatus::Preparing,
             $actor,
-            timestamps: ['preparing_at' => now()],
+            timestamps: [
+                'preparing_at' => now(),
+                'sla_status' => FulfillmentSlaStatus::Preparing,
+            ],
         );
-        $order->forceFill(['status' => OrderStatus::Processing])->save();
         $this->outbox->queueOrder(
             $order,
             'order.preparing',
@@ -241,18 +187,25 @@ final class FulfillmentService
         );
     }
 
-    private function readyToShip(
-        Order $order,
-        SubOrder $subOrder,
-        User $actor,
-    ): void {
+    private function readyToShip(Order $order, SubOrder $subOrder, User $actor): void
+    {
         $this->setStatus(
             $subOrder,
             SubOrderStatus::ReadyToShip,
             $actor,
-            timestamps: ['ready_to_ship_at' => now()],
+            timestamps: [
+                'ready_to_ship_at' => now(),
+                'sla_status' => FulfillmentSlaStatus::ReadyToShip,
+            ],
         );
-        $order->forceFill(['status' => OrderStatus::Processing])->save();
+
+        ShipmentLeg::query()
+            ->where('sub_order_id', $subOrder->id)
+            ->where('status', ShipmentLegStatus::Planned->value)
+            ->orderBy('sequence')
+            ->limit(1)
+            ->update(['status' => ShipmentLegStatus::AwaitingPickup->value]);
+
         $this->outbox->queueOrder(
             $order,
             'order.ready_to_ship',
@@ -271,7 +224,7 @@ final class FulfillmentService
         if ($carrier === '' || $trackingCode === '') {
             throw new ApiDomainException(
                 'fulfillment.tracking_required',
-                'نام حامل و کد رهگیری برای ارسال الزامی است.',
+                'نام حامل و کد رهگیری برای تحویل به حمل الزامی است.',
                 422,
             );
         }
@@ -286,40 +239,53 @@ final class FulfillmentService
                 'delivered_at' => null,
             ],
         );
+
+        $firstLeg = ShipmentLeg::query()
+            ->where('sub_order_id', $subOrder->id)
+            ->orderBy('sequence')
+            ->lockForUpdate()
+            ->first();
+        if ($firstLeg instanceof ShipmentLeg) {
+            $firstLeg->forceFill([
+                'legacy_shipment_id' => $shipment->id,
+                'status' => ShipmentLegStatus::PickedUp,
+                'carrier' => $carrier,
+                'tracking_code' => $trackingCode,
+                'picked_up_at' => now(),
+            ])->save();
+        }
+
         $this->setStatus(
             $subOrder,
             SubOrderStatus::Shipped,
             $actor,
             metadata: [
                 'shipment_id' => $shipment->id,
+                'shipment_leg_id' => $firstLeg?->id,
                 'carrier' => $carrier,
                 'tracking_code' => $trackingCode,
             ],
-            timestamps: ['shipped_at' => now()],
+            timestamps: [
+                'shipped_at' => now(),
+                'sla_status' => FulfillmentSlaStatus::HandedOff,
+            ],
         );
-        $order->forceFill(['status' => OrderStatus::Shipped])->save();
         $this->outbox->queueOrder(
             $order,
             'order.shipped',
-            [
-                'carrier' => $carrier,
-                'tracking_code' => $trackingCode,
-            ],
+            ['carrier' => $carrier, 'tracking_code' => $trackingCode],
             $subOrder,
             "sub-order:{$subOrder->id}:shipped",
         );
     }
 
-    private function deliver(
-        Order $order,
-        SubOrder $subOrder,
-        User $actor,
-    ): void {
+    private function deliver(Order $order, SubOrder $subOrder, User $actor): void
+    {
         $shipment = Shipment::query()
             ->where('sub_order_id', $subOrder->id)
             ->lockForUpdate()
             ->first();
-        if (! $shipment) {
+        if (! $shipment instanceof Shipment) {
             throw new ApiDomainException(
                 'fulfillment.shipment_missing',
                 'اطلاعات ارسال برای این سفارش ثبت نشده است.',
@@ -327,10 +293,18 @@ final class FulfillmentService
             );
         }
 
-        $shipment->forceFill([
-            'status' => 'delivered',
-            'delivered_at' => now(),
-        ])->save();
+        $shipment->forceFill(['status' => 'delivered', 'delivered_at' => now()])->save();
+        ShipmentLeg::query()
+            ->where('sub_order_id', $subOrder->id)
+            ->where('status', '!=', ShipmentLegStatus::Delivered->value)
+            ->orderBy('sequence')
+            ->get()
+            ->each(function (ShipmentLeg $leg): void {
+                $leg->forceFill([
+                    'status' => ShipmentLegStatus::Delivered,
+                    'delivered_at' => now(),
+                ])->save();
+            });
         $this->setStatus(
             $subOrder,
             SubOrderStatus::Delivered,
@@ -338,7 +312,6 @@ final class FulfillmentService
             metadata: ['shipment_id' => $shipment->id],
             timestamps: ['delivered_at' => now()],
         );
-        $order->forceFill(['status' => OrderStatus::Delivered])->save();
         $this->outbox->queueOrder(
             $order,
             'order.delivered',
@@ -347,10 +320,7 @@ final class FulfillmentService
         );
     }
 
-    /**
-     * @param  array<string, mixed>  $metadata
-     * @param  array<string, mixed>  $timestamps
-     */
+    /** @param array<string, mixed> $metadata @param array<string, mixed> $timestamps */
     private function setStatus(
         SubOrder $subOrder,
         SubOrderStatus $target,
@@ -360,10 +330,7 @@ final class FulfillmentService
         array $timestamps = [],
     ): void {
         $from = $subOrder->status;
-        $subOrder->forceFill([
-            'status' => $target,
-            ...$timestamps,
-        ])->save();
+        $subOrder->forceFill(['status' => $target, ...$timestamps])->save();
         SubOrderStatusHistory::query()->create([
             'sub_order_id' => $subOrder->id,
             'actor_id' => $actor->id,
@@ -375,68 +342,49 @@ final class FulfillmentService
         ]);
     }
 
-    private function restockPaidOrderExactlyOnce(
-        SubOrder $subOrder,
-        User $actor,
-        string $reason,
-    ): void {
-        $items = OrderItem::query()
-            ->where('sub_order_id', $subOrder->id)
-            ->orderBy('variant_id')
+    private function syncOrderStatus(Order $order): void
+    {
+        $statuses = SubOrder::query()
+            ->where('order_id', $order->id)
             ->lockForUpdate()
-            ->get();
+            ->pluck('status')
+            ->map(static fn (SubOrderStatus|string $status): string => $status instanceof SubOrderStatus
+                ? $status->value
+                : (string) $status);
 
-        foreach ($items as $item) {
-            if (! $item->variant_id) {
-                throw new ApiDomainException(
-                    'fulfillment.restock_reconciliation_required',
-                    'Variant سفارش برای بازگردانی موجودی در دسترس نیست.',
-                    409,
-                );
-            }
+        $total = $statuses->count();
+        $delivered = $statuses->filter(static fn (string $status): bool => $status === SubOrderStatus::Delivered->value)->count();
+        $shipped = $statuses->filter(static fn (string $status): bool => in_array($status, [
+            SubOrderStatus::Shipped->value,
+            SubOrderStatus::Delivered->value,
+        ], true))->count();
+        $cancelled = $statuses->filter(static fn (string $status): bool => in_array($status, [
+            SubOrderStatus::Cancelled->value,
+            SubOrderStatus::RefundPending->value,
+            SubOrderStatus::Refunded->value,
+        ], true))->count();
 
-            $existing = InventoryRestock::query()
-                ->where('order_item_id', $item->id)
-                ->where('reason', $reason)
-                ->lockForUpdate()
-                ->first();
-            if ($existing) {
-                continue;
-            }
+        $status = match (true) {
+            $total > 0 && $delivered === $total => OrderStatus::Delivered,
+            $delivered > 0 => OrderStatus::PartiallyDelivered,
+            $total > 0 && $shipped === $total => OrderStatus::Shipped,
+            $shipped > 0 => OrderStatus::PartiallyShipped,
+            $cancelled > 0 && $cancelled < $total => OrderStatus::PartiallyCancelled,
+            default => OrderStatus::Processing,
+        };
+        $order->forceFill(['status' => $status])->save();
+    }
 
-            $variant = ProductVariant::query()
-                ->whereKey($item->variant_id)
-                ->lockForUpdate()
-                ->firstOrFail();
-            $balanceAfter = $variant->stock_on_hand + $item->quantity;
-            $variant->forceFill(['stock_on_hand' => $balanceAfter])->save();
-            $ledger = StockLedgerEntry::query()->create([
-                'variant_id' => $variant->id,
-                'roast_batch_id' => $item->roast_batch_id,
-                'actor_id' => $actor->id,
-                'delta' => $item->quantity,
-                'balance_after' => $balanceAfter,
-                'reason' => StockReason::Return,
-                'reference_type' => 'sub_order',
-                'reference_id' => $subOrder->id,
-                'idempotency_key' => "fulfillment:restock:{$reason}:{$item->id}",
-                'metadata' => [
-                    'order_id' => $subOrder->order_id,
-                    'sub_order_id' => $subOrder->id,
-                    'order_item_id' => $item->id,
-                    'reason' => $reason,
-                ],
-            ]);
-            InventoryRestock::query()->create([
-                'order_item_id' => $item->id,
-                'variant_id' => $variant->id,
-                'roast_batch_id' => $item->roast_batch_id,
-                'actor_id' => $actor->id,
-                'quantity' => $item->quantity,
-                'reason' => $reason,
-                'ledger_entry_id' => $ledger->id,
-                'restocked_at' => now(),
-            ]);
-        }
+    private function loadOrder(Order $order): Order
+    {
+        return $order->load([
+            'subOrders.roastery.logo',
+            'subOrders.roastery.cover',
+            'subOrders.items.services.grindingProfile',
+            'subOrders.shipment',
+            'subOrders.shipmentLegs',
+            'subOrders.fulfillmentIncidents',
+            'events',
+        ]);
     }
 }

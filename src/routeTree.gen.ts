@@ -44,6 +44,8 @@ import { Route as GuidesSlugRouteImport } from './routes/guides.$slug'
 import { Route as OrdersIndexRouteImport } from './routes/orders.index'
 import { Route as OrdersIdRouteImport } from './routes/orders.$id'
 import { Route as OriginsSlugRouteImport } from './routes/origins.$slug'
+import { Route as PanelIndexRouteImport } from './routes/panel.index'
+import { Route as PanelGrindingRouteImport } from './routes/panel.grinding'
 import { Route as PanelManageRouteImport } from './routes/panel.manage'
 import { Route as ProductsIndexRouteImport } from './routes/products.index'
 import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
@@ -227,6 +229,16 @@ const OriginsSlugRoute = OriginsSlugRouteImport.update({
   path: '/origins/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PanelIndexRoute = PanelIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PanelRoute,
+} as any)
+const PanelGrindingRoute = PanelGrindingRouteImport.update({
+  id: '/grinding',
+  path: '/grinding',
+  getParentRoute: () => PanelRoute,
+} as any)
 const PanelManageRoute = PanelManageRouteImport.update({
   id: '/manage',
   path: '/manage',
@@ -296,6 +308,7 @@ export interface FileRoutesByFullPath {
   '/guides/$slug': typeof GuidesSlugRoute
   '/orders/$id': typeof OrdersIdRoute
   '/origins/$slug': typeof OriginsSlugRoute
+  '/panel/grinding': typeof PanelGrindingRoute
   '/panel/manage': typeof PanelManageRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/roasteries/$slug': typeof RoasteriesSlugRoute
@@ -303,6 +316,7 @@ export interface FileRoutesByFullPath {
   '/auth/': typeof AuthIndexRoute
   '/blog/': typeof BlogIndexRoute
   '/orders/': typeof OrdersIndexRoute
+  '/panel/': typeof PanelIndexRoute
   '/products/': typeof ProductsIndexRoute
   '/roasteries/': typeof RoasteriesIndexRoute
   '/admin/content-edit/$entryId': typeof AdminContentEditEntryIdRoute
@@ -315,7 +329,6 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/design-system': typeof DesignSystemRoute
   '/forbidden': typeof ForbiddenRoute
-  '/panel': typeof PanelRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/profile': typeof ProfileRoute
   '/quiz': typeof QuizRoute
@@ -335,6 +348,7 @@ export interface FileRoutesByTo {
   '/guides/$slug': typeof GuidesSlugRoute
   '/orders/$id': typeof OrdersIdRoute
   '/origins/$slug': typeof OriginsSlugRoute
+  '/panel/grinding': typeof PanelGrindingRoute
   '/panel/manage': typeof PanelManageRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/roasteries/$slug': typeof RoasteriesSlugRoute
@@ -342,6 +356,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthIndexRoute
   '/blog': typeof BlogIndexRoute
   '/orders': typeof OrdersIndexRoute
+  '/panel': typeof PanelIndexRoute
   '/products': typeof ProductsIndexRoute
   '/roasteries': typeof RoasteriesIndexRoute
   '/admin/content-edit/$entryId': typeof AdminContentEditEntryIdRoute
@@ -380,6 +395,7 @@ export interface FileRoutesById {
   '/guides/$slug': typeof GuidesSlugRoute
   '/orders/$id': typeof OrdersIdRoute
   '/origins/$slug': typeof OriginsSlugRoute
+  '/panel/grinding': typeof PanelGrindingRoute
   '/panel/manage': typeof PanelManageRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/roasteries/$slug': typeof RoasteriesSlugRoute
@@ -387,6 +403,7 @@ export interface FileRoutesById {
   '/auth/': typeof AuthIndexRoute
   '/blog/': typeof BlogIndexRoute
   '/orders/': typeof OrdersIndexRoute
+  '/panel/': typeof PanelIndexRoute
   '/products/': typeof ProductsIndexRoute
   '/roasteries/': typeof RoasteriesIndexRoute
   '/admin/content-edit/$entryId': typeof AdminContentEditEntryIdRoute
@@ -426,6 +443,7 @@ export interface FileRouteTypes {
     | '/guides/$slug'
     | '/orders/$id'
     | '/origins/$slug'
+    | '/panel/grinding'
     | '/panel/manage'
     | '/products/$slug'
     | '/roasteries/$slug'
@@ -433,6 +451,7 @@ export interface FileRouteTypes {
     | '/auth/'
     | '/blog/'
     | '/orders/'
+    | '/panel/'
     | '/products/'
     | '/roasteries/'
     | '/admin/content-edit/$entryId'
@@ -445,7 +464,6 @@ export interface FileRouteTypes {
     | '/contact'
     | '/design-system'
     | '/forbidden'
-    | '/panel'
     | '/privacy'
     | '/profile'
     | '/quiz'
@@ -465,6 +483,7 @@ export interface FileRouteTypes {
     | '/guides/$slug'
     | '/orders/$id'
     | '/origins/$slug'
+    | '/panel/grinding'
     | '/panel/manage'
     | '/products/$slug'
     | '/roasteries/$slug'
@@ -472,6 +491,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/blog'
     | '/orders'
+    | '/panel'
     | '/products'
     | '/roasteries'
     | '/admin/content-edit/$entryId'
@@ -509,6 +529,7 @@ export interface FileRouteTypes {
     | '/guides/$slug'
     | '/orders/$id'
     | '/origins/$slug'
+    | '/panel/grinding'
     | '/panel/manage'
     | '/products/$slug'
     | '/roasteries/$slug'
@@ -516,6 +537,7 @@ export interface FileRouteTypes {
     | '/auth/'
     | '/blog/'
     | '/orders/'
+    | '/panel/'
     | '/products/'
     | '/roasteries/'
     | '/admin/content-edit/$entryId'
@@ -802,6 +824,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OriginsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/panel/': {
+      id: '/panel/'
+      path: '/'
+      fullPath: '/panel/'
+      preLoaderRoute: typeof PanelIndexRouteImport
+      parentRoute: typeof PanelRoute
+    }
+    '/panel/grinding': {
+      id: '/panel/grinding'
+      path: '/grinding'
+      fullPath: '/panel/grinding'
+      preLoaderRoute: typeof PanelGrindingRouteImport
+      parentRoute: typeof PanelRoute
+    }
     '/panel/manage': {
       id: '/panel/manage'
       path: '/manage'
@@ -892,11 +928,15 @@ const OrdersRouteWithChildren =
   OrdersRoute._addFileChildren(OrdersRouteChildren)
 
 interface PanelRouteChildren {
+  PanelGrindingRoute: typeof PanelGrindingRoute
   PanelManageRoute: typeof PanelManageRoute
+  PanelIndexRoute: typeof PanelIndexRoute
 }
 
 const PanelRouteChildren: PanelRouteChildren = {
+  PanelGrindingRoute: PanelGrindingRoute,
   PanelManageRoute: PanelManageRoute,
+  PanelIndexRoute: PanelIndexRoute,
 }
 
 const PanelRouteWithChildren = PanelRoute._addFileChildren(PanelRouteChildren)

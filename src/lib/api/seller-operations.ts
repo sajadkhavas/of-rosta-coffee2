@@ -177,11 +177,22 @@ export interface AdjustStockInput {
 }
 
 export interface FulfillmentInput {
-  status: "accepted" | "rejected" | "preparing" | "ready_to_ship" | "shipped" | "delivered";
-  reason?: string;
+  status: "preparing" | "ready_to_ship" | "shipped";
   carrier?: string;
   trackingCode?: string;
   internalNote?: string;
+}
+
+export interface ReportFulfillmentIncidentInput {
+  code:
+    | "inventory_mismatch"
+    | "equipment_failure"
+    | "closure"
+    | "quality_hold"
+    | "carrier_disruption"
+    | "other";
+  description: string;
+  severity: "medium" | "high" | "critical";
 }
 
 export interface UploadMediaInput {
@@ -602,7 +613,6 @@ export async function transitionSellerOrder(
         method: "PATCH",
         body: {
           status: input.status,
-          reason: input.reason?.trim() || null,
           carrier: input.carrier?.trim() || null,
           tracking_code: input.trackingCode?.trim() || null,
           internal_note: input.internalNote?.trim() || null,
@@ -610,6 +620,29 @@ export async function transitionSellerOrder(
       },
     ),
     "تغییر وضعیت سفارش روستری",
+  );
+  return mapOrderDetail(response.data);
+}
+
+export async function reportSellerFulfillmentIncident(
+  roasteryId: string,
+  orderId: string,
+  input: ReportFulfillmentIncidentInput,
+): Promise<OrderDetail> {
+  const response = parseContract(
+    resourceSchema(authoritativeOrderDetailWireSchema),
+    await apiFetch<unknown>(
+      `/seller/roasteries/${encodeURIComponent(roasteryId)}/orders/${encodeURIComponent(orderId)}/incidents`,
+      {
+        method: "POST",
+        body: {
+          code: input.code,
+          description: input.description.trim(),
+          severity: input.severity,
+        },
+      },
+    ),
+    "ثبت Incident آماده‌سازی",
   );
   return mapOrderDetail(response.data);
 }
@@ -731,3 +764,5 @@ async function imageDimensions(file: File): Promise<{ width: number; height: num
     URL.revokeObjectURL(url);
   }
 }
+
+// R5H seller status contract: status: "preparing" | "ready_to_ship" | "shipped"

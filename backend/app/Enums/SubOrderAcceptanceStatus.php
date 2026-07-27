@@ -4,6 +4,7 @@ namespace App\Enums;
 
 enum SubOrderAcceptanceStatus: string
 {
+    case AwaitingPayment = 'awaiting_payment';
     case AwaitingRoasteryAcceptance = 'awaiting_roastery_acceptance';
     case Accepted = 'accepted';
     case RejectedByRoastery = 'rejected_by_roastery';
@@ -11,6 +12,6 @@ enum SubOrderAcceptanceStatus: string
 
     public function customerCancellable(): bool
     {
-        return $this === self::AwaitingRoasteryAcceptance;
+        return in_array($this, [self::AwaitingPayment, self::AwaitingRoasteryAcceptance], true);
     }
 }

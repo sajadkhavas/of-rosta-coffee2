@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\FulfillmentSlaStatus;
 use App\Enums\SubOrderAcceptanceStatus;
 use App\Enums\SubOrderStatus;
 use Carbon\CarbonImmutable;
@@ -29,6 +30,12 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property int $payable_total
  * @property string $currency
  * @property CarbonImmutable|null $accepted_at
+ * @property CarbonImmutable|null $fulfillment_committed_at
+ * @property CarbonImmutable|null $preparation_due_at
+ * @property CarbonImmutable|null $handoff_due_at
+ * @property FulfillmentSlaStatus $sla_status
+ * @property CarbonImmutable|null $incident_opened_at
+ * @property CarbonImmutable|null $incident_resolved_at
  * @property CarbonImmutable|null $rejected_at
  * @property CarbonImmutable|null $preparing_at
  * @property CarbonImmutable|null $ready_to_ship_at
@@ -52,6 +59,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read Collection<int, SettlementAllocation> $settlementAllocations
  * @property-read Collection<int, OrderTaxLine> $taxLines
  * @property-read Collection<int, OrderEvent> $events
+ * @property-read Collection<int, FulfillmentIncident> $fulfillmentIncidents
  */
 final class SubOrder extends Model
 {
@@ -73,6 +81,12 @@ final class SubOrder extends Model
         'payable_total',
         'currency',
         'accepted_at',
+        'fulfillment_committed_at',
+        'preparation_due_at',
+        'handoff_due_at',
+        'sla_status',
+        'incident_opened_at',
+        'incident_resolved_at',
         'rejected_at',
         'preparing_at',
         'ready_to_ship_at',
@@ -100,6 +114,12 @@ final class SubOrder extends Model
             'commission_total' => 'integer',
             'payable_total' => 'integer',
             'accepted_at' => 'immutable_datetime',
+            'fulfillment_committed_at' => 'immutable_datetime',
+            'preparation_due_at' => 'immutable_datetime',
+            'handoff_due_at' => 'immutable_datetime',
+            'sla_status' => FulfillmentSlaStatus::class,
+            'incident_opened_at' => 'immutable_datetime',
+            'incident_resolved_at' => 'immutable_datetime',
             'rejected_at' => 'immutable_datetime',
             'preparing_at' => 'immutable_datetime',
             'ready_to_ship_at' => 'immutable_datetime',
@@ -175,6 +195,12 @@ final class SubOrder extends Model
     public function events(): HasMany
     {
         return $this->hasMany(OrderEvent::class)->orderBy('occurred_at');
+    }
+
+    /** @return HasMany<FulfillmentIncident, $this> */
+    public function fulfillmentIncidents(): HasMany
+    {
+        return $this->hasMany(FulfillmentIncident::class)->orderByDesc('reported_at');
     }
 
     public function isCustomerCancellable(): bool

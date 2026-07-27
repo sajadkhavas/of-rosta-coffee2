@@ -16,6 +16,31 @@ Route::middleware(['auth:sanctum', 'rosta.session'])->group(function (): void {
         ->middleware('throttle:fulfillment-transition')
         ->name('api.v1.seller.orders.fulfillment');
 
+    Route::post(
+        '/seller/roasteries/{roasteryId}/orders/{orderId}/incidents',
+        [SellerOrderController::class, 'reportIncident'],
+    )
+        ->where([
+            'roasteryId' => '[A-Za-z0-9._:-]+',
+            'orderId' => '[A-Za-z0-9._:-]+',
+        ])
+        ->middleware('throttle:fulfillment-transition')
+        ->name('api.v1.seller.orders.incidents.store');
+
+    Route::get(
+        '/admin/fulfillment-incidents',
+        [AdminOrderController::class, 'incidents'],
+    )
+        ->name('api.v1.admin.fulfillment_incidents.index');
+
+    Route::post(
+        '/admin/fulfillment-incidents/{incidentId}/resolve',
+        [AdminOrderController::class, 'resolveIncident'],
+    )
+        ->where('incidentId', '[A-Za-z0-9._:-]+')
+        ->middleware('throttle:fulfillment-transition')
+        ->name('api.v1.admin.fulfillment_incidents.resolve');
+
     Route::patch(
         '/admin/orders/{orderId}/fulfillment',
         [AdminOrderController::class, 'transition'],

@@ -4,6 +4,7 @@ namespace App\Enums;
 
 enum SubOrderStatus: string
 {
+    case AwaitingPayment = 'awaiting_payment';
     case PendingAcceptance = 'pending_acceptance';
     case Accepted = 'accepted';
     case Rejected = 'rejected';

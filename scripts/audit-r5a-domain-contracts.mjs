@@ -6,6 +6,7 @@ const paths = {
   states: "docs/r5/r5a-state-machines.md",
   ledger: "docs/r5/r5a-ledger-refund-contract.md",
   api: "docs/r5/r5a-api-acceptance-contract.md",
+  r5h: "docs/r5/R5H_FULFILLMENT_COMMITMENT.md",
 };
 
 const files = Object.fromEntries(
@@ -82,32 +83,24 @@ gate(
 );
 
 gate(
-  "customer_cancellation_closes_on_acceptance",
-  hasAll(files.domain, [
-    "awaiting_roastery_acceptance",
-    "customer_cancellable = false",
-    "If cancellation commits first, acceptance is rejected",
-    "If acceptance commits first, cancellation is rejected",
-  ]) &&
-    hasAll(files.states, [
-      "cancelled_by_customer",
-      "After `accepted`, every customer cancellation endpoint returns a domain conflict",
-      "Acceptance, rejection and customer cancellation lock the same sub-order row",
-    ]) &&
-    hasAll(files.api, [
-      "customer_cancellation_closed",
-      "After acceptance, return a domain conflict without side effects",
-    ]),
-  "Customer cancellation must exist only before roastery acceptance and must be race-safe.",
+  "payment_closes_customer_cancellation",
+  hasAll(files.r5h, [
+    "Successful payment automatically commits every sub-order",
+    "Customer cancellation after payment is not introduced by R5H",
+    "The seller never accepts or rejects a paid sub-order manually",
+  ]),
+  "The approved R5H decision supersedes the earlier acceptance race: payment creates the contractual commitment.",
 );
 
 gate(
-  "seller_rejection_is_independent_partial_refund",
-  hasAll(files.domain, [
-    "A roastery rejection is a seller action, not a customer cancellation",
-    "leave accepted or completed sibling sub-orders unchanged",
-  ]) && hasAll(files.ledger, ["Roastery rejection refund", "preserve accepted sibling sub-orders"]),
-  "Seller rejection must refund only the affected sub-order and must not cancel accepted siblings.",
+  "seller_exception_is_admin_scoped_partial_refund",
+  hasAll(files.r5h, [
+    "does not cancel the order",
+    "cancel only the affected sub-order",
+    "restock its items exactly once",
+    "Accepted, shipped or completed sibling sub-orders continue independently",
+  ]),
+  "Seller exceptions must be reported as incidents and only administrators may issue a scoped refund.",
 );
 
 gate(

@@ -13,6 +13,7 @@ use App\Models\ProductVariant;
 use App\Models\RoastBatch;
 use App\Models\Roastery;
 use App\Models\ShippingRule;
+use App\Models\SubOrder;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\AuthenticatesRecordedSession;
@@ -89,6 +90,22 @@ final class PaymentLifecycleTest extends TestCase
         $this->assertDatabaseHas('orders', [
             'id' => $order['id'],
             'status' => 'paid',
+        ]);
+        $this->assertDatabaseHas('sub_orders', [
+            'order_id' => $order['id'],
+            'status' => 'accepted',
+            'acceptance_status' => 'accepted',
+            'sla_status' => 'on_track',
+        ]);
+        $this->assertNotNull(
+            SubOrder::query()
+                ->where('order_id', $order['id'])
+                ->value('fulfillment_committed_at'),
+        );
+        $this->assertDatabaseHas('order_events', [
+            'order_id' => $order['id'],
+            'event_type' => 'fulfillment.committed',
+            'next_state' => 'accepted',
         ]);
         $this->assertDatabaseHas('payment_attempts', [
             'id' => $first['payment_id'],

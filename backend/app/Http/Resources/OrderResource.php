@@ -2,7 +2,10 @@
 
 namespace App\Http\Resources;
 
+use App\Enums\FulfillmentSlaStatus;
 use App\Enums\OrderStatus;
+use App\Enums\SubOrderStatus;
+use App\Models\FulfillmentIncident;
 use App\Models\Order;
 use App\Models\OrderEvent;
 use App\Models\OrderItem;
@@ -64,6 +67,30 @@ final class OrderResource extends JsonResource
             'status' => $subOrder->status->value,
             'acceptance_status' => $subOrder->acceptance_status->value,
             'customer_cancellable' => $subOrder->isCustomerCancellable(),
+            'fulfillment' => [
+                'acceptance_mode' => $subOrder->fulfillment_committed_at === null
+                    ? 'awaiting_payment'
+                    : 'automatic_contractual',
+                'committed_at' => $subOrder->fulfillment_committed_at?->toIso8601String(),
+                'preparation_due_at' => $subOrder->preparation_due_at?->toIso8601String(),
+                'handoff_due_at' => $subOrder->handoff_due_at?->toIso8601String(),
+                'sla_status' => $this->isSlaBreached($subOrder)
+                    ? FulfillmentSlaStatus::Breached->value
+                    : $subOrder->sla_status->value,
+                'is_breached' => $this->isSlaBreached($subOrder),
+            ],
+            'incidents' => $subOrder->fulfillmentIncidents
+                ->map(static fn (FulfillmentIncident $incident): array => [
+                    'id' => $incident->id,
+                    'status' => $incident->status->value,
+                    'code' => $incident->code,
+                    'severity' => $incident->severity,
+                    'resolution' => $incident->resolution?->value,
+                    'reported_at' => $incident->reported_at->toIso8601String(),
+                    'resolved_at' => $incident->resolved_at?->toIso8601String(),
+                ])
+                ->values()
+                ->all(),
             'roastery' => [
                 'id' => $subOrder->roastery->id,
                 'name' => $subOrder->roastery->name,
@@ -108,6 +135,39 @@ final class OrderResource extends JsonResource
                 ->values()
                 ->all(),
         ];
+    }
+
+    private function isSlaBreached(SubOrder $subOrder): bool
+    {
+        if ($subOrder->fulfillment_committed_at === null) {
+            return false;
+        }
+
+        if (in_array($subOrder->status, [
+            SubOrderStatus::Shipped,
+            SubOrderStatus::Delivered,
+            SubOrderStatus::Cancelled,
+            SubOrderStatus::RefundPending,
+            SubOrderStatus::Refunded,
+        ], true)) {
+            return false;
+        }
+
+        if ($subOrder->sla_status === FulfillmentSlaStatus::ExceptionOpen) {
+            return false;
+        }
+
+        if (
+            $subOrder->status === SubOrderStatus::Accepted
+            && $subOrder->preparation_due_at?->isPast()
+        ) {
+            return true;
+        }
+
+        return in_array($subOrder->status, [
+            SubOrderStatus::Preparing,
+            SubOrderStatus::ReadyToShip,
+        ], true) && $subOrder->handoff_due_at?->isPast();
     }
 
     /** @return array<string, mixed> */

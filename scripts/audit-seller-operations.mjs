@@ -83,12 +83,15 @@ gate(
 
 gate(
   "fulfillment_state_machine_ui",
-  files.dashboard.includes("pending_acceptance") &&
+  files.dashboard.includes("پذیرش قراردادی خودکار") &&
     files.dashboard.includes("ready_to_ship") &&
     files.dashboard.includes("trackingCode") &&
+    files.dashboard.includes("ثبت Incident برای پشتیبانی رستا") &&
+    !files.dashboard.includes("رد سفارش و ارسال به Refund Pending") &&
     files.client.includes("/fulfillment") &&
+    files.client.includes("/incidents") &&
     files.fulfillmentRoutes.includes("throttle:fulfillment-transition"),
-  "Seller order actions must follow the backend state machine and collect carrier/tracking data for shipment.",
+  "Seller order actions must start after automatic commitment, collect tracking and escalate exceptions without rejection.",
 );
 
 gate(

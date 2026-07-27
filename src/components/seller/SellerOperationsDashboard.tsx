@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   Boxes,
   CheckCircle2,
   Coffee,
@@ -31,6 +32,7 @@ import {
   listSellerMedia,
   listSellerOrigins,
   listSellerRoastBatches,
+  reportSellerFulfillmentIncident,
   sellerOrdersQueryOptions,
   sellerProductsQueryOptions,
   sellerRoasteriesQueryOptions,
@@ -38,6 +40,7 @@ import {
   updateSellerProduct,
   uploadSellerMedia,
   type FulfillmentInput,
+  type ReportFulfillmentIncidentInput,
   type SellerRoastery,
   type StockReason,
 } from "@/lib/api/seller-operations";
@@ -362,11 +365,15 @@ function SellerOrdersWorkspace({ roastery }: { roastery: SellerRoastery }) {
   const ordersQuery = useQuery(sellerOrdersQueryOptions(roastery.id));
   const [selectedOrderId, setSelectedOrderId] = useState("");
   const [form, setForm] = useState({
-    status: "accepted" as FulfillmentInput["status"],
-    reason: "",
+    status: "preparing" as FulfillmentInput["status"],
     carrier: "",
     trackingCode: "",
     internalNote: "",
+  });
+  const [incidentForm, setIncidentForm] = useState<ReportFulfillmentIncidentInput>({
+    code: "inventory_mismatch",
+    description: "",
+    severity: "high",
   });
 
   useEffect(() => {
@@ -376,7 +383,9 @@ function SellerOrdersWorkspace({ roastery }: { roastery: SellerRoastery }) {
   }, [ordersQuery.data, selectedOrderId]);
 
   const selectedOrder = ordersQuery.data?.items.find((order) => order.id === selectedOrderId);
-  const selectedSubOrder = selectedOrder?.subOrders[0];
+  const selectedSubOrder = selectedOrder?.subOrders.find(
+    (subOrder) => subOrder.roastery.id === roastery.id,
+  );
   const allowedActions = fulfillmentActions(selectedSubOrder?.status);
 
   useEffect(() => {
@@ -393,8 +402,7 @@ function SellerOrdersWorkspace({ roastery }: { roastery: SellerRoastery }) {
         queryKey: ["seller", "roasteries", roastery.id, "orders"],
       });
       setForm({
-        status: "accepted",
-        reason: "",
+        status: "preparing",
         carrier: "",
         trackingCode: "",
         internalNote: "",
@@ -403,12 +411,36 @@ function SellerOrdersWorkspace({ roastery }: { roastery: SellerRoastery }) {
     },
   });
 
+  const openIncident = selectedSubOrder?.incidents.find((incident) => incident.status === "open");
+  const canReportIncident = ["accepted", "preparing", "ready_to_ship"].includes(
+    selectedSubOrder?.status ?? "",
+  );
+  const incidentMutation = useMutation({
+    mutationFn: (input: ReportFulfillmentIncidentInput) =>
+      reportSellerFulfillmentIncident(roastery.id, selectedOrderId, input),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["seller", "roasteries", roastery.id, "orders"],
+      });
+      setIncidentForm({ code: "inventory_mismatch", description: "", severity: "high" });
+      pushToast({
+        title: "Incident برای بررسی تیم رستا ثبت شد",
+        variant: "success",
+      });
+    },
+  });
+
+  const submitIncident = (event: FormEvent) => {
+    event.preventDefault();
+    if (!selectedOrderId || !canReportIncident || openIncident) return;
+    incidentMutation.mutate(incidentForm);
+  };
+
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (!selectedOrderId || !allowedActions.includes(form.status)) return;
     mutation.mutate({
       status: form.status,
-      reason: form.reason,
       carrier: form.carrier,
       trackingCode: form.trackingCode,
       internalNote: form.internalNote,
@@ -492,16 +524,6 @@ function SellerOrdersWorkspace({ roastery }: { roastery: SellerRoastery }) {
                 ))}
               </select>
             </label>
-            {form.status === "rejected" ? (
-              <TextareaField
-                label="دلیل رد سفارش"
-                required
-                value={form.reason}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, reason: event.target.value }))
-                }
-              />
-            ) : null}
             {form.status === "shipped" ? (
               <>
                 <TextField
@@ -548,6 +570,90 @@ function SellerOrdersWorkspace({ roastery }: { roastery: SellerRoastery }) {
             </Button>
           </form>
         )}
+
+        {selectedSubOrder ? (
+          <div className="mt-6 border-t border-[color:var(--mid)] pt-5">
+            <Alert variant="info" title="پذیرش قراردادی خودکار">
+              سفارش پس از پرداخت قطعی شده است؛ نیازی به پذیرش دستی نیست و روستری موظف به آماده‌سازی
+              و تحویل به حمل است.
+            </Alert>
+            <div className="mt-3 grid gap-2 rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] p-4 text-xs leading-6 text-[color:var(--light)]">
+              <p>مهلت آماده‌سازی: {formatDate(selectedSubOrder.fulfillment.preparationDueAt)}</p>
+              <p>مهلت تحویل به حمل: {formatDate(selectedSubOrder.fulfillment.handoffDueAt)}</p>
+              <p>وضعیت SLA: {selectedSubOrder.fulfillment.isBreached ? "نقض‌شده" : "در جریان"}</p>
+            </div>
+
+            {openIncident ? (
+              <div className="mt-4">
+                <Alert variant="warning" title="Incident باز است">
+                  تغییر مرحله تا تعیین تکلیف تیم رستا متوقف شده است. کد مشکل: {openIncident.code}
+                </Alert>
+              </div>
+            ) : canReportIncident ? (
+              <form onSubmit={submitIncident} className="mt-4 grid gap-3">
+                <div className="flex items-center gap-2 text-sm font-bold text-[color:var(--roast)]">
+                  <AlertTriangle size={17} />
+                  اعلام عدم امکان ارسال در شرایط استثنایی
+                </div>
+                <label className="grid gap-2 text-sm font-bold">
+                  نوع مشکل
+                  <select
+                    value={incidentForm.code}
+                    onChange={(event) =>
+                      setIncidentForm((current) => ({
+                        ...current,
+                        code: event.target.value as ReportFulfillmentIncidentInput["code"],
+                      }))
+                    }
+                    className={fieldClass}
+                  >
+                    <option value="inventory_mismatch">مغایرت موجودی</option>
+                    <option value="equipment_failure">خرابی تجهیزات</option>
+                    <option value="closure">تعطیلی اضطراری</option>
+                    <option value="quality_hold">توقف کنترل کیفیت</option>
+                    <option value="carrier_disruption">اختلال حمل</option>
+                    <option value="other">سایر</option>
+                  </select>
+                </label>
+                <label className="grid gap-2 text-sm font-bold">
+                  شدت
+                  <select
+                    value={incidentForm.severity}
+                    onChange={(event) =>
+                      setIncidentForm((current) => ({
+                        ...current,
+                        severity: event.target.value as ReportFulfillmentIncidentInput["severity"],
+                      }))
+                    }
+                    className={fieldClass}
+                  >
+                    <option value="medium">متوسط</option>
+                    <option value="high">زیاد</option>
+                    <option value="critical">بحرانی</option>
+                  </select>
+                </label>
+                <TextareaField
+                  label="شرح دقیق مشکل"
+                  required
+                  value={incidentForm.description}
+                  onChange={(event) =>
+                    setIncidentForm((current) => ({
+                      ...current,
+                      description: event.target.value,
+                    }))
+                  }
+                />
+                {incidentMutation.isError ? (
+                  <Alert variant="danger">{errorMessage(incidentMutation.error)}</Alert>
+                ) : null}
+                <Button type="submit" variant="outline" loading={incidentMutation.isPending}>
+                  <AlertTriangle size={16} />
+                  ثبت Incident برای پشتیبانی رستا
+                </Button>
+              </form>
+            ) : null}
+          </div>
+        ) : null}
       </section>
     </div>
   );
@@ -1779,7 +1885,8 @@ function productStatusLabel(status: ProductSummary["status"]): string {
 function subOrderStatusLabel(status: string): string {
   return (
     {
-      pending_acceptance: "منتظر پذیرش",
+      awaiting_payment: "در انتظار پرداخت",
+      pending_acceptance: "در انتظار پرداخت (قدیمی)",
       accepted: "پذیرفته‌شده",
       rejected: "ردشده",
       preparing: "در حال آماده‌سازی",
@@ -1795,23 +1902,18 @@ function subOrderStatusLabel(status: string): string {
 
 function fulfillmentActions(status?: string): FulfillmentInput["status"][] {
   const actions: Partial<Record<string, FulfillmentInput["status"][]>> = {
-    pending_acceptance: ["accepted", "rejected"],
     accepted: ["preparing"],
     preparing: ["ready_to_ship"],
     ready_to_ship: ["shipped"],
-    shipped: ["delivered"],
   };
   return actions[status ?? ""] ?? [];
 }
 
 function fulfillmentActionLabel(status: FulfillmentInput["status"]): string {
   return {
-    accepted: "پذیرش سفارش",
-    rejected: "رد سفارش و ارسال به Refund Pending",
     preparing: "شروع آماده‌سازی",
     ready_to_ship: "آماده ارسال",
-    shipped: "ثبت ارسال",
-    delivered: "ثبت تحویل",
+    shipped: "ثبت تحویل به حمل",
   }[status];
 }
 

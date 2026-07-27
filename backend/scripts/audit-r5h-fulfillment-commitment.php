@@ -59,7 +59,7 @@ $require('sla enforcement', [
 ], 'sla');
 $require('sla schedule', [
     'FulfillmentSlaMonitorService',
-    "rosta.fulfillment.mark-sla-breaches",
+    'rosta.fulfillment.mark-sla-breaches',
 ], 'console');
 $require('incident schema', [
     "Schema::create('fulfillment_incidents'",
