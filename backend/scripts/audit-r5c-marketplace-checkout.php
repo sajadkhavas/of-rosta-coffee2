@@ -21,7 +21,8 @@ $contracts = [
     ],
     'app/Services/Checkout/OrderService.php' => [
         'foreach ($quote->groups as $group)',
-        'SubOrderAcceptanceStatus::AwaitingRoasteryAcceptance',
+        'SubOrderStatus::AwaitingPayment',
+        'SubOrderAcceptanceStatus::AwaitingPayment',
         'InventoryReservation::query()->create',
         'SettlementAllocation::query()->create',
         'ShipmentLeg::query()->create',
@@ -75,10 +76,14 @@ $orderService = file_get_contents($root.'/app/Services/Checkout/OrderService.php
 if ($orderService !== false && str_contains($orderService, "'roastery_id' => \$quote->roastery_id")) {
     $failures[] = 'Parent marketplace orders must not inherit a single quote roastery unconditionally.';
 }
+if ($orderService !== false && str_contains($orderService, 'SubOrderAcceptanceStatus::AwaitingRoasteryAcceptance')) {
+    $failures[] = 'R5H supersedes seller acceptance: new marketplace sub-orders must begin awaiting payment, not roastery acceptance.';
+}
 
 $report = [
     'passed' => $failures === [],
     'marker' => 'ROSTA_R5C_MARKETPLACE_CHECKOUT_COMPLETE',
+    'acceptance_contract' => 'r5h_awaiting_payment_then_automatic_commitment',
     'failures' => $failures,
 ];
 file_put_contents(
