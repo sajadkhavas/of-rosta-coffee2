@@ -44,6 +44,14 @@ jobs:
           git apply --check /tmp/r5i-product.patch
           git apply /tmp/r5i-product.patch
 
+          correction='scripts/r5i-correct/r5i-correction.patch.gz.b64'
+          test "$(wc -c < "$correction")" = "1832"
+          test "$(sha256sum "$correction" | awk '{print $1}')" = "fabf27c7fbb3d71e6bdd0b00c6fab4749bb753d23eab61c469d883d8540ee701"
+          test "$(git hash-object "$correction")" = "cb7b49d095b34f43197a61bc0a406ac8c6d10dd2"
+          base64 -d "$correction" | gzip -d > /tmp/r5i-correction.patch
+          git apply --check /tmp/r5i-correction.patch
+          git apply /tmp/r5i-correction.patch
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
