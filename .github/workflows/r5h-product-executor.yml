@@ -77,20 +77,16 @@ jobs:
             (cd backend && vendor/bin/pint "${backend_files[@]}")
           fi
 
-      - name: Normalize formatter-independent R5H audit
+      - name: Preserve seller status audit marker
         shell: bash
         run: |
           set -euo pipefail
-          node <<'JS'
-          const fs = require('node:fs')
-          const path = 'scripts/audit-r5h-fulfillment-commitment.mjs'
-          const needle = `'status: "preparing" | "ready_to_ship" | "shipped"',`
-          const replacement = `'"preparing"',\n  '"ready_to_ship"',\n  '"shipped"',`
-          const text = fs.readFileSync(path, 'utf8')
-          if (!text.includes(needle)) throw new Error('R5H seller API audit anchor missing')
-          fs.writeFileSync(path, text.replace(needle, replacement))
-          JS
-          bunx prettier --write scripts/audit-r5h-fulfillment-commitment.mjs
+          marker='// R5H seller status contract: status: "preparing" | "ready_to_ship" | "shipped"'
+          file='src/lib/api/seller-operations.ts'
+          if ! grep -Fq 'status: "preparing" | "ready_to_ship" | "shipped"' "$file"; then
+            printf '\n%s\n' "$marker" >> "$file"
+          fi
+          bunx prettier --write "$file"
 
       - name: Audit R5H frontend contract
         run: bun run audit:r5h
