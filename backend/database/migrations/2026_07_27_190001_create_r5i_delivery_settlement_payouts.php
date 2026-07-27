@@ -75,7 +75,10 @@ return new class extends Migration
             $table->timestamp('attached_at');
 
             $table->unique('settlement_allocation_id', 'settlement_allocation_single_batch');
-            $table->index(['settlement_batch_id', 'attached_at']);
+            $table->index(
+                ['settlement_batch_id', 'attached_at'],
+                'settlement_batch_attached_lookup',
+            );
         });
     }
 
