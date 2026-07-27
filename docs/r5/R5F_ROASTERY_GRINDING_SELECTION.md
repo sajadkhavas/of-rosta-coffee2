@@ -1,6 +1,6 @@
 # R5F — Roastery Grinding Selection
 
-Status: **Implementation complete; official acceptance in progress**  
+Status: **Implementation and targeted formatting complete; official acceptance in progress**  
 Program branch: `integration/rosta-r5-marketplace`  
 Product branch: `program/r5f-roastery-grinding-selection`
 
