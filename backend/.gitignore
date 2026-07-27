@@ -12,6 +12,7 @@
 /public/hot
 /public/storage
 /storage/*.key
+/storage/framework/cache/
 /vendor
 Homestead.json
 Homestead.yaml
@@ -21,4 +22,5 @@ yarn-error.log
 /.idea
 /.vscode
 .DS_Store
+/fulfillment-contract-audit.json
 /staging-deployment-contract-audit.json
