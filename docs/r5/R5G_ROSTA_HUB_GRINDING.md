@@ -1,9 +1,9 @@
 # R5G — Rosta Hub Grinding and Multi-leg Routing
 
-Status: **Implementation complete; acceptance pending**
+Status: **Complete**
 Program branch: `integration/rosta-r5-marketplace`
 Product branch: `program/r5g-rosta-hub-grinding-routing`
-Acceptance candidate: locked product tree after Laravel Pint normalization
+Accepted product head: `ea567cc70b65014400e8ad524461c5d7a31b1215`
 
 ## Purpose
 
@@ -20,6 +20,17 @@ R5G offers an approved grinding profile through an enabled Rosta Hub only when t
 - Two immutable shipment legs: `roastery_to_rosta_hub` and `rosta_hub_to_customer`.
 - Customer-visible provider labels and route stages.
 - Permanent backend/frontend audits and feature/unit acceptance.
+
+## Acceptance
+
+All required gates passed on the accepted product head:
+
+- CI
+- Backend CI
+- Full-stack Integration CI
+- Browser Acceptance CI
+- R3 Final Gate
+- R4 Staging Package CI
 
 ## Boundaries
 
