@@ -38,13 +38,24 @@ const item: CartItem = {
   unitPriceSnapshot: 500_000,
   packagingFeeMode: "free",
   packagingFeeAmount: 0,
+  grindingProfileId: null,
   quantity: 2,
   addedAt: 1_750_000_000_000,
 };
 
 const legacyItem = (() => {
-  const { packagingFeeMode: _mode, packagingFeeAmount: _amount, ...legacy } = item;
+  const {
+    packagingFeeMode: _mode,
+    packagingFeeAmount: _amount,
+    grindingProfileId: _profile,
+    ...legacy
+  } = item;
   return legacy;
+})();
+
+const v4Item = (() => {
+  const { grindingProfileId: _profile, ...previous } = item;
+  return previous;
 })();
 
 describe("versioned cart persistence", () => {
@@ -108,12 +119,13 @@ describe("versioned cart persistence", () => {
         roasterySlug: "other-roastery",
         packagingFeeMode: "fixed" as const,
         packagingFeeAmount: 75_000,
+        grindingProfileId: "profile-v60-v2",
       },
     ];
     expect(parseStoredCart(serializeStoredCart(marketplaceItems))).toEqual(marketplaceItems);
   });
 
-  test("migrates a bounded legacy v2 array into v4 with explicit free packaging", () => {
+  test("migrates a bounded legacy v2 array into v5 with explicit service defaults", () => {
     const storage = new MemoryStorage();
     storage.setItem("rosta_cart_v2", JSON.stringify([legacyItem]));
     expect(readCartStorage(storage)).toEqual([item]);
@@ -133,7 +145,25 @@ describe("versioned cart persistence", () => {
       }),
     );
     expect(readCartStorage(storage)).toEqual([item]);
-    expect(JSON.parse(storage.getItem(CART_STORAGE_KEY) ?? "{}").version).toBe(4);
+    expect(JSON.parse(storage.getItem(CART_STORAGE_KEY) ?? "{}").version).toBe(
+      CART_STORAGE_VERSION,
+    );
+  });
+
+  test("migrates the previous v4 packaging envelope with whole beans as the default", () => {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      "rosta_cart_v4",
+      JSON.stringify({
+        version: 4,
+        updatedAt: 1_750_000_000_100,
+        items: [v4Item],
+      }),
+    );
+    expect(readCartStorage(storage)).toEqual([item]);
+    expect(JSON.parse(storage.getItem(CART_STORAGE_KEY) ?? "{}").version).toBe(
+      CART_STORAGE_VERSION,
+    );
   });
 
   test("drops invalid and duplicate legacy entries instead of trusting them", () => {
