@@ -138,6 +138,14 @@ export interface CommerceServiceLine {
   id: string;
   type: string;
   providerType: string;
+  grindingProfile?: {
+    id: string;
+    code: string;
+    version: number;
+    name: string;
+    brewMethod: string;
+  } | null;
+  serviceFee: number;
   packagingFee: number;
   taxAmount: number;
   totalAmount: number;
@@ -177,6 +185,7 @@ export interface CartQuote {
   groups: CartShipmentGroup[];
   subtotal: number;
   packagingTotal: number;
+  grindingTotal: number;
   shippingTotal: number;
   discountTotal: number;
   grandTotal: number;
@@ -236,6 +245,13 @@ export interface OrderItemServiceSummary {
   type: string;
   providerType: string;
   status: string;
+  grindingProfile?: {
+    id: string;
+    code: string;
+    version: number;
+    name: string;
+    brewMethod: string;
+  } | null;
   serviceFee: number;
   packagingFee: number;
   shippingFee: number;
@@ -311,6 +327,7 @@ export interface OrderDetail extends OrderSummary {
   address?: Address | null;
   subtotal: number;
   packagingTotal: number;
+  grindingTotal: number;
   shippingTotal: number;
   discountTotal: number;
 }

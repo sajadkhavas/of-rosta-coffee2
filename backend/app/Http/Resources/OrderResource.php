@@ -48,6 +48,7 @@ final class OrderResource extends JsonResource
             'address' => $this->address_snapshot,
             'subtotal' => $this->subtotal,
             'packaging_total' => $this->subOrders->sum('packaging_total'),
+            'grinding_total' => $this->subOrders->sum('grinding_total'),
             'shipping_total' => $this->shipping_total,
             'discount_total' => $this->discount_total,
         ];
@@ -145,6 +146,7 @@ final class OrderResource extends JsonResource
                             'code' => $service->grindingProfile->code,
                             'version' => $service->grindingProfile->version,
                             'name' => $service->grindingProfile->public_name,
+                            'brew_method' => $service->grindingProfile->brew_method,
                         ],
                     'service_fee' => $service->service_fee,
                     'packaging_fee' => $service->packaging_fee,

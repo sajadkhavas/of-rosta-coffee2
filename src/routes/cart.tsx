@@ -4,6 +4,7 @@ import { Minus, Plus, RefreshCw, X } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Breadcrumb } from "@/components/Breadcrumb";
+import { CartGrindingSelector } from "@/components/cart/CartGrindingSelector";
 import { Alert, Button } from "@/components/system";
 import { absoluteUrl } from "@/config/site";
 import { validateCart } from "@/lib/api/checkout";
@@ -59,6 +60,7 @@ function CartPage() {
     localSubtotal,
     localPackagingTotal,
     updateQuantity,
+    setGrindingProfile,
     removeItem,
   } = useCart();
 
@@ -244,6 +246,10 @@ function CartPage() {
                         </p>
                       </div>
                     </div>
+                    <CartGrindingSelector
+                      item={item}
+                      onChange={(profileId) => setGrindingProfile(item.variantId, profileId)}
+                    />
                   </div>
                 </li>
               ))}
@@ -279,6 +285,12 @@ function CartPage() {
                   <dt>بسته‌بندی روستری</dt>
                   <dd className="font-mono">
                     {quote.packagingTotal === 0 ? "رایگان" : formatIrr(quote.packagingTotal)}
+                  </dd>
+                </div>
+                <div className="flex justify-between text-[color:var(--light)]">
+                  <dt>آسیاب روستری</dt>
+                  <dd className="font-mono">
+                    {quote.grindingTotal === 0 ? "—" : formatIrr(quote.grindingTotal)}
                   </dd>
                 </div>
                 <div className="flex justify-between text-[color:var(--light)]">

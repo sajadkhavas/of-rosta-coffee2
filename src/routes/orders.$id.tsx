@@ -219,6 +219,21 @@ function OrderContent() {
                         <p className="mt-2 font-mono text-sm font-bold text-[color:var(--roast)]">
                           {formatIrr(item.lineTotal)}
                         </p>
+{item.services.length ? (
+  <ul className="mt-3 space-y-1 text-[11px] text-[color:var(--light)]">
+    {item.services.map((service) => (
+      <li key={service.id} className="flex flex-wrap justify-between gap-2">
+        <span>
+          {service.type === "grinding"
+            ? service.grindingProfile?.name ?? service.label ?? "آسیاب روستری"
+            : service.label ?? "بسته‌بندی روستری"}
+        </span>
+        <span>{service.isFree ? "رایگان" : formatIrr(service.totalAmount)}</span>
+      </li>
+    ))}
+  </ul>
+) : null}
+
                       </div>
                     </div>
                     {canReview ? <ReviewForm item={item} /> : null}
@@ -260,10 +275,20 @@ function OrderContent() {
                   <dt>جمع اقلام</dt>
                   <dd>{formatIrr(subOrder.subtotal)}</dd>
                 </div>
-                <div className="flex justify-between text-[color:var(--light)]">
-                  <dt>ارسال</dt>
-                  <dd>{formatIrr(subOrder.shippingTotal)}</dd>
-                </div>
+                
+<div className="flex justify-between text-[color:var(--light)]">
+  <dt>بسته‌بندی</dt>
+  <dd>{subOrder.packagingTotal === 0 ? "رایگان" : formatIrr(subOrder.packagingTotal)}</dd>
+</div>
+<div className="flex justify-between text-[color:var(--light)]">
+  <dt>آسیاب</dt>
+  <dd>{subOrder.grindingTotal === 0 ? "—" : formatIrr(subOrder.grindingTotal)}</dd>
+</div>
+<div className="flex justify-between text-[color:var(--light)]">
+  <dt>ارسال</dt>
+  <dd>{formatIrr(subOrder.shippingTotal)}</dd>
+</div>
+
               </dl>
             </article>
           ))}
@@ -275,10 +300,20 @@ function OrderContent() {
               <dt>جمع محصولات</dt>
               <dd>{formatIrr(order.subtotal)}</dd>
             </div>
-            <div className="flex justify-between text-[color:var(--light)]">
-              <dt>ارسال</dt>
-              <dd>{formatIrr(order.shippingTotal)}</dd>
-            </div>
+            
+<div className="flex justify-between text-[color:var(--light)]">
+  <dt>بسته‌بندی</dt>
+  <dd>{order.packagingTotal === 0 ? "رایگان" : formatIrr(order.packagingTotal)}</dd>
+</div>
+<div className="flex justify-between text-[color:var(--light)]">
+  <dt>آسیاب</dt>
+  <dd>{order.grindingTotal === 0 ? "—" : formatIrr(order.grindingTotal)}</dd>
+</div>
+<div className="flex justify-between text-[color:var(--light)]">
+  <dt>ارسال</dt>
+  <dd>{formatIrr(order.shippingTotal)}</dd>
+</div>
+
             <div className="flex justify-between text-[color:var(--light)]">
               <dt>تخفیف</dt>
               <dd>- {formatIrr(order.discountTotal)}</dd>

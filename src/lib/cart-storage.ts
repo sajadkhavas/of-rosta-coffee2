@@ -2,9 +2,14 @@ import { z } from "zod";
 import type { ProductSummary, ProductVariant } from "@/lib/api/contracts";
 import { bestMediaUrl } from "@/lib/catalog-format";
 
-export const CART_STORAGE_KEY = "rosta_cart_v4";
-export const LEGACY_CART_STORAGE_KEYS = ["rosta_cart", "rosta_cart_v2", "rosta_cart_v3"] as const;
-export const CART_STORAGE_VERSION = 4 as const;
+export const CART_STORAGE_KEY = "rosta_cart_v5";
+export const LEGACY_CART_STORAGE_KEYS = [
+  "rosta_cart",
+  "rosta_cart_v2",
+  "rosta_cart_v3",
+  "rosta_cart_v4",
+] as const;
+export const CART_STORAGE_VERSION = 5 as const;
 export const MAX_CART_ITEMS = 50;
 export const MAX_CART_QUANTITY = 20;
 export const MAX_CART_STORAGE_BYTES = 64 * 1024;
@@ -54,6 +59,7 @@ export const cartItemSchema = z
     unitPriceSnapshot: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
     packagingFeeMode: z.enum(["free", "fixed"]),
     packagingFeeAmount: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+    grindingProfileId: idSchema.nullable(),
     quantity: z.number().int().min(1).max(MAX_CART_QUANTITY),
     addedAt: z.number().int().positive().max(4_102_444_800_000),
   })
@@ -132,6 +138,8 @@ function normalizeLegacyItems(raw: unknown): CartItem[] {
         candidate.packagingFeeMode === "fixed"
           ? Math.max(0, Number(candidate.packagingFeeAmount ?? 0))
           : 0,
+      grindingProfileId:
+        typeof candidate.grindingProfileId === "string" ? candidate.grindingProfileId : null,
       addedAt:
         Number.isInteger(candidate.addedAt) && Number(candidate.addedAt) > 0
           ? Number(candidate.addedAt)
@@ -227,6 +235,7 @@ export function createCartSnapshot(
     unitPriceSnapshot: variant.price,
     packagingFeeMode: product.packaging.mode,
     packagingFeeAmount: product.packaging.feeAmount,
+    grindingProfileId: null,
     quantity: clampQuantity(quantity),
     addedAt: now,
   });

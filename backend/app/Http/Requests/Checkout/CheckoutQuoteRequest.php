@@ -14,7 +14,7 @@ final class CheckoutQuoteRequest extends FormRequest
         $this->rejectUnexpected(['items', 'address_id', 'coupon_code']);
         $this->rejectUnexpectedNested(
             is_array($this->input('items')) ? $this->input('items') : [],
-            ['variant_id', 'quantity'],
+            ['variant_id', 'quantity', 'grinding_profile_id'],
             'items',
         );
     }
@@ -30,6 +30,7 @@ final class CheckoutQuoteRequest extends FormRequest
             'items' => ['required', 'array', 'min:1', 'max:100'],
             'items.*.variant_id' => ['required', 'string', 'max:200', 'distinct:strict'],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:20'],
+            'items.*.grinding_profile_id' => ['nullable', 'string', 'max:200'],
             'address_id' => ['required', 'string', 'max:200'],
             'coupon_code' => ['nullable', 'string', 'max:100'],
         ];

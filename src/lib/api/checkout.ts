@@ -35,6 +35,7 @@ import {
 export interface CartApiItem {
   variantId: string;
   quantity: number;
+  grindingProfileId?: string | null;
 }
 
 function roastery(value: RoasterySummaryWire): RoasterySummary {
@@ -119,6 +120,16 @@ function mapGroup(value: QuoteWire["groups"][number]): CartShipmentGroup {
         id: service.id,
         type: service.type,
         providerType: service.provider_type,
+        grindingProfile: service.grinding_profile
+          ? {
+              id: service.grinding_profile.id,
+              code: service.grinding_profile.code,
+              version: service.grinding_profile.version,
+              name: service.grinding_profile.name,
+              brewMethod: service.grinding_profile.brew_method,
+            }
+          : null,
+        serviceFee: service.service_fee,
         packagingFee: service.packaging_fee,
         taxAmount: service.tax_amount,
         totalAmount: service.total_amount,
@@ -148,6 +159,7 @@ function mapQuote(value: QuoteWire): CartQuote {
     groups: value.groups.map(mapGroup),
     subtotal: value.subtotal,
     packagingTotal: value.packaging_total,
+    grindingTotal: value.grinding_total,
     shippingTotal: value.shipping_total,
     discountTotal: value.discount_total,
     grandTotal: value.grand_total,
@@ -160,7 +172,7 @@ function mapQuote(value: QuoteWire): CartQuote {
   };
 }
 
-function itemsPayload(items: CartApiItem[]) {
+export function buildCartItemsPayload(items: CartApiItem[]) {
   if (items.length < 1 || items.length > 100) {
     throw new Error("تعداد اقلام سبد معتبر نیست.");
   }
@@ -174,8 +186,16 @@ function itemsPayload(items: CartApiItem[]) {
     if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 20) {
       throw new Error("تعداد هر Variant باید بین ۱ تا ۲۰ باشد.");
     }
+    const grindingProfileId = item.grindingProfileId?.trim() || null;
+    if (grindingProfileId && grindingProfileId.length > 200) {
+      throw new Error("شناسه پروفایل آسیاب معتبر نیست.");
+    }
     uniqueVariants.add(variantId);
-    return { variant_id: variantId, quantity: item.quantity };
+    return {
+      variant_id: variantId,
+      quantity: item.quantity,
+      grinding_profile_id: grindingProfileId,
+    };
   });
 }
 
@@ -201,7 +221,7 @@ export function createIdempotencyKey(scope: string): string {
 export async function validateCart(items: CartApiItem[]): Promise<CartQuote> {
   const raw = await apiFetch("/cart/validate", {
     method: "POST",
-    body: { items: itemsPayload(items) },
+    body: { items: buildCartItemsPayload(items) },
   });
   const response = parseContract(
     resourceSchema(authoritativeQuoteWireSchema),
@@ -223,7 +243,7 @@ export async function createCheckoutQuote(input: {
   const raw = await apiFetch("/checkout/quote", {
     method: "POST",
     body: {
-      items: itemsPayload(input.items),
+      items: buildCartItemsPayload(input.items),
       address_id: addressId,
       coupon_code: couponCode,
     },

@@ -38,6 +38,7 @@ final class OrderService
     public function __construct(
         private readonly CheckoutHasher $hasher,
         private readonly AuditRecorder $audit,
+        private readonly RoasteryGrindingSelection $grinding,
     ) {}
 
     public function create(
@@ -344,6 +345,14 @@ final class OrderService
                     ]);
 
                     foreach ($quoteItem->services as $quoteService) {
+                        if ($quoteService->service_type === 'grinding') {
+                            $this->grinding->assertQuoteServiceOrderable(
+                                $quoteService,
+                                $variant,
+                                $quoteItem->quantity,
+                            );
+                        }
+
                         $orderService = OrderItemService::query()->create([
                             'order_id' => $order->id,
                             'sub_order_id' => $subOrder->id,
@@ -387,6 +396,46 @@ final class OrderService
                                     'quote_item_service_id' => $quoteService->id,
                                 ],
                             ]);
+                        }
+
+                        if ($orderService->service_type === 'grinding') {
+                            if ($orderService->service_fee > 0) {
+                                SettlementAllocation::query()->create([
+                                    'order_id' => $order->id,
+                                    'sub_order_id' => $subOrder->id,
+                                    'order_item_id' => $orderItem->id,
+                                    'order_item_service_id' => $orderService->id,
+                                    'allocation_type' => 'grinding',
+                                    'owner_type' => 'roastery',
+                                    'owner_id' => $group->roastery_id,
+                                    'status' => SettlementAllocationStatus::Held,
+                                    'gross_amount' => $orderService->service_fee,
+                                    'discount_amount' => 0,
+                                    'tax_amount' => $orderService->tax_amount,
+                                    'net_amount' => $orderService->total_amount,
+                                    'currency' => $orderService->currency,
+                                    'pricing_version' => 'r5f-roastery-grinding-v1',
+                                    'source_reference' => 'quote_service:'.$quoteService->id,
+                                    'idempotency_key' => 'order:'.$order->id.':service:'.$orderService->id.':grinding',
+                                    'metadata' => [
+                                        'quote_id' => $quote->id,
+                                        'quote_group_id' => $group->id,
+                                        'quote_item_service_id' => $quoteService->id,
+                                    ],
+                                ]);
+                            }
+
+                            $this->appendEvent(
+                                order: $order,
+                                user: $user,
+                                request: $request,
+                                type: 'grinding.requested',
+                                title: 'سرویس آسیاب ثبت شد',
+                                nextState: OrderItemServiceStatus::Requested->value,
+                                subOrder: $subOrder,
+                                orderItem: $orderItem,
+                                orderItemService: $orderService,
+                            );
                         }
                     }
                 }
@@ -554,6 +603,16 @@ final class OrderService
 
         foreach ($quote->groups as $group) {
             $itemSubtotal = $group->items->sum('line_total');
+            $packagingTotal = 0;
+            $grindingTotal = 0;
+            foreach ($group->items as $quoteItem) {
+                foreach ($quoteItem->services as $service) {
+                    $packagingTotal += $service->packaging_fee;
+                    if ($service->service_type === 'grinding') {
+                        $grindingTotal += $service->service_fee;
+                    }
+                }
+            }
             $expectedGrand = $group->subtotal
                 + $group->packaging_total
                 + $group->grinding_total
@@ -561,7 +620,12 @@ final class OrderService
                 + $group->tax_total
                 - $group->discount_total;
 
-            if ($itemSubtotal !== $group->subtotal || $expectedGrand !== $group->grand_total) {
+            if (
+                $itemSubtotal !== $group->subtotal
+                || $packagingTotal !== $group->packaging_total
+                || $grindingTotal !== $group->grinding_total
+                || $expectedGrand !== $group->grand_total
+            ) {
                 throw new ApiDomainException(
                     'mixed_state_conflict',
                     'یکی از گروه‌های Quote دارای جمع ناسازگار است.',
@@ -647,12 +711,16 @@ final class OrderService
         string $title,
         string $nextState,
         ?SubOrder $subOrder = null,
+        ?OrderItem $orderItem = null,
+        ?OrderItemService $orderItemService = null,
     ): void {
         $occurredAt = now();
 
         OrderEvent::query()->create([
             'order_id' => $order->id,
             'sub_order_id' => $subOrder?->id,
+            'order_item_id' => $orderItem?->id,
+            'order_item_service_id' => $orderItemService?->id,
             'event_type' => $type,
             'previous_state' => null,
             'next_state' => $nextState,
@@ -663,6 +731,7 @@ final class OrderService
             'customer_description' => null,
             'internal_metadata' => [
                 'quote_id' => $order->quote_id,
+                'service_type' => $orderItemService?->service_type,
             ],
             'occurred_at' => $occurredAt,
             'created_at' => $occurredAt,

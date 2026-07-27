@@ -53,6 +53,14 @@ function validateOrderFinancials(
           .reduce((serviceSum, service) => serviceSum + service.packaging_fee, 0),
       0,
     );
+    const grindingTotal = subOrder.items.reduce(
+      (sum, item) =>
+        sum +
+        item.services
+          .filter((service) => service.type === "grinding")
+          .reduce((serviceSum, service) => serviceSum + service.service_fee, 0),
+      0,
+    );
     const expectedGrand =
       subOrder.subtotal +
       subOrder.packaging_total +
@@ -70,6 +78,13 @@ function validateOrderFinancials(
         "جمع بسته‌بندی زیرسفارش ناسازگار است.",
       );
     }
+    if (grindingTotal !== subOrder.grinding_total) {
+      addIssue(
+        context,
+        ["sub_orders", subOrderIndex, "grinding_total"],
+        "جمع آسیاب زیرسفارش ناسازگار است.",
+      );
+    }
     if (expectedGrand !== subOrder.grand_total) {
       addIssue(context, ["sub_orders", subOrderIndex, "grand_total"], "جمع زیرسفارش ناسازگار است.");
     }
@@ -83,11 +98,13 @@ function validateOrderFinancials(
   if ("subtotal" in value) {
     const subtotal = value.sub_orders.reduce((sum, subOrder) => sum + subOrder.subtotal, 0);
     const packaging = value.sub_orders.reduce((sum, subOrder) => sum + subOrder.packaging_total, 0);
+    const grinding = value.sub_orders.reduce((sum, subOrder) => sum + subOrder.grinding_total, 0);
     const shipping = value.sub_orders.reduce((sum, subOrder) => sum + subOrder.shipping_total, 0);
     const discount = value.sub_orders.reduce((sum, subOrder) => sum + subOrder.discount_total, 0);
     if (
       subtotal !== value.subtotal ||
       packaging !== value.packaging_total ||
+      grinding !== value.grinding_total ||
       shipping !== value.shipping_total ||
       discount !== value.discount_total
     ) {
