@@ -78,22 +78,46 @@ jobs:
             (cd backend && vendor/bin/pint "${backend_files[@]}")
           fi
 
-      - name: Run bounded R5H verification
-        shell: bash
-        run: |
-          set -euo pipefail
-          bun run audit:r5h
-          bun test tests/unit/r5h-fulfillment-commitment.test.ts tests/unit/financial-contracts.test.ts
-          bun run typecheck
-          cd backend
-          composer audit:r5h
-          composer audit:fulfillment
-          php artisan test --filter=R5HFulfillmentCommitmentTest
-          php artisan test --filter=FulfillmentLifecycleTest
-          php artisan test --filter=PaymentLifecycleTest
-          php artisan test --filter=R5CMultiRoasteryCheckoutTest
-          vendor/bin/phpstan analyse --memory-limit=1G
-          vendor/bin/pint --parallel --test
+      - name: Audit R5H frontend contract
+        run: bun run audit:r5h
+
+      - name: Test R5H frontend contracts
+        run: bun test tests/unit/r5h-fulfillment-commitment.test.ts tests/unit/financial-contracts.test.ts
+
+      - name: Typecheck frontend
+        run: bun run typecheck
+
+      - name: Audit R5H backend contract
+        working-directory: backend
+        run: composer audit:r5h
+
+      - name: Audit fulfillment compatibility
+        working-directory: backend
+        run: composer audit:fulfillment
+
+      - name: Test R5H fulfilment commitment
+        working-directory: backend
+        run: php artisan test --filter=R5HFulfillmentCommitmentTest
+
+      - name: Test fulfillment lifecycle
+        working-directory: backend
+        run: php artisan test --filter=FulfillmentLifecycleTest
+
+      - name: Test payment lifecycle
+        working-directory: backend
+        run: php artisan test --filter=PaymentLifecycleTest
+
+      - name: Test multi-roastery checkout
+        working-directory: backend
+        run: php artisan test --filter=R5CMultiRoasteryCheckoutTest
+
+      - name: Analyse backend with PHPStan
+        working-directory: backend
+        run: vendor/bin/phpstan analyse --memory-limit=1G
+
+      - name: Verify backend formatting
+        working-directory: backend
+        run: vendor/bin/pint --parallel --test
 
       - name: Remove temporary transfer assets
         run: |
