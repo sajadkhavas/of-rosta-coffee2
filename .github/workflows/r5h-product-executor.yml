@@ -203,10 +203,32 @@ jobs:
           rm -f .github/workflows/r5h-product-executor.yml .github/workflows/r5h-source-export.yml
 
       - name: Commit product implementation
+        id: product_commit
+        continue-on-error: true
         run: |
-          git config user.name "Rosta R5H Executor"
-          git config user.email "actions@users.noreply.github.com"
-          git add -A
-          git diff --cached --check
-          git commit -m "R5H implement contractual fulfilment SLA and exception incidents"
-          git push origin HEAD:program/r5h-fulfilment-sla-incidents
+          {
+            set -euxo pipefail
+            git status --short
+            git config user.name "Rosta R5H Executor"
+            git config user.email "actions@users.noreply.github.com"
+            git add -A
+            git diff --cached --check
+            git diff --cached --stat
+            git commit -m "R5H implement contractual fulfilment SLA and exception incidents"
+            git push origin HEAD:program/r5h-fulfilment-sla-incidents
+          } > /tmp/r5h-product-commit.log 2>&1
+
+      - name: Upload R5H commit diagnostics
+        if: steps.product_commit.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: r5h-product-commit-failure-${{ github.sha }}
+          path: /tmp/r5h-product-commit.log
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Enforce product commit
+        if: always()
+        run: |
+          cat /tmp/r5h-product-commit.log || true
+          test "${{ steps.product_commit.outcome }}" = "success"
