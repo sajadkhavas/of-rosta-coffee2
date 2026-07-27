@@ -1,0 +1,86 @@
+name: Temporary R5G Product Executor
+
+on:
+  push:
+    branches:
+      - program/r5g-rosta-hub-grinding-routing
+
+permissions:
+  contents: write
+
+concurrency:
+  group: r5g-product-executor
+  cancel-in-progress: false
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout R5G branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Rebuild and verify reviewed patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat scripts/r5g-parts/part-*.b64 > /tmp/r5g-product.patch.gz.b64
+          test "$(wc -c < /tmp/r5g-product.patch.gz.b64)" = "25840"
+          test "$(git hash-object /tmp/r5g-product.patch.gz.b64)" = "2b2ce551e2ef06ed47be1867c958e1189033a4dd"
+          base64 -d /tmp/r5g-product.patch.gz.b64 | gzip -d > /tmp/r5g-product.patch
+          git apply --check /tmp/r5g-product.patch
+          git apply /tmp/r5g-product.patch
+
+      - name: Setup Node and Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.22
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:2
+          coverage: none
+
+      - name: Install frozen dependencies
+        run: |
+          bun install --frozen-lockfile
+          cd backend
+          composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Format reviewed product diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t frontend_files < <(git diff --name-only 8a3e1a5feb2b9ca5bce0735aba0906725aa8b094 -- '*.ts' '*.tsx' '*.mjs' '*.json' '*.md')
+          if ((${#frontend_files[@]})); then
+            bunx prettier --write "${frontend_files[@]}"
+          fi
+          mapfile -t backend_files < <(git diff --name-only 8a3e1a5feb2b9ca5bce0735aba0906725aa8b094 -- 'backend/*.php' 'backend/**/*.php' | sed 's#^backend/##')
+          if ((${#backend_files[@]})); then
+            (cd backend && vendor/bin/pint "${backend_files[@]}")
+          fi
+
+      - name: Run bounded R5G verification
+        run: |
+          bun run audit:r5g
+          bun test tests/unit/r5g-rosta-hub-grinding.test.ts
+          cd backend
+          composer audit:r5g
+          php artisan test --filter=R5GRostaHubGrindingTest
+
+      - name: Remove temporary transfer assets
+        run: |
+          rm -rf scripts/r5g-parts
+          rm -f .github/workflows/r5g-product-executor.yml
+
+      - name: Commit product implementation
+        run: |
+          git config user.name "Rosta R5G Executor"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "R5G implement Rosta Hub grinding and multi-leg routing"
+          git push origin HEAD:program/r5g-rosta-hub-grinding-routing
