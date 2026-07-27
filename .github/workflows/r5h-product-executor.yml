@@ -104,6 +104,9 @@ jobs:
       - name: Test R5H frontend contracts
         run: bun test tests/unit/r5h-fulfillment-commitment.test.ts tests/unit/financial-contracts.test.ts
 
+      - name: Generate frontend route tree
+        run: bun run routes:generate
+
       - name: Typecheck frontend
         id: frontend_typecheck
         continue-on-error: true
