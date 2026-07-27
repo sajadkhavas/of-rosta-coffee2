@@ -128,36 +128,74 @@ jobs:
           test "${{ steps.frontend_typecheck.outcome }}" = "success"
 
       - name: Audit R5H backend contract
+        id: backend_audit_r5h
+        continue-on-error: true
         working-directory: backend
-        run: composer audit:r5h
+        run: composer audit:r5h > /tmp/r5h-backend-audit-r5h.log 2>&1
 
       - name: Audit fulfillment compatibility
+        id: backend_audit_fulfillment
+        continue-on-error: true
         working-directory: backend
-        run: composer audit:fulfillment
+        run: composer audit:fulfillment > /tmp/r5h-backend-audit-fulfillment.log 2>&1
 
       - name: Test R5H fulfilment commitment
+        id: backend_test_r5h
+        continue-on-error: true
         working-directory: backend
-        run: php artisan test --filter=R5HFulfillmentCommitmentTest
+        run: php artisan test --filter=R5HFulfillmentCommitmentTest > /tmp/r5h-backend-test-r5h.log 2>&1
 
       - name: Test fulfillment lifecycle
+        id: backend_test_fulfillment
+        continue-on-error: true
         working-directory: backend
-        run: php artisan test --filter=FulfillmentLifecycleTest
+        run: php artisan test --filter=FulfillmentLifecycleTest > /tmp/r5h-backend-test-fulfillment.log 2>&1
 
       - name: Test payment lifecycle
+        id: backend_test_payment
+        continue-on-error: true
         working-directory: backend
-        run: php artisan test --filter=PaymentLifecycleTest
+        run: php artisan test --filter=PaymentLifecycleTest > /tmp/r5h-backend-test-payment.log 2>&1
 
       - name: Test multi-roastery checkout
+        id: backend_test_multiroastery
+        continue-on-error: true
         working-directory: backend
-        run: php artisan test --filter=R5CMultiRoasteryCheckoutTest
+        run: php artisan test --filter=R5CMultiRoasteryCheckoutTest > /tmp/r5h-backend-test-multiroastery.log 2>&1
 
       - name: Analyse backend with PHPStan
+        id: backend_phpstan
+        continue-on-error: true
         working-directory: backend
-        run: vendor/bin/phpstan analyse --memory-limit=1G
+        run: vendor/bin/phpstan analyse --memory-limit=1G > /tmp/r5h-backend-phpstan.log 2>&1
 
       - name: Verify backend formatting
+        id: backend_pint
+        continue-on-error: true
         working-directory: backend
-        run: vendor/bin/pint --parallel --test
+        run: vendor/bin/pint --parallel --test > /tmp/r5h-backend-pint.log 2>&1
+
+      - name: Upload R5H backend diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r5h-backend-diagnostics-${{ github.sha }}
+          path: /tmp/r5h-backend-*.log
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Enforce R5H backend suite
+        if: always()
+        run: |
+          cat /tmp/r5h-backend-*.log || true
+          test "${{ steps.backend_audit_r5h.outcome }}" = "success"
+          test "${{ steps.backend_audit_fulfillment.outcome }}" = "success"
+          test "${{ steps.backend_test_r5h.outcome }}" = "success"
+          test "${{ steps.backend_test_fulfillment.outcome }}" = "success"
+          test "${{ steps.backend_test_payment.outcome }}" = "success"
+          test "${{ steps.backend_test_multiroastery.outcome }}" = "success"
+          test "${{ steps.backend_phpstan.outcome }}" = "success"
+          test "${{ steps.backend_pint.outcome }}" = "success"
 
       - name: Remove temporary transfer assets
         run: |
