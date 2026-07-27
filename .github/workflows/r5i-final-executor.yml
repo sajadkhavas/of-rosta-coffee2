@@ -1,0 +1,41 @@
+name: Temporary R5I Final Executor
+
+on:
+  pull_request:
+    branches:
+      - integration/rosta-r5-marketplace
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: r5i-final-executor-pr
+  cancel-in-progress: true
+
+jobs:
+  verify-and-publish:
+    if: github.head_ref == 'program/r5i-delivery-settlement-payouts'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact R5I branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.22
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:2
+          coverage: none
+
+      - name: Apply, verify and publish R5I
+        shell: bash
+        run: bash scripts/run-r5i-final-executor.sh
