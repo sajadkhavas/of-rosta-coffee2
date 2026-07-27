@@ -1,0 +1,33 @@
+name: Temporary R5I Source Export
+
+on:
+  pull_request:
+    branches:
+      - integration/rosta-r5-marketplace
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    if: github.head_ref == 'program/r5i-delivery-settlement-payouts'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 1
+
+      - name: Build source archive
+        run: |
+          tar --exclude=.git --exclude=node_modules --exclude=backend/vendor -czf /tmp/rosta-r5i-source.tgz .
+
+      - name: Upload source archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: rosta-r5i-source-${{ github.sha }}
+          path: /tmp/rosta-r5i-source.tgz
+          if-no-files-found: error
+          retention-days: 1
