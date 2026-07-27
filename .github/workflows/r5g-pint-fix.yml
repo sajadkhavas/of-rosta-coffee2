@@ -1,0 +1,48 @@
+name: Temporary R5G Pint Fix
+
+on:
+  push:
+    branches:
+      - program/r5g-rosta-hub-grinding-routing
+
+permissions:
+  contents: write
+
+concurrency:
+  group: r5g-pint-fix
+  cancel-in-progress: false
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:2
+          coverage: none
+
+      - name: Install locked dependencies
+        working-directory: backend
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Apply exact locked Pint formatting
+        working-directory: backend
+        run: |
+          vendor/bin/pint database/migrations/2026_07_27_120001_create_r5g_rosta_hub_schema.php scripts/audit-r5g-rosta-hub-grinding.php
+          vendor/bin/pint --test database/migrations/2026_07_27_120001_create_r5g_rosta_hub_schema.php scripts/audit-r5g-rosta-hub-grinding.php
+
+      - name: Remove temporary assets and commit
+        run: |
+          rm -f .github/workflows/r5g-pint-fix.yml scripts/.r5g-pint-fix-trigger
+          git config user.name "Rosta R5G Fix"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "R5G apply locked Laravel Pint formatting"
+          git push origin HEAD:program/r5g-rosta-hub-grinding-routing
