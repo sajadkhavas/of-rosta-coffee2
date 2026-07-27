@@ -55,6 +55,9 @@ return new class extends Migration
         });
 
         Schema::table('checkout_quote_item_services', function (Blueprint $table): void {
+            $table->index('quote_item_id', 'r5g_quote_item_fk_support');
+        });
+        Schema::table('checkout_quote_item_services', function (Blueprint $table): void {
             $table->dropUnique('checkout_quote_item_services_quote_item_id_service_type_unique');
             $table->foreignUlid('provider_hub_id')
                 ->nullable()
@@ -66,7 +69,13 @@ return new class extends Migration
                 'quote_item_service_provider_unique',
             );
         });
+        Schema::table('checkout_quote_item_services', function (Blueprint $table): void {
+            $table->dropIndex('r5g_quote_item_fk_support');
+        });
 
+        Schema::table('order_item_services', function (Blueprint $table): void {
+            $table->index('order_item_id', 'r5g_order_item_fk_support');
+        });
         Schema::table('order_item_services', function (Blueprint $table): void {
             $table->dropUnique('order_item_services_order_item_id_service_type_unique');
             $table->foreignUlid('provider_hub_id')
@@ -78,6 +87,9 @@ return new class extends Migration
                 ['order_item_id', 'service_type', 'provider_type'],
                 'order_item_service_provider_unique',
             );
+        });
+        Schema::table('order_item_services', function (Blueprint $table): void {
+            $table->dropIndex('r5g_order_item_fk_support');
         });
     }
 
@@ -101,15 +113,27 @@ return new class extends Migration
         }
 
         Schema::table('order_item_services', function (Blueprint $table): void {
+            $table->index('order_item_id', 'r5g_order_item_fk_support');
+        });
+        Schema::table('order_item_services', function (Blueprint $table): void {
             $table->dropUnique('order_item_service_provider_unique');
             $table->dropConstrainedForeignId('provider_hub_id');
             $table->unique(['order_item_id', 'service_type']);
         });
+        Schema::table('order_item_services', function (Blueprint $table): void {
+            $table->dropIndex('r5g_order_item_fk_support');
+        });
 
+        Schema::table('checkout_quote_item_services', function (Blueprint $table): void {
+            $table->index('quote_item_id', 'r5g_quote_item_fk_support');
+        });
         Schema::table('checkout_quote_item_services', function (Blueprint $table): void {
             $table->dropUnique('quote_item_service_provider_unique');
             $table->dropConstrainedForeignId('provider_hub_id');
             $table->unique(['quote_item_id', 'service_type']);
+        });
+        Schema::table('checkout_quote_item_services', function (Blueprint $table): void {
+            $table->dropIndex('r5g_quote_item_fk_support');
         });
 
         Schema::dropIfExists('rosta_hub_grinding_profile');
