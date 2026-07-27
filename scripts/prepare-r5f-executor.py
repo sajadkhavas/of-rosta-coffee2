@@ -13,6 +13,17 @@ def swap(old: str, new: str) -> None:
 
 
 swap(
+    '''replace(quote, "                    'grinding_total' => 0,", "                    'grinding_total' => $group['grinding_total'],")''',
+    '''replace(
+    quote,
+    "                    'packaging_total' => $group['packaging_total'],\\n"
+    "                    'grinding_total' => 0,",
+    "                    'packaging_total' => $group['packaging_total'],\\n"
+    "                    'grinding_total' => $group['grinding_total'],",
+)''',
+)
+
+swap(
     '''replace(quote, "                        'version' => 'r5d-product-packaging-v1',", "                        'version' => 'r5f-roastery-grinding-v1',", expected=1)''',
     '''replace(
     quote,
