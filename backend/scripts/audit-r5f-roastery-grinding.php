@@ -16,19 +16,19 @@ $checks = [
     ],
     'cart request' => [
         'file' => 'app/Http/Requests/Checkout/CartValidateRequest.php',
-        'needles' => ["'grinding_profile_id'", "items.*.grinding_profile_id"],
+        'needles' => ["'grinding_profile_id'", 'items.*.grinding_profile_id'],
     ],
     'checkout request' => [
         'file' => 'app/Http/Requests/Checkout/CheckoutQuoteRequest.php',
-        'needles' => ["'grinding_profile_id'", "items.*.grinding_profile_id"],
+        'needles' => ["'grinding_profile_id'", 'items.*.grinding_profile_id'],
     ],
     'quote pricing' => [
         'file' => 'app/Services/Checkout/QuoteService.php',
         'needles' => [
             'RoasteryGrindingSelection $grinding',
-            "'grinding_total' => $group['grinding_total']",
+            "'grinding_total' => \$group['grinding_total']",
             "'service_type' => 'grinding'",
-            "'grinding_profile_id' => $grinding['profile']->id",
+            "'grinding_profile_id' => \$grinding['profile']->id",
         ],
     ],
     'order snapshot and allocation' => [
