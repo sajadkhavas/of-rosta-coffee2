@@ -30,7 +30,6 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
-
           path = Path('scripts/r5h-parts/part-01.b64')
           payload = path.read_bytes()
           assert len(payload) == 3001, len(payload)
@@ -46,16 +45,6 @@ jobs:
           base64 -d /tmp/r5h-product.patch.gz.b64 | gzip -d > /tmp/r5h-product.patch
           git apply --check /tmp/r5h-product.patch
           git apply /tmp/r5h-product.patch
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path('scripts/audit-r5h-fulfillment-commitment.mjs')
-          text = path.read_text()
-          needle = "'status: \"preparing\" | \"ready_to_ship\" | \"shipped\"',"
-          replacement = "'\"preparing\"',\n    '\"ready_to_ship\"',\n    '\"shipped\"',"
-          assert text.count(needle) == 1, text.count(needle)
-          path.write_text(text.replace(needle, replacement, 1))
-          PY
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -87,6 +76,21 @@ jobs:
           if ((${#backend_files[@]})); then
             (cd backend && vendor/bin/pint "${backend_files[@]}")
           fi
+
+      - name: Normalize formatter-independent R5H audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'JS'
+          const fs = require('node:fs')
+          const path = 'scripts/audit-r5h-fulfillment-commitment.mjs'
+          const needle = `'status: "preparing" | "ready_to_ship" | "shipped"',`
+          const replacement = `'"preparing"',\n  '"ready_to_ship"',\n  '"shipped"',`
+          const text = fs.readFileSync(path, 'utf8')
+          if (!text.includes(needle)) throw new Error('R5H seller API audit anchor missing')
+          fs.writeFileSync(path, text.replace(needle, replacement))
+          JS
+          bunx prettier --write scripts/audit-r5h-fulfillment-commitment.mjs
 
       - name: Audit R5H frontend contract
         run: bun run audit:r5h
@@ -132,7 +136,7 @@ jobs:
       - name: Remove temporary transfer assets
         run: |
           rm -rf scripts/r5h-parts
-          rm -f .github/workflows/r5h-product-executor.yml
+          rm -f .github/workflows/r5h-product-executor.yml .github/workflows/r5h-source-export.yml
 
       - name: Commit product implementation
         run: |
