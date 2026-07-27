@@ -24,7 +24,11 @@ export function CartGrindingSelector({ item, onChange }: CartGrindingSelectorPro
   }, [capabilityQuery.isSuccess, item.grindingProfileId, onChange, selectedProfile, supported]);
 
   if (capabilityQuery.isPending) {
-    return <p className="mt-3 text-[11px] text-[color:var(--light)]">بررسی سرویس آسیاب روستری…</p>;
+    return (
+      <p className="mt-3 text-[11px] text-[color:var(--light)]">
+        بررسی سرویس آسیاب روستری…
+      </p>
+    );
   }
 
   if (capabilityQuery.isError) {
@@ -42,6 +46,11 @@ export function CartGrindingSelector({ item, onChange }: CartGrindingSelectorPro
       </p>
     );
   }
+
+  const feeLabel = capability.isFree
+    ? "آسیاب روستری رایگان"
+    : `هزینه هر بسته ${formatIrr(capability.feeAmount)}`;
+  const preparationLabel = capability.preparationMinutes.toLocaleString("fa-IR");
 
   return (
     <div className="mt-3 rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] p-3">
@@ -62,6 +71,11 @@ export function CartGrindingSelector({ item, onChange }: CartGrindingSelectorPro
         ))}
       </select>
       <p className="mt-2 text-[10px] leading-5 text-[color:var(--light)]">
-        {capability.isFree
-          ? "آسیاب روستری رایگان"
-          : `هزینه هر بسته ${formatIrr(capability.feeAmount)}`}{" 
+        {feeLabel} · آماده‌سازی حدود {preparationLabel} دقیقه
+      </p>
+      <p className="mt-1 text-[10px] leading-5 text-[color:var(--light)]">
+        انتخاب آسیاب فقط یک خدمت سفارش است و SKU، وزن و موجودی محصول را تغییر نمی‌دهد.
+      </p>
+    </div>
+  );
+}
