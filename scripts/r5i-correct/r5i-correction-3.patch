@@ -1,0 +1,13 @@
+diff --git a/backend/app/Http/Controllers/Delivery/DeliveryConfirmationController.php b/backend/app/Http/Controllers/Delivery/DeliveryConfirmationController.php
+index c384fc4..0a0dff5 100644
+--- a/backend/app/Http/Controllers/Delivery/DeliveryConfirmationController.php
++++ b/backend/app/Http/Controllers/Delivery/DeliveryConfirmationController.php
+@@ -67,7 +67,7 @@ final class DeliveryConfirmationController
+         $secret = (string) config('rosta.settlement.carrier_webhook_secret', '');
+         $provided = trim((string) $request->header('X-Rosta-Carrier-Signature', ''));
+         $expected = $secret === '' ? '' : hash_hmac('sha256', $request->getContent(), $secret);
+-        if ($secret === '' || $provided === '' || !hash_equals($expected, $provided)) {
++        if ($secret === '' || $provided === '' || ! hash_equals($expected, $provided)) {
+             throw new AccessDeniedHttpException('Invalid carrier webhook signature.');
+         }
+ 
