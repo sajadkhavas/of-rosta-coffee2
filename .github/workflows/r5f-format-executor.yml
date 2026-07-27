@@ -47,19 +47,33 @@ jobs:
         working-directory: backend
         run: composer install --no-interaction --no-progress --prefer-dist
 
-      - name: Format changed frontend files
+      - name: Format changed frontend files independently
         shell: bash
         run: |
-          set -euo pipefail
+          set -uo pipefail
+          : > /tmp/r5f-prettier.log
           mapfile -t frontend_files < <(
             git diff --name-only origin/integration/rosta-r5-marketplace...HEAD -- \
               '*.ts' '*.tsx' '*.mjs' '*.json' '*.md' \
               | grep -v '^src/routeTree.gen.ts$' || true
           )
-          printf 'Frontend formatter targets:\n%s\n' "${frontend_files[*]:-none}"
-          if ((${#frontend_files[@]})); then
-            bunx prettier --write "${frontend_files[@]}"
-          fi
+          failed=0
+          for file in "${frontend_files[@]}"; do
+            echo "=== $file ===" | tee -a /tmp/r5f-prettier.log
+            if ! bunx prettier --write "$file" 2>&1 | tee -a /tmp/r5f-prettier.log; then
+              failed=1
+            fi
+          done
+          exit "$failed"
+
+      - name: Upload frontend formatter diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r5f-prettier-diagnostics-${{ github.run_id }}
+          path: /tmp/r5f-prettier.log
+          if-no-files-found: error
+          retention-days: 1
 
       - name: Format changed backend files
         shell: bash
@@ -69,7 +83,6 @@ jobs:
             git diff --name-only origin/integration/rosta-r5-marketplace...HEAD -- 'backend/*.php' 'backend/**/*.php' \
               | sed 's#^backend/##'
           )
-          printf 'Backend formatter targets:\n%s\n' "${backend_files[*]:-none}"
           if ((${#backend_files[@]})); then
             cd backend
             vendor/bin/pint "${backend_files[@]}"
