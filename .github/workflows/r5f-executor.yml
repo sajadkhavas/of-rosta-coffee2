@@ -1,0 +1,60 @@
+name: Temporary R5F Product Executor
+
+on:
+  pull_request:
+    branches:
+      - integration/rosta-r5-marketplace
+
+permissions:
+  contents: write
+
+concurrency:
+  group: r5f-executor-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  apply-reviewed-r5f-patch:
+    if: github.head_ref == 'program/r5f-roastery-grinding-selection'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout product branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Apply deterministic product patch
+        run: |
+          python3 scripts/prepare-r5f-executor.py
+          python3 scripts/apply-r5f.py
+
+      - name: Verify syntax and permanent audits are parseable
+        run: |
+          php -l backend/app/Services/Checkout/RoasteryGrindingSelection.php
+          php -l backend/app/Services/Checkout/QuoteService.php
+          php -l backend/app/Services/Checkout/OrderService.php
+          php -l backend/app/Http/Resources/CheckoutQuoteResource.php
+          php -l backend/app/Http/Resources/OrderResource.php
+          php -l backend/tests/Feature/R5FRoasteryGrindingSelectionTest.php
+          php -l backend/scripts/audit-r5f-roastery-grinding.php
+          node --check scripts/audit-r5f-roastery-grinding.mjs
+          python3 -m json.tool package.json >/dev/null
+          python3 -m json.tool backend/composer.json >/dev/null
+
+      - name: Remove temporary executor files
+        run: |
+          rm -f scripts/apply-r5f.py
+          rm -f scripts/prepare-r5f-executor.py
+          rm -f .github/workflows/r5f-executor.yml
+
+      - name: Commit product patch
+        run: |
+          git config user.name "Rosta R5F Executor"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No patch changes to commit"
+            exit 0
+          fi
+          git commit -m "R5F activate roastery grinding selection"
+          git push origin "HEAD:${{ github.head_ref }}"
