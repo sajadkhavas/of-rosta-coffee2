@@ -1,0 +1,89 @@
+from pathlib import Path
+
+path = Path(__file__).with_name("apply-r5f.py")
+text = path.read_text(encoding="utf-8")
+
+
+def swap(old: str, new: str) -> None:
+    global text
+    count = text.count(old)
+    if count != 1:
+        raise SystemExit(f"prepare-r5f: expected one block, found {count}: {old[:100]!r}")
+    text = text.replace(old, new)
+
+
+swap(
+    '''replace(quote, "                        'version' => 'r5d-product-packaging-v1',", "                        'version' => 'r5f-roastery-grinding-v1',", expected=1)''',
+    '''replace(
+    quote,
+    "                    'pricing_snapshot' => [\\n"
+    "                        'version' => 'r5d-product-packaging-v1',",
+    "                    'pricing_snapshot' => [\\n"
+    "                        'version' => 'r5f-roastery-grinding-v1',",
+)''',
+)
+
+swap(
+    '''replace(
+    cart_context,
+    "      updateQuantity,\\n      clear,",
+    "      updateQuantity,\\n"
+    "      setGrindingProfile,\\n"
+    "      clear,",
+)
+replace(
+    cart_context,
+    "      updateQuantity,\\n      clear,\\n      itemCount,",
+    "      updateQuantity,\\n"
+    "      setGrindingProfile,\\n"
+    "      clear,\\n"
+    "      itemCount,",
+)''',
+    '''replace(
+    cart_context,
+    "      updateQuantity,\\n      clear,",
+    "      updateQuantity,\\n"
+    "      setGrindingProfile,\\n"
+    "      clear,",
+    expected=2,
+)''',
+)
+
+swap(
+    '''replace(
+    schemas,
+    "    packaging_total: moneySchema,\\n    shipping_total:",
+    "    packaging_total: moneySchema,\\n"
+    "    grinding_total: moneySchema,\\n"
+    "    shipping_total:",
+    expected=1,
+)''',
+    '''replace(
+    schemas,
+    "    groups: z.array(quoteGroupWireSchema).min(1).max(50),\\n"
+    "    subtotal: moneySchema,\\n"
+    "    packaging_total: moneySchema,\\n"
+    "    shipping_total: moneySchema,",
+    "    groups: z.array(quoteGroupWireSchema).min(1).max(50),\\n"
+    "    subtotal: moneySchema,\\n"
+    "    packaging_total: moneySchema,\\n"
+    "    grinding_total: moneySchema,\\n"
+    "    shipping_total: moneySchema,",
+)''',
+)
+
+swap(
+    '''replace(
+    schemas,
+    "      packagingTotal !== value.packaging_total ||\\n      shippingTotal:",
+    "      packagingTotal !== value.packaging_total ||\\n"
+    "      grindingTotal !== value.grinding_total ||\\n"
+    "      shippingTotal:",
+)
+# The previous replacement target contains an equality expression, not a field separator.
+''',
+    '''''',
+)
+
+path.write_text(text, encoding="utf-8")
+print("R5F executor preparation complete")
