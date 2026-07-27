@@ -2,6 +2,7 @@
 
 namespace App\Services\Fulfillment;
 
+use App\Enums\DeliveryConfirmationSource;
 use App\Enums\FulfillmentIncidentStatus;
 use App\Enums\FulfillmentSlaStatus;
 use App\Enums\OrderStatus;
@@ -27,6 +28,7 @@ final class FulfillmentService
     public function __construct(
         private readonly NotificationOutboxService $outbox,
         private readonly AuditRecorder $audit,
+        private readonly DeliveryConfirmationService $deliveries,
     ) {}
 
     /**
@@ -77,7 +79,7 @@ final class FulfillmentService
                     trim((string) ($input['carrier'] ?? '')),
                     trim((string) ($input['tracking_code'] ?? '')),
                 ),
-                SubOrderStatus::Delivered => $this->deliver($order, $subOrder, $actor),
+                SubOrderStatus::Delivered => $this->deliver($order, $subOrder, $actor, $request),
                 default => throw new ApiDomainException(
                     'fulfillment.transition_unsupported',
                     'روستری فقط می‌تواند مراحل آماده‌سازی و تحویل به حمل را ثبت کند.',
@@ -245,15 +247,34 @@ final class FulfillmentService
             ->orderBy('sequence')
             ->lockForUpdate()
             ->first();
-        if ($firstLeg instanceof ShipmentLeg) {
-            $firstLeg->forceFill([
-                'legacy_shipment_id' => $shipment->id,
-                'status' => ShipmentLegStatus::PickedUp,
-                'carrier' => $carrier,
-                'tracking_code' => $trackingCode,
-                'picked_up_at' => now(),
-            ])->save();
+        if (! $firstLeg instanceof ShipmentLeg) {
+            $firstLeg = ShipmentLeg::query()->create([
+                'order_id' => $order->id,
+                'sub_order_id' => $subOrder->id,
+                'route_type' => 'roastery_to_customer',
+                'sequence' => 1,
+                'status' => ShipmentLegStatus::AwaitingPickup,
+                'charge_owner_type' => 'roastery',
+                'charge_owner_id' => $subOrder->roastery_id,
+                'gross_amount' => $subOrder->shipping_total,
+                'tax_amount' => 0,
+                'total_amount' => $subOrder->shipping_total,
+                'currency' => $subOrder->currency,
+                'origin_snapshot' => [
+                    'type' => 'roastery',
+                    'id' => $subOrder->roastery_id,
+                ],
+                'destination_snapshot' => $order->address_snapshot,
+                'planned_at' => now(),
+            ]);
         }
+        $firstLeg->forceFill([
+            'legacy_shipment_id' => $shipment->id,
+            'status' => ShipmentLegStatus::PickedUp,
+            'carrier' => $carrier,
+            'tracking_code' => $trackingCode,
+            'picked_up_at' => now(),
+        ])->save();
 
         $this->setStatus(
             $subOrder,
@@ -261,7 +282,7 @@ final class FulfillmentService
             $actor,
             metadata: [
                 'shipment_id' => $shipment->id,
-                'shipment_leg_id' => $firstLeg?->id,
+                'shipment_leg_id' => $firstLeg->id,
                 'carrier' => $carrier,
                 'tracking_code' => $trackingCode,
             ],
@@ -279,44 +300,37 @@ final class FulfillmentService
         );
     }
 
-    private function deliver(Order $order, SubOrder $subOrder, User $actor): void
-    {
-        $shipment = Shipment::query()
+    private function deliver(
+        Order $order,
+        SubOrder $subOrder,
+        User $actor,
+        Request $request,
+    ): void {
+        $finalLeg = ShipmentLeg::query()
             ->where('sub_order_id', $subOrder->id)
+            ->orderByDesc('sequence')
             ->lockForUpdate()
             ->first();
-        if (! $shipment instanceof Shipment) {
+        if (! $finalLeg instanceof ShipmentLeg) {
             throw new ApiDomainException(
-                'fulfillment.shipment_missing',
-                'اطلاعات ارسال برای این سفارش ثبت نشده است.',
+                'fulfillment.shipment_leg_missing',
+                'مرحله ارسال برای این سفارش ثبت نشده است.',
                 409,
             );
         }
 
-        $shipment->forceFill(['status' => 'delivered', 'delivered_at' => now()])->save();
-        ShipmentLeg::query()
-            ->where('sub_order_id', $subOrder->id)
-            ->where('status', '!=', ShipmentLegStatus::Delivered->value)
-            ->orderBy('sequence')
-            ->get()
-            ->each(function (ShipmentLeg $leg): void {
-                $leg->forceFill([
-                    'status' => ShipmentLegStatus::Delivered,
-                    'delivered_at' => now(),
-                ])->save();
-            });
-        $this->setStatus(
-            $subOrder,
-            SubOrderStatus::Delivered,
+        $this->deliveries->confirmLocked(
             $actor,
-            metadata: ['shipment_id' => $shipment->id],
-            timestamps: ['delivered_at' => now()],
-        );
-        $this->outbox->queueOrder(
             $order,
-            'order.delivered',
-            subOrder: $subOrder,
-            deduplicationKey: "sub-order:{$subOrder->id}:delivered",
+            $subOrder,
+            $finalLeg,
+            DeliveryConfirmationSource::Administrator,
+            [
+                'idempotency_key' => "legacy-admin-delivery:{$subOrder->id}:{$finalLeg->id}",
+                'proof_type' => 'administrator_override',
+                'proof_payload' => ['legacy_fulfillment_transition' => true],
+            ],
+            $request,
         );
     }
 
@@ -382,7 +396,7 @@ final class FulfillmentService
             'subOrders.roastery.cover',
             'subOrders.items.services.grindingProfile',
             'subOrders.shipment',
-            'subOrders.shipmentLegs',
+            'subOrders.shipmentLegs.deliveryConfirmation',
             'subOrders.fulfillmentIncidents',
             'events',
         ]);

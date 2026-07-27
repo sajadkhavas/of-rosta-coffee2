@@ -8,7 +8,7 @@ import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import { Alert, Button, Skeleton } from "@/components/system";
 import { createVerifiedReview } from "@/lib/api/reviews";
-import { orderQueryOptions } from "@/lib/api/orders";
+import { confirmOrderDelivery, orderQueryOptions } from "@/lib/api/orders";
 import { isApiError } from "@/lib/api/client";
 import type { OrderLine, OrderStatus, SubOrderStatus } from "@/lib/api/contracts";
 import {
@@ -19,6 +19,7 @@ import {
 } from "@/lib/account-format";
 import { formatIrr, formatWeight } from "@/lib/catalog-format";
 import { absoluteUrl } from "@/config/site";
+import { queryKeys } from "@/lib/api/query-keys";
 
 export const Route = createFileRoute("/orders/$id")({
   head: ({ params }) => ({
@@ -31,7 +32,7 @@ export const Route = createFileRoute("/orders/$id")({
   component: OrderDetailPage,
 });
 
-const timelineSteps = ["ثبت سفارش", "تأیید روستری", "آماده‌سازی", "ارسال", "تحویل"];
+const timelineSteps = ["ثبت سفارش", "تعهد ارسال", "آماده‌سازی", "ارسال", "تحویل"];
 function orderStage(status: OrderStatus, subStatuses: SubOrderStatus[]) {
   if (status === "delivered" || status === "partially_delivered") return 4;
   if (status === "shipped" || status === "partially_shipped") return 3;
@@ -64,7 +65,15 @@ function OrderDetailPage() {
 
 function OrderContent() {
   const { id } = Route.useParams();
+  const queryClient = useQueryClient();
   const query = useQuery(orderQueryOptions(id));
+  const deliveryMutation = useMutation({
+    mutationFn: confirmOrderDelivery,
+    onSuccess: async (updatedOrder) => {
+      queryClient.setQueryData(queryKeys.orders.detail(id), updatedOrder);
+      await queryClient.invalidateQueries({ queryKey: ["orders"] });
+    },
+  });
   const [copiedCode, setCopiedCode] = useState<string>();
   if (query.isPending)
     return (
@@ -192,6 +201,20 @@ function OrderContent() {
                 </span>
               </div>
               <div className="mt-4 grid gap-3">
+                {subOrder.delivery.confirmedAt ? (
+                  <Alert variant="success" title="تحویل نهایی ثبت شد">
+                    مهلت اعلام مشکل تا {formatAccountDate(subOrder.delivery.disputeWindowEndsAt)}{" "}
+                    فعال است.
+                    {subOrder.delivery.settlementState === "released"
+                      ? " این زیرسفارش وارد چرخه تسویه روستری شده است."
+                      : " مبلغ روستری تا پایان این مهلت آزاد نمی‌شود."}
+                  </Alert>
+                ) : null}
+                {subOrder.delivery.settlementState === "blocked" ? (
+                  <Alert variant="warning" title="تسویه این بخش متوقف است">
+                    تیم رستا پیش از آزادسازی مبلغ، وضعیت این زیرسفارش را بررسی می‌کند.
+                  </Alert>
+                ) : null}
                 {subOrder.fulfillment.acceptanceMode === "automatic_contractual" ? (
                   <Alert variant="info" title="تعهد ارسال روستری فعال است">
                     این زیرسفارش پس از پرداخت به‌صورت خودکار قطعی شده و روستری موظف به آماده‌سازی و
@@ -280,10 +303,54 @@ function OrderContent() {
                               ? "هاب رستا ← مشتری"
                               : "روستری ← مشتری"}
                         </span>
-                        <span>{leg.totalAmount === 0 ? "رایگان" : formatIrr(leg.totalAmount)}</span>
+                        <span className="text-left">
+                          {leg.deliveryConfirmation
+                            ? `تحویل‌شده · ${formatAccountDate(leg.deliveryConfirmation.confirmedAt)}`
+                            : leg.status === "picked_up" || leg.status === "in_transit"
+                              ? "در مسیر"
+                              : leg.status === "awaiting_pickup"
+                                ? "در انتظار دریافت حامل"
+                                : leg.totalAmount === 0
+                                  ? "رایگان"
+                                  : formatIrr(leg.totalAmount)}
+                        </span>
                       </li>
                     ))}
                   </ol>
+                </div>
+              ) : null}
+              {subOrder.delivery.customerCanConfirm ? (
+                <div className="mt-5 rounded-xl border border-emerald-400/40 bg-emerald-950/10 p-4">
+                  <p className="font-bold">بسته را دریافت کرده‌اید؟</p>
+                  <p className="mt-2 text-xs leading-6 text-[color:var(--light)]">
+                    با تأیید دریافت، مهلت اعلام مشکل آغاز می‌شود. تحویل مرحله میانی هاب به‌عنوان
+                    دریافت مشتری محاسبه نمی‌شود.
+                  </p>
+                  {deliveryMutation.isError ? (
+                    <div className="mt-3">
+                      <Alert variant="danger">
+                        {isApiError(deliveryMutation.error)
+                          ? deliveryMutation.error.message
+                          : "ثبت تحویل انجام نشد."}
+                      </Alert>
+                    </div>
+                  ) : null}
+                  <Button
+                    type="button"
+                    className="mt-3"
+                    loading={deliveryMutation.isPending}
+                    onClick={() => {
+                      const finalLeg = subOrder.shipmentLegs.find((leg) => leg.isFinal);
+                      if (!finalLeg) return;
+                      deliveryMutation.mutate({
+                        orderId: order.id,
+                        shipmentLegId: finalLeg.id,
+                        idempotencyKey: `customer-delivery:${order.id}:${finalLeg.id}:${crypto.randomUUID()}`,
+                      });
+                    }}
+                  >
+                    تأیید دریافت سفارش
+                  </Button>
                 </div>
               ) : null}
               {subOrder.shipment ? (

@@ -132,6 +132,13 @@ paths:
         - { $ref: "#/components/parameters/UploadId" }
       responses:
         "200": { description: Object validated and MediaAsset registered }
+  /seller/roasteries/{roasteryId}/settlements:
+    get:
+      operationId: listSellerSettlementOverview
+      parameters: [{ $ref: "#/components/parameters/RoasteryId" }]
+      responses:
+        "200": { description: Held, eligible, scheduled and paid balances plus payout batches }
+        "404": { description: Roastery is outside the user scope }
 components:
   securitySchemes:
     sanctumSession:

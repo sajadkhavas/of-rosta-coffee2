@@ -296,7 +296,7 @@ test("R3C2 completes commerce, scoped seller, administrator and adversarial jour
   const administrator = await rolePage(browser, "09120000001", "/admin/operations");
   expect(array(administrator.user.roles, "administrator roles")).toContain("administrator");
   await expect(
-    administrator.page.getByRole("heading", { name: "نظارت کاتالوگ، پشتیبانی و سلامت عملیات" }),
+    administrator.page.getByRole("heading", { name: "نظارت کاتالوگ، تحویل، تسویه و سلامت عملیات" }),
   ).toBeVisible();
   const adminDelivery = await api(
     administrator.page,
@@ -308,9 +308,15 @@ test("R3C2 completes commerce, scoped seller, administrator and adversarial jour
 
   const deliveredOrder = await api(customer.page, `/orders/${encodeURIComponent(orderId)}`);
   expect(deliveredOrder.status).toBe(200);
-  expect(text(record(data(deliveredOrder), "delivered order").status, "delivered status")).toBe(
-    "delivered",
+  const deliveredOrderData = record(data(deliveredOrder), "delivered order");
+  expect(text(deliveredOrderData.status, "delivered status")).toBe("delivered");
+  const deliveredSubOrder = record(
+    array(deliveredOrderData.sub_orders, "delivered sub-orders")[0],
+    "delivered sub-order",
   );
+  const deliveryState = record(deliveredSubOrder.delivery, "delivery state");
+  expect(text(deliveryState.settlement_state, "settlement state")).toBe("dispute_hold");
+  expect(text(deliveryState.dispute_window_ends_at, "dispute window").length).toBeGreaterThan(10);
 
   const reviewResponse = await api(customer.page, "/reviews", "POST", {
     order_item_id: orderItemId,

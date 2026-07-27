@@ -245,3 +245,125 @@ export function adminReconciliationQueryOptions(
     staleTime: 15_000,
   });
 }
+
+export const settlementBatchStatusSchema = z.enum(["pending", "processing", "paid", "failed"]);
+
+const settlementAllocationSchema = z
+  .object({
+    id: identifier,
+    sub_order_id: nullableIdentifier,
+    allocation_type: z.string().trim().min(1).max(64),
+    net_amount: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+    status: z.enum(["held", "eligible", "scheduled", "paid", "reversed", "requires_review"]),
+  })
+  .strict();
+
+const settlementBatchSchema = z
+  .object({
+    id: identifier,
+    roastery: z.object({ id: identifier, name: nullableText(160) }).strict(),
+    status: settlementBatchStatusSchema,
+    currency: z.literal("IRR"),
+    gross_total: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+    discount_total: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+    tax_total: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+    net_total: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+    allocation_count: z.number().int().positive().max(100_000),
+    payout_reference: nullableText(190),
+    failure_code: nullableText(160),
+    failure_message: nullableText(1_000),
+    scheduled_at: nullableDate,
+    processing_at: nullableDate,
+    paid_at: nullableDate,
+    failed_at: nullableDate,
+    created_at: nullableDate,
+    allocations: z.array(settlementAllocationSchema).max(10_000),
+  })
+  .strict();
+
+const settlementBatchListSchema = listResourceSchema(settlementBatchSchema);
+const settlementBatchResourceSchema = itemResourceSchema(settlementBatchSchema);
+
+export type AdminSettlementBatchStatus = z.infer<typeof settlementBatchStatusSchema>;
+export type AdminSettlementBatch = z.infer<typeof settlementBatchSchema>;
+
+export async function listAdminSettlementBatches(
+  status?: AdminSettlementBatchStatus | "all",
+): Promise<FinanceList<AdminSettlementBatch>> {
+  const query = new URLSearchParams({ per_page: "100" });
+  if (status && status !== "all") query.set("status", status);
+  const payload = settlementBatchListSchema.parse(
+    await apiFetch<unknown>(`/admin/finance/settlement-batches?${query.toString()}`),
+  );
+  return payload.data;
+}
+
+export async function createAdminSettlementBatch(input: {
+  roasteryId: string;
+  idempotencyKey: string;
+}): Promise<AdminSettlementBatch> {
+  const payload = settlementBatchResourceSchema.parse(
+    await apiFetch<unknown>("/admin/finance/settlement-batches", {
+      method: "POST",
+      body: {
+        roastery_id: input.roasteryId.trim(),
+        currency: "IRR",
+        idempotency_key: input.idempotencyKey.trim(),
+      },
+    }),
+  );
+  return payload.data;
+}
+
+export async function resolveAdminSettlementBatch(input: {
+  batchId: string;
+  action: "process" | "paid" | "failed";
+  payoutReference?: string;
+  failureCode?: string;
+  failureMessage?: string;
+}): Promise<AdminSettlementBatch> {
+  const payload = settlementBatchResourceSchema.parse(
+    await apiFetch<unknown>(
+      `/admin/finance/settlement-batches/${encodeURIComponent(input.batchId)}/resolve`,
+      {
+        method: "POST",
+        body: {
+          action: input.action,
+          payout_reference: input.payoutReference?.trim() || null,
+          failure_code: input.failureCode?.trim() || null,
+          failure_message: input.failureMessage?.trim() || null,
+        },
+      },
+    ),
+  );
+  return payload.data;
+}
+
+export async function setAdminSettlementHold(input: {
+  subOrderId: string;
+  action: "hold" | "release";
+  code?: string;
+  note: string;
+}) {
+  return apiFetch<unknown>(
+    `/admin/sub-orders/${encodeURIComponent(input.subOrderId)}/settlement-hold`,
+    {
+      method: "POST",
+      body: {
+        action: input.action,
+        code: input.action === "hold" ? input.code?.trim() || null : null,
+        note: input.note.trim(),
+      },
+    },
+  );
+}
+
+export function adminSettlementBatchesQueryOptions(
+  status: AdminSettlementBatchStatus | "all" = "all",
+) {
+  return queryOptions({
+    queryKey: ["admin", "finance", "settlement-batches", status],
+    queryFn: () => listAdminSettlementBatches(status),
+    staleTime: 15_000,
+  });
+}

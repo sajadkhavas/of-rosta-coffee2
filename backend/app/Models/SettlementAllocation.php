@@ -37,6 +37,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read OrderItemService|null $orderItemService
  * @property-read ShipmentLeg|null $shipmentLeg
  * @property-read Collection<int, OrderTaxLine> $taxLines
+ * @property-read Collection<int, SettlementBatchAllocation> $batchMemberships
  */
 final class SettlementAllocation extends Model
 {
@@ -118,5 +119,11 @@ final class SettlementAllocation extends Model
     public function taxLines(): HasMany
     {
         return $this->hasMany(OrderTaxLine::class);
+    }
+
+    /** @return HasMany<SettlementBatchAllocation, $this> */
+    public function batchMemberships(): HasMany
+    {
+        return $this->hasMany(SettlementBatchAllocation::class);
     }
 }

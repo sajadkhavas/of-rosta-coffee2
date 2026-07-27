@@ -43,6 +43,10 @@ return [
         'preparation_sla_hours' => max(1, min(168, (int) env('ROSTA_PREPARATION_SLA_HOURS', 24))),
         'handoff_sla_hours' => max(1, min(336, (int) env('ROSTA_HANDOFF_SLA_HOURS', 48))),
     ],
+    'settlement' => [
+        'dispute_window_hours' => max(1, min(720, (int) env('ROSTA_DISPUTE_WINDOW_HOURS', 72))),
+        'carrier_webhook_secret' => env('ROSTA_CARRIER_WEBHOOK_SECRET', ''),
+    ],
     'refund' => [
         'enabled' => $refundEnabled,
         'provider' => env('REFUND_DRIVER', 'disabled'),

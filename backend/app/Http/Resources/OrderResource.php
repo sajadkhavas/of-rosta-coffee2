@@ -61,6 +61,7 @@ final class OrderResource extends JsonResource
     private function subOrderPayload(SubOrder $subOrder): array
     {
         $legacyShipment = $subOrder->shipment;
+        $finalSequence = (int) ($subOrder->shipmentLegs->max('sequence') ?? 0);
 
         return [
             'id' => $subOrder->id,
@@ -78,6 +79,22 @@ final class OrderResource extends JsonResource
                     ? FulfillmentSlaStatus::Breached->value
                     : $subOrder->sla_status->value,
                 'is_breached' => $this->isSlaBreached($subOrder),
+            ],
+            'delivery' => [
+                'confirmed_at' => $subOrder->delivery_confirmed_at?->toIso8601String(),
+                'dispute_window_ends_at' => $subOrder->dispute_window_ends_at?->toIso8601String(),
+                'customer_can_confirm' => $subOrder->status === SubOrderStatus::Shipped
+                    && $subOrder->shipmentLegs->contains(static fn (ShipmentLeg $leg): bool => $leg->sequence === $finalSequence
+                        && in_array($leg->status->value, ['picked_up', 'in_transit'], true)
+                    ),
+                'settlement_state' => match (true) {
+                    $subOrder->settlement_hold_code !== null => 'blocked',
+                    $subOrder->settlement_released_at !== null => 'released',
+                    $subOrder->delivery_confirmed_at !== null => 'dispute_hold',
+                    default => 'not_delivered',
+                },
+                'settlement_hold_code' => $subOrder->settlement_hold_code,
+                'settlement_released_at' => $subOrder->settlement_released_at?->toIso8601String(),
             ],
             'incidents' => $subOrder->fulfillmentIncidents
                 ->map(static fn (FulfillmentIncident $incident): array => [
@@ -123,6 +140,7 @@ final class OrderResource extends JsonResource
                     'id' => $leg->id,
                     'route_type' => $leg->route_type,
                     'sequence' => $leg->sequence,
+                    'is_final' => $leg->sequence === $finalSequence,
                     'status' => $leg->status->value,
                     'carrier' => $leg->carrier,
                     'tracking_code' => $leg->tracking_code,
@@ -131,6 +149,13 @@ final class OrderResource extends JsonResource
                     'planned_at' => $leg->planned_at?->toIso8601String(),
                     'picked_up_at' => $leg->picked_up_at?->toIso8601String(),
                     'delivered_at' => $leg->delivered_at?->toIso8601String(),
+                    'delivery_confirmation' => $leg->deliveryConfirmation === null
+                        ? null
+                        : [
+                            'source' => $leg->deliveryConfirmation->source->value,
+                            'proof_type' => $leg->deliveryConfirmation->proof_type,
+                            'confirmed_at' => $leg->deliveryConfirmation->confirmed_at->toIso8601String(),
+                        ],
                 ])
                 ->values()
                 ->all(),

@@ -10,6 +10,7 @@ import {
   Send,
   Store,
   Truck,
+  WalletCards,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
@@ -36,6 +37,7 @@ import {
   sellerOrdersQueryOptions,
   sellerProductsQueryOptions,
   sellerRoasteriesQueryOptions,
+  sellerSettlementsQueryOptions,
   transitionSellerOrder,
   updateSellerProduct,
   uploadSellerMedia,
@@ -59,6 +61,7 @@ const tabs = [
   { id: "orders", label: "سفارش‌ها", icon: PackageCheck },
   { id: "catalog", label: "کاتالوگ و موجودی", icon: Boxes },
   { id: "media", label: "رسانه‌ها", icon: ImagePlus },
+  { id: "settlements", label: "تسویه‌ها", icon: WalletCards },
 ] as const;
 
 type TabId = (typeof tabs)[number]["id"];
@@ -186,6 +189,9 @@ export function SellerOperationsDashboard({ user }: { user: AuthUser }) {
       {activeTab === "orders" ? <SellerOrdersWorkspace roastery={selectedRoastery} /> : null}
       {activeTab === "catalog" ? <SellerCatalogWorkspace roastery={selectedRoastery} /> : null}
       {activeTab === "media" ? <SellerMediaWorkspace roastery={selectedRoastery} /> : null}
+      {activeTab === "settlements" ? (
+        <SellerSettlementsWorkspace roastery={selectedRoastery} />
+      ) : null}
     </section>
   );
 }
@@ -1791,6 +1797,124 @@ function SellerMediaWorkspace({ roastery }: { roastery: SellerRoastery }) {
       </section>
     </div>
   );
+}
+
+function SellerSettlementsWorkspace({ roastery }: { roastery: SellerRoastery }) {
+  const settlementsQuery = useQuery(sellerSettlementsQueryOptions(roastery.id));
+
+  if (settlementsQuery.isLoading) {
+    return (
+      <section className="grid gap-4 md:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Skeleton key={index} className="h-28" />
+        ))}
+      </section>
+    );
+  }
+
+  if (settlementsQuery.isError) {
+    return <Alert variant="danger">{errorMessage(settlementsQuery.error)}</Alert>;
+  }
+
+  const data = settlementsQuery.data;
+  if (!data) return null;
+
+  const summaries = [
+    { label: "در انتظار تحویل یا پایان مهلت اعتراض", value: data.summary.held },
+    { label: "قابل افزودن به Batch", value: data.summary.eligible },
+    { label: "در برنامه پرداخت", value: data.summary.scheduled },
+    { label: "پرداخت‌شده", value: data.summary.paid },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {summaries.map((item) => (
+          <article
+            key={item.label}
+            className="rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5"
+          >
+            <p className="text-xs leading-6 text-[color:var(--light)]">{item.label}</p>
+            <p className="mt-3 font-mono-num text-xl font-bold text-[color:var(--steam)]">
+              {formatIrr(item.value)}
+            </p>
+          </article>
+        ))}
+      </section>
+
+      <section className="rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-bold">صورت‌حساب‌ها و پرداخت‌های روستری</h2>
+            <p className="mt-1 text-xs leading-6 text-[color:var(--light)]">
+              مبلغ سفارش هنگام ارسال آزاد نمی‌شود؛ تحویل قطعی، پایان مهلت اعتراض و نبود اختلاف شرط
+              ورود به Batch پرداخت است.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => void settlementsQuery.refetch()}
+            loading={settlementsQuery.isFetching}
+          >
+            <RefreshCw size={15} />
+            تازه‌سازی
+          </Button>
+        </div>
+
+        <div className="mt-5 grid gap-3">
+          {data.batches.length ? (
+            data.batches.map((batch) => (
+              <article
+                key={batch.id}
+                className="rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] p-4"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-mono-num text-sm font-bold">Batch {batch.id}</p>
+                    <p className="mt-2 text-xs text-[color:var(--light)]">
+                      {toFa(batch.allocation_count)} ردیف مالی · {formatDate(batch.scheduled_at)}
+                    </p>
+                  </div>
+                  <StatusPill label={settlementBatchStatusLabel(batch.status)} />
+                </div>
+                <div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-t border-[color:var(--mid)] pt-4">
+                  <div>
+                    <p className="text-xs text-[color:var(--light)]">خالص پرداخت</p>
+                    <p className="mt-1 font-mono-num font-bold text-[color:var(--steam)]">
+                      {formatIrr(batch.net_total)}
+                    </p>
+                  </div>
+                  <p className="text-xs text-[color:var(--light)]">
+                    {batch.payout_reference
+                      ? `مرجع بانکی: ${batch.payout_reference}`
+                      : batch.failed_at
+                        ? `پرداخت ناموفق در ${formatDate(batch.failed_at)}`
+                        : batch.paid_at
+                          ? `پرداخت در ${formatDate(batch.paid_at)}`
+                          : "در انتظار اقدام مالی رستا"}
+                  </p>
+                </div>
+              </article>
+            ))
+          ) : (
+            <EmptyState
+              title="هنوز Batch تسویه‌ای ایجاد نشده"
+              description="پس از تحویل قطعی و پایان مهلت اعتراض، مبالغ واجد شرایط توسط واحد مالی رستا در Batch قرار می‌گیرند."
+            />
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function settlementBatchStatusLabel(status: "pending" | "processing" | "paid" | "failed") {
+  return {
+    pending: "در انتظار پردازش",
+    processing: "در حال پرداخت",
+    paid: "پرداخت‌شده",
+    failed: "ناموفق؛ قابل تلاش مجدد",
+  }[status];
 }
 
 function StatusPill({ label, subtle = false }: { label: string; subtle?: boolean }) {

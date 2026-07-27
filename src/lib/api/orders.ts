@@ -111,6 +111,14 @@ function mapSubOrder(value: WireSubOrder): SubOrderSummary {
       slaStatus: value.fulfillment.sla_status,
       isBreached: value.fulfillment.is_breached,
     },
+    delivery: {
+      confirmedAt: value.delivery.confirmed_at ?? null,
+      disputeWindowEndsAt: value.delivery.dispute_window_ends_at ?? null,
+      customerCanConfirm: value.delivery.customer_can_confirm,
+      settlementState: value.delivery.settlement_state,
+      settlementHoldCode: value.delivery.settlement_hold_code ?? null,
+      settlementReleasedAt: value.delivery.settlement_released_at ?? null,
+    },
     incidents: value.incidents.map((incident) => ({
       id: incident.id,
       status: incident.status,
@@ -135,6 +143,7 @@ function mapSubOrder(value: WireSubOrder): SubOrderSummary {
       id: leg.id,
       routeType: leg.route_type,
       sequence: leg.sequence,
+      isFinal: leg.is_final,
       status: leg.status,
       carrier: leg.carrier ?? null,
       trackingCode: leg.tracking_code ?? null,
@@ -143,6 +152,13 @@ function mapSubOrder(value: WireSubOrder): SubOrderSummary {
       plannedAt: leg.planned_at ?? null,
       pickedUpAt: leg.picked_up_at ?? null,
       deliveredAt: leg.delivered_at ?? null,
+      deliveryConfirmation: leg.delivery_confirmation
+        ? {
+            source: leg.delivery_confirmation.source,
+            proofType: leg.delivery_confirmation.proof_type,
+            confirmedAt: leg.delivery_confirmation.confirmed_at,
+          }
+        : null,
     })),
   };
 }
@@ -237,3 +253,29 @@ export const orderQueryOptions = (id: string) =>
     staleTime: 20_000,
     retry: retryAccountQuery,
   });
+
+export async function confirmOrderDelivery(input: {
+  orderId: string;
+  shipmentLegId: string;
+  idempotencyKey: string;
+  customerNote?: string;
+}): Promise<OrderDetail> {
+  const raw = await apiFetch(
+    `/orders/${encodeURIComponent(input.orderId)}/shipment-legs/${encodeURIComponent(input.shipmentLegId)}/delivery-confirmations`,
+    {
+      method: "POST",
+      body: {
+        idempotency_key: input.idempotencyKey,
+        proof_type: "customer_acknowledgement",
+        proof_payload: null,
+        customer_note: input.customerNote?.trim() || null,
+      },
+    },
+  );
+  const response = parseContract(
+    resourceSchema(authoritativeOrderDetailWireSchema),
+    raw,
+    "تأیید دریافت سفارش",
+  );
+  return mapOrderDetail(response.data);
+}

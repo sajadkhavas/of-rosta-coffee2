@@ -36,6 +36,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property-read Collection<int, CheckoutQuoteGroup> $checkoutQuoteGroups
  * @property-read Collection<int, Order> $orders
  * @property-read Collection<int, SubOrder> $subOrders
+ * @property-read Collection<int, SettlementBatch> $settlementBatches
  * @property-read RoasteryGrindingCapability|null $grindingCapability
  * @property-read MediaAsset|null $logo
  * @property-read MediaAsset|null $cover
@@ -124,6 +125,12 @@ final class Roastery extends Model
     public function subOrders(): HasMany
     {
         return $this->hasMany(SubOrder::class);
+    }
+
+    /** @return HasMany<SettlementBatch, $this> */
+    public function settlementBatches(): HasMany
+    {
+        return $this->hasMany(SettlementBatch::class);
     }
 
     /** @return HasOne<RoasteryGrindingCapability, $this> */
