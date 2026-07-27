@@ -127,6 +127,7 @@ final class QuoteService
          *     subtotal: int,
          *     packaging_total: int,
          *     grinding_total: int,
+         *     hub_route: array<string, mixed>|null,
          *     items: list<array{
          *         product: Product,
          *         variant: ProductVariant,
@@ -141,6 +142,10 @@ final class QuoteService
          *             unit_fee: int,
          *             line_total: int,
          *             pricing_snapshot: array<string, mixed>,
+         *             provider_type: 'roastery'|'rosta_hub',
+         *             provider_roastery_id: string|null,
+         *             provider_hub_id: string|null,
+         *             route_shipping_total: int,
          *             service_snapshot: array<string, mixed>
          *         }|null
          *     }>
@@ -185,14 +190,17 @@ final class QuoteService
             }
 
             $lineTotal = $this->multiplyMoney($variant->price, $quantity);
-            $unitPackagingFee = $product->packagingFee();
-            $linePackagingTotal = $this->multiplyMoney($unitPackagingFee, $quantity);
             $grinding = $this->grinding->resolve(
                 $product->roastery,
                 $variant,
                 $item['grinding_profile_id'],
                 $quantity,
+                $address,
+                $purpose === QuotePurpose::Checkout,
             );
+            $isHubGrinding = ($grinding['provider_type'] ?? null) === 'rosta_hub';
+            $unitPackagingFee = $isHubGrinding ? 0 : $product->packagingFee();
+            $linePackagingTotal = $this->multiplyMoney($unitPackagingFee, $quantity);
             $lineGrindingTotal = $grinding['line_total'] ?? 0;
             $subtotal = $this->addMoney($subtotal, $lineTotal);
             $roasteryId = (string) $product->roastery_id;
@@ -203,6 +211,7 @@ final class QuoteService
                     'subtotal' => 0,
                     'packaging_total' => 0,
                     'grinding_total' => 0,
+                    'hub_route' => null,
                     'items' => [],
                 ];
             }
@@ -219,6 +228,23 @@ final class QuoteService
                 $resolvedGroups[$roasteryId]['grinding_total'],
                 $lineGrindingTotal,
             );
+            if ($isHubGrinding) {
+                $route = $grinding['service_snapshot']['route'];
+                $hubRoute = [
+                    'hub' => $grinding['service_snapshot']['hub'],
+                    'zone' => $grinding['service_snapshot']['zone'],
+                    'route' => $route,
+                ];
+                $existingRoute = $resolvedGroups[$roasteryId]['hub_route'];
+                if ($existingRoute !== null && $existingRoute !== $hubRoute) {
+                    throw new ApiDomainException(
+                        'mixed_state_conflict',
+                        'همه سرویس‌های هاب یک روستری باید از یک مسیر یکسان عبور کنند.',
+                        409,
+                    );
+                }
+                $resolvedGroups[$roasteryId]['hub_route'] = $hubRoute;
+            }
             $resolvedGroups[$roasteryId]['items'][] = [
                 'product' => $product,
                 'variant' => $variant,
@@ -255,11 +281,33 @@ final class QuoteService
         $groupSubtotals = [];
         $shippingTotal = 0;
         $shippingSnapshots = [];
+        $warnings = [];
 
         foreach ($resolvedGroups as $roasteryId => &$group) {
-            $shippingResult = $purpose === QuotePurpose::Checkout
-                ? $this->shipping->quote($group['roastery'], $address, $group['subtotal'])
-                : ['total' => 0, 'snapshot' => null];
+            if ($group['hub_route'] !== null) {
+                $route = $group['hub_route']['route'];
+                $shippingResult = $purpose === QuotePurpose::Checkout
+                    ? [
+                        'total' => (int) $route['total_shipping_fee'],
+                        'snapshot' => [
+                            'version' => 'r5g-rosta-hub-route-v1',
+                            'provider_type' => 'rosta_hub',
+                            ...$group['hub_route'],
+                        ],
+                    ]
+                    : ['total' => 0, 'snapshot' => null];
+
+                if ($purpose === QuotePurpose::CartValidation) {
+                    $warnings[] = [
+                        'code' => 'hub_address_confirmation_required',
+                        'message' => 'آسیاب هاب رستا پس از انتخاب آدرس تهران یا کرج نهایی می‌شود.',
+                    ];
+                }
+            } else {
+                $shippingResult = $purpose === QuotePurpose::Checkout
+                    ? $this->shipping->quote($group['roastery'], $address, $group['subtotal'])
+                    : ['total' => 0, 'snapshot' => null];
+            }
 
             $group['shipping_total'] = (int) $shippingResult['total'];
             $group['shipping_snapshot'] = $shippingResult['snapshot'];
@@ -315,6 +363,7 @@ final class QuoteService
             $grandTotal,
             $shippingSnapshots,
             $resolvedGroups,
+            $warnings,
         ): CheckoutQuote {
             $singleRoasteryId = count($resolvedGroups) === 1
                 ? array_key_first($resolvedGroups)
@@ -336,7 +385,7 @@ final class QuoteService
                     ? null
                     : $this->addressSnapshot($address),
                 'shipping_snapshot' => ['groups' => $shippingSnapshots],
-                'warnings' => [],
+                'warnings' => $warnings,
                 'expires_at' => now()->addMinutes(
                     (int) config('rosta.checkout.quote_ttl_minutes', 15),
                 ),
@@ -355,8 +404,11 @@ final class QuoteService
                     'grand_total' => $group['grand_total'],
                     'currency' => 'IRR',
                     'pricing_snapshot' => [
-                        'version' => 'r5f-roastery-grinding-v1',
+                        'version' => $group['hub_route'] === null
+                            ? 'r5f-roastery-grinding-v1'
+                            : 'r5g-rosta-hub-grinding-v1',
                         'shipping' => $group['shipping_snapshot'],
+                        'hub_route' => $group['hub_route'],
                     ],
                 ]);
 
@@ -382,13 +434,27 @@ final class QuoteService
                             : $this->batchSnapshot($batch),
                     ]);
 
+                    $grinding = $resolved['grinding'];
+                    $isHubGrinding = ($grinding['provider_type'] ?? null) === 'rosta_hub';
                     $packagingSnapshot = $this->packaging->snapshot($product);
+                    if ($isHubGrinding) {
+                        $packagingSnapshot = [
+                            ...$packagingSnapshot,
+                            'mode' => 'free',
+                            'fee_amount' => 0,
+                            'is_free' => true,
+                            'label' => 'بسته‌بندی روستری در مسیر هاب: رایگان',
+                            'overridden_by' => 'rosta_hub',
+                        ];
+                    }
+
                     CheckoutQuoteItemService::query()->create([
                         'quote_group_id' => $quoteGroup->id,
                         'quote_item_id' => $quoteItem->id,
                         'service_type' => 'packaging',
                         'provider_type' => 'roastery',
                         'provider_roastery_id' => $product->roastery_id,
+                        'provider_hub_id' => null,
                         'grinding_profile_id' => null,
                         'service_fee' => 0,
                         'packaging_fee' => $resolved['line_packaging_total'],
@@ -397,7 +463,9 @@ final class QuoteService
                         'total_amount' => $resolved['line_packaging_total'],
                         'currency' => 'IRR',
                         'pricing_snapshot' => [
-                            'version' => 'r5d-product-packaging-v1',
+                            'version' => $isHubGrinding
+                                ? 'r5g-rosta-hub-packaging-override-v1'
+                                : 'r5d-product-packaging-v1',
                             'unit_fee' => $resolved['unit_packaging_fee'],
                             'quantity' => $resolved['quantity'],
                             'line_total' => $resolved['line_packaging_total'],
@@ -405,14 +473,45 @@ final class QuoteService
                         'service_snapshot' => $packagingSnapshot,
                     ]);
 
-                    $grinding = $resolved['grinding'];
+                    if ($isHubGrinding) {
+                        CheckoutQuoteItemService::query()->create([
+                            'quote_group_id' => $quoteGroup->id,
+                            'quote_item_id' => $quoteItem->id,
+                            'service_type' => 'packaging',
+                            'provider_type' => 'rosta_hub',
+                            'provider_roastery_id' => null,
+                            'provider_hub_id' => $grinding['provider_hub_id'],
+                            'grinding_profile_id' => null,
+                            'service_fee' => 0,
+                            'packaging_fee' => 0,
+                            'shipping_fee' => 0,
+                            'tax_amount' => 0,
+                            'total_amount' => 0,
+                            'currency' => 'IRR',
+                            'pricing_snapshot' => [
+                                'version' => 'r5g-rosta-hub-packaging-v1',
+                                'unit_fee' => 0,
+                                'quantity' => $resolved['quantity'],
+                                'line_total' => 0,
+                            ],
+                            'service_snapshot' => [
+                                'version' => 'r5g-rosta-hub-packaging-v1',
+                                'provider_type' => 'rosta_hub',
+                                'provider_hub_id' => $grinding['provider_hub_id'],
+                                'is_free' => true,
+                                'label' => 'بسته‌بندی هاب رستا رایگان',
+                            ],
+                        ]);
+                    }
+
                     if ($grinding !== null) {
                         CheckoutQuoteItemService::query()->create([
                             'quote_group_id' => $quoteGroup->id,
                             'quote_item_id' => $quoteItem->id,
                             'service_type' => 'grinding',
-                            'provider_type' => 'roastery',
-                            'provider_roastery_id' => $product->roastery_id,
+                            'provider_type' => $grinding['provider_type'],
+                            'provider_roastery_id' => $grinding['provider_roastery_id'],
+                            'provider_hub_id' => $grinding['provider_hub_id'],
                             'grinding_profile_id' => $grinding['profile']->id,
                             'service_fee' => $resolved['line_grinding_total'],
                             'packaging_fee' => 0,

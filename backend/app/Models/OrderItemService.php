@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $service_type
  * @property string $provider_type
  * @property string|null $provider_roastery_id
+ * @property string|null $provider_hub_id
  * @property string|null $grinding_profile_id
  * @property OrderItemServiceStatus $status
  * @property int $service_fee
@@ -35,6 +36,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read SubOrder|null $subOrder
  * @property-read OrderItem|null $orderItem
  * @property-read Roastery|null $providerRoastery
+ * @property-read RostaHub|null $providerHub
  * @property-read GrindingProfile|null $grindingProfile
  * @property-read Collection<int, ShipmentLeg> $shipmentLegs
  * @property-read Collection<int, SettlementAllocation> $settlementAllocations
@@ -51,6 +53,7 @@ final class OrderItemService extends Model
         'service_type',
         'provider_type',
         'provider_roastery_id',
+        'provider_hub_id',
         'grinding_profile_id',
         'status',
         'service_fee',
@@ -106,6 +109,12 @@ final class OrderItemService extends Model
     public function providerRoastery(): BelongsTo
     {
         return $this->belongsTo(Roastery::class, 'provider_roastery_id');
+    }
+
+    /** @return BelongsTo<RostaHub, $this> */
+    public function providerHub(): BelongsTo
+    {
+        return $this->belongsTo(RostaHub::class, 'provider_hub_id');
     }
 
     /** @return BelongsTo<GrindingProfile, $this> */

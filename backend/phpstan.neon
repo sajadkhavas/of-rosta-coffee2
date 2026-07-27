@@ -9,3 +9,12 @@ parameters:
   level: 5
   tmpDir: storage/framework/cache/phpstan
   reportUnmatchedIgnoredErrors: true
+  ignoreErrors:
+    -
+      identifier: instanceof.alwaysTrue
+      path: app/Services/Checkout/RoasteryGrindingSelection.php
+      count: 1
+    -
+      identifier: nullsafe.neverNull
+      path: app/Services/Checkout/RoasteryGrindingSelection.php
+      count: 2

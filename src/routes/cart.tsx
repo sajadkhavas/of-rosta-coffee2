@@ -288,7 +288,7 @@ function CartPage() {
                   </dd>
                 </div>
                 <div className="flex justify-between text-[color:var(--light)]">
-                  <dt>آسیاب روستری</dt>
+                  <dt>سرویس آسیاب</dt>
                   <dd className="font-mono">
                     {quote.grindingTotal === 0 ? "—" : formatIrr(quote.grindingTotal)}
                   </dd>

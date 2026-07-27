@@ -263,6 +263,28 @@ final class OrderService
             $shipmentSequence = 1;
 
             foreach ($quote->groups as $group) {
+                $hubRoute = is_array($group->pricing_snapshot)
+                    ? ($group->pricing_snapshot['hub_route'] ?? null)
+                    : null;
+                $isHubRoute = is_array($hubRoute);
+                $roasteryServicePayable = 0;
+                foreach ($group->items as $quoteItemForPayable) {
+                    foreach ($quoteItemForPayable->services as $serviceForPayable) {
+                        if ($serviceForPayable->provider_type !== 'roastery') {
+                            continue;
+                        }
+                        $roasteryServicePayable += $serviceForPayable->packaging_fee;
+                        if ($serviceForPayable->service_type === 'grinding') {
+                            $roasteryServicePayable += $serviceForPayable->service_fee;
+                        }
+                    }
+                }
+                $roasteryShippingPayable = $isHubRoute ? 0 : $group->shipping_total;
+                $roasteryPayable = $group->subtotal
+                    - $group->discount_total
+                    + $roasteryServicePayable
+                    + $roasteryShippingPayable;
+
                 $subOrder = SubOrder::query()->create([
                     'order_id' => $order->id,
                     'roastery_id' => $group->roastery_id,
@@ -276,9 +298,11 @@ final class OrderService
                     'tax_total' => $group->tax_total,
                     'grand_total' => $group->grand_total,
                     'commission_total' => 0,
-                    'payable_total' => $group->grand_total,
+                    'payable_total' => $roasteryPayable,
                     'currency' => $group->currency,
                 ]);
+
+                $hubGrindingService = null;
 
                 $itemBases = $group->items
                     ->mapWithKeys(static fn ($item): array => [
@@ -350,6 +374,7 @@ final class OrderService
                                 $quoteService,
                                 $variant,
                                 $quoteItem->quantity,
+                                $quote->address_snapshot,
                             );
                         }
 
@@ -360,6 +385,7 @@ final class OrderService
                             'service_type' => $quoteService->service_type,
                             'provider_type' => $quoteService->provider_type,
                             'provider_roastery_id' => $quoteService->provider_roastery_id,
+                            'provider_hub_id' => $quoteService->provider_hub_id,
                             'grinding_profile_id' => $quoteService->grinding_profile_id,
                             'status' => OrderItemServiceStatus::Requested,
                             'service_fee' => $quoteService->service_fee,
@@ -399,6 +425,11 @@ final class OrderService
                         }
 
                         if ($orderService->service_type === 'grinding') {
+                            $isHubGrinding = $orderService->provider_type === 'rosta_hub';
+                            if ($isHubGrinding && ! $hubGrindingService instanceof OrderItemService) {
+                                $hubGrindingService = $orderService;
+                            }
+
                             if ($orderService->service_fee > 0) {
                                 SettlementAllocation::query()->create([
                                     'order_id' => $order->id,
@@ -406,21 +437,25 @@ final class OrderService
                                     'order_item_id' => $orderItem->id,
                                     'order_item_service_id' => $orderService->id,
                                     'allocation_type' => 'grinding',
-                                    'owner_type' => 'roastery',
-                                    'owner_id' => $group->roastery_id,
+                                    'owner_type' => $isHubGrinding ? 'rosta' : 'roastery',
+                                    'owner_id' => $isHubGrinding ? null : $group->roastery_id,
                                     'status' => SettlementAllocationStatus::Held,
                                     'gross_amount' => $orderService->service_fee,
                                     'discount_amount' => 0,
                                     'tax_amount' => $orderService->tax_amount,
                                     'net_amount' => $orderService->total_amount,
                                     'currency' => $orderService->currency,
-                                    'pricing_version' => 'r5f-roastery-grinding-v1',
+                                    'pricing_version' => $isHubGrinding
+                                        ? 'r5g-rosta-hub-grinding-v1'
+                                        : 'r5f-roastery-grinding-v1',
                                     'source_reference' => 'quote_service:'.$quoteService->id,
                                     'idempotency_key' => 'order:'.$order->id.':service:'.$orderService->id.':grinding',
                                     'metadata' => [
                                         'quote_id' => $quote->id,
                                         'quote_group_id' => $group->id,
                                         'quote_item_service_id' => $quoteService->id,
+                                        'provider_type' => $orderService->provider_type,
+                                        'provider_hub_id' => $orderService->provider_hub_id,
                                     ],
                                 ]);
                             }
@@ -440,49 +475,144 @@ final class OrderService
                     }
                 }
 
-                $shipmentLeg = ShipmentLeg::query()->create([
-                    'order_id' => $order->id,
-                    'sub_order_id' => $subOrder->id,
-                    'route_type' => 'roastery_to_customer',
-                    'sequence' => $shipmentSequence++,
-                    'status' => ShipmentLegStatus::Planned,
-                    'charge_owner_type' => 'roastery',
-                    'charge_owner_id' => $group->roastery_id,
-                    'gross_amount' => $group->shipping_total,
-                    'tax_amount' => 0,
-                    'total_amount' => $group->shipping_total,
-                    'currency' => $group->currency,
-                    'origin_snapshot' => [
-                        'type' => 'roastery',
-                        'id' => $group->roastery_id,
-                        'name' => $group->roastery?->name,
-                        'city' => $group->roastery?->city,
-                    ],
-                    'destination_snapshot' => $quote->address_snapshot,
-                    'planned_at' => now(),
-                ]);
+                if (is_array($hubRoute) && $hubGrindingService instanceof OrderItemService) {
+                    $route = $hubRoute['route'] ?? [];
+                    $hub = $hubRoute['hub'] ?? [];
+                    $inboundFee = (int) ($route['inbound_shipping_fee'] ?? 0);
+                    $outboundFee = (int) ($route['outbound_shipping_fee'] ?? 0);
 
-                SettlementAllocation::query()->create([
-                    'order_id' => $order->id,
-                    'sub_order_id' => $subOrder->id,
-                    'shipment_leg_id' => $shipmentLeg->id,
-                    'allocation_type' => 'shipping',
-                    'owner_type' => 'roastery',
-                    'owner_id' => $group->roastery_id,
-                    'status' => SettlementAllocationStatus::Held,
-                    'gross_amount' => $group->shipping_total,
-                    'discount_amount' => 0,
-                    'tax_amount' => 0,
-                    'net_amount' => $group->shipping_total,
-                    'currency' => $group->currency,
-                    'pricing_version' => 'r5c-marketplace-v1',
-                    'source_reference' => 'quote_group:'.$group->id.':shipping',
-                    'idempotency_key' => 'order:'.$order->id.':sub-order:'.$subOrder->id.':shipping',
-                    'metadata' => [
-                        'quote_id' => $quote->id,
-                        'quote_group_id' => $group->id,
-                    ],
-                ]);
+                    $inboundLeg = ShipmentLeg::query()->create([
+                        'order_id' => $order->id,
+                        'sub_order_id' => $subOrder->id,
+                        'order_item_service_id' => $hubGrindingService->id,
+                        'route_type' => 'roastery_to_rosta_hub',
+                        'sequence' => $shipmentSequence++,
+                        'status' => ShipmentLegStatus::Planned,
+                        'charge_owner_type' => 'rosta',
+                        'charge_owner_id' => null,
+                        'gross_amount' => $inboundFee,
+                        'tax_amount' => 0,
+                        'total_amount' => $inboundFee,
+                        'currency' => $group->currency,
+                        'origin_snapshot' => [
+                            'type' => 'roastery',
+                            'id' => $group->roastery_id,
+                            'name' => $group->roastery?->name,
+                            'city' => $group->roastery?->city,
+                        ],
+                        'destination_snapshot' => [
+                            'type' => 'rosta_hub',
+                            ...$hub,
+                        ],
+                        'planned_at' => now(),
+                    ]);
+
+                    $outboundLeg = ShipmentLeg::query()->create([
+                        'order_id' => $order->id,
+                        'sub_order_id' => $subOrder->id,
+                        'order_item_service_id' => $hubGrindingService->id,
+                        'route_type' => 'rosta_hub_to_customer',
+                        'sequence' => $shipmentSequence++,
+                        'status' => ShipmentLegStatus::Planned,
+                        'charge_owner_type' => 'rosta',
+                        'charge_owner_id' => null,
+                        'gross_amount' => $outboundFee,
+                        'tax_amount' => 0,
+                        'total_amount' => $outboundFee,
+                        'currency' => $group->currency,
+                        'origin_snapshot' => [
+                            'type' => 'rosta_hub',
+                            ...$hub,
+                        ],
+                        'destination_snapshot' => $quote->address_snapshot,
+                        'planned_at' => now(),
+                    ]);
+
+                    foreach ([$inboundLeg, $outboundLeg] as $leg) {
+                        if ($leg->gross_amount <= 0) {
+                            continue;
+                        }
+
+                        SettlementAllocation::query()->create([
+                            'order_id' => $order->id,
+                            'sub_order_id' => $subOrder->id,
+                            'order_item_service_id' => $hubGrindingService->id,
+                            'shipment_leg_id' => $leg->id,
+                            'allocation_type' => 'shipping',
+                            'owner_type' => 'rosta',
+                            'owner_id' => null,
+                            'status' => SettlementAllocationStatus::Held,
+                            'gross_amount' => $leg->gross_amount,
+                            'discount_amount' => 0,
+                            'tax_amount' => 0,
+                            'net_amount' => $leg->total_amount,
+                            'currency' => $leg->currency,
+                            'pricing_version' => 'r5g-rosta-hub-route-v1',
+                            'source_reference' => 'shipment_leg:'.$leg->id,
+                            'idempotency_key' => 'order:'.$order->id.':shipment-leg:'.$leg->id.':shipping',
+                            'metadata' => [
+                                'quote_id' => $quote->id,
+                                'quote_group_id' => $group->id,
+                                'route_type' => $leg->route_type,
+                            ],
+                        ]);
+                    }
+
+                    $this->appendEvent(
+                        order: $order,
+                        user: $user,
+                        request: $request,
+                        type: 'hub.route_planned',
+                        title: 'مسیر آسیاب هاب رستا برنامه‌ریزی شد',
+                        nextState: ShipmentLegStatus::Planned->value,
+                        subOrder: $subOrder,
+                        orderItemService: $hubGrindingService,
+                    );
+                } else {
+                    $shipmentLeg = ShipmentLeg::query()->create([
+                        'order_id' => $order->id,
+                        'sub_order_id' => $subOrder->id,
+                        'route_type' => 'roastery_to_customer',
+                        'sequence' => $shipmentSequence++,
+                        'status' => ShipmentLegStatus::Planned,
+                        'charge_owner_type' => 'roastery',
+                        'charge_owner_id' => $group->roastery_id,
+                        'gross_amount' => $group->shipping_total,
+                        'tax_amount' => 0,
+                        'total_amount' => $group->shipping_total,
+                        'currency' => $group->currency,
+                        'origin_snapshot' => [
+                            'type' => 'roastery',
+                            'id' => $group->roastery_id,
+                            'name' => $group->roastery?->name,
+                            'city' => $group->roastery?->city,
+                        ],
+                        'destination_snapshot' => $quote->address_snapshot,
+                        'planned_at' => now(),
+                    ]);
+
+                    SettlementAllocation::query()->create([
+                        'order_id' => $order->id,
+                        'sub_order_id' => $subOrder->id,
+                        'shipment_leg_id' => $shipmentLeg->id,
+                        'allocation_type' => 'shipping',
+                        'owner_type' => 'roastery',
+                        'owner_id' => $group->roastery_id,
+                        'status' => SettlementAllocationStatus::Held,
+                        'gross_amount' => $group->shipping_total,
+                        'discount_amount' => 0,
+                        'tax_amount' => 0,
+                        'net_amount' => $group->shipping_total,
+                        'currency' => $group->currency,
+                        'pricing_version' => 'r5c-marketplace-v1',
+                        'source_reference' => 'quote_group:'.$group->id.':shipping',
+                        'idempotency_key' => 'order:'.$order->id.':sub-order:'.$subOrder->id.':shipping',
+                        'metadata' => [
+                            'quote_id' => $quote->id,
+                            'quote_group_id' => $group->id,
+                        ],
+                    ]);
+                }
 
                 $this->appendEvent(
                     order: $order,
@@ -606,13 +736,62 @@ final class OrderService
             $packagingTotal = 0;
             $grindingTotal = 0;
             foreach ($group->items as $quoteItem) {
+                $hasHubGrinding = $quoteItem->services->contains(
+                    static fn ($service): bool => $service->service_type === 'grinding'
+                        && $service->provider_type === 'rosta_hub',
+                );
+                $hasFreeHubPackaging = false;
+
                 foreach ($quoteItem->services as $service) {
                     $packagingTotal += $service->packaging_fee;
                     if ($service->service_type === 'grinding') {
                         $grindingTotal += $service->service_fee;
                     }
+                    if (
+                        $service->service_type === 'packaging'
+                        && $service->provider_type === 'rosta_hub'
+                        && $service->packaging_fee === 0
+                        && $service->total_amount === 0
+                    ) {
+                        $hasFreeHubPackaging = true;
+                    }
+                    if (
+                        $hasHubGrinding
+                        && $service->service_type === 'packaging'
+                        && $service->provider_type === 'roastery'
+                        && $service->packaging_fee !== 0
+                    ) {
+                        throw new ApiDomainException(
+                            'mixed_state_conflict',
+                            'بسته‌بندی روستری در مسیر هاب باید صفر باشد.',
+                            409,
+                        );
+                    }
+                }
+
+                if ($hasHubGrinding && ! $hasFreeHubPackaging) {
+                    throw new ApiDomainException(
+                        'mixed_state_conflict',
+                        'خط بسته‌بندی رایگان هاب در Quote وجود ندارد.',
+                        409,
+                    );
                 }
             }
+
+            $hubRoute = is_array($group->pricing_snapshot)
+                ? ($group->pricing_snapshot['hub_route'] ?? null)
+                : null;
+            if (is_array($hubRoute)) {
+                $routeTotal = (int) ($hubRoute['route']['total_shipping_fee'] ?? -1);
+                if ($routeTotal !== $group->shipping_total) {
+                    throw new ApiDomainException(
+                        'mixed_state_conflict',
+                        'جمع مسیر ارسال هاب با Quote سازگار نیست.',
+                        409,
+                    );
+                }
+            }
+
             $expectedGrand = $group->subtotal
                 + $group->packaging_total
                 + $group->grinding_total
