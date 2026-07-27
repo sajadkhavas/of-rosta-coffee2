@@ -61,12 +61,14 @@ foreach ($checks as $name => $check) {
     $path = $root.'/'.$check['file'];
     if (! is_file($path)) {
         $failures[] = $name.': missing '.$check['file'];
+
         continue;
     }
 
     $contents = file_get_contents($path);
     if (! is_string($contents)) {
         $failures[] = $name.': unreadable '.$check['file'];
+
         continue;
     }
 
@@ -89,10 +91,12 @@ foreach (['app', 'database/migrations'] as $directory) {
         if (! $file->isFile() || $file->getExtension() !== 'php') {
             continue;
         }
+
         $contents = file_get_contents($file->getPathname());
         if (! is_string($contents)) {
             continue;
         }
+
         foreach ($forbidden as $needle) {
             if (str_contains($contents, $needle)) {
                 $failures[] = 'whole-bean boundary: forbidden '.$needle.' in '.$file->getPathname();
