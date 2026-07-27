@@ -167,6 +167,14 @@ function orderFixture() {
           is_breached: false,
         },
         incidents: [],
+        delivery: {
+          confirmed_at: null,
+          dispute_window_ends_at: null,
+          customer_can_confirm: false,
+          settlement_state: "not_delivered",
+          settlement_hold_code: null,
+          settlement_released_at: null,
+        },
         roastery: { id: roastery.id, name: roastery.name, slug: roastery.slug },
         items: [
           {

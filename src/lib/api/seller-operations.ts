@@ -766,3 +766,56 @@ async function imageDimensions(file: File): Promise<{ width: number; height: num
 }
 
 // R5H seller status contract: status: "preparing" | "ready_to_ship" | "shipped"
+
+const sellerSettlementSchema = z
+  .object({
+    data: z
+      .object({
+        summary: z
+          .object({
+            held: z.number().int().nonnegative(),
+            eligible: z.number().int().nonnegative(),
+            scheduled: z.number().int().nonnegative(),
+            paid: z.number().int().nonnegative(),
+            currency: z.literal("IRR"),
+          })
+          .strict(),
+        batches: z
+          .array(
+            z
+              .object({
+                id: identifier,
+                status: z.enum(["pending", "processing", "paid", "failed"]),
+                net_total: z.number().int().positive(),
+                allocation_count: z.number().int().positive(),
+                currency: z.literal("IRR"),
+                payout_reference: z.string().trim().max(190).nullable().optional(),
+                scheduled_at: isoDate.nullable().optional(),
+                paid_at: isoDate.nullable().optional(),
+                failed_at: isoDate.nullable().optional(),
+              })
+              .strict(),
+          )
+          .max(100),
+      })
+      .strict(),
+  })
+  .passthrough();
+
+export type SellerSettlementOverview = z.infer<typeof sellerSettlementSchema>["data"];
+
+export async function getSellerSettlementOverview(
+  roasteryId: string,
+): Promise<SellerSettlementOverview> {
+  return sellerSettlementSchema.parse(
+    await apiFetch<unknown>(`/seller/roasteries/${encodeURIComponent(roasteryId)}/settlements`),
+  ).data;
+}
+
+export const sellerSettlementsQueryOptions = (roasteryId: string) =>
+  queryOptions({
+    queryKey: ["seller", "roasteries", roasteryId, "settlements"],
+    queryFn: () => getSellerSettlementOverview(roasteryId),
+    enabled: Boolean(roasteryId),
+    staleTime: 15_000,
+  });

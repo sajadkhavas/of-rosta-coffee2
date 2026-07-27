@@ -26,6 +26,12 @@ import {
   type AdminReviewStatus,
   type AdminRoasteryStatus,
 } from "@/lib/api/admin-operations";
+import {
+  adminSettlementBatchesQueryOptions,
+  createAdminSettlementBatch,
+  resolveAdminSettlementBatch,
+  type AdminSettlementBatchStatus,
+} from "@/lib/api/admin-finance";
 import { isApiError } from "@/lib/api/client";
 import { toFa } from "@/lib/persian";
 
@@ -43,6 +49,7 @@ type Tab =
   | "roasteries"
   | "products"
   | "incidents"
+  | "settlements"
   | "reviews"
   | "inquiries"
   | "notifications"
@@ -51,6 +58,7 @@ const tabs: Array<{ id: Tab; label: string }> = [
   { id: "roasteries", label: "روستری‌ها" },
   { id: "products", label: "محصولات" },
   { id: "incidents", label: "مشکلات ارسال" },
+  { id: "settlements", label: "تسویه و پرداخت" },
   { id: "reviews", label: "نظرات" },
   { id: "inquiries", label: "پشتیبانی" },
   { id: "notifications", label: "اعلان‌ها" },
@@ -114,7 +122,7 @@ function Dashboard() {
           OPERATIONS CONTROL
         </p>
         <h1 className="mt-2 text-3xl font-bold text-[color:var(--steam)]">
-          نظارت کاتالوگ، پشتیبانی و سلامت عملیات
+          نظارت کاتالوگ، تحویل، تسویه و سلامت عملیات
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-8 text-[color:var(--light)]">
           تمام تصمیم‌ها از API معتبر ثبت می‌شوند. Payload خصوصی اعلان‌ها نمایش داده نمی‌شود و
@@ -136,6 +144,7 @@ function Dashboard() {
       {tab === "roasteries" ? <RoasteriesQueue /> : null}
       {tab === "products" ? <ProductsQueue /> : null}
       {tab === "incidents" ? <FulfillmentIncidentsQueue /> : null}
+      {tab === "settlements" ? <SettlementBatchesQueue /> : null}
       {tab === "reviews" ? <ReviewsQueue /> : null}
       {tab === "inquiries" ? <InquiriesQueue /> : null}
       {tab === "notifications" ? <NotificationsQueue /> : null}
@@ -466,6 +475,233 @@ function FulfillmentIncidentsQueue() {
       )}
     </Panel>
   );
+}
+
+function SettlementBatchesQueue() {
+  const client = useQueryClient();
+  const [status, setStatus] = useState<AdminSettlementBatchStatus | "all">("all");
+  const [roasteryId, setRoasteryId] = useState("");
+  const [payoutReferences, setPayoutReferences] = useState<Record<string, string>>({});
+  const [failureMessages, setFailureMessages] = useState<Record<string, string>>({});
+  const query = useQuery(adminSettlementBatchesQueryOptions(status));
+
+  const createMutation = useMutation({
+    mutationFn: () =>
+      createAdminSettlementBatch({
+        roasteryId,
+        idempotencyKey: crypto.randomUUID(),
+      }),
+    onSuccess: async () => {
+      setRoasteryId("");
+      await client.invalidateQueries({ queryKey: ["admin", "finance", "settlement-batches"] });
+    },
+  });
+
+  const resolveMutation = useMutation({
+    mutationFn: ({ batchId, action }: { batchId: string; action: "process" | "paid" | "failed" }) =>
+      resolveAdminSettlementBatch({
+        batchId,
+        action,
+        payoutReference: payoutReferences[batchId],
+        failureCode: action === "failed" ? "bank_transfer_failed" : undefined,
+        failureMessage: failureMessages[batchId],
+      }),
+    onSuccess: async () =>
+      client.invalidateQueries({ queryKey: ["admin", "finance", "settlement-batches"] }),
+  });
+
+  return (
+    <Panel>
+      <header className="mb-5 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold">Batchهای تسویه روستری</h2>
+          <p className="mt-1 max-w-3xl text-sm leading-7 text-[color:var(--light)]">
+            فقط Allocationهای متعلق به روستری که تحویل قطعی شده‌اند، مهلت اعتراضشان پایان یافته و
+            اختلاف بازی ندارند وارد Batch می‌شوند. هزینه‌های هاب و خدمات متعلق به رستا جدا می‌مانند.
+          </p>
+        </div>
+        <select
+          value={status}
+          onChange={(event) => setStatus(event.target.value as AdminSettlementBatchStatus | "all")}
+          className={selectClass}
+        >
+          <option value="all">همه وضعیت‌ها</option>
+          <option value="pending">در انتظار</option>
+          <option value="processing">در حال پردازش</option>
+          <option value="paid">پرداخت‌شده</option>
+          <option value="failed">ناموفق</option>
+        </select>
+      </header>
+
+      <form
+        className="mb-6 grid gap-3 rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] p-4 md:grid-cols-[1fr_auto]"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (roasteryId.trim()) createMutation.mutate();
+        }}
+      >
+        <label className="grid gap-2 text-sm font-bold">
+          شناسه روستری برای ساخت Batch
+          <input
+            dir="ltr"
+            value={roasteryId}
+            onChange={(event) => setRoasteryId(event.target.value)}
+            className={selectClass}
+            placeholder="01H..."
+            required
+          />
+        </label>
+        <Button type="submit" loading={createMutation.isPending}>
+          ساخت Batch از مبالغ واجد شرایط
+        </Button>
+        {createMutation.isError ? (
+          <div className="md:col-span-2">
+            <Alert variant="danger">{errorMessage(createMutation.error)}</Alert>
+          </div>
+        ) : null}
+      </form>
+
+      {query.isLoading ? (
+        <LoadingRows />
+      ) : query.isError ? (
+        <Alert variant="danger">{errorMessage(query.error)}</Alert>
+      ) : !query.data?.items.length ? (
+        <EmptyState title="Batch تسویه‌ای در این وضعیت نیست" />
+      ) : (
+        <div className="grid gap-4">
+          {query.data.items.map((batch) => (
+            <article
+              key={batch.id}
+              className="rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] p-4"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-mono-num text-sm font-bold">Batch {batch.id}</h3>
+                  <p className="mt-2 text-xs text-[color:var(--light)]">
+                    {batch.roastery.name || batch.roastery.id} · {toFa(batch.allocation_count)} ردیف
+                  </p>
+                </div>
+                <span className="rounded-full border border-[color:var(--mid)] px-3 py-1 text-xs">
+                  {settlementStatusLabel(batch.status)}
+                </span>
+              </div>
+
+              <div className="mt-4 grid gap-3 text-sm md:grid-cols-4">
+                <MoneyValue label="ناخالص" value={batch.gross_total} />
+                <MoneyValue label="تخفیف" value={batch.discount_total} />
+                <MoneyValue label="مالیات" value={batch.tax_total} />
+                <MoneyValue label="خالص پرداخت" value={batch.net_total} strong />
+              </div>
+
+              {batch.status === "pending" || batch.status === "failed" ? (
+                <div className="mt-4">
+                  <Button
+                    loading={resolveMutation.isPending}
+                    onClick={() => resolveMutation.mutate({ batchId: batch.id, action: "process" })}
+                  >
+                    شروع پردازش پرداخت
+                  </Button>
+                </div>
+              ) : null}
+
+              {batch.status === "processing" ? (
+                <div className="mt-4 grid gap-3 border-t border-[color:var(--mid)] pt-4 lg:grid-cols-2">
+                  <label className="grid gap-2 text-sm font-bold">
+                    شماره پیگیری بانکی
+                    <input
+                      dir="ltr"
+                      value={payoutReferences[batch.id] ?? ""}
+                      onChange={(event) =>
+                        setPayoutReferences((current) => ({
+                          ...current,
+                          [batch.id]: event.target.value,
+                        }))
+                      }
+                      className={selectClass}
+                    />
+                  </label>
+                  <label className="grid gap-2 text-sm font-bold">
+                    توضیح خطا برای ثبت ناموفق
+                    <input
+                      value={failureMessages[batch.id] ?? ""}
+                      onChange={(event) =>
+                        setFailureMessages((current) => ({
+                          ...current,
+                          [batch.id]: event.target.value,
+                        }))
+                      }
+                      className={selectClass}
+                    />
+                  </label>
+                  <div className="flex flex-wrap gap-2 lg:col-span-2">
+                    <Button
+                      loading={resolveMutation.isPending}
+                      disabled={!payoutReferences[batch.id]?.trim()}
+                      onClick={() => resolveMutation.mutate({ batchId: batch.id, action: "paid" })}
+                    >
+                      ثبت پرداخت موفق
+                    </Button>
+                    <Button
+                      variant="danger"
+                      loading={resolveMutation.isPending}
+                      disabled={!failureMessages[batch.id]?.trim()}
+                      onClick={() =>
+                        resolveMutation.mutate({ batchId: batch.id, action: "failed" })
+                      }
+                    >
+                      ثبت پرداخت ناموفق
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              {batch.payout_reference ? (
+                <p dir="ltr" className="mt-4 text-left text-xs text-emerald-300">
+                  Bank reference: {batch.payout_reference}
+                </p>
+              ) : null}
+              {batch.failure_message ? (
+                <p className="mt-4 text-xs text-red-300">{batch.failure_message}</p>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      )}
+      {resolveMutation.isError ? (
+        <div className="mt-4">
+          <Alert variant="danger">{errorMessage(resolveMutation.error)}</Alert>
+        </div>
+      ) : null}
+    </Panel>
+  );
+}
+
+function MoneyValue({
+  label,
+  value,
+  strong = false,
+}: {
+  label: string;
+  value: number;
+  strong?: boolean;
+}) {
+  return (
+    <div className="rounded-lg border border-[color:var(--mid)] p-3">
+      <p className="text-xs text-[color:var(--light)]">{label}</p>
+      <p className={`mt-1 font-mono-num ${strong ? "font-bold text-[color:var(--roast)]" : ""}`}>
+        {value.toLocaleString("fa-IR")} ریال
+      </p>
+    </div>
+  );
+}
+
+function settlementStatusLabel(status: AdminSettlementBatchStatus) {
+  return {
+    pending: "در انتظار پردازش",
+    processing: "در حال پرداخت",
+    paid: "پرداخت‌شده",
+    failed: "ناموفق؛ قابل تلاش مجدد",
+  }[status];
 }
 
 function ReviewsQueue() {

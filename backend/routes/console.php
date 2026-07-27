@@ -5,6 +5,7 @@ use App\Models\CheckoutQuote;
 use App\Models\OrderIdempotencyKey;
 use App\Services\Checkout\ReservationExpiryService;
 use App\Services\Fulfillment\FulfillmentSlaMonitorService;
+use App\Services\Settlement\SettlementReleaseService;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::call(static function (): void {
@@ -18,6 +19,13 @@ Schedule::call(static function (): void {
     app(FulfillmentSlaMonitorService::class)->markBreaches();
 })
     ->name('rosta.fulfillment.mark-sla-breaches')
+    ->everyTenMinutes()
+    ->withoutOverlapping();
+
+Schedule::call(static function (): void {
+    app(SettlementReleaseService::class)->releaseEligible();
+})
+    ->name('rosta.settlement.release-eligible')
     ->everyTenMinutes()
     ->withoutOverlapping();
 

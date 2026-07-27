@@ -281,10 +281,17 @@ export interface ShipmentSummary {
   deliveredAt?: IsoDateTime | null;
 }
 
+export interface ShipmentDeliveryConfirmationSummary {
+  source: "customer" | "administrator" | "carrier";
+  proofType: string;
+  confirmedAt: IsoDateTime;
+}
+
 export interface ShipmentLegSummary {
   id: string;
   routeType: string;
   sequence: number;
+  isFinal: boolean;
   status: string;
   carrier?: string | null;
   trackingCode?: string | null;
@@ -293,6 +300,16 @@ export interface ShipmentLegSummary {
   plannedAt?: IsoDateTime | null;
   pickedUpAt?: IsoDateTime | null;
   deliveredAt?: IsoDateTime | null;
+  deliveryConfirmation?: ShipmentDeliveryConfirmationSummary | null;
+}
+
+export interface DeliverySummary {
+  confirmedAt?: IsoDateTime | null;
+  disputeWindowEndsAt?: IsoDateTime | null;
+  customerCanConfirm: boolean;
+  settlementState: "not_delivered" | "dispute_hold" | "blocked" | "released";
+  settlementHoldCode?: string | null;
+  settlementReleasedAt?: IsoDateTime | null;
 }
 
 export interface FulfillmentIncidentSummary {
@@ -320,6 +337,7 @@ export interface SubOrderSummary {
   acceptanceStatus: string;
   customerCancellable: boolean;
   fulfillment: FulfillmentCommitmentSummary;
+  delivery: DeliverySummary;
   incidents: FulfillmentIncidentSummary[];
   roastery: Pick<RoasterySummary, "id" | "name" | "slug">;
   items: OrderLine[];

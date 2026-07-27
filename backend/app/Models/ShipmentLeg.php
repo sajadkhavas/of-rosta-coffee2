@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @property string $id
@@ -36,6 +37,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read Shipment|null $legacyShipment
  * @property-read Collection<int, SettlementAllocation> $settlementAllocations
  * @property-read Collection<int, OrderEvent> $events
+ * @property-read ShipmentDeliveryConfirmation|null $deliveryConfirmation
  */
 final class ShipmentLeg extends Model
 {
@@ -114,5 +116,11 @@ final class ShipmentLeg extends Model
     public function events(): HasMany
     {
         return $this->hasMany(OrderEvent::class);
+    }
+
+    /** @return HasOne<ShipmentDeliveryConfirmation, $this> */
+    public function deliveryConfirmation(): HasOne
+    {
+        return $this->hasOne(ShipmentDeliveryConfirmation::class);
     }
 }

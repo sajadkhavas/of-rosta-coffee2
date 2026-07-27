@@ -371,7 +371,7 @@ final class FulfillmentIncidentService
             'subOrders.roastery.cover',
             'subOrders.items.services.grindingProfile',
             'subOrders.shipment',
-            'subOrders.shipmentLegs',
+            'subOrders.shipmentLegs.deliveryConfirmation',
             'subOrders.fulfillmentIncidents',
             'events',
         ]);

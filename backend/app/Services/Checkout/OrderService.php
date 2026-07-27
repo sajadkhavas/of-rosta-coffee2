@@ -664,7 +664,7 @@ final class OrderService
             'subOrders.roastery.logo',
             'subOrders.roastery.cover',
             'subOrders.items.services.grindingProfile',
-            'subOrders.shipmentLegs',
+            'subOrders.shipmentLegs.deliveryConfirmation',
             'subOrders.fulfillmentIncidents',
             'items',
             'reservations',

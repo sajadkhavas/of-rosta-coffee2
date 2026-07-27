@@ -603,11 +603,20 @@ const shipmentWireSchema = z
   })
   .strict();
 
+const shipmentDeliveryConfirmationWireSchema = z
+  .object({
+    source: z.enum(["customer", "administrator", "carrier"]),
+    proof_type: boundedText(64),
+    confirmed_at: isoDateTimeSchema,
+  })
+  .strict();
+
 const shipmentLegWireSchema = z
   .object({
     id: identifierSchema,
     route_type: boundedText(100),
     sequence: z.number().int().min(1).max(100),
+    is_final: z.boolean(),
     status: boundedText(100),
     carrier: nullableText(120),
     tracking_code: nullableText(200),
@@ -616,6 +625,7 @@ const shipmentLegWireSchema = z
     planned_at: isoDateTimeSchema.nullable().optional(),
     picked_up_at: isoDateTimeSchema.nullable().optional(),
     delivered_at: isoDateTimeSchema.nullable().optional(),
+    delivery_confirmation: shipmentDeliveryConfirmationWireSchema.nullable().optional(),
   })
   .strict();
 
@@ -655,6 +665,17 @@ const fulfillmentCommitmentWireSchema = z
   })
   .strict();
 
+const deliveryWireSchema = z
+  .object({
+    confirmed_at: isoDateTimeSchema.nullable().optional(),
+    dispute_window_ends_at: isoDateTimeSchema.nullable().optional(),
+    customer_can_confirm: z.boolean(),
+    settlement_state: z.enum(["not_delivered", "dispute_hold", "blocked", "released"]),
+    settlement_hold_code: nullableText(64),
+    settlement_released_at: isoDateTimeSchema.nullable().optional(),
+  })
+  .strict();
+
 const subOrderWireSchema = z
   .object({
     id: identifierSchema,
@@ -662,6 +683,7 @@ const subOrderWireSchema = z
     acceptance_status: boundedText(100),
     customer_cancellable: z.boolean(),
     fulfillment: fulfillmentCommitmentWireSchema,
+    delivery: deliveryWireSchema,
     incidents: z.array(fulfillmentIncidentWireSchema).max(20),
     roastery: z.object({ id: identifierSchema, name: boundedText(160), slug: slugSchema }).strict(),
     items: z.array(orderLineWireSchema).min(1).max(100),

@@ -41,6 +41,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property CarbonImmutable|null $ready_to_ship_at
  * @property CarbonImmutable|null $shipped_at
  * @property CarbonImmutable|null $delivered_at
+ * @property CarbonImmutable|null $delivery_confirmed_at
+ * @property CarbonImmutable|null $dispute_window_ends_at
+ * @property string|null $settlement_hold_code
+ * @property string|null $settlement_hold_note
+ * @property CarbonImmutable|null $settlement_released_at
  * @property CarbonImmutable|null $cancelled_at
  * @property CarbonImmutable|null $customer_cancelled_at
  * @property string|null $rejection_reason
@@ -92,6 +97,11 @@ final class SubOrder extends Model
         'ready_to_ship_at',
         'shipped_at',
         'delivered_at',
+        'delivery_confirmed_at',
+        'dispute_window_ends_at',
+        'settlement_hold_code',
+        'settlement_hold_note',
+        'settlement_released_at',
         'cancelled_at',
         'customer_cancelled_at',
         'rejection_reason',
@@ -125,6 +135,9 @@ final class SubOrder extends Model
             'ready_to_ship_at' => 'immutable_datetime',
             'shipped_at' => 'immutable_datetime',
             'delivered_at' => 'immutable_datetime',
+            'delivery_confirmed_at' => 'immutable_datetime',
+            'dispute_window_ends_at' => 'immutable_datetime',
+            'settlement_released_at' => 'immutable_datetime',
             'cancelled_at' => 'immutable_datetime',
             'customer_cancelled_at' => 'immutable_datetime',
         ];

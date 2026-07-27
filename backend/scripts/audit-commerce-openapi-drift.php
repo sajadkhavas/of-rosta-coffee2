@@ -44,6 +44,13 @@ $contracts = [
     '/admin/refunds/{refundId}/dispatch',
     '/admin/refunds/{refundId}/resolve',
     '/admin/finance/reconciliation/{caseId}',
+    '/orders/{orderId}/shipment-legs/{shipmentLegId}/delivery-confirmations',
+    '/admin/shipment-legs/{shipmentLegId}/delivery-confirmations',
+    '/webhooks/carriers/deliveries',
+    '/admin/finance/settlement-batches',
+    '/admin/finance/settlement-batches/{batchId}/resolve',
+    '/admin/sub-orders/{subOrderId}/settlement-hold',
+    '/seller/roasteries/{roasteryId}/settlements',
 ];
 
 $missingRoutes = [];
