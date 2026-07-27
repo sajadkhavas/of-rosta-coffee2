@@ -334,11 +334,23 @@ export const searchResultWireSchema = z
   })
   .strict();
 
+const grindingProfileSelectionWireSchema = z
+  .object({
+    id: identifierSchema,
+    code: boundedText(100),
+    version: z.number().int().min(1).max(65_535),
+    name: boundedText(160),
+    brew_method: boundedText(100),
+  })
+  .strict();
+
 const commerceServiceWireSchema = z
   .object({
     id: identifierSchema,
     type: boundedText(80),
     provider_type: boundedText(80),
+    grinding_profile: grindingProfileSelectionWireSchema.nullable(),
+    service_fee: moneySchema,
     packaging_fee: moneySchema,
     tax_amount: moneySchema,
     total_amount: moneySchema,
@@ -392,6 +404,7 @@ export const quoteWireSchema = z
     groups: z.array(quoteGroupWireSchema).min(1).max(50),
     subtotal: moneySchema,
     packaging_total: moneySchema,
+    grinding_total: moneySchema,
     shipping_total: moneySchema,
     discount_total: moneySchema,
     grand_total: moneySchema,
@@ -436,6 +449,14 @@ export const quoteWireSchema = z
             .reduce((serviceSum, service) => serviceSum + service.packaging_fee, 0),
         0,
       );
+      const grinding = group.items.reduce(
+        (sum, item) =>
+          sum +
+          item.services
+            .filter((service) => service.type === "grinding")
+            .reduce((serviceSum, service) => serviceSum + service.service_fee, 0),
+        0,
+      );
       const shipping = group.shipping_total ?? group.shipping_cost ?? 0;
       const expectedGrand =
         group.subtotal +
@@ -458,6 +479,13 @@ export const quoteWireSchema = z
           message: "جمع بسته‌بندی گروه Quote ناسازگار است.",
         });
       }
+      if (grinding !== group.grinding_total) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["groups", groupIndex, "grinding_total"],
+          message: "جمع آسیاب گروه Quote ناسازگار است.",
+        });
+      }
       if (expectedGrand !== group.grand_total) {
         context.addIssue({
           code: z.ZodIssueCode.custom,
@@ -469,6 +497,7 @@ export const quoteWireSchema = z
 
     const groupSubtotal = value.groups.reduce((sum, group) => sum + group.subtotal, 0);
     const packagingTotal = value.groups.reduce((sum, group) => sum + group.packaging_total, 0);
+    const grindingTotal = value.groups.reduce((sum, group) => sum + group.grinding_total, 0);
     const shippingTotal = value.groups.reduce(
       (sum, group) => sum + (group.shipping_total ?? group.shipping_cost ?? 0),
       0,
@@ -478,6 +507,7 @@ export const quoteWireSchema = z
     if (
       groupSubtotal !== value.subtotal ||
       packagingTotal !== value.packaging_total ||
+      grindingTotal !== value.grinding_total ||
       shippingTotal !== value.shipping_total ||
       discountTotal !== value.discount_total ||
       grandTotal !== value.grand_total
@@ -523,7 +553,7 @@ const orderItemServiceWireSchema = z
     type: boundedText(80),
     provider_type: boundedText(80),
     status: boundedText(80),
-    grinding_profile: z.unknown().nullable().optional(),
+    grinding_profile: grindingProfileSelectionWireSchema.nullable(),
     service_fee: moneySchema,
     packaging_fee: moneySchema,
     shipping_fee: moneySchema,
@@ -640,6 +670,7 @@ export const orderDetailWireSchema = z
     address: addressWireSchema.nullable(),
     subtotal: moneySchema,
     packaging_total: moneySchema,
+    grinding_total: moneySchema,
     shipping_total: moneySchema,
     discount_total: moneySchema,
   })

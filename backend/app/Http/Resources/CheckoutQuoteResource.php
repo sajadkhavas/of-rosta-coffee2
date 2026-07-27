@@ -27,6 +27,16 @@ final class CheckoutQuoteResource extends OkJsonResource
                             'id' => $service->id,
                             'type' => $service->service_type,
                             'provider_type' => $service->provider_type,
+                            'grinding_profile' => $service->grinding_profile_id === null
+                                ? null
+                                : [
+                                    'id' => $service->service_snapshot['profile']['id'],
+                                    'code' => $service->service_snapshot['profile']['code'],
+                                    'version' => $service->service_snapshot['profile']['version'],
+                                    'name' => $service->service_snapshot['profile']['name'],
+                                    'brew_method' => $service->service_snapshot['profile']['brew_method'],
+                                ],
+                            'service_fee' => $service->service_fee,
                             'packaging_fee' => $service->packaging_fee,
                             'tax_amount' => $service->tax_amount,
                             'total_amount' => $service->total_amount,
@@ -70,6 +80,7 @@ final class CheckoutQuoteResource extends OkJsonResource
             'groups' => $groups,
             'subtotal' => $this->subtotal,
             'packaging_total' => $this->groups->sum('packaging_total'),
+            'grinding_total' => $this->groups->sum('grinding_total'),
             'shipping_total' => $this->shipping_total,
             'discount_total' => $this->discount_total,
             'grand_total' => $this->grand_total,

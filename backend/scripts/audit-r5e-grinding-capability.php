@@ -17,6 +17,8 @@ $files = [
     'composer' => $root.'/composer.json',
     'contract' => dirname($root).'/docs/r5/R5E_ROASTERY_GRINDING_CAPABILITY.md',
     'quote' => $root.'/app/Services/Checkout/QuoteService.php',
+    'r5f_selection' => $root.'/app/Services/Checkout/RoasteryGrindingSelection.php',
+    'r5f_audit' => $root.'/scripts/audit-r5f-roastery-grinding.php',
 ];
 
 $sources = [];
@@ -45,6 +47,14 @@ $hasAll = static function (string $source, array $fragments): bool {
 
 $composer = json_decode($sources['composer'], true, flags: JSON_THROW_ON_ERROR);
 $scripts = $composer['scripts'] ?? [];
+$r5fServiceSelectionIsGated = ($scripts['audit:r5f'] ?? null) === '@php scripts/audit-r5f-roastery-grinding.php'
+    && in_array('@audit:r5f', $scripts['check'] ?? [], true)
+    && str_contains($sources['r5f_audit'], 'ROSTA_R5F_ROASTERY_GRINDING_COMPLETE')
+    && $hasAll($sources['r5f_selection'], [
+        "'provider_type' => 'roastery'",
+        "'version' => 'r5f-roastery-grinding-v1'",
+        'assertQuoteServiceOrderable',
+    ]);
 
 $gate(
     'permanent_backend_gate',
@@ -125,13 +135,15 @@ $gate(
 $gate(
     'whole_bean_boundary',
     ! str_contains($sources['quote'], 'grinding_profile_ids')
-        && ! str_contains($sources['quote'], "'service_type' => 'grinding'")
+        && ! str_contains($sources['quote'], 'grinding_variant')
+        && ! str_contains($sources['quote'], 'grinding_stock')
+        && $r5fServiceSelectionIsGated
         && $hasAll($sources['contract'], [
             'R5E does not attach grinding to cart, quote or order items',
             'no grinding variant, SKU or stock dimension is introduced',
             'ROSTA_R5E_GRINDING_CAPABILITY_COMPLETE',
         ]),
-    'R5E must publish capability without turning grinding into inventory or checkout state.',
+    'R5E capability and later R5F service selection must preserve whole-bean product, SKU and stock identity.',
 );
 
 $gate(

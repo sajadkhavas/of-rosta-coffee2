@@ -64,6 +64,15 @@ function mapLine(value: WireLine): OrderLine {
       type: service.type,
       providerType: service.provider_type,
       status: service.status,
+      grindingProfile: service.grinding_profile
+        ? {
+            id: service.grinding_profile.id,
+            code: service.grinding_profile.code,
+            version: service.grinding_profile.version,
+            name: service.grinding_profile.name,
+            brewMethod: service.grinding_profile.brew_method,
+          }
+        : null,
       serviceFee: service.service_fee,
       packagingFee: service.packaging_fee,
       shippingFee: service.shipping_fee,
@@ -151,6 +160,7 @@ export function mapOrderDetail(value: OrderDetailWire): OrderDetail {
       : null,
     subtotal: value.subtotal,
     packagingTotal: value.packaging_total,
+    grindingTotal: value.grinding_total,
     shippingTotal: value.shipping_total,
     discountTotal: value.discount_total,
   };

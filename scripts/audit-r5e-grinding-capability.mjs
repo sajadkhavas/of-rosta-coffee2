@@ -14,6 +14,7 @@ const paths = {
   contract: "docs/r5/R5E_ROASTERY_GRINDING_CAPABILITY.md",
   cart: "src/lib/cart-storage.ts",
   product: "src/lib/api/contracts.ts",
+  r5fAudit: "scripts/audit-r5f-roastery-grinding.mjs",
 };
 const files = Object.fromEntries(
   await Promise.all(
@@ -24,6 +25,12 @@ const hasAll = (source, fragments) => fragments.every((fragment) => source.inclu
 const gates = [];
 const gate = (name, passed, evidence) => gates.push({ name, passed: Boolean(passed), evidence });
 const scripts = JSON.parse(files.package).scripts ?? {};
+
+const r5fServiceSelectionIsGated =
+  scripts["audit:r5f"] === "node scripts/audit-r5f-roastery-grinding.mjs" &&
+  scripts.check.includes("audit:r5f") &&
+  files.r5fAudit.includes("ROSTA_R5F_ROASTERY_GRINDING_FRONTEND_COMPLETE") &&
+  files.cart.includes("grindingProfileId");
 
 gate(
   "permanent_frontend_gate",
@@ -94,14 +101,16 @@ gate(
 );
 gate(
   "whole_bean_boundary",
-  !files.cart.includes("grindingProfile") &&
-    !files.product.includes("grindVariant") &&
+  !files.product.includes("grindVariant") &&
+    !files.product.includes("grindSku") &&
+    !files.product.includes("grindingStock") &&
+    (!files.cart.includes("grindingProfileId") || r5fServiceSelectionIsGated) &&
     hasAll(files.contract, [
       "R5E does not attach grinding to cart, quote or order items",
       "no grinding variant, SKU or stock dimension is introduced",
       "ROSTA_R5E_GRINDING_CAPABILITY_COMPLETE",
     ]),
-  "R5E may publish capability but must not add grind state to product inventory or cart persistence.",
+  "R5E capability and later R5F selection must preserve whole-bean product, SKU and inventory identity.",
 );
 
 const failed = gates.filter((item) => !item.passed);

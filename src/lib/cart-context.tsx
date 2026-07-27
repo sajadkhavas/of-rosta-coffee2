@@ -38,6 +38,7 @@ interface CartContextValue {
   replaceWithItem: (input: CartAddInput, quantity?: number) => void;
   removeItem: (variantId: string) => void;
   updateQuantity: (variantId: string, quantity: number) => void;
+  setGrindingProfile: (variantId: string, profileId: string | null) => void;
   clear: () => void;
   itemCount: number;
   localSubtotal: number;
@@ -148,6 +149,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  const setGrindingProfile = useCallback((variantId: string, profileId: string | null) => {
+    setItems((current) =>
+      safelyNormalize(
+        current.map((item) =>
+          item.variantId === variantId ? { ...item, grindingProfileId: profileId } : item,
+        ),
+      ),
+    );
+  }, []);
+
   const clear = useCallback(() => setItems([]), []);
   const itemCount = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
   const localSubtotal = useMemo(
@@ -163,6 +174,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       items.map((item) => ({
         variantId: item.variantId,
         quantity: item.quantity,
+        grindingProfileId: item.grindingProfileId,
       })),
     [items],
   );
@@ -175,6 +187,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       replaceWithItem,
       removeItem,
       updateQuantity,
+      setGrindingProfile,
       clear,
       itemCount,
       localSubtotal,
@@ -190,6 +203,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       replaceWithItem,
       removeItem,
       updateQuantity,
+      setGrindingProfile,
       clear,
       itemCount,
       localSubtotal,

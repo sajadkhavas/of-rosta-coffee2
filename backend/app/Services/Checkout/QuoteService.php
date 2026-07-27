@@ -10,6 +10,7 @@ use App\Models\CheckoutQuote;
 use App\Models\CheckoutQuoteGroup;
 use App\Models\CheckoutQuoteItem;
 use App\Models\CheckoutQuoteItemService;
+use App\Models\GrindingProfile;
 use App\Models\MediaAsset;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -31,10 +32,11 @@ final class QuoteService
         private readonly CouponService $coupons,
         private readonly ShippingQuoteService $shipping,
         private readonly ProductPackagingPolicy $packaging,
+        private readonly RoasteryGrindingSelection $grinding,
     ) {}
 
     /**
-     * @param  list<array{variant_id: string, quantity: int}>  $items
+     * @param  list<array{variant_id: string, quantity: int, grinding_profile_id?: string|null}>  $items
      */
     public function validateCart(array $items): CheckoutQuote
     {
@@ -48,7 +50,7 @@ final class QuoteService
     }
 
     /**
-     * @param  list<array{variant_id: string, quantity: int}>  $items
+     * @param  list<array{variant_id: string, quantity: int, grinding_profile_id?: string|null}>  $items
      */
     public function createCheckoutQuote(
         User $user,
@@ -70,7 +72,7 @@ final class QuoteService
     }
 
     /**
-     * @param  list<array{variant_id: string, quantity: int}>  $items
+     * @param  list<array{variant_id: string, quantity: int, grinding_profile_id?: string|null}>  $items
      */
     private function create(
         QuotePurpose $purpose,
@@ -87,6 +89,9 @@ final class QuoteService
             ->map(static fn (array $item): array => [
                 'variant_id' => (string) $item['variant_id'],
                 'quantity' => (int) $item['quantity'],
+                'grinding_profile_id' => isset($item['grinding_profile_id'])
+                    ? (string) $item['grinding_profile_id']
+                    : null,
             ])
             ->sortBy('variant_id')
             ->values();
@@ -99,6 +104,7 @@ final class QuoteService
                 'product.latestRoastBatch',
                 'product.roastery.logo',
                 'product.roastery.cover',
+                'product.roastery.grindingCapability.profiles',
                 'product.variants' => static fn ($query) => $query
                     ->where('is_active', true)
                     ->orderBy('weight_grams'),
@@ -120,6 +126,7 @@ final class QuoteService
          *     roastery: Roastery,
          *     subtotal: int,
          *     packaging_total: int,
+         *     grinding_total: int,
          *     items: list<array{
          *         product: Product,
          *         variant: ProductVariant,
@@ -127,7 +134,15 @@ final class QuoteService
          *         quantity: int,
          *         line_total: int,
          *         unit_packaging_fee: int,
-         *         line_packaging_total: int
+         *         line_packaging_total: int,
+         *         line_grinding_total: int,
+         *         grinding: array{
+         *             profile: GrindingProfile,
+         *             unit_fee: int,
+         *             line_total: int,
+         *             pricing_snapshot: array<string, mixed>,
+         *             service_snapshot: array<string, mixed>
+         *         }|null
          *     }>
          * }> $resolvedGroups
          */
@@ -172,6 +187,13 @@ final class QuoteService
             $lineTotal = $this->multiplyMoney($variant->price, $quantity);
             $unitPackagingFee = $product->packagingFee();
             $linePackagingTotal = $this->multiplyMoney($unitPackagingFee, $quantity);
+            $grinding = $this->grinding->resolve(
+                $product->roastery,
+                $variant,
+                $item['grinding_profile_id'],
+                $quantity,
+            );
+            $lineGrindingTotal = $grinding['line_total'] ?? 0;
             $subtotal = $this->addMoney($subtotal, $lineTotal);
             $roasteryId = (string) $product->roastery_id;
 
@@ -180,6 +202,7 @@ final class QuoteService
                     'roastery' => $product->roastery,
                     'subtotal' => 0,
                     'packaging_total' => 0,
+                    'grinding_total' => 0,
                     'items' => [],
                 ];
             }
@@ -192,6 +215,10 @@ final class QuoteService
                 $resolvedGroups[$roasteryId]['packaging_total'],
                 $linePackagingTotal,
             );
+            $resolvedGroups[$roasteryId]['grinding_total'] = $this->addMoney(
+                $resolvedGroups[$roasteryId]['grinding_total'],
+                $lineGrindingTotal,
+            );
             $resolvedGroups[$roasteryId]['items'][] = [
                 'product' => $product,
                 'variant' => $variant,
@@ -200,6 +227,8 @@ final class QuoteService
                 'line_total' => $lineTotal,
                 'unit_packaging_fee' => $unitPackagingFee,
                 'line_packaging_total' => $linePackagingTotal,
+                'line_grinding_total' => $lineGrindingTotal,
+                'grinding' => $grinding,
             ];
         }
 
@@ -254,8 +283,11 @@ final class QuoteService
             $group['discount_total'] = $discounts[$roasteryId] ?? 0;
             $group['grand_total'] = $this->addMoney(
                 $this->addMoney(
-                    $group['subtotal'] - $group['discount_total'],
-                    $group['packaging_total'],
+                    $this->addMoney(
+                        $group['subtotal'] - $group['discount_total'],
+                        $group['packaging_total'],
+                    ),
+                    $group['grinding_total'],
                 ),
                 $group['shipping_total'],
             );
@@ -316,14 +348,14 @@ final class QuoteService
                     'roastery_id' => $group['roastery']->id,
                     'subtotal' => $group['subtotal'],
                     'packaging_total' => $group['packaging_total'],
-                    'grinding_total' => 0,
+                    'grinding_total' => $group['grinding_total'],
                     'shipping_total' => $group['shipping_total'],
                     'discount_total' => $group['discount_total'],
                     'tax_total' => 0,
                     'grand_total' => $group['grand_total'],
                     'currency' => 'IRR',
                     'pricing_snapshot' => [
-                        'version' => 'r5d-product-packaging-v1',
+                        'version' => 'r5f-roastery-grinding-v1',
                         'shipping' => $group['shipping_snapshot'],
                     ],
                 ]);
@@ -372,6 +404,26 @@ final class QuoteService
                         ],
                         'service_snapshot' => $packagingSnapshot,
                     ]);
+
+                    $grinding = $resolved['grinding'];
+                    if ($grinding !== null) {
+                        CheckoutQuoteItemService::query()->create([
+                            'quote_group_id' => $quoteGroup->id,
+                            'quote_item_id' => $quoteItem->id,
+                            'service_type' => 'grinding',
+                            'provider_type' => 'roastery',
+                            'provider_roastery_id' => $product->roastery_id,
+                            'grinding_profile_id' => $grinding['profile']->id,
+                            'service_fee' => $resolved['line_grinding_total'],
+                            'packaging_fee' => 0,
+                            'shipping_fee' => 0,
+                            'tax_amount' => 0,
+                            'total_amount' => $resolved['line_grinding_total'],
+                            'currency' => 'IRR',
+                            'pricing_snapshot' => $grinding['pricing_snapshot'],
+                            'service_snapshot' => $grinding['service_snapshot'],
+                        ]);
+                    }
                 }
             }
 

@@ -430,6 +430,16 @@ function CheckoutContent() {
                       ? "بسته‌بندی رایگان"
                       : `بسته‌بندی ${formatIrr(item.packagingFeeAmount * item.quantity)}`}
                   </p>
+                  {quote?.groups
+                    .flatMap((group) => group.items)
+                    .find((line) => line.variant.id === item.variantId)
+                    ?.services.filter((service) => service.type === "grinding")
+                    .map((service) => (
+                      <p key={service.id} className="mt-1 text-[10px] text-[color:var(--roast)]">
+                        {service.label ?? service.grindingProfile?.name ?? "آسیاب روستری"} ·{" "}
+                        {service.isFree ? "رایگان" : formatIrr(service.serviceFee)}
+                      </p>
+                    ))}
                 </div>
                 <span className="shrink-0 font-mono text-[color:var(--light)]">
                   {formatIrr(item.unitPriceSnapshot * item.quantity)}
@@ -471,6 +481,12 @@ function CheckoutContent() {
                   <dt>بسته‌بندی روستری</dt>
                   <dd className="font-mono">
                     {quote.packagingTotal === 0 ? "رایگان" : formatIrr(quote.packagingTotal)}
+                  </dd>
+                </div>
+                <div className="flex justify-between text-[color:var(--light)]">
+                  <dt>آسیاب روستری</dt>
+                  <dd className="font-mono">
+                    {quote.grindingTotal === 0 ? "—" : formatIrr(quote.grindingTotal)}
                   </dd>
                 </div>
                 <div className="flex justify-between text-[color:var(--light)]">

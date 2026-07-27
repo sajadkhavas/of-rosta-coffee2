@@ -93,6 +93,7 @@ for (const required of [
   /expectedLineTotal/,
   /computedSubtotal !== subOrder\.subtotal/,
   /packagingTotal !== subOrder\.packaging_total/,
+  /grindingTotal !== subOrder\.grinding_total/,
   /childGrand !== value\.grand_total/,
   /ALLOWED_WHOLE_BEAN_WEIGHTS/,
 ]) {
@@ -104,18 +105,18 @@ for (const required of [
 }
 requirePattern(
   "src/lib/cart-storage.ts",
-  /CART_STORAGE_VERSION = 4 as const/,
-  "cart persistence must use the R5D versioned envelope",
+  /CART_STORAGE_VERSION = 5 as const/,
+  "cart persistence must use the current R5F versioned envelope",
 );
 requirePattern(
   "src/lib/cart-storage.ts",
-  /CART_STORAGE_KEY = "rosta_cart_v4"/,
-  "the current R5D cart key must be explicitly versioned",
+  /CART_STORAGE_KEY = "rosta_cart_v5"/,
+  "the current R5F cart key must be explicitly versioned",
 );
 requirePattern(
   "src/lib/cart-storage.ts",
-  /LEGACY_CART_STORAGE_KEYS = \["rosta_cart", "rosta_cart_v2", "rosta_cart_v3"\]/,
-  "R5D cart migration must retain all previous cart keys",
+  /LEGACY_CART_STORAGE_KEYS = \[[\s\S]*"rosta_cart"[\s\S]*"rosta_cart_v2"[\s\S]*"rosta_cart_v3"[\s\S]*"rosta_cart_v4"[\s\S]*\] as const/,
+  "R5F cart migration must retain every previous cart key through v4",
 );
 requirePattern(
   "src/lib/cart-storage.ts",
@@ -129,8 +130,8 @@ requirePattern(
 );
 forbidPattern(
   "src/lib/cart-context.tsx",
-  /setItem\("rosta_cart(?:_v2|_v3)?"/,
-  "legacy cart keys must never be written",
+  /setItem\("rosta_cart(?:_v2|_v3|_v4)?"/,
+  "legacy cart keys through v4 must never be written",
 );
 
 const serviceWorker = read("public/sw.js");
