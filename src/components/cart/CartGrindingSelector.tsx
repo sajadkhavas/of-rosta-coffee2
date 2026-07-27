@@ -24,11 +24,7 @@ export function CartGrindingSelector({ item, onChange }: CartGrindingSelectorPro
   }, [capabilityQuery.isSuccess, item.grindingProfileId, onChange, selectedProfile, supported]);
 
   if (capabilityQuery.isPending) {
-    return (
-      <p className="mt-3 text-[11px] text-[color:var(--light)]">
-        بررسی سرویس آسیاب روستری…
-      </p>
-    );
+    return <p className="mt-3 text-[11px] text-[color:var(--light)]">بررسی سرویس آسیاب روستری…</p>;
   }
 
   if (capabilityQuery.isError) {

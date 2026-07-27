@@ -58,11 +58,13 @@ foreach ($checks as $name => $check) {
     $path = $root.'/'.$check['file'];
     if (! is_file($path)) {
         $failures[] = $name.': missing '.$check['file'];
+
         continue;
     }
     $contents = file_get_contents($path);
     if (! is_string($contents)) {
         $failures[] = $name.': unreadable '.$check['file'];
+
         continue;
     }
     foreach ($check['needles'] as $needle) {

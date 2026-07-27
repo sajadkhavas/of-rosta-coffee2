@@ -3,18 +3,9 @@ import path from "node:path";
 
 const root = process.cwd();
 const checks = [
-  [
-    "src/lib/cart-storage.ts",
-    ["rosta_cart_v5", "grindingProfileId", "CART_STORAGE_VERSION = 5"],
-  ],
-  [
-    "src/lib/cart-context.tsx",
-    ["setGrindingProfile", "grindingProfileId: item.grindingProfileId"],
-  ],
-  [
-    "src/lib/api/checkout.ts",
-    ["grinding_profile_id", "serviceFee", "grindingProfile"],
-  ],
+  ["src/lib/cart-storage.ts", ["rosta_cart_v5", "grindingProfileId", "CART_STORAGE_VERSION = 5"]],
+  ["src/lib/cart-context.tsx", ["setGrindingProfile", "grindingProfileId: item.grindingProfileId"]],
+  ["src/lib/api/checkout.ts", ["grinding_profile_id", "serviceFee", "grindingProfile"]],
   [
     "src/components/cart/CartGrindingSelector.tsx",
     [
@@ -23,22 +14,13 @@ const checks = [
       "publicGrindingCapabilityQueryOptions",
     ],
   ],
-  [
-    "src/routes/cart.tsx",
-    ["CartGrindingSelector", "setGrindingProfile", "quote.grindingTotal"],
-  ],
-  [
-    "src/routes/checkout.tsx",
-    ["quote.grindingTotal", 'service.type === "grinding"'],
-  ],
+  ["src/routes/cart.tsx", ["CartGrindingSelector", "setGrindingProfile", "quote.grindingTotal"]],
+  ["src/routes/checkout.tsx", ["quote.grindingTotal", 'service.type === "grinding"']],
   [
     "src/routes/orders.$id.tsx",
     ["item.services", 'service.type === "grinding"', "subOrder.grindingTotal"],
   ],
-  [
-    "tests/unit/r5f-roastery-grinding.test.ts",
-    ["grinding_profile_id", "whole-bean identity"],
-  ],
+  ["tests/unit/r5f-roastery-grinding.test.ts", ["grinding_profile_id", "whole-bean identity"]],
 ];
 
 const failures = [];
