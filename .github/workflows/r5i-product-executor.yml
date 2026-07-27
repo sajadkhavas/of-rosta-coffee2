@@ -1,0 +1,213 @@
+name: Temporary R5I Product Executor
+
+on:
+  pull_request:
+    branches:
+      - integration/rosta-r5-marketplace
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: r5i-product-executor-pr
+  cancel-in-progress: true
+
+jobs:
+  apply-test-commit:
+    if: github.head_ref == 'program/r5i-delivery-settlement-payouts'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact R5I branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Rebuild and verify reviewed product patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat scripts/r5i-full-parts/part-*.b64 > /tmp/r5i-product.patch.gz.b64
+          test "$(wc -c < /tmp/r5i-product.patch.gz.b64)" = "45332"
+          test "$(sha256sum /tmp/r5i-product.patch.gz.b64 | awk '{print $1}')" = "daa0ab344192986316ab28e197994cf98e89e94721b5e993083317b754ee7f60"
+          test "$(git hash-object /tmp/r5i-product.patch.gz.b64)" = "0ee91be1eab9a236b6153178cdc7afe1a459cfdf"
+          base64 -d /tmp/r5i-product.patch.gz.b64 | gzip -d > /tmp/r5i-product.patch
+          git apply --check /tmp/r5i-product.patch
+          git apply /tmp/r5i-product.patch
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.22
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:2
+          coverage: none
+
+      - name: Install frozen dependencies
+        run: |
+          bun install --frozen-lockfile
+          cd backend
+          composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Format reviewed product diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='da5c8b77f372037ab3b3cf8d8981892e57b86025'
+          mapfile -t frontend_files < <(git diff --name-only "$base" -- '*.ts' '*.tsx' '*.mjs' '*.json' '*.md' '*.yml' '*.yaml' | while read -r file; do test -f "$file" && printf '%s\n' "$file"; done)
+          if ((${#frontend_files[@]})); then bunx prettier --write "${frontend_files[@]}"; fi
+          mapfile -t backend_files < <(git diff --name-only "$base" -- 'backend/*.php' 'backend/**/*.php' | sed 's#^backend/##' | while read -r file; do test -f "backend/$file" && printf '%s\n' "$file"; done)
+          if ((${#backend_files[@]})); then (cd backend && vendor/bin/pint "${backend_files[@]}"); fi
+
+      - name: Audit R5I frontend contract
+        id: frontend_audit
+        continue-on-error: true
+        run: bun run audit:r5i > /tmp/r5i-frontend-audit.log 2>&1
+
+      - name: Test R5I frontend contracts
+        id: frontend_test
+        continue-on-error: true
+        run: bun test tests/unit/r5i-delivery-settlement.test.ts tests/unit/financial-contracts.test.ts > /tmp/r5i-frontend-test.log 2>&1
+
+      - name: Generate frontend route tree
+        id: route_tree
+        continue-on-error: true
+        run: bun run routes:generate > /tmp/r5i-route-tree.log 2>&1
+
+      - name: Typecheck frontend
+        id: frontend_typecheck
+        continue-on-error: true
+        run: bun run typecheck > /tmp/r5i-frontend-typecheck.log 2>&1
+
+      - name: Audit R5I backend contract
+        id: backend_audit_r5i
+        continue-on-error: true
+        working-directory: backend
+        run: composer audit:r5i > /tmp/r5i-backend-audit-r5i.log 2>&1
+
+      - name: Audit OpenAPI contract
+        id: backend_audit_openapi
+        continue-on-error: true
+        working-directory: backend
+        run: composer audit:openapi > /tmp/r5i-backend-audit-openapi.log 2>&1
+
+      - name: Audit finance compatibility
+        id: backend_audit_finance
+        continue-on-error: true
+        working-directory: backend
+        run: composer audit:finance > /tmp/r5i-backend-audit-finance.log 2>&1
+
+      - name: Audit fulfilment compatibility
+        id: backend_audit_fulfillment
+        continue-on-error: true
+        working-directory: backend
+        run: composer audit:fulfillment > /tmp/r5i-backend-audit-fulfillment.log 2>&1
+
+      - name: Test R5I delivery settlement
+        id: backend_test_r5i
+        continue-on-error: true
+        working-directory: backend
+        run: php artisan test --filter=R5IDeliverySettlementTest > /tmp/r5i-backend-test-r5i.log 2>&1
+
+      - name: Test fulfilment lifecycle
+        id: backend_test_fulfillment
+        continue-on-error: true
+        working-directory: backend
+        run: php artisan test --filter=FulfillmentLifecycleTest > /tmp/r5i-backend-test-fulfillment.log 2>&1
+
+      - name: Test R5H commitment compatibility
+        id: backend_test_r5h
+        continue-on-error: true
+        working-directory: backend
+        run: php artisan test --filter=R5HFulfillmentCommitmentTest > /tmp/r5i-backend-test-r5h.log 2>&1
+
+      - name: Test payment lifecycle
+        id: backend_test_payment
+        continue-on-error: true
+        working-directory: backend
+        run: php artisan test --filter=PaymentLifecycleTest > /tmp/r5i-backend-test-payment.log 2>&1
+
+      - name: Analyse backend with PHPStan
+        id: backend_phpstan
+        continue-on-error: true
+        working-directory: backend
+        run: vendor/bin/phpstan analyse --memory-limit=1G > /tmp/r5i-backend-phpstan.log 2>&1
+
+      - name: Verify backend formatting
+        id: backend_pint
+        continue-on-error: true
+        working-directory: backend
+        run: vendor/bin/pint --parallel --test > /tmp/r5i-backend-pint.log 2>&1
+
+      - name: Upload R5I verification diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r5i-product-diagnostics-${{ github.sha }}
+          path: /tmp/r5i-*.log
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Enforce complete R5I verification
+        if: always()
+        run: |
+          cat /tmp/r5i-*.log || true
+          test "${{ steps.frontend_audit.outcome }}" = "success"
+          test "${{ steps.frontend_test.outcome }}" = "success"
+          test "${{ steps.route_tree.outcome }}" = "success"
+          test "${{ steps.frontend_typecheck.outcome }}" = "success"
+          test "${{ steps.backend_audit_r5i.outcome }}" = "success"
+          test "${{ steps.backend_audit_openapi.outcome }}" = "success"
+          test "${{ steps.backend_audit_finance.outcome }}" = "success"
+          test "${{ steps.backend_audit_fulfillment.outcome }}" = "success"
+          test "${{ steps.backend_test_r5i.outcome }}" = "success"
+          test "${{ steps.backend_test_fulfillment.outcome }}" = "success"
+          test "${{ steps.backend_test_r5h.outcome }}" = "success"
+          test "${{ steps.backend_test_payment.outcome }}" = "success"
+          test "${{ steps.backend_phpstan.outcome }}" = "success"
+          test "${{ steps.backend_pint.outcome }}" = "success"
+
+      - name: Remove generated and temporary assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf scripts/r5i-parts scripts/r5i-full-parts
+          rm -f .github/workflows/r5i-source-export.yml .github/workflows/r5i-product-executor.yml
+          find backend -maxdepth 1 -type f -name '*audit.json' -delete
+          rm -rf backend/.phpstan.cache
+
+      - name: Commit and push product implementation
+        id: product_commit
+        continue-on-error: true
+        shell: bash
+        run: |
+          {
+            set -euxo pipefail
+            git config user.name "Rosta R5I Executor"
+            git config user.email "actions@users.noreply.github.com"
+            git add -A
+            git diff --cached --check
+            git diff --cached --stat
+            git commit -m "R5I implement delivery settlement release and roastery payouts"
+            git push origin HEAD:program/r5i-delivery-settlement-payouts
+          } > /tmp/r5i-product-commit.log 2>&1
+
+      - name: Upload product commit diagnostics
+        if: steps.product_commit.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: r5i-product-commit-failure-${{ github.sha }}
+          path: /tmp/r5i-product-commit.log
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Enforce product commit
+        if: always()
+        run: |
+          cat /tmp/r5i-product-commit.log || true
+          test "${{ steps.product_commit.outcome }}" = "success"
