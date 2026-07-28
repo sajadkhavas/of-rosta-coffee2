@@ -73,8 +73,7 @@ jobs:
           base='adcdcfcf6094fdc9a4ccc76fad4b1d0b453faaed'
           mapfile -t frontend_files < <(git diff --name-only "$base" -- '*.ts' '*.tsx' '*.mjs' '*.json' '*.md' '*.yml' '*.yaml' | while read -r file; do test -f "$file" && printf '%s\n' "$file"; done)
           if ((${#frontend_files[@]})); then bunx prettier --write "${frontend_files[@]}"; fi
-          mapfile -t backend_files < <(git diff --name-only "$base" -- 'backend/*.php' 'backend/**/*.php' | sed 's#^backend/##' | while read -r file; do test -f "backend/$file" && printf '%s\n' "$file"; done)
-          if ((${#backend_files[@]})); then (cd backend && vendor/bin/pint "${backend_files[@]}"); fi
+          (cd backend && vendor/bin/pint)
 
           bun run audit:r5j
           bun test tests/unit/r5j-hub-operations.test.ts tests/unit/financial-contracts.test.ts
