@@ -53,6 +53,13 @@ jobs:
           git apply --check /tmp/r5j-product.patch
           git apply /tmp/r5j-product.patch
 
+          correction='scripts/r5j-payload/correction-01.patch'
+          test "$(wc -c < "$correction")" = "909"
+          test "$(sha256sum "$correction" | awk '{print $1}')" = "0f7299f61d050f9a8ec78958d6e440af2768ce8bf053d1d9fafee39d78d228c9"
+          test "$(git hash-object "$correction")" = "f49d41a8cb1c7dce3505c0ff3f9ffa51c6a6e3d4"
+          git apply --check "$correction"
+          git apply "$correction"
+
           bun install --frozen-lockfile
           (
             cd backend

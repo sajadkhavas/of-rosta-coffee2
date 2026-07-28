@@ -1,0 +1,36 @@
+--- a/src/lib/api/schemas.ts
++++ b/src/lib/api/schemas.ts
+@@ -344,6 +344,16 @@
+   })
+   .strict();
+ 
++const hubOperationWireSchema = z
++  .object({
++    status: boundedText(80),
++    label: boundedText(240),
++    received_at: isoDateTimeSchema.nullable().optional(),
++    ready_at: isoDateTimeSchema.nullable().optional(),
++    handed_off_at: isoDateTimeSchema.nullable().optional(),
++  })
++  .strict();
++
+ const commerceServiceWireSchema = z
+   .object({
+     id: identifierSchema,
+@@ -549,16 +559,6 @@
+   "refunded",
+ ]);
+ 
+-const hubOperationWireSchema = z
+-  .object({
+-    status: boundedText(80),
+-    label: boundedText(240),
+-    received_at: isoDateTimeSchema.nullable().optional(),
+-    ready_at: isoDateTimeSchema.nullable().optional(),
+-    handed_off_at: isoDateTimeSchema.nullable().optional(),
+-  })
+-  .strict();
+-
+ const orderItemServiceWireSchema = z
+   .object({
+     id: identifierSchema,
