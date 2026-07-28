@@ -42,12 +42,12 @@ gate(
     "ref: ${{ inputs.release_sha }}",
     'test "$checked_out" = "${{ inputs.release_sha }}"',
     "git merge-base --is-ancestor",
-    "origin/integration/rosta-r-program",
+    "origin/integration/rosta-release-candidate",
     "runs-on: [self-hosted, linux, x64, rosta-staging]",
   ]) &&
     !files.deployWorkflow.includes("agent/phase-22") &&
     !files.deployWorkflow.includes("release_ref:"),
-  "Live staging deployment must accept only an immutable commit already present in the R-program branch.",
+  "Live staging deployment must accept only an immutable commit frozen on the release-candidate branch.",
 );
 
 gate(
@@ -181,7 +181,7 @@ gate(
     "require_committed_composer_lock",
     "composer audit --locked",
     "release_sha:",
-    "origin/integration/rosta-r-program",
+    "origin/integration/rosta-release-candidate",
     '!files.deploy.includes("composer update")',
     '!files.deploy.includes("ensure_composer_lock")',
   ]),

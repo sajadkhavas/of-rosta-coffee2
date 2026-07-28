@@ -1,5 +1,10 @@
 # R5A — Ledger, Settlement and Refund Contract
 
+> Current implementation note: R5H replaces seller rejection with an incident.
+> Exact allocation reversal and partial refund occur only through an
+> administrator-scoped resolution; the ownership and over-refund invariants in
+> this historical contract remain authoritative.
+
 ## 1. Principles
 
 1. Customer collection and marketplace settlement are separate concerns.

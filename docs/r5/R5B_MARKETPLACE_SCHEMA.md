@@ -1,6 +1,6 @@
 # R5B — Marketplace Schema and Compatibility Layer
 
-Status: implementation complete when all permanent backend and staging gates pass.
+Status: **Complete — merged into the canonical integration lineage at `c690589`**
 
 ## Purpose
 
@@ -41,7 +41,10 @@ Whole-bean inventory remains unchanged. Grinding is represented only as an order
 
 `SubOrderAcceptanceStatus` is independent from the existing fulfilment status.
 
-Only `awaiting_roastery_acceptance` is customer-cancellable. Accepted, seller-rejected and customer-cancelled states are closed to customer cancellation. API locking and transition execution are implemented in later phases, but the database and model contract are established here.
+This section records the original R5B compatibility model. R5H later superseded
+manual seller acceptance: new sub-orders begin at `awaiting_payment`, successful
+payment commits them automatically, and seller exceptions are handled through
+administrator-resolved incidents and scoped refunds.
 
 ## Financial boundary
 

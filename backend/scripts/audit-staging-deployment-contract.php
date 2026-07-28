@@ -121,17 +121,17 @@ $gate(
 );
 
 $gate(
-    'deploy_uses_immutable_program_sha',
+    'deploy_uses_immutable_release_candidate_sha',
     $containsAll($files['deploy_workflow'], [
         'release_sha:',
         '40-character commit SHA',
         'ref: ${{ inputs.release_sha }}',
         'git merge-base --is-ancestor',
-        'origin/integration/rosta-r-program',
+        'origin/integration/rosta-release-candidate',
     ])
         && ! str_contains($files['deploy_workflow'], 'release_ref:')
         && ! str_contains($files['deploy_workflow'], 'agent/phase-22'),
-    'Deployment must select an exact immutable commit already accepted on the R-program branch.',
+    'Deployment must select an exact immutable commit frozen on the release-candidate branch.',
 );
 
 $gate(

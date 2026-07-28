@@ -1,5 +1,10 @@
 # R5A — Authoritative State Machines
 
+> Historical decision note: the acceptance machine below records the original
+> R5A proposal. R5H is authoritative in code: new sub-orders start at
+> `awaiting_payment`, verified payment commits them to `accepted`, and seller
+> inability to fulfil is an incident resolved by an administrator.
+
 This document defines legal transitions for parent orders, roastery sub-orders, grinding services and shipment legs. Unknown or skipped transitions must fail closed.
 
 ## 1. Parent order aggregate states

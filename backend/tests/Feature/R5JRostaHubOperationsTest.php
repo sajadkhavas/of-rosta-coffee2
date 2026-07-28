@@ -29,7 +29,7 @@ final class R5JRostaHubOperationsTest extends TestCase
     public function test_hub_chain_of_custody_is_idempotent_private_and_blocks_early_handoff(): void
     {
         $this->withoutMiddleware(ThrottleRequests::class);
-        [$customer, $admin, $operator, $other, $order, $service, $inbound, $outbound] = $this->fixture();
+        [$customer, $admin, $operator, $other, $seller, $roastery, $order, $service, $inbound, $outbound] = $this->fixture();
         $workItem = app(RostaHubOperationsService::class)->createForRoute($service, $inbound, $outbound, 250, 2);
 
         $this->authenticateWithRole($admin, Role::Administrator);
@@ -87,6 +87,30 @@ final class R5JRostaHubOperationsTest extends TestCase
             ->assertJsonMissingPath('data.assigned_operator')
             ->assertJsonMissingPath('data.private_evidence')
             ->assertJsonMissing(['private_evidence' => ['reference' => 'INBOUND-PRIVATE']]);
+
+        Auth::forgetGuards();
+        $this->authenticateWithRole($seller, Role::RoasteryManager, 'roastery', $roastery->id);
+        $sellerResponse = $this->getJson("/api/v1/seller/roasteries/{$roastery->id}/orders/{$order->id}")
+            ->assertOk()
+            ->assertJsonPath('data.sub_orders.0.shipment_legs.0.route_type', 'roastery_to_rosta_hub')
+            ->assertJsonPath('data.sub_orders.0.shipment_legs.0.status', 'delivered')
+            ->assertJsonPath('data.sub_orders.0.items.0.services.0.hub_operation.status', 'received')
+            ->assertJsonMissingPath('data.sub_orders.0.items.0.services.0.hub_operation.ready_at')
+            ->assertJsonMissingPath('data.sub_orders.0.items.0.services.0.hub_operation.handed_off_at')
+            ->assertJsonMissing(['route_type' => 'rosta_hub_to_customer'])
+            ->assertJsonMissingPath('data.assigned_operator')
+            ->assertJsonMissingPath('data.private_evidence')
+            ->assertJsonMissing(['private_evidence' => ['reference' => 'INBOUND-PRIVATE']]);
+
+        $this->assertNotNull(
+            $sellerResponse->json('data.sub_orders.0.items.0.services.0.hub_operation.received_at'),
+        );
+        $sellerHubEvents = collect($sellerResponse->json('data.events'))
+            ->pluck('type')
+            ->filter(static fn (string $type): bool => str_starts_with($type, 'hub.operation.'))
+            ->values()
+            ->all();
+        $this->assertSame(['hub.operation.receive'], $sellerHubEvents);
     }
 
     private function fixture(): array
@@ -95,6 +119,7 @@ final class R5JRostaHubOperationsTest extends TestCase
         $admin = User::factory()->create();
         $operator = User::factory()->create();
         $other = User::factory()->create();
+        $seller = User::factory()->create();
         $roastery = Roastery::query()->create(['name' => 'R5J Roastery', 'slug' => 'r5j-roastery', 'description' => '', 'status' => 'verified', 'verified_at' => now()]);
         $hub = RostaHub::query()->create(['code' => 'r5j-hub', 'name' => 'هاب R5J', 'province' => 'تهران', 'city' => 'تهران', 'fee_mode' => 'free', 'fee_amount' => 0, 'preparation_minutes' => 20, 'capacity_per_day' => 100, 'supported_weights' => [250], 'is_active' => true]);
         $profile = GrindingProfile::query()->create(['code' => 'r5j-profile', 'version' => 1, 'public_name' => 'V60', 'brew_method' => 'v60', 'recipe_snapshot' => [], 'is_active' => true]);
@@ -108,6 +133,6 @@ final class R5JRostaHubOperationsTest extends TestCase
         $inbound = ShipmentLeg::query()->create(['order_id' => $order->id, 'sub_order_id' => $subOrder->id, 'order_item_service_id' => $service->id, 'route_type' => 'roastery_to_rosta_hub', 'sequence' => 1, 'status' => 'in_transit', 'charge_owner_type' => 'rosta', 'gross_amount' => 0, 'tax_amount' => 0, 'total_amount' => 0, 'currency' => 'IRR', 'origin_snapshot' => [], 'destination_snapshot' => [], 'planned_at' => now(), 'picked_up_at' => now()]);
         $outbound = ShipmentLeg::query()->create(['order_id' => $order->id, 'sub_order_id' => $subOrder->id, 'order_item_service_id' => $service->id, 'route_type' => 'rosta_hub_to_customer', 'sequence' => 2, 'status' => 'planned', 'charge_owner_type' => 'rosta', 'gross_amount' => 0, 'tax_amount' => 0, 'total_amount' => 0, 'currency' => 'IRR', 'origin_snapshot' => [], 'destination_snapshot' => [], 'planned_at' => now()]);
 
-        return [$customer, $admin, $operator, $other, $order, $service, $inbound, $outbound];
+        return [$customer, $admin, $operator, $other, $seller, $roastery, $order, $service, $inbound, $outbound];
     }
 }

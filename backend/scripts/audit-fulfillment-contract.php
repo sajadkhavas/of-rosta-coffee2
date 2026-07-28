@@ -87,7 +87,9 @@ $gate(
 
 $gate(
     'customer_safe_shipment_and_incident_contract',
-    str_contains($files['resource'], "'shipment_legs' => \$subOrder->shipmentLegs")
+    str_contains($files['resource'], "'shipment_legs' => \$shipmentLegs")
+        && str_contains($files['resource'], "routeIs('api.v1.seller.*')")
+        && str_contains($files['resource'], "route_type === 'rosta_hub_to_customer'")
         && str_contains($files['resource'], "'incidents'")
         && ! str_contains($files['resource'], 'resolution_note')
         && ! str_contains($files['resource'], "'description' => \$incident->description")

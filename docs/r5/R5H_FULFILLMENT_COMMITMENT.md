@@ -1,10 +1,11 @@
 # R5H — Fulfilment Commitment, SLA and Exception Incidents
 
-Status: **Implemented — final CI verification pending**
+Status: **Complete — merged at `da5c8b7`; all six formal gates passed**
 Program branch: `integration/rosta-r5-marketplace`
 Product branch: `program/r5h-fulfilment-sla-incidents`
 
-The reviewed product implementation is committed without temporary executor, transfer or source-export assets. Merge remains blocked until all six formal PR gates pass on the final head.
+The reviewed product implementation is part of the canonical integration lineage
+without temporary executor, transfer or source-export assets.
 
 ## Superseding decision
 

@@ -2,13 +2,15 @@
 
 ## Status
 
-- Branch: `agent/phase-15-seo-content-foundation`
-- Dependency: stacked on Phase 10 transactional checkout
+- Integrated in the canonical R5 lineage.
+- The SEO foundation, live inventory-aware quiz and verified-review flow are implemented.
+- Production crawl/index activation remains disabled until staging acceptance and launch approval.
 - Laravel owns publication, canonical paths, indexability, redirects and content relationships.
 - TanStack Start owns SSR rendering, metadata serialization and crawl-facing routes.
 - Product price, stock, variants, reviews, orders and payment facts remain authoritative in Laravel.
 
-This branch closes the SEO/content foundation. Quiz, verified reviews, legal copy approval and legacy article migration remain separate product work and must not expand this PR again.
+Legal copy approval, reviewed legacy-content migration and production indexing
+remain operational launch work; they are not missing source features.
 
 ## Goal
 
@@ -233,7 +235,9 @@ The code is implemented on this branch. Real server build, generated route-tree 
 
 ## Legacy blog migration
 
-`src/data/blog-posts.ts` contains legacy HTML strings. It remains readable during migration but is not the target model.
+The former `src/data/blog-posts.ts` production fixture has been removed. Any
+legacy article imported from an external archive must still follow this
+controlled migration sequence.
 
 Migration sequence:
 
@@ -297,19 +301,17 @@ Source-level gates cannot prove runtime behavior. On Staging we must still run:
 
 - frozen frontend install, TypeScript, ESLint, tests and production build;
 - route-tree generation and SSR View Source checks;
-- Composer install and committed `backend/composer.lock`;
+- install from the committed Composer lock;
 - migrations, seeders, PHPUnit, Larastan and Pint;
 - Sanctum/CORS/CSRF acceptance;
 - database-specific link-report queries;
 - browser tests at mobile, tablet and desktop sizes.
 
-The PR remains Draft until those runtime gates are green.
+Production indexing remains disabled until those runtime gates are green.
 
 ## Remaining product work outside this foundation
 
 - migrate legacy static articles with human review;
 - create public author pages before emitting author profile URLs;
-- implement verified reviews before review/rating structured data;
-- implement Quiz and inventory-aware recommendations;
 - approve legal, trust, support and partnership content;
 - split sitemap into an index when URL volume requires it.

@@ -2,7 +2,9 @@
 
 ## Status
 
-The code-level refund and reconciliation foundation is implemented on `agent/phase-19-refunds-reconciliation`, stacked on Phase 18F. It remains disabled by default and must not be merged to `main` or activated with real funds before the server gates in this document pass.
+The refund and reconciliation foundation is integrated in the canonical R5
+lineage. Its safe default remains disabled, and real funds must not be activated
+before staging acceptance and explicit provider approval.
 
 ## Provider decision
 
@@ -100,20 +102,17 @@ ROSTA_REFUND_DUAL_CONTROL=true
 - Finance routes are added to OpenAPI drift detection.
 - Backend readiness checks the new tables, provider activation, failed/review refunds and open cases.
 
-## Server-only gates still open
+## Staging and provider gates still open
 
 The following results are not claimable until a healthy Docker/server environment is available:
 
-1. Generate and commit `backend/composer.lock`.
-2. Install Composer dependencies from the lockfile.
-3. Run all MySQL migrations from an empty database and from the current staging schema.
-4. Run PHPUnit, Larastan and Pint.
-5. Run `composer check` and `php artisan rosta:readiness --json --strict`.
-6. Test Redis-backed refund dispatch locking with concurrent requests.
-7. Test manual-provider reconciliation using non-production payment records.
-8. Confirm encrypted payload sizes against realistic provider responses.
-9. Verify backup and restore of refund/reconciliation records.
-10. Keep refund execution disabled until these gates and administrator UI acceptance pass.
+1. Run all MySQL migrations from an empty database and from the current staging schema.
+2. Run `php artisan rosta:readiness --json --strict` on deployed services.
+3. Test Redis-backed refund dispatch locking with concurrent requests.
+4. Test manual-provider reconciliation using non-production payment records.
+5. Confirm encrypted payload sizes against realistic provider responses.
+6. Verify backup and restore of refund/reconciliation records.
+7. Keep refund execution disabled until these gates and administrator UI acceptance pass.
 
 ## Deliberately outside this phase
 
@@ -121,7 +120,7 @@ The following results are not claimable until a healthy Docker/server environmen
 - Provider credentials.
 - Production fund movement.
 - Seller permission to create or approve refunds.
-- Automatic refund based only on a seller rejection without administrator financial control.
+- Automatic refund based only on a seller incident without administrator financial control.
 - The administrator finance user interface; this belongs to Phase 20.
 
 The permanent whole-bean boundary remains unchanged. Refund and reconciliation records contain no grind selector, grind option or grind state.

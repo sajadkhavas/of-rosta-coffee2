@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release_sha:
-        description: Exact 40-character commit SHA already accepted on integration/rosta-r-program
+        description: Exact 40-character commit SHA already frozen on integration/rosta-release-candidate
         required: true
       run_preflight:
         description: Run full host preflight before deploy
@@ -48,7 +48,7 @@ jobs:
           set -Eeuo pipefail
           checked_out="$(git rev-parse HEAD)"
           test "$checked_out" = "${{ inputs.release_sha }}"
-          git merge-base --is-ancestor "$checked_out" origin/integration/rosta-r-program
+          git merge-base --is-ancestor "$checked_out" origin/integration/rosta-release-candidate
           echo "ROSTA_RELEASE_TAG=$checked_out" >> "$GITHUB_ENV"
 
       - name: Protect deployment scripts

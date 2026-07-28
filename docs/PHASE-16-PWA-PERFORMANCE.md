@@ -2,6 +2,9 @@
 
 Marker: `phase16_pwa_performance=ready`
 
+وضعیت فعلی: کد و ممیزی‌های Source این فاز در lineage یکپارچهٔ R5 قرار
+گرفته‌اند. موارد انتهای سند فقط پذیرش Runtime روی Staging هستند.
+
 ## هدف
 
 بستن لایه تجربه و عملکرد فرانت رستا پیش از ورود به سرور، بدون تغییر دامنه محصول یا اضافه‌کردن قابلیت تجاری جدید. این فاز باید تضمین کند طراحی فعلی روی موبایل، تبلت و دسکتاپ با شبکه و سخت‌افزارهای متفاوت رفتار قابل‌پیش‌بینی دارد.
@@ -69,4 +72,5 @@ Source scope این فاز پیش از ورود به سرور بسته می‌ش
 7. Browser audit سه Viewport با Network throttling و Reduced Motion
 8. ثبت Baseline واقعی LCP/CLS/INP و Bundle report
 
-تا زمانی که این Gateهای Runtime واقعاً اجرا نشده‌اند، PR باید Draft بماند و ادعای امتیاز Lighthouse یا صفر باگ Runtime نباید ثبت شود.
+تا زمانی که این Gateهای Runtime واقعاً اجرا نشده‌اند، ادعای امتیاز
+Lighthouse، رفتار Production یا صفر باگ Runtime نباید ثبت شود.

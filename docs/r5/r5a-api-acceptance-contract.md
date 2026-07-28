@@ -2,6 +2,11 @@
 
 This document defines implementation-facing contracts for R5B–R5K. Endpoint names may evolve, but authority, idempotency, transition and acceptance rules may not.
 
+> Historical decision note: R5H supersedes the manual seller-acceptance,
+> rejection and customer-cancellation API described below. New sub-orders are
+> committed automatically after verified payment; seller exceptions use
+> incidents and administrator-scoped resolution.
+
 ## 1. Quote contract
 
 The authoritative quote request may contain customer selections, but never trusted prices or settlement ownership.

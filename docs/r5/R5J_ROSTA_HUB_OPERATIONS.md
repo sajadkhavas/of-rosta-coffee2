@@ -33,7 +33,9 @@ Complete the operational lifecycle for Rosta Hub grinding orders after R5G routi
 - administrator Hub queue with filters, assignment and controlled transitions
 - assigned operator workspace with least-privilege actions
 - customer order timeline showing safe Hub progress labels
-- roastery visibility limited to inbound handoff and receipt; no private Hub evidence or operator data
+- roastery visibility limited to inbound handoff and receipt; R5K enforces this
+  boundary in the API resource, event feed, seller UI and permanent tests so no
+  private Hub evidence, operator identity or internal processing timestamp leaks
 
 ## Boundaries
 

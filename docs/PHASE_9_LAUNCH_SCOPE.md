@@ -25,7 +25,8 @@ As contracts are completed, implementation proceeds without waiting for later ph
 
 ## Permanent boundaries
 
-- Rosta sells only whole coffee beans; grind state is forbidden everywhere.
+- Product and inventory identity remain whole-bean; later R5 grinding is an
+  order-item service and never a catalog or stock dimension.
 - Product and stock truth comes only from Laravel.
 - Seller access is always scoped to an authorized roastery.
 - Admin actions use domain services and produce audit logs.

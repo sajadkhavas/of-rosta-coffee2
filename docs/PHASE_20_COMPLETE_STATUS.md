@@ -2,9 +2,10 @@
 
 ## Status
 
-Phase 20 is implemented across the stacked Phase 20A, 20B and 20C branches. The code now covers administrator finance, seller daily operations, seller professional catalog management and administrator moderation/health operations.
-
-It remains Draft and runtime-unverified until the repository Actions runner or an equivalent PHP 8.3/Bun/MySQL/Redis/R2 server executes every permanent gate.
+Phase 20 is integrated in the canonical R5 lineage and its permanent source
+gates have passed. The code covers administrator finance, seller daily
+operations, seller professional catalog management and administrator
+moderation/health operations. Deployed staging acceptance remains separate.
 
 ## Administrator workspaces
 
@@ -71,7 +72,8 @@ Allowed weight SKUs:
 - 500 g
 - 1000 g
 
-No grind selector, grind option or grind state exists in Phase 20.
+Phase 20 did not add grind state to product or inventory identity. Later R5
+phases add grinding only as an order-item service.
 
 ## Permanent gates
 
@@ -100,14 +102,9 @@ Backend:
 
 These boundaries are now represented in code and permanent audits.
 
-## Runtime gates still open
+## Staging acceptance still open
 
-- generate and commit `backend/composer.lock`;
-- install locked Composer and Bun dependencies;
-- execute MySQL migrations;
-- run PHPUnit, Larastan and Pint;
-- run frontend audits, unit tests, TypeScript, ESLint/Prettier and production build;
-- regenerate the real TanStack route tree and remove the temporary release tree;
+- execute migrations on the real staging database and verify rollback/backup;
 - run two-session administrator finance acceptance;
 - run seller scope and fulfillment E2E;
 - run R2 CORS/signed-upload acceptance;

@@ -1,9 +1,17 @@
 # R5A — Multi-Roastery Marketplace Domain Contract
 
-Status: **Approved product contract**  
-Approved: **2026-07-25**  
-Program: **R5 — Multi-Roastery Commerce, Grinding and Fulfillment**  
+Status: **Historical approved contract — implemented; R5H supersedes manual acceptance**
+
+Approved: **2026-07-25**
+
+Program: **R5 — Multi-Roastery Commerce, Grinding and Fulfillment**
+
 Parent branch: `integration/rosta-r5-marketplace`
+
+Current-state note: R5H is authoritative wherever this original contract refers
+to seller acceptance, seller rejection or pre-acceptance customer cancellation.
+The older passages remain below as decision history, not as an implementation
+instruction.
 
 ## 1. Purpose
 
@@ -16,11 +24,11 @@ This document is the product-domain source of truth for R5B and later implementa
 1. A customer may place products from multiple roasteries in one cart.
 2. The customer completes one checkout and one payment.
 3. The platform creates one parent order and one sub-order per roastery.
-4. Every sub-order has independent acceptance, fulfilment, shipment, settlement and incident state.
+4. Every sub-order has independent fulfilment, shipment, settlement and incident state; payment commits fulfilment automatically.
 5. Product inventory remains whole-bean inventory. Grinding is an order-item service and is never a product variant, stock dimension or roast-batch dimension.
-6. A customer may cancel a sub-order only while that sub-order is awaiting roastery acceptance.
-7. After roastery acceptance, customer cancellation is permanently unavailable in both UI and API.
-8. A roastery rejection is a seller action, not a customer cancellation, and triggers an authoritative partial refund flow.
+6. Before payment, checkout expiry/cancellation releases the uncommitted order and reservation through authoritative backend rules.
+7. Successful payment commits every sub-order; post-payment customer cancellation is unavailable in both UI and API.
+8. A seller reports inability to fulfil as an incident. Only an administrator may resolve it with a scoped cancellation, exact restock and refund flow.
 9. Packaging fees are optional per product and may be zero.
 10. A zero packaging fee must be visible as a positive customer-facing fact in product, cart, checkout and invoice surfaces.
 11. Every roastery publicly declares whether it provides grinding.

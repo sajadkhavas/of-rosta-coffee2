@@ -2,7 +2,11 @@
 
 ## Status
 
-The code-level seller workspace is implemented on `agent/phase-20b-seller-operations-ui`, stacked on Phase 20A. It covers roastery onboarding/bootstrap, whole-bean catalog, roast batches, authoritative inventory, fulfillment and signed media uploads. Runtime acceptance remains blocked until the Bun/Laravel/MySQL/Redis/Object Storage gates run on a healthy server.
+The seller workspace is integrated in the canonical R5 lineage. It covers
+roastery onboarding/bootstrap, whole-bean catalog and inventory identity, roast
+batches, fulfilment, signed media uploads and the safe seller-facing part of
+Rosta Hub receipt tracking. Repository source gates have passed; deployed
+object-storage and browser acceptance remain open.
 
 ## Route and access
 
@@ -19,12 +23,13 @@ The code-level seller workspace is implemented on `agent/phase-20b-seller-operat
 
 - Scoped seller order queue.
 - Domain-state actions only:
-  - pending acceptance → accepted or rejected;
   - accepted → preparing;
   - preparing → ready to ship;
-  - ready to ship → shipped;
-  - shipped → delivered.
-- Rejection requires a reason and enters the existing refund-pending domain flow.
+  - ready to ship → shipped.
+- Verified payment commits sub-orders automatically; sellers do not accept or
+  reject paid orders.
+- An inability to fulfil is reported as an incident and is resolved only by an
+  administrator through the scoped R5H refund/restock path.
 - Shipment requires carrier and tracking code.
 - Internal operational notes are optional and remain server-side/private.
 
@@ -79,20 +84,15 @@ The client parses seller roasteries, products, variants, roast batches, stock le
 - loading/error/empty states;
 - `/panel` route and navigation registration.
 
-## Runtime gates still open
+## Staging acceptance still open
 
-1. Generate the real TanStack route tree and replace the temporary Phase 17 tree.
-2. Run frozen Bun install, seller audit, unit tests, TypeScript, ESLint/Prettier and production build.
-3. Generate/commit `backend/composer.lock` and run migrations, PHPUnit, Larastan and Pint.
-4. Verify the scoped roastery bootstrap test against MySQL.
-5. Verify an onboarding user receives the new owner role and can bootstrap the created roastery without signing out.
-6. Test owner, manager, staff and administrator permissions in separate sessions.
-7. Test invalid product status transitions and duplicate whole-bean weights.
-8. Test concurrent stock adjustments and repeated idempotency keys.
-9. Test the full fulfillment path, rejection/restock/refund-pending behavior and duplicate tracking codes.
-10. Enable R2 only on Staging, configure Bucket CORS/CDN and test checksum/content-type/size failures.
-11. Run mobile/tablet/desktop, keyboard, screen-reader and slow-network acceptance.
-12. Keep payment, refund, SMS and media providers disabled until their individual acceptance gates pass.
+1. Verify scoped roastery bootstrap and owner/manager/staff/admin sessions against MySQL.
+2. Test invalid product transitions, duplicate weights and concurrent stock adjustments.
+3. Test automatic payment commitment, fulfilment incidents and duplicate tracking codes.
+4. Enable R2 only on Staging and test CORS, checksum, content type and size failures.
+5. Run mobile/tablet/desktop, keyboard, screen-reader and slow-network acceptance.
+6. Keep payment, refund, SMS and production media providers disabled until their
+   individual acceptance gates pass.
 
 ## Deliberately outside Phase 20B
 
@@ -101,4 +101,7 @@ The client parses seller roasteries, products, variants, roast batches, stock le
 - Product rich editing beyond the operational Draft/create/status/variant/batch workflow.
 - Production provider credentials or fund movement.
 
-The permanent business boundary remains unchanged: Rosta sells whole coffee beans only. No grind selector, grind option or grind state is present in the seller workspace or APIs.
+The permanent inventory boundary remains unchanged: product variants, roast
+batches, reservations and stock remain whole-bean only. Grinding is represented
+only by the R5 order-item service contract and never becomes seller-managed
+inventory identity.

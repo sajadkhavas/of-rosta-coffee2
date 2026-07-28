@@ -1,6 +1,7 @@
 # R5D — Optional Roastery Product Packaging
 
-Status: implementation phase  
+Status: **Complete — merged into the canonical integration lineage at `7560909`**
+
 Parent program: `integration/rosta-r5-marketplace`
 
 ## Scope

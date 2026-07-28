@@ -30,9 +30,9 @@ const paths = {
   icon: "public/icon.svg",
   maskableIcon: "public/icon-maskable.svg",
   productionDockerfile: "backend/Dockerfile.production",
-  stagingCompose: "backend/docker-compose.staging.yml",
-  backendDeploy: "backend/scripts/deploy-staging.sh",
-  frontendDeploy: "scripts/deploy-staging-frontend.sh",
+  stagingCompose: "deploy/staging/docker-compose.yml",
+  backendDeploy: "deploy/staging/deploy.sh",
+  frontendDeploy: "deploy/staging/acceptance.sh",
 };
 
 const files = {};
@@ -156,9 +156,11 @@ gate(
     files.stagingCompose?.includes("scheduler:") &&
     files.stagingCompose?.includes("internal: true") &&
     files.backendDeploy?.includes("composer.lock is required") &&
+    files.backendDeploy?.includes("composer check") &&
     files.backendDeploy?.includes("php artisan migrate --force") &&
-    files.frontendDeploy?.includes("bun run check") &&
-    files.frontendDeploy?.includes("VITE_ALLOW_INDEXING=false"),
+    files.frontendDeploy?.includes("robots_noindex") &&
+    files.frontendDeploy?.includes("security_headers") &&
+    files.frontendDeploy?.includes("acceptance.json.sha256"),
   "staging deployment must be deterministic, non-indexable and include API, queue and scheduler gates",
 );
 

@@ -2,6 +2,10 @@
 
 Phase lock: `2026-07-21-phase-6`
 
+Current-state note: this audit froze the original customer contract. R5C later
+superseded its single-roastery cart assumption with authoritative multi-roastery
+grouping while preserving every security and trust-boundary rule.
+
 ## Purpose
 
 Audit the complete customer storefront built through Phase 5 before using its current TypeScript contracts as the Laravel implementation target.
@@ -16,7 +20,8 @@ The audit does not add live payment or SMS credentials and does not treat a succ
 - TypeScript interfaces are not runtime validation.
 - Gateway callback parameters are untrusted hints.
 - The cart is cleared only after a runtime-validated backend response consistently proves the expected order and payment attempt are paid.
-- Only whole-bean products are valid. Grind state is invalid everywhere.
+- Product and inventory identity are whole-bean only. Later R5 grinding is valid
+  only as a server-validated order-item service.
 
 ## Confirmed gaps at phase start
 
@@ -50,7 +55,7 @@ The audit does not add live payment or SMS credentials and does not treat a succ
 - stale product or Variant identifiers
 - oversized or future-version LocalStorage payloads
 - cross-tab cart races
-- quantity tampering and one-roastery bypass
+- quantity tampering and cross-roastery grouping bypass
 - relying only on a paginated catalog page to reconcile cart truth
 
 ### Checkout, orders and payments
@@ -102,7 +107,7 @@ The audit does not add live payment or SMS credentials and does not treat a succ
 - unavailable state for stale or unknown stock
 - cross-tab synchronization
 - atomic URL filter changes and bounded pagination/search inputs
-- deterministic single-roastery and quantity behavior
+- deterministic roastery grouping and quantity behavior
 
 ### 6D — Checkout and payment hardening
 
@@ -140,7 +145,7 @@ The audit does not add live payment or SMS credentials and does not treat a succ
 - no API request can escape the configured approved origin
 - every production API payload crossing a trust boundary is runtime validated
 - malformed data becomes an explicit error/unavailable state, never fabricated business truth
-- one-roastery, quantity, stock and Variant boundaries are deterministic
+- roastery grouping, quantity, stock and Variant boundaries are deterministic
 - transaction intent is bound to its payload and safely survives ambiguous failures
 - redirect and callback attacks cannot create paid UI state
 - production mocks and secrets are absent from output

@@ -2,7 +2,10 @@
 
 ## Status
 
-The administrator finance workspace is implemented on `agent/phase-20a-admin-finance-ui`, stacked on Phase 19. It is code-complete for the refund and financial reconciliation APIs currently exposed by Laravel, but it is not runtime-accepted until the Bun/TypeScript/browser and Laravel server gates pass.
+The administrator finance workspace is integrated in the canonical R5 lineage.
+Its permanent source audits and repository CI gates have passed. Production
+refund execution remains disabled until the staging and provider-approval gates
+below are accepted.
 
 ## Route
 
@@ -13,7 +16,7 @@ The route is:
 - protected by `AccountGuard`;
 - restricted to users with the `administrator` role;
 - marked `noindex,nofollow`;
-- registered in the temporary Phase 17 route tree;
+- registered in the generated TanStack route tree;
 - linked from the administrator navigation with an explicit active state.
 
 ## Refund operations
@@ -61,19 +64,15 @@ The client does not accept or render `request_payload` or `response_payload`.
 - The audit protects administrator access, noindex, strict parsing, idempotency, dual control, authoritative resolution, confidential payload boundaries, loading/error/empty states, navigation and route registration.
 - The Phase 17 contact audit was updated to recognize persisted Inquiry success instead of the obsolete mailto-only behavior.
 
-## Server and browser gates still open
+## Staging acceptance still open
 
-1. Generate the real TanStack route tree and remove the temporary Phase 17 tree.
-2. Run `bun install --frozen-lockfile`.
-3. Run `bun run audit:admin-finance`.
-4. Run unit tests, TypeScript, ESLint and the production build.
-5. Run the workspace against the real Laravel/MySQL/Redis services.
-6. Verify unauthorized, customer and seller users are redirected or rejected.
-7. Verify two separate administrator sessions are required for request/approval.
-8. Simulate concurrent dispatch attempts and confirm only one provider execution.
-9. Verify API 409/422/503 errors remain understandable and do not lose the idempotency key.
-10. Test mobile, tablet, desktop, keyboard and screen-reader behavior.
-11. Keep real payment/refund providers disabled during UI acceptance.
+1. Run the workspace against the deployed Laravel/MySQL/Redis services.
+2. Verify unauthorized, customer and seller users are redirected or rejected.
+3. Verify two separate administrator sessions are required for request/approval.
+4. Simulate concurrent dispatch attempts and confirm only one provider execution.
+5. Verify API 409/422/503 errors remain understandable and retain idempotency.
+6. Test mobile, tablet, desktop, keyboard and screen-reader behavior.
+7. Keep real payment/refund providers disabled during acceptance.
 
 ## Deliberately excluded from Phase 20A
 
