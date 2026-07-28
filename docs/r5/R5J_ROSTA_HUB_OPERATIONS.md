@@ -1,6 +1,6 @@
 # R5J — Rosta Hub Operations and Chain of Custody
 
-Status: **Implementation complete — formal gates pending**
+Status: **Complete**
 Program branch: `integration/rosta-r5-marketplace`
 Product branch: `program/r5j-rosta-hub-operations`
 
@@ -41,6 +41,11 @@ Complete the operational lifecycle for Rosta Hub grinding orders after R5G routi
 - no customer or browser request may supply operator identity, fee, capacity, settlement owner or transition timestamps
 - no transition may silently release settlement, refund money or cancel sibling sub-orders
 
+## Verification markers
+
+- `ROSTA_R5J_HUB_OPERATIONS_COMPLETE`
+- `ROSTA_R5J_HUB_OPERATIONS_FRONTEND_COMPLETE`
+
 ## Exit gates
 
-The phase is complete only after CI, Backend CI, Full-stack Integration CI, Browser Acceptance CI, R3 Final Gate and R4 Staging Package CI all pass on one clean final head.
+CI, Backend CI, Full-stack Integration CI, Browser Acceptance CI, R3 Final Gate and R4 Staging Package CI must all pass on one clean final head before merge.
