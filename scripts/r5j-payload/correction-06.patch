@@ -1,0 +1,18 @@
+--- a/backend/tests/Feature/R5JRostaHubOperationsTest.php
++++ b/backend/tests/Feature/R5JRostaHubOperationsTest.php
+@@ -50,13 +50,13 @@
+         Auth::forgetGuards();
+         $this->authenticateWithRole($operator, Role::HubOperator, 'rosta_hub', $workItem->hub_id);
+         foreach ([
+-            ['start_grinding', 'r5j-start-1', 'grinding'],
++            ['start_grinding', 'r5j-start-0001', 'grinding'],
+             ['submit_quality_check', 'r5j-qc-submit-1', 'quality_check'],
+             ['quality_fail', 'r5j-qc-fail-1', 'rework_required'],
+             ['restart_grinding', 'r5j-rework-1', 'grinding'],
+             ['submit_quality_check', 'r5j-qc-submit-2', 'quality_check'],
+             ['quality_pass', 'r5j-qc-pass-1', 'packaging'],
+-            ['mark_ready', 'r5j-ready-1', 'ready_for_outbound'],
++            ['mark_ready', 'r5j-ready-0001', 'ready_for_outbound'],
+             ['handoff', 'r5j-handoff-1', 'handed_off'],
+         ] as [$action, $key, $status]) {
+             $this->postJson("/api/v1/hub-operations/work-items/{$workItem->id}/transition", [
