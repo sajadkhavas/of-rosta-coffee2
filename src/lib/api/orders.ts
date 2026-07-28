@@ -81,6 +81,15 @@ function mapLine(value: WireLine): OrderLine {
       currency: service.currency,
       isFree: service.is_free,
       label: service.label ?? null,
+      hubOperation: service.hub_operation
+        ? {
+            status: service.hub_operation.status,
+            label: service.hub_operation.label,
+            receivedAt: service.hub_operation.received_at ?? null,
+            readyAt: service.hub_operation.ready_at ?? null,
+            handedOffAt: service.hub_operation.handed_off_at ?? null,
+          }
+        : null,
     })),
   };
 }

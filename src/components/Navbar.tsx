@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Search, ShieldCheck, ShoppingBag, Store, User, WalletCards } from "lucide-react";
+import { Factory, Search, ShieldCheck, ShoppingBag, Store, User, WalletCards } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
 import { toFa } from "@/lib/persian";
 
@@ -20,6 +20,7 @@ export function Navbar() {
   const isLinkReportActive = pathname === "/admin/content-links";
   const isFinanceActive = pathname === "/admin/finance";
   const isOperationsActive = pathname === "/admin/operations";
+  const isHubActive = pathname === "/hub/operations";
 
   return (
     <header className="sticky top-0 z-40 border-b border-[color:var(--mid)]/60 bg-[color:var(--night)]/85 backdrop-blur-xl">
@@ -146,6 +147,16 @@ export function Navbar() {
               <span className="inline-flex items-center gap-1.5">
                 <WalletCards size={14} />
                 عملیات مالی
+              </span>
+            </Link>
+            <Link
+              to="/hub/operations"
+              aria-current={isHubActive ? "page" : undefined}
+              className={`${adminNavBase} ${isHubActive ? adminNavActive : adminNavIdle}`}
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <Factory size={14} />
+                عملیات هاب
               </span>
             </Link>
             <Link

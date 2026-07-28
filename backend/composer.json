@@ -113,6 +113,7 @@
       "@audit:r5g",
       "@audit:r5h",
       "@audit:r5i",
+      "@audit:r5j",
       "@php artisan test",
       "@php vendor/bin/phpstan analyse --memory-limit=1G",
       "@php vendor/bin/pint --parallel --test"
@@ -122,7 +123,8 @@
     "audit:r5f": "@php scripts/audit-r5f-roastery-grinding.php",
     "audit:r5g": "@php scripts/audit-r5g-rosta-hub-grinding.php",
     "audit:r5h": "@php scripts/audit-r5h-fulfillment-commitment.php",
-    "audit:r5i": "@php scripts/audit-r5i-delivery-settlement.php"
+    "audit:r5i": "@php scripts/audit-r5i-delivery-settlement.php",
+    "audit:r5j": "php scripts/audit-r5j-rosta-hub-operations.php"
   },
   "config": {
     "optimize-autoloader": true,

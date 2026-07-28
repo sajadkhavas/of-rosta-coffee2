@@ -344,6 +344,16 @@ const grindingProfileSelectionWireSchema = z
   })
   .strict();
 
+const hubOperationWireSchema = z
+  .object({
+    status: boundedText(80),
+    label: boundedText(240),
+    received_at: isoDateTimeSchema.nullable().optional(),
+    ready_at: isoDateTimeSchema.nullable().optional(),
+    handed_off_at: isoDateTimeSchema.nullable().optional(),
+  })
+  .strict();
+
 const commerceServiceWireSchema = z
   .object({
     id: identifierSchema,
@@ -357,6 +367,7 @@ const commerceServiceWireSchema = z
     currency: currencySchema,
     is_free: z.boolean(),
     label: nullableText(240),
+    hub_operation: hubOperationWireSchema.nullable().optional(),
   })
   .strict()
   .refine(
@@ -563,6 +574,7 @@ const orderItemServiceWireSchema = z
     currency: currencySchema,
     is_free: z.boolean(),
     label: nullableText(240),
+    hub_operation: hubOperationWireSchema.nullable().optional(),
   })
   .strict();
 

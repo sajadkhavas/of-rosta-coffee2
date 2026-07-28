@@ -69,4 +69,9 @@ final class RostaHub extends Model
     {
         return $this->hasMany(RostaHubServiceZone::class, 'hub_id');
     }
+
+    public function workItems(): HasMany
+    {
+        return $this->hasMany(HubWorkItem::class, 'hub_id');
+    }
 }

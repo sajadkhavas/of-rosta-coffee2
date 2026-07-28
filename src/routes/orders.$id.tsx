@@ -276,6 +276,11 @@ function OrderContent() {
                                 <span>
                                   {service.isFree ? "رایگان" : formatIrr(service.totalAmount)}
                                 </span>
+                                {service.hubOperation ? (
+                                  <span className="basis-full rounded-lg border border-[color:var(--roast)]/30 bg-[color:var(--dark)] px-3 py-2 text-[10px] text-[color:var(--roast)]">
+                                    عملیات هاب: {service.hubOperation.label}
+                                  </span>
+                                ) : null}
                               </li>
                             ))}
                           </ul>

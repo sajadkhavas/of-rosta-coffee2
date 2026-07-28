@@ -41,6 +41,7 @@ import { Route as BrewSlugRouteImport } from './routes/brew.$slug'
 import { Route as CollectionsSlugRouteImport } from './routes/collections.$slug'
 import { Route as CompareSlugRouteImport } from './routes/compare.$slug'
 import { Route as GuidesSlugRouteImport } from './routes/guides.$slug'
+import { Route as HubOperationsRouteImport } from './routes/hub.operations'
 import { Route as OrdersIndexRouteImport } from './routes/orders.index'
 import { Route as OrdersIdRouteImport } from './routes/orders.$id'
 import { Route as OriginsSlugRouteImport } from './routes/origins.$slug'
@@ -214,6 +215,11 @@ const GuidesSlugRoute = GuidesSlugRouteImport.update({
   path: '/guides/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HubOperationsRoute = HubOperationsRouteImport.update({
+  id: '/hub/operations',
+  path: '/hub/operations',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrdersIndexRoute = OrdersIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -306,6 +312,7 @@ export interface FileRoutesByFullPath {
   '/collections/$slug': typeof CollectionsSlugRoute
   '/compare/$slug': typeof CompareSlugRoute
   '/guides/$slug': typeof GuidesSlugRoute
+  '/hub/operations': typeof HubOperationsRoute
   '/orders/$id': typeof OrdersIdRoute
   '/origins/$slug': typeof OriginsSlugRoute
   '/panel/grinding': typeof PanelGrindingRoute
@@ -346,6 +353,7 @@ export interface FileRoutesByTo {
   '/collections/$slug': typeof CollectionsSlugRoute
   '/compare/$slug': typeof CompareSlugRoute
   '/guides/$slug': typeof GuidesSlugRoute
+  '/hub/operations': typeof HubOperationsRoute
   '/orders/$id': typeof OrdersIdRoute
   '/origins/$slug': typeof OriginsSlugRoute
   '/panel/grinding': typeof PanelGrindingRoute
@@ -393,6 +401,7 @@ export interface FileRoutesById {
   '/collections/$slug': typeof CollectionsSlugRoute
   '/compare/$slug': typeof CompareSlugRoute
   '/guides/$slug': typeof GuidesSlugRoute
+  '/hub/operations': typeof HubOperationsRoute
   '/orders/$id': typeof OrdersIdRoute
   '/origins/$slug': typeof OriginsSlugRoute
   '/panel/grinding': typeof PanelGrindingRoute
@@ -441,6 +450,7 @@ export interface FileRouteTypes {
     | '/collections/$slug'
     | '/compare/$slug'
     | '/guides/$slug'
+    | '/hub/operations'
     | '/orders/$id'
     | '/origins/$slug'
     | '/panel/grinding'
@@ -481,6 +491,7 @@ export interface FileRouteTypes {
     | '/collections/$slug'
     | '/compare/$slug'
     | '/guides/$slug'
+    | '/hub/operations'
     | '/orders/$id'
     | '/origins/$slug'
     | '/panel/grinding'
@@ -527,6 +538,7 @@ export interface FileRouteTypes {
     | '/collections/$slug'
     | '/compare/$slug'
     | '/guides/$slug'
+    | '/hub/operations'
     | '/orders/$id'
     | '/origins/$slug'
     | '/panel/grinding'
@@ -572,6 +584,7 @@ export interface RootRouteChildren {
   CollectionsSlugRoute: typeof CollectionsSlugRoute
   CompareSlugRoute: typeof CompareSlugRoute
   GuidesSlugRoute: typeof GuidesSlugRoute
+  HubOperationsRoute: typeof HubOperationsRoute
   OriginsSlugRoute: typeof OriginsSlugRoute
   TastesSlugRoute: typeof TastesSlugRoute
   AdminContentEditEntryIdRoute: typeof AdminContentEditEntryIdRoute
@@ -803,6 +816,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GuidesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/hub/operations': {
+      id: '/hub/operations'
+      path: '/hub/operations'
+      fullPath: '/hub/operations'
+      preLoaderRoute: typeof HubOperationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/orders/': {
       id: '/orders/'
       path: '/'
@@ -998,6 +1018,7 @@ const rootRouteChildren: RootRouteChildren = {
   CollectionsSlugRoute: CollectionsSlugRoute,
   CompareSlugRoute: CompareSlugRoute,
   GuidesSlugRoute: GuidesSlugRoute,
+  HubOperationsRoute: HubOperationsRoute,
   OriginsSlugRoute: OriginsSlugRoute,
   TastesSlugRoute: TastesSlugRoute,
   AdminContentEditEntryIdRoute: AdminContentEditEntryIdRoute,

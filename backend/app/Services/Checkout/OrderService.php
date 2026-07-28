@@ -28,6 +28,7 @@ use App\Models\ShipmentLeg;
 use App\Models\SubOrder;
 use App\Models\User;
 use App\Services\AuditRecorder;
+use App\Services\Hub\RostaHubOperationsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -39,6 +40,7 @@ final class OrderService
         private readonly CheckoutHasher $hasher,
         private readonly AuditRecorder $audit,
         private readonly RoasteryGrindingSelection $grinding,
+        private readonly RostaHubOperationsService $hubOperations,
     ) {}
 
     public function create(
@@ -568,6 +570,15 @@ final class OrderService
                         subOrder: $subOrder,
                         orderItemService: $hubGrindingService,
                     );
+
+                    $hubOrderItem = $hubGrindingService->orderItem()->firstOrFail();
+                    $this->hubOperations->createForRoute(
+                        $hubGrindingService,
+                        $inboundLeg,
+                        $outboundLeg,
+                        (int) ($hubOrderItem->variant_snapshot['weight_grams'] ?? 0),
+                        $hubOrderItem->quantity,
+                    );
                 } else {
                     $shipmentLeg = ShipmentLeg::query()->create([
                         'order_id' => $order->id,
@@ -664,6 +675,7 @@ final class OrderService
             'subOrders.roastery.logo',
             'subOrders.roastery.cover',
             'subOrders.items.services.grindingProfile',
+            'subOrders.items.services.hubWorkItem',
             'subOrders.shipmentLegs.deliveryConfirmation',
             'subOrders.fulfillmentIncidents',
             'items',

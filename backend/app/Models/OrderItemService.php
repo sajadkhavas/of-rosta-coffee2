@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @property string $id
@@ -41,6 +42,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read Collection<int, ShipmentLeg> $shipmentLegs
  * @property-read Collection<int, SettlementAllocation> $settlementAllocations
  * @property-read Collection<int, OrderEvent> $events
+ * @property-read HubWorkItem|null $hubWorkItem
  */
 final class OrderItemService extends Model
 {
@@ -139,5 +141,11 @@ final class OrderItemService extends Model
     public function events(): HasMany
     {
         return $this->hasMany(OrderEvent::class);
+    }
+
+    /** @return HasOne<HubWorkItem, $this> */
+    public function hubWorkItem(): HasOne
+    {
+        return $this->hasOne(HubWorkItem::class);
     }
 }

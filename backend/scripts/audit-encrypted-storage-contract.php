@@ -32,6 +32,14 @@ $contracts = [
         'migration' => 'database/migrations/2026_07_27_190001_create_r5i_delivery_settlement_payouts.php',
         'field' => 'proof_payload',
     ],
+    'app/Models/HubWorkItem.php:snapshot' => [
+        'migration' => 'database/migrations/2026_07_28_000001_create_r5j_hub_operations.php',
+        'field' => 'snapshot',
+    ],
+    'app/Models/HubWorkItemAction.php:private_evidence' => [
+        'migration' => 'database/migrations/2026_07_28_000001_create_r5j_hub_operations.php',
+        'field' => 'private_evidence',
+    ],
     'app/Models/StockLedgerEntry.php:metadata' => [
         'migration' => 'database/migrations/2026_07_21_020001_create_catalog_inventory_tables.php',
         'field' => 'metadata',
