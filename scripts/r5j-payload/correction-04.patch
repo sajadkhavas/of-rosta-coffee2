@@ -1,0 +1,15 @@
+--- a/backend/app/Services/Hub/RostaHubOperationsService.php
++++ b/backend/app/Services/Hub/RostaHubOperationsService.php
+@@ -108,7 +108,11 @@
+             $isAdmin = $actor->hasRole(Role::Administrator);
+             $isHubOperator = $actor->hasRole(Role::HubOperator) || $actor->hasRole(Role::HubOperator, 'rosta_hub', $item->hub_id);
+             if (! $isAdmin && ! $isHubOperator) throw new ApiDomainException('hub_operation.forbidden', 'اجازه عملیات این هاب را ندارید.', 403);
+-            if (! $isAdmin && $action !== HubWorkItemAction::Received && $item->assigned_operator_id !== $actor->id) {
++            if (
++                ! $isAdmin
++                && $action !== HubWorkItemAction::Received
++                && ! hash_equals((string) $item->assigned_operator_id, (string) $actor->getAuthIdentifier())
++            ) {
+                 throw new ApiDomainException('hub_operation.not_assigned', 'این کار به اپراتور دیگری تخصیص یافته است.', 403);
+             }
+             if ($action === HubWorkItemAction::Cancelled && ! $isAdmin) {
