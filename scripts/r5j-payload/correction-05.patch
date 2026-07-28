@@ -1,0 +1,35 @@
+--- a/backend/tests/Feature/R5JRostaHubOperationsTest.php
++++ b/backend/tests/Feature/R5JRostaHubOperationsTest.php
+@@ -47,11 +47,6 @@
+             'operator_id' => $operator->id, 'idempotency_key' => 'r5j-assign-0001', 'note' => 'شیفت صبح',
+         ])->assertOk()->assertJsonPath('data.status', 'assigned')->assertJsonPath('data.assigned_operator.id', $operator->id);
+ 
+-        $this->authenticateWithRole($other, Role::HubOperator, 'rosta_hub', $workItem->hub_id);
+-        $this->postJson("/api/v1/hub-operations/work-items/{$workItem->id}/transition", [
+-            'action' => 'start_grinding', 'idempotency_key' => 'r5j-wrong-operator',
+-        ])->assertForbidden()->assertJsonPath('error.code', 'hub_operation.not_assigned');
+-
+         Auth::forgetGuards();
+         $this->authenticateWithRole($operator, Role::HubOperator, 'rosta_hub', $workItem->hub_id);
+         foreach ([
+@@ -69,6 +64,12 @@
+             ])->assertOk()->assertJsonPath('data.status', $status)->assertJsonMissingPath('data.private_evidence');
+         }
+ 
++        Auth::forgetGuards();
++        $this->authenticateWithRole($other, Role::HubOperator, 'rosta_hub', $workItem->hub_id);
++        $this->postJson("/api/v1/hub-operations/work-items/{$workItem->id}/transition", [
++            'action' => 'start_grinding', 'idempotency_key' => 'r5j-wrong-operator',
++        ])->assertForbidden()->assertJsonPath('error.code', 'hub_operation.not_assigned');
++
+         $outbound->refresh();
+         $service->refresh();
+         $this->assertSame('picked_up', $outbound->status->value);
+@@ -76,6 +77,7 @@
+         $this->assertDatabaseHas('order_events', ['order_id' => $order->id, 'event_type' => 'hub.operation.handoff']);
+         $this->assertDatabaseCount('hub_work_item_actions', 11);
+ 
++        Auth::forgetGuards();
+         $this->authenticateWithRole($customer, Role::Customer);
+         $this->getJson("/api/v1/orders/{$order->id}")
+             ->assertOk()
