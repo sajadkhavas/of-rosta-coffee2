@@ -3,6 +3,7 @@
 Status: **Complete**
 Program branch: `integration/rosta-r5-marketplace`
 Product branch: `program/r5j-rosta-hub-operations`
+Verification candidate: the final product head must contain no temporary workflow, payload or diagnostic source files.
 
 ## Purpose
 
