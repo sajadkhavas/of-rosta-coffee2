@@ -1,0 +1,42 @@
+--- a/backend/app/Models/HubWorkItem.php
++++ b/backend/app/Models/HubWorkItem.php
+@@ -31,6 +31,9 @@
+  * @property CarbonImmutable|null $ready_at
+  * @property CarbonImmutable|null $handed_off_at
+  * @property CarbonImmutable|null $cancelled_at
++ * @property-read Order|null $order
++ * @property-read SubOrder|null $subOrder
++ * @property-read OrderItem|null $orderItem
+  * @property-read RostaHub|null $hub
+  * @property-read User|null $assignedOperator
+  * @property-read OrderItemService|null $orderItemService
+--- a/backend/app/Models/HubWorkItemAction.php
++++ b/backend/app/Models/HubWorkItemAction.php
+@@ -20,6 +20,8 @@
+  * @property string $public_label
+  * @property array<mixed>|null $private_evidence
+  * @property CarbonImmutable $occurred_at
++ * @property-read HubWorkItem|null $workItem
++ * @property-read User|null $actor
+  */
+ final class HubWorkItemAction extends Model
+ {
+--- a/backend/app/Http/Resources/HubWorkItemResource.php
++++ b/backend/app/Http/Resources/HubWorkItemResource.php
+@@ -4,6 +4,7 @@
+ 
+ use App\Models\HubWorkItem;
+ use App\Models\HubWorkItemAction;
++use App\Models\ShipmentLeg;
+ use Illuminate\Http\Request;
+ use Illuminate\Http\Resources\Json\JsonResource;
+ 
+@@ -50,7 +51,7 @@
+         ];
+     }
+ 
+-    private function leg($leg): ?array
++    private function leg(?ShipmentLeg $leg): ?array
+     {
+         if ($leg === null) return null;
+         return ['id' => $leg->id, 'route_type' => $leg->route_type, 'status' => $leg->status->value, 'tracking_code' => $leg->tracking_code, 'delivered_at' => $leg->delivered_at?->toIso8601String(), 'picked_up_at' => $leg->picked_up_at?->toIso8601String()];
