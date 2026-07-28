@@ -18,12 +18,7 @@ requireAll("api", files.api, [
   "assignHubWorkItem",
   "transitionHubWorkItem",
 ]);
-requireAll("page", files.page, [
-  "عملیات هاب رستا",
-  "کنترل کیفیت",
-  "تخصیص اپراتور",
-  "تحویل به حمل",
-]);
+requireAll("page", files.page, ["عملیات هاب رستا", "کنترل کیفیت", "تخصیص اپراتور", "تحویل به حمل"]);
 requireAll("customer", files.order, ["عملیات هاب:", "hubOperation.label"]);
 requireAll("schema", files.schemas, ["hub_operation", "handed_off_at"]);
 if (files.api.includes("private_evidence")) {
