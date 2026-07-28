@@ -65,6 +65,7 @@ jobs:
           verify_apply scripts/r5j-payload/correction-05.patch 1957 442c013f943d7c43e172f71c2f8044cb2170e5dd7a762c59e00c0066c4e6dbdc db51dfc5e64ad55a8d12392e5d7a32481dcd9c76
           verify_apply scripts/r5j-payload/correction-06.patch 1080 e39aed3e9b53fe9f66382f696d8cbdc20cbedb96ad822f215dbd9c0db47652ca e74fca857c508f2d561423c9cd8523082e3f4be5
           verify_apply scripts/r5j-payload/correction-07.patch 835 dc8ebf36cfd3536701dcfa1ce94cec533184caf3d4fbacb0572f02131ba8da19 11211c4f711f9cd69650073165b1fd82a70daaa1
+          verify_apply scripts/r5j-payload/correction-08.patch 1634 d6c19a0f71806c60fd71a00f889954e9d9144b7ab1cef1e9d6ebf63292c08eb0 3398ed5acd593b4dc60da24e8098d2396af6ef5c
 
           bun install --frozen-lockfile
           (cd backend && composer install --no-interaction --no-progress --prefer-dist)
