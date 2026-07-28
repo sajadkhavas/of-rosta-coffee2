@@ -7,6 +7,7 @@ $files = [
     'readiness' => file_get_contents($root.'/app/Console/Commands/BackendReadiness.php'),
     'environment' => file_get_contents($root.'/.env.staging.example'),
     'compose' => file_get_contents($repo.'/deploy/staging/docker-compose.yml'),
+    'entrypoint' => file_get_contents($root.'/docker/entrypoint.sh'),
     'deploy' => file_get_contents($repo.'/deploy/staging/deploy.sh'),
     'deploy_workflow' => file_get_contents($repo.'/.github/workflows/staging-deploy.yml'),
     'acceptance' => file_get_contents($repo.'/deploy/staging/acceptance.sh'),
@@ -89,6 +90,17 @@ $gate(
 );
 
 $gate(
+    'runtime_view_cache_is_container_local',
+    $containsAll($files['entrypoint'], [
+        'VIEW_COMPILED_PATH="${VIEW_COMPILED_PATH:-/tmp/rosta-compiled-views}"',
+        'export VIEW_COMPILED_PATH',
+        'mkdir -p "$VIEW_COMPILED_PATH"',
+        'php artisan view:cache --no-interaction',
+    ]) && ! str_contains($files['entrypoint'], 'storage/framework/views'),
+    'API, worker and scheduler containers must compile Blade views in private paths instead of racing on shared storage.',
+);
+
+$gate(
     'deploy_is_backup_first_and_lock_consuming',
     $containsAll($files['deploy'], [
         'require_committed_composer_lock',
@@ -167,6 +179,7 @@ if ($failed !== []) {
     foreach ($failed as $gate) {
         fwrite(STDERR, "- {$gate['name']}: {$gate['evidence']}\n");
     }
+
     exit(1);
 }
 
