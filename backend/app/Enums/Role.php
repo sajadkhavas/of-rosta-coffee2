@@ -11,4 +11,5 @@ enum Role: string
     case Administrator = 'administrator';
     case Support = 'support';
     case Finance = 'finance';
+    case HubOperator = 'hub_operator';
 }

@@ -241,6 +241,14 @@ export interface OrderVariantLine {
   currency: CurrencyCode;
 }
 
+export interface HubOperationSummary {
+  status: string;
+  label: string;
+  receivedAt?: IsoDateTime | null;
+  readyAt?: IsoDateTime | null;
+  handedOffAt?: IsoDateTime | null;
+}
+
 export interface OrderItemServiceSummary {
   id: string;
   type: string;
@@ -261,6 +269,7 @@ export interface OrderItemServiceSummary {
   currency: CurrencyCode;
   isFree: boolean;
   label?: string | null;
+  hubOperation?: HubOperationSummary | null;
 }
 
 export interface OrderLine {

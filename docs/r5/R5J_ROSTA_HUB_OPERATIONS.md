@@ -1,6 +1,6 @@
 # R5J — Rosta Hub Operations and Chain of Custody
 
-Status: **Implementation in progress**
+Status: **Implementation complete — formal gates pending**
 Program branch: `integration/rosta-r5-marketplace`
 Product branch: `program/r5j-rosta-hub-operations`
 

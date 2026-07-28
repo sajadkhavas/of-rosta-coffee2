@@ -241,6 +241,13 @@ final class OrderResource extends JsonResource
                     'currency' => $service->currency,
                     'is_free' => $service->total_amount === 0,
                     'label' => $service->service_snapshot['label'] ?? null,
+                    'hub_operation' => $service->hubWorkItem === null ? null : [
+                        'status' => $service->hubWorkItem->status->value,
+                        'label' => $service->hubWorkItem->status->publicLabel(),
+                        'received_at' => $service->hubWorkItem->received_at?->toIso8601String(),
+                        'ready_at' => $service->hubWorkItem->ready_at?->toIso8601String(),
+                        'handed_off_at' => $service->hubWorkItem->handed_off_at?->toIso8601String(),
+                    ],
                 ])
                 ->values()
                 ->all(),

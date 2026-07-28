@@ -1,0 +1,20 @@
+openapi: 3.1.0
+info:
+  title: Rosta Hub Operations API
+  version: r5j
+paths:
+  /api/v1/admin/hub-operations/work-items:
+    get:
+      summary: List all Hub work items for administrators
+  /api/v1/admin/hub-operations/work-items/{workItemId}/assign:
+    post:
+      summary: Assign a scoped Hub operator
+  /api/v1/admin/hub-operations/work-items/{workItemId}/transition:
+    post:
+      summary: Apply an administrator Hub transition
+  /api/v1/hub-operations/work-items:
+    get:
+      summary: List work assigned to the authenticated Hub operator
+  /api/v1/hub-operations/work-items/{workItemId}/transition:
+    post:
+      summary: Apply an assigned operator transition

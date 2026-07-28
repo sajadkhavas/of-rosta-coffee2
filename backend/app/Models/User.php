@@ -28,6 +28,7 @@ use Laravel\Sanctum\HasApiTokens;
  * @property-read Collection<int, CheckoutQuote> $checkoutQuotes
  * @property-read Collection<int, Order> $orders
  * @property-read Collection<int, OrderIdempotencyKey> $orderIdempotencyKeys
+ * @property-read Collection<int, HubWorkItem> $assignedHubWorkItems
  */
 final class User extends Authenticatable
 {
@@ -95,6 +96,12 @@ final class User extends Authenticatable
     public function orderIdempotencyKeys(): HasMany
     {
         return $this->hasMany(OrderIdempotencyKey::class);
+    }
+
+    /** @return HasMany<HubWorkItem, $this> */
+    public function assignedHubWorkItems(): HasMany
+    {
+        return $this->hasMany(HubWorkItem::class, 'assigned_operator_id');
     }
 
     public function roleNames(): array
