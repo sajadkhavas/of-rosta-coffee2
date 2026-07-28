@@ -1,0 +1,118 @@
+name: Temporary R5J Product Executor
+
+on:
+  pull_request:
+    branches:
+      - integration/rosta-r5-marketplace
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: r5j-product-executor-pr
+  cancel-in-progress: true
+
+jobs:
+  verify-and-publish:
+    if: github.head_ref == 'program/r5j-rosta-hub-operations'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout exact R5J branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.22
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:2
+          coverage: none
+
+      - name: Apply, verify and publish R5J
+        id: executor
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          exec > >(tee /tmp/r5j-product-executor.log) 2>&1
+
+          cat scripts/r5j-payload/part-* > /tmp/r5j-product.patch.gz.b64
+          test "$(wc -c < /tmp/r5j-product.patch.gz.b64)" = "27424"
+          test "$(sha256sum /tmp/r5j-product.patch.gz.b64 | awk '{print $1}')" = "83e3b5272f90fbb56034e9ea144fdb54bcfcc0464efba5d363d67eb0a359129b"
+          test "$(git hash-object /tmp/r5j-product.patch.gz.b64)" = "1a34b16e783e3c7bfd51ae43f51d97bfc7cd13bd"
+          base64 -d /tmp/r5j-product.patch.gz.b64 | gzip -d > /tmp/r5j-product.patch
+          git apply --check /tmp/r5j-product.patch
+          git apply /tmp/r5j-product.patch
+
+          bun install --frozen-lockfile
+          (
+            cd backend
+            composer install --no-interaction --no-progress --prefer-dist
+          )
+
+          base='adcdcfcf6094fdc9a4ccc76fad4b1d0b453faaed'
+          mapfile -t frontend_files < <(git diff --name-only "$base" -- '*.ts' '*.tsx' '*.mjs' '*.json' '*.md' '*.yml' '*.yaml' | while read -r file; do test -f "$file" && printf '%s\n' "$file"; done)
+          if ((${#frontend_files[@]})); then
+            bunx prettier --write "${frontend_files[@]}"
+          fi
+          mapfile -t backend_files < <(git diff --name-only "$base" -- 'backend/*.php' 'backend/**/*.php' | sed 's#^backend/##' | while read -r file; do test -f "backend/$file" && printf '%s\n' "$file"; done)
+          if ((${#backend_files[@]})); then
+            (cd backend && vendor/bin/pint "${backend_files[@]}")
+          fi
+
+          bun run audit:r5j
+          bun test tests/unit/r5j-hub-operations.test.ts tests/unit/financial-contracts.test.ts
+          bun run routes:generate
+          bun run typecheck
+
+          (
+            cd backend
+            composer audit:r5j
+            composer audit:encrypted-storage
+            composer audit:openapi
+            composer audit:r5g
+            composer audit:r5i
+            php artisan test --filter=R5JRostaHubOperationsTest
+            php artisan test --filter=R5GRostaHubGrindingTest
+            php artisan test --filter=R5IDeliverySettlementTest
+            vendor/bin/phpstan analyse --memory-limit=1G
+            vendor/bin/pint --parallel --test
+          )
+
+          rm -rf scripts/r5j-payload
+          rm -f .github/workflows/r5j-source-export.yml
+          rm -f .github/workflows/r5j-product-executor.yml
+          find backend -maxdepth 1 -type f -name '*audit.json' -delete
+          rm -rf backend/.phpstan.cache backend/storage/framework/cache/phpstan
+
+          git config user.name "Rosta R5J Executor"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git diff --cached --stat
+          git commit -m "R5J implement Rosta Hub operations and chain of custody"
+          git push origin HEAD:program/r5j-rosta-hub-operations
+
+      - name: Upload R5J executor diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r5j-product-executor-${{ github.sha }}
+          path: /tmp/r5j-product-executor.log
+          if-no-files-found: warn
+          retention-days: 1
+
+      - name: Enforce R5J executor
+        if: always()
+        shell: bash
+        run: |
+          test "${{ steps.executor.outcome }}" = "success"
