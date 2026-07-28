@@ -1,0 +1,10 @@
+--- a/src/lib/api/schemas.ts
++++ b/src/lib/api/schemas.ts
+@@ -574,6 +574,7 @@
+     currency: currencySchema,
+     is_free: z.boolean(),
+     label: nullableText(240),
++    hub_operation: hubOperationWireSchema.nullable().optional(),
+   })
+   .strict();
+ 
