@@ -2,8 +2,7 @@ name: Temporary R5J Product Executor
 
 on:
   pull_request:
-    branches:
-      - integration/rosta-r5-marketplace
+    branches: [integration/rosta-r5-marketplace]
     types: [opened, reopened, synchronize]
 
 permissions:
@@ -24,19 +23,16 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
-
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.2.22
-
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
           tools: composer:2
           coverage: none
-
       - name: Apply, verify and publish R5J
         id: executor
         continue-on-error: true
@@ -44,6 +40,15 @@ jobs:
         run: |
           set -Eeuo pipefail
           exec > >(tee /tmp/r5j-product-executor.log) 2>&1
+
+          verify_apply() {
+            local source="$1" bytes="$2" sha256="$3" blob="$4"
+            test "$(wc -c < "$source")" = "$bytes"
+            test "$(sha256sum "$source" | awk '{print $1}')" = "$sha256"
+            test "$(git hash-object "$source")" = "$blob"
+            git apply --check "$source"
+            git apply "$source"
+          }
 
           cat scripts/r5j-payload/part-* > /tmp/r5j-product.patch.gz.b64
           test "$(wc -c < /tmp/r5j-product.patch.gz.b64)" = "27424"
@@ -53,41 +58,23 @@ jobs:
           git apply --check /tmp/r5j-product.patch
           git apply /tmp/r5j-product.patch
 
-          correction='scripts/r5j-payload/correction-01.patch'
-          test "$(wc -c < "$correction")" = "909"
-          test "$(sha256sum "$correction" | awk '{print $1}')" = "0f7299f61d050f9a8ec78958d6e440af2768ce8bf053d1d9fafee39d78d228c9"
-          test "$(git hash-object "$correction")" = "f49d41a8cb1c7dce3505c0ff3f9ffa51c6a6e3d4"
-          git apply --check "$correction"
-          git apply "$correction"
-
-          correction='scripts/r5j-payload/correction-02.patch'
-          test "$(wc -c < "$correction")" = "255"
-          test "$(sha256sum "$correction" | awk '{print $1}')" = "a04ad5d29f19157ee1363ac2db2d36daffce80ba082c5e1e736a5f5299e14467"
-          test "$(git hash-object "$correction")" = "ecfe381e773c6eb70ba6490d5c51aed3b407113d"
-          git apply --check "$correction"
-          git apply "$correction"
+          verify_apply scripts/r5j-payload/correction-01.patch 909 0f7299f61d050f9a8ec78958d6e440af2768ce8bf053d1d9fafee39d78d228c9 f49d41a8cb1c7dce3505c0ff3f9ffa51c6a6e3d4
+          verify_apply scripts/r5j-payload/correction-02.patch 255 a04ad5d29f19157ee1363ac2db2d36daffce80ba082c5e1e736a5f5299e14467 ecfe381e773c6eb70ba6490d5c51aed3b407113d
+          verify_apply scripts/r5j-payload/correction-03.patch 780 7228ec4780a1cebb9fa7831352638d9a2eb058b3e5c93cf7b56e6452fb4c926c d8c637134a63b8a8f322d9d9991e20f5d89f636f
 
           bun install --frozen-lockfile
-          (
-            cd backend
-            composer install --no-interaction --no-progress --prefer-dist
-          )
+          (cd backend && composer install --no-interaction --no-progress --prefer-dist)
 
           base='adcdcfcf6094fdc9a4ccc76fad4b1d0b453faaed'
           mapfile -t frontend_files < <(git diff --name-only "$base" -- '*.ts' '*.tsx' '*.mjs' '*.json' '*.md' '*.yml' '*.yaml' | while read -r file; do test -f "$file" && printf '%s\n' "$file"; done)
-          if ((${#frontend_files[@]})); then
-            bunx prettier --write "${frontend_files[@]}"
-          fi
+          if ((${#frontend_files[@]})); then bunx prettier --write "${frontend_files[@]}"; fi
           mapfile -t backend_files < <(git diff --name-only "$base" -- 'backend/*.php' 'backend/**/*.php' | sed 's#^backend/##' | while read -r file; do test -f "backend/$file" && printf '%s\n' "$file"; done)
-          if ((${#backend_files[@]})); then
-            (cd backend && vendor/bin/pint "${backend_files[@]}")
-          fi
+          if ((${#backend_files[@]})); then (cd backend && vendor/bin/pint "${backend_files[@]}"); fi
 
           bun run audit:r5j
           bun test tests/unit/r5j-hub-operations.test.ts tests/unit/financial-contracts.test.ts
           bun run routes:generate
           bun run typecheck
-
           (
             cd backend
             composer audit:r5j
@@ -103,8 +90,7 @@ jobs:
           )
 
           rm -rf scripts/r5j-payload
-          rm -f .github/workflows/r5j-source-export.yml
-          rm -f .github/workflows/r5j-product-executor.yml
+          rm -f .github/workflows/r5j-source-export.yml .github/workflows/r5j-product-executor.yml
           find backend -maxdepth 1 -type f -name '*audit.json' -delete
           rm -rf backend/.phpstan.cache backend/storage/framework/cache/phpstan
 
@@ -115,7 +101,6 @@ jobs:
           git diff --cached --stat
           git commit -m "R5J implement Rosta Hub operations and chain of custody"
           git push origin HEAD:program/r5j-rosta-hub-operations
-
       - name: Upload R5J executor diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -124,9 +109,7 @@ jobs:
           path: /tmp/r5j-product-executor.log
           if-no-files-found: warn
           retention-days: 1
-
       - name: Enforce R5J executor
         if: always()
         shell: bash
-        run: |
-          test "${{ steps.executor.outcome }}" = "success"
+        run: test "${{ steps.executor.outcome }}" = "success"
