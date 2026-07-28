@@ -10,16 +10,22 @@
 
 این سند بر اساس کد فعلی شاخه `main` دو مخزن Cooci/Winimi تهیه شده است، نه فقط توضیحات PRها.
 
+وضعیت فعلی: Packageهای A تا E در lineage یکپارچهٔ R5 پیاده‌سازی شده‌اند. این
+سند سابقهٔ تصمیم انتقال است؛ وضعیت اجرایی و ترتیب معتبر فازها در
+`docs/PHASES.md` قرار دارد.
+
 ## اصل انتقال
 
-Cooci یک فروشگاه تک‌فروشنده است؛ Rosta یک مارکت‌پلیس تک‌روستری در هر سفارش است. بنابراین فایل‌ها کورکورانه کپی نمی‌شوند. الگوهای اثبات‌شده منتقل و با Domain رستا تطبیق داده می‌شوند.
+Cooci یک فروشگاه تک‌فروشنده است؛ Rosta یک مارکت‌پلیس چندروستری با یک Parent
+Order و یک SubOrder مستقل برای هر روستری است. بنابراین فایل‌ها کورکورانه کپی
+نمی‌شوند و الگوهای اثبات‌شده با Domain رستا تطبیق داده می‌شوند.
 
 مرز دائمی رستا حفظ می‌شود:
 
-- فقط دانه کامل
-- بدون Grind state یا انتخاب آسیاب
+- هویت Product/SKU/RoastBatch/Reservation/Stock فقط دانه کامل
+- آسیاب فقط Order Item Service و هرگز بعد موجودی
 - Laravel مرجع قیمت، موجودی، Roast Batch، سفارش و پرداخت
-- هر سفارش دقیقاً متعلق به یک روستری است
+- هر SubOrder دقیقاً متعلق به یک روستری است
 - Seller access همیشه Roastery-scoped است
 
 ## بخش‌هایی که Rosta از قبل بهتر یا کامل‌تر دارد
@@ -115,7 +121,8 @@ Rosta از Cooci جلوتر است:
   - `stock_on_hand -= quantity`
   - Reservation → `consumed`
 - وضعیت Order → `paid`
-- وضعیت SubOrder → `pending_acceptance` باقی می‌ماند تا روستری آن را بپذیرد
+- وضعیت SubOrder پیش از پرداخت `awaiting_payment` است و Verify موفق آن را طبق
+  تصمیم R5H به‌صورت خودکار متعهد می‌کند
 - Audit event برای initiation/verify/failure/replay
 
 ## 2. Notification Outbox — انتقال کامل با تطبیق
@@ -173,13 +180,13 @@ Cooci دارای state machine کنترل‌شده، tracking enforcement، stat
 
 ### SubOrder عملیاتی روستری
 
-- pending_acceptance
-- accepted
+- awaiting_payment
+- accepted پس از Verify موفق
 - preparing
 - ready_to_ship
 - shipped
 - delivered
-- rejected / cancelled / refunded
+- incident / cancelled_by_admin / refunded
 
 قواعد:
 
@@ -394,5 +401,5 @@ Cooci از Node SSR + Nginx + systemd استفاده می‌کند؛ Rosta Front
 
 - Audit actual code: complete
 - Transfer matrix: complete
-- Package A: next active implementation
+- Packages A–E: integrated and source-verified
 - Production/Staging activation: intentionally deferred until full product completion

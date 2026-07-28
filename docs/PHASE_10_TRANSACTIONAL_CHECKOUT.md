@@ -1,5 +1,9 @@
 # Phase 10 — Transactional cart, quote, order and reservation
 
+Current-state note: this document records the original single-roastery
+transactional foundation. R5C supersedes the grouping constraint with one parent
+order/payment and one independently controlled sub-order per roastery.
+
 ## Objective
 
 Implement the authoritative commerce boundary between the public catalog and payments.
@@ -7,7 +11,7 @@ Implement the authoritative commerce boundary between the public catalog and pay
 ## Required outputs
 
 - strict cart validation against current published products, active variants and available stock
-- exactly one roastery per cart, quote and order
+- deterministic grouping by roastery inside one cart, quote and parent order
 - authenticated checkout quotes bound to customer, address, payload and expiration
 - server-owned shipping, coupon, subtotal, discount and grand-total calculations
 - customer-scoped payload-bound idempotent order creation
@@ -22,7 +26,8 @@ Implement the authoritative commerce boundary between the public catalog and pay
 
 ## Permanent constraints
 
-- only whole coffee beans are valid; no grind state may enter quote or order snapshots
+- product and inventory identity remain whole-bean; later R5 phases may snapshot
+  grinding only as an order-item service
 - browser totals and availability are never trusted
 - a quote cannot be used by another customer or more than once
 - an idempotency key cannot be reused with a different payload

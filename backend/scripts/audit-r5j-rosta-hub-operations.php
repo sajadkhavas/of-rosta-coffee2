@@ -6,6 +6,9 @@ $files = [
     'service' => file_get_contents($root.'/app/Services/Hub/RostaHubOperationsService.php'),
     'routes' => file_get_contents($root.'/routes/hub-operations.php'),
     'resource' => file_get_contents($root.'/app/Http/Resources/HubWorkItemResource.php'),
+    'order_resource' => file_get_contents($root.'/app/Http/Resources/OrderResource.php'),
+    'seller_controller' => file_get_contents($root.'/app/Http/Controllers/Seller/SellerOrderController.php'),
+    'test' => file_get_contents($root.'/tests/Feature/R5JRostaHubOperationsTest.php'),
     'order' => '',
 ];
 $files['order'] = file_get_contents($root.'/app/Services/Checkout/OrderService.php');
@@ -15,6 +18,9 @@ $required = [
     'service' => ['inbound_not_delivered', 'quality_fail', 'rework_required', 'ready_for_outbound', 'hub.operation.', 'lockForUpdate', 'assigned_operator_id'],
     'routes' => ['hub_operator,administrator', '/admin/hub-operations', '/hub-operations'],
     'resource' => ['public_label', 'assigned_operator', 'actions'],
+    'order_resource' => ["routeIs('api.v1.seller.*')", 'awaiting_receipt', "route_type === 'rosta_hub_to_customer'"],
+    'seller_controller' => ['hub.operation.', 'hub.operation.receive'],
+    'test' => ['roastery_to_rosta_hub', 'rosta_hub_to_customer', 'hub.operation.receive', 'sellerHubEvents'],
     'order' => ['createForRoute', 'hubWorkItem'],
 ];
 foreach ($required as $name => $needles) {

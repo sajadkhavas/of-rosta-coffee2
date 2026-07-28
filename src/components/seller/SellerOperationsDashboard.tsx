@@ -392,6 +392,13 @@ function SellerOrdersWorkspace({ roastery }: { roastery: SellerRoastery }) {
   const selectedSubOrder = selectedOrder?.subOrders.find(
     (subOrder) => subOrder.roastery.id === roastery.id,
   );
+  const hubServices =
+    selectedSubOrder?.items.flatMap((item) =>
+      item.services.filter((service) => service.providerType === "rosta_hub"),
+    ) ?? [];
+  const inboundHubLeg = selectedSubOrder?.shipmentLegs.find(
+    (leg) => leg.routeType === "roastery_to_rosta_hub",
+  );
   const allowedActions = fulfillmentActions(selectedSubOrder?.status);
 
   useEffect(() => {
@@ -588,6 +595,29 @@ function SellerOrdersWorkspace({ roastery }: { roastery: SellerRoastery }) {
               <p>مهلت تحویل به حمل: {formatDate(selectedSubOrder.fulfillment.handoffDueAt)}</p>
               <p>وضعیت SLA: {selectedSubOrder.fulfillment.isBreached ? "نقض‌شده" : "در جریان"}</p>
             </div>
+
+            {hubServices.length ? (
+              <div
+                data-testid="seller-hub-handoff-status"
+                className="mt-4 grid gap-2 rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] p-4 text-xs leading-6 text-[color:var(--light)]"
+              >
+                <p className="font-bold text-[color:var(--steam)]">تحویل به هاب رستا</p>
+                <p>
+                  وضعیت مسیر ورودی:{" "}
+                  {inboundHubLeg
+                    ? shipmentLegStatusLabel(inboundHubLeg.status)
+                    : "مسیر ورودی هنوز ایجاد نشده"}
+                </p>
+                {hubServices.map((service) => (
+                  <p key={service.id}>
+                    وضعیت دریافت هاب: {service.hubOperation?.label ?? "در انتظار دریافت"}
+                    {service.hubOperation?.receivedAt
+                      ? ` · ${formatDate(service.hubOperation.receivedAt)}`
+                      : ""}
+                  </p>
+                ))}
+              </div>
+            ) : null}
 
             {openIncident ? (
               <div className="mt-4">
@@ -2020,6 +2050,19 @@ function subOrderStatusLabel(status: string): string {
       cancelled: "لغوشده",
       refund_pending: "در انتظار بازپرداخت",
       refunded: "بازپرداخت‌شده",
+    }[status] ?? status
+  );
+}
+
+function shipmentLegStatusLabel(status: string): string {
+  return (
+    {
+      planned: "برنامه‌ریزی‌شده",
+      picked_up: "تحویل‌گرفته‌شده",
+      in_transit: "در مسیر هاب",
+      delivered: "تحویل‌شده به هاب",
+      failed: "ناموفق",
+      cancelled: "لغوشده",
     }[status] ?? status
   );
 }

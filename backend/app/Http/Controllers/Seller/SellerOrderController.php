@@ -134,8 +134,13 @@ final class SellerOrderController
         $order->setRelation(
             'events',
             $order->events
-                ->filter(static fn ($event): bool => $event->sub_order_id === null
-                    || in_array($event->sub_order_id, $subOrderIds, true))
+                ->filter(static fn ($event): bool => (
+                    $event->sub_order_id === null
+                    || in_array($event->sub_order_id, $subOrderIds, true)
+                ) && (
+                    ! str_starts_with($event->event_type, 'hub.operation.')
+                    || $event->event_type === 'hub.operation.receive'
+                ))
                 ->values(),
         );
 

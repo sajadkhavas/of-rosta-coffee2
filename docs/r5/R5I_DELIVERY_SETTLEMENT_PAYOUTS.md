@@ -1,10 +1,11 @@
 # R5I — Delivery Confirmation, Settlement Release and Roastery Payouts
 
-Status: **Complete — final merge gates pending**
+Status: **Complete — merged at `adcdcfc`; all six formal gates passed**
 Program branch: `integration/rosta-r5-marketplace`
 Product branch: `program/r5i-delivery-settlement-payouts`
 
-The reviewed implementation is committed without temporary source-export, executor or payload files. Merge remains blocked until all six formal gates pass on this final product head.
+The reviewed implementation is part of the canonical integration lineage without
+temporary source-export, executor or payload files.
 
 ## Purpose
 
@@ -60,7 +61,7 @@ ROSTA_R5I_DELIVERY_SETTLEMENT_FRONTEND_COMPLETE
 
 ## Exit gates
 
-The phase merges only after all six formal gates pass on this clean final head:
+All six formal gates passed on the clean final head:
 
 - CI
 - Backend CI

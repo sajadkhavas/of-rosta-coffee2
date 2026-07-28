@@ -175,11 +175,11 @@ gate(
     "40-character commit SHA",
     "ref: ${{ inputs.release_sha }}",
     "git merge-base --is-ancestor",
-    "origin/integration/rosta-r-program",
+    "origin/integration/rosta-release-candidate",
   ]) &&
     !files.deployWorkflow.includes("release_ref:") &&
     !files.deployWorkflow.includes("agent/phase-22"),
-  "Staging deployment must check out an exact SHA already accepted on the R-program branch.",
+  "Staging deployment must check out an exact SHA already frozen on the release-candidate branch.",
 );
 
 gate(

@@ -111,11 +111,15 @@ As `rosta-deploy`:
 cd /srv/rosta
 git clone git@github.com:sajadkhavas/of-rosta-coffee2.git app
 cd app
-git checkout agent/phase-22-staging-deployment-acceptance
+git fetch origin integration/rosta-release-candidate
+git checkout --detach <EXACT_RELEASE_SHA>
+git merge-base --is-ancestor HEAD origin/integration/rosta-release-candidate
 chmod +x deploy/staging/*.sh
 ```
 
-GitHub remains the source of truth. Do not edit tracked application files directly on the server.
+`<EXACT_RELEASE_SHA>` باید همان SHA چهل‌کاراکتری ثبت‌شده روی
+`integration/rosta-release-candidate` باشد. GitHub منبع حقیقت است؛ فایل‌های tracked
+برنامه را مستقیماً روی سرور ویرایش نکنید.
 
 ## 4. Install environment files outside the repository
 

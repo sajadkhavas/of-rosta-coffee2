@@ -32,20 +32,21 @@ Shared models, policies and APIs are implemented once in the commerce backend an
 
 ## Current completed baseline
 
-The customer storefront implementation through Phase 5 is merged into `main`:
+The complete source lineage is assembled on
+`integration/rosta-r5-marketplace`. `docs/PHASES.md` is the canonical ten-phase
+register and maps the earlier Phase 1–22 and R1–R5 labels to their reviewed
+commits and permanent gates.
 
-- Phase 1: build, CI, environment, API foundation, SEO and PWA baseline
-- Phase 2: RTL design system and shared UI primitives
-- Phase 3: OTP/account/address/order frontend flows
-- Phase 4: API-backed catalog, products, variants, roasteries, filters and search
-- Phase 5: single-roastery cart, server quote, idempotent order creation, payment request and verification flow
-
-This baseline is feature-complete enough to audit, but it is not yet treated as security-complete or production-ready.
+The repository is source-complete through R5J. R5K closes phase documentation,
+seller/Hub least privilege and the single release-candidate deployment path.
+Runtime staging acceptance and external-provider activation are intentionally
+outside source completion.
 
 ## Permanent business boundaries
 
-- Rosta sells whole coffee beans only. Grind selection must never appear in product, variant, cart, checkout, order, seller or administration data.
-- One customer order belongs to one roastery. Cross-roastery carts are rejected before checkout and again by the backend.
+- Product, SKU, roast-batch, reservation and stock-ledger identity remain whole-bean only.
+- Grinding may exist only as a quoted and snapshotted order-item service; it is never an inventory dimension.
+- One checkout and payment may create one parent order with one independently controlled sub-order per roastery.
 - Laravel is authoritative for identity, ownership, price, stock, roast batch, delivery eligibility, fees, discounts, totals, order state and payment truth.
 - Browser storage is untrusted and may only hold bounded UI drafts or snapshots.
 - Payment callback query parameters are hints only and never prove payment.

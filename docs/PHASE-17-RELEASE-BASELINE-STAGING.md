@@ -4,7 +4,8 @@
 
 این فاز کد فعلی را به نسخه‌ای تبدیل می‌کند که بتوان آن را روی Staging اجرا، مشاهده و دیباگ کرد؛ بدون فعال‌شدن ایندکس گوگل و بدون ادعای آماده‌بودن پرداخت، پیامک و عملیات کامل فروشنده.
 
-مرز دائمی کسب‌وکار حفظ می‌شود: رستا فقط دانه کامل می‌فروشد و هیچ Grind state یا انتخاب آسیاب وارد سیستم نمی‌شود.
+مرز دائمی حفظ می‌شود: هویت Product/SKU/RoastBatch/Reservation/Stock فقط دانه
+کامل است؛ قابلیت‌های بعدی آسیاب را فقط به‌صورت Order Item Service اضافه می‌کنند.
 
 ## وضعیت واقعی
 
@@ -16,11 +17,12 @@
 - CMS ساختاریافته و پایه SEO
 - PWA، Service Worker و Performance Policy
 
-Blockerهای این فاز:
+وضعیت فعلی:
 
-1. `backend/composer.lock` باید با Composer واقعی تولید و Commit شود.
-2. Frontend، Backend و Browser Gate باید در محیطی که Runner سالم دارد اجرا شوند.
-3. Staging باید با Indexing خاموش Deploy شود.
+1. `backend/composer.lock` و `bun.lock` Commit شده‌اند.
+2. Route tree واقعی TanStack تولید و Route tree موقت حذف شده است.
+3. ممیزی‌های Source و CI این فاز در lineage یکپارچه قرار دارند.
+4. Deployment/Browser acceptance روی Staging و Indexing خاموش هنوز لازم است.
 
 ## تغییرات Release Baseline
 
@@ -35,34 +37,10 @@ Blockerهای این فاز:
 - Docker Production بر پایه PHP-FPM و Nginx ساخته شده است.
 - Worker، Scheduler، MySQL و Redis سرویس‌های مستقل Staging هستند.
 
-## اولین اجرا روی سرور توسعه
+## قاعدهٔ Dependency
 
-از ریشه مخزن:
-
-```bash
-cp backend/.env.example backend/.env
-bash backend/scripts/setup.sh
-```
-
-`setup.sh` در صورت نبود Lockfile، آن را داخل Container PHP 8.3 تولید می‌کند و سپس این مراحل را انجام می‌دهد:
-
-- نصب Dependencyها
-- تولید APP_KEY
-- Migration و Seed
-- اجرای `composer check`
-- اجرای API، Worker و Scheduler
-- Health Check
-
-پس از موفقیت:
-
-```bash
-git status --short
-git add backend/composer.lock
-git commit -m "build: lock Laravel dependencies for Phase 17"
-git push origin agent/phase-17-release-baseline-staging
-```
-
-Lockfile باید بازبینی و Commit شود؛ تولید مجدد آن هنگام Deploy ممنوع است.
+استقرار فقط از lockfileهای Commit‌شده انجام می‌شود. تولید یا Update dependency
+روی Host استقرار ممنوع است و اسکریپت canonical در نبود lockfile متوقف می‌شود.
 
 ## Gate فرانت و Route Generator
 
@@ -74,7 +52,7 @@ bunx @tanstack/router-cli@1.170.16 generate
 bun run check
 ```
 
-بعد از تولید موفق `src/routeTree.gen.ts` باید کنترل شود که حداقل مسیرهای زیر در آن وجود دارند:
+فایل `src/routeTree.gen.ts` اکنون مسیرهای زیر را ثبت می‌کند:
 
 ```text
 /admin/content
@@ -89,11 +67,8 @@ bun run check
 /robots.txt
 ```
 
-پس از تأیید Generator:
-
-1. Import در `src/router.tsx` از `routeTree.phase17` به `routeTree.gen` برگردد.
-2. `src/routeTree.phase17.ts` حذف شود.
-3. `bun run check` دوباره اجرا شود.
+`src/router.tsx` از همین فایل تولیدشده استفاده می‌کند و
+`src/routeTree.phase17.ts` دیگر وجود ندارد.
 
 ## ساخت Environment استیجینگ
 
@@ -116,36 +91,26 @@ Staging باید این مقدار را حفظ کند:
 VITE_ALLOW_INDEXING=false
 ```
 
-## استقرار Laravel Staging
+## استقرار یکپارچه Staging
 
-از پوشه `backend`:
-
-```bash
-bash scripts/deploy-staging.sh
-```
-
-اسکریپت موارد زیر را Block می‌کند:
-
-- نبود `composer.lock`
-- Secret خالی یا `CHANGE_ME`
-- `APP_DEBUG` روشن
-- Migration ناموفق
-- Health Check ناموفق
-
-API فقط روی Loopback سرور Publish می‌شود و باید از Reverse Proxy دارای TLS به `api-staging.rosta.shop` متصل شود.
-
-## استقرار Frontend Staging
-
-از ریشه مخزن:
+Frontend SSR، Laravel، MySQL، Redis، Worker، Scheduler و TLS فقط از مسیر canonical زیر
+مستقر می‌شوند:
 
 ```bash
-export CLOUDFLARE_API_TOKEN="..."
-bash scripts/deploy-staging-frontend.sh
+bun run staging:deploy
 ```
 
-این اسکریپت ابتدا `bun run check` را اجرا می‌کند و فقط با Indexing خاموش اجازه Deploy می‌دهد.
+این مسیر واحد قبل از استقرار، `composer.lock`، تمام کنترل‌های Frontend/Backend، محیط
+Fail-closed، Backup، Migrationهای forward-only و Health Checkها را بررسی می‌کند.
+هیچ اسکریپت جداگانه‌ای برای استقرار Frontend یا Backend معتبر نیست.
 
 ## Acceptance Staging
+
+Acceptance مستقل پس از استقرار از همین مسیر واحد اجرا می‌شود:
+
+```bash
+bun run staging:accept
+```
 
 قبل از بستن فاز، موارد زیر باید دستی و خودکار تأیید شوند:
 
@@ -176,4 +141,5 @@ staging API ready
 VITE_ALLOW_INDEXING=false
 ```
 
-تا پیش از عبور این Gate، PR نباید روی `main` Merge شود و Google Indexing نباید فعال گردد.
+استقرار فقط از SHA ثابت روی `integration/rosta-release-candidate` مجاز است.
+تا پیش از پذیرش Staging، Merge/فعال‌سازی Production و Google Indexing ممنوع است.

@@ -16,7 +16,7 @@ indexing_enabled: false
 
 - PHP 8.3 backend quality image with MySQL, SQLite, Redis and cURL extensions
 - complete Composer quality gate before deployment
-- automatic generation of the missing `backend/composer.lock` on the staging host
+- required committed `backend/composer.lock`; deployment fails closed if it is missing
 - Node 22 TanStack SSR image built with frozen Bun dependencies and complete frontend checks
 - MySQL 8.4 and Redis 7.4 persistent services
 - private database/cache network and separate controlled backend egress
@@ -88,8 +88,7 @@ Until those values are installed on the server, this branch is correctly classif
 ```text
 code-level complete
 runtime unverified
-Draft
-Unmerged
+release candidate pending R5K merge and freeze
 ```
 
 Payment, refund execution, SMS and Google indexing remain disabled throughout Phase 22.

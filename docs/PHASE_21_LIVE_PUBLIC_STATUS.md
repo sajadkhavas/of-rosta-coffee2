@@ -2,11 +2,13 @@
 
 ## Status
 
-Phase 21 is code-complete on `agent/phase-21-live-public-data-ssr`, stacked on the completed Phase 20 operational workspaces.
+Phase 21 is integrated in the canonical R5 lineage after the completed Phase 20
+operational workspaces.
 
 The public website no longer depends on the static product, roastery or blog fixtures. Public catalog, editorial and review surfaces now consume authoritative Laravel API/CMS responses and major indexable routes preload data through TanStack loaders for SSR.
 
-The branch remains Draft and runtime-unverified until Bun, TypeScript, Laravel, MySQL and browser gates run on a healthy runner/server.
+Permanent source gates have passed. Deployed SSR, structured-data, performance
+and browser acceptance still require the staging runtime.
 
 ## Production seed removal
 
@@ -107,7 +109,7 @@ Frontend:
 - confirms live loaders and safe CMS blocks;
 - confirms live available quiz ranking;
 - confirms verified review flow;
-- confirms no grind state.
+- confirms no grind state in public product or inventory identity.
 
 Backend:
 
@@ -129,19 +131,15 @@ Allowed weights remain:
 - 500 g
 - 1000 g
 
-No grind selector, option or state was introduced.
+Phase 21 did not introduce a grind product variant or inventory state. Later R5
+checkout phases represent grinding only as an order-item service.
 
-## Runtime gates still open
+## Staging gates still open
 
-- generate and commit `backend/composer.lock`;
-- install frozen Bun and Composer dependencies;
-- run the real TanStack route generator and remove the temporary route tree;
-- execute frontend audits, unit tests, TypeScript, ESLint/Prettier and production build;
-- execute MySQL migrations, PHPUnit, Larastan and Pint;
 - run SSR requests against the deployed Laravel API;
 - validate cache hydration and error boundaries;
 - run verified-review browser E2E with delivered and non-delivered orders;
 - run Lighthouse/Core Web Vitals and structured-data validation;
-- keep indexing disabled until staging acceptance and Phase 24 launch gates.
+- keep indexing disabled until staging acceptance and explicit launch approval.
 
 No production seed, real payment/refund provider, production money movement or indexing is enabled by this phase.

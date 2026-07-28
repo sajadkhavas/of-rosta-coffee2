@@ -24,7 +24,8 @@ dist-ssr
 *.local
 
 # Generated audit and acceptance outputs
-frontend-*-audit.json
+*-audit.json
+bundle-report.json
 release-manifest.json
 
 # Wrangler / Cloudflare

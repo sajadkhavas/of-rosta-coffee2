@@ -25,7 +25,8 @@ Move Rosta from an identity-enabled application to a storefront backed by real L
 
 ## Permanent boundaries
 
-- Grind state is forbidden in requests, database columns, models and responses.
+- Grind state is forbidden in product, variant, roast-batch, reservation and
+  stock identity. Later R5 service records are outside this catalog boundary.
 - Public products must be published and belong to an active verified roastery.
 - Laravel is authoritative for price, availability, stock and roast-batch truth.
 - Stock changes are ledger entries; direct silent stock mutation is forbidden.

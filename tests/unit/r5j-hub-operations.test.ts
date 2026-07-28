@@ -18,4 +18,12 @@ describe("R5J Hub operations boundary", () => {
     expect(page).not.toContain("assignedOperator");
     expect(page).not.toContain("privateEvidence");
   });
+  test("seller surface renders inbound handoff and Hub receipt only", () => {
+    const page = fs.readFileSync("src/components/seller/SellerOperationsDashboard.tsx", "utf8");
+    expect(page).toContain('data-testid="seller-hub-handoff-status"');
+    expect(page).toContain("roastery_to_rosta_hub");
+    expect(page).toContain("hubOperation.receivedAt");
+    expect(page).not.toContain("hubOperation.readyAt");
+    expect(page).not.toContain("hubOperation.handedOffAt");
+  });
 });

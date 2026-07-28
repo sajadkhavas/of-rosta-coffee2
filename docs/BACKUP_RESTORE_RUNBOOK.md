@@ -31,20 +31,11 @@
 ## ایجاد Backup MySQL
 
 ```bash
-set -Eeuo pipefail
-stamp="$(date -u +%Y%m%dT%H%M%SZ)"
-out="rosta-mysql-${stamp}.sql.gz"
-
-docker compose --env-file .env.staging -f docker-compose.staging.yml exec -T mysql \
-  sh -c 'exec mysqldump --single-transaction --quick --routines --triggers \
-    -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' \
-  | gzip -9 > "$out"
-
-test -s "$out"
-sha256sum "$out" > "${out}.sha256"
+bun run staging:backup
 ```
 
-Backup و checksum باید قبل از انتقال به Storage رمزگذاری‌شده بررسی شوند. Password نباید در Command History تایپ شود؛ Environment باید از Secret Store تزریق شود.
+اسکریپت canonical، Backup تراکنشی و فایل SHA-256 را در `ROSTA_BACKUP_DIR` ایجاد می‌کند.
+Password نباید در Command History تایپ شود؛ Environment باید از Secret Store تزریق شود.
 
 ## Snapshot Object Storage
 
@@ -67,12 +58,11 @@ Restore هرگز روی Production موجود آزمایش نمی‌شود.
 2. Commit و Release Manifest متناظر Backup را Checkout کنید.
 3. Secretهای Drill را جداگانه ایجاد کنید؛ Production Secret را کپی نکنید.
 4. فایل Backup را با checksum تأیید کنید.
-5. دیتابیس را Restore کنید:
+5. دیتابیس را فقط با مسیر مطلق Backup و تأیید صریح Restore کنید:
 
 ```bash
-gzip -dc rosta-mysql-YYYYMMDDTHHMMSSZ.sql.gz \
-  | docker compose exec -T mysql mysql \
-      -u"$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE"
+ROSTA_CONFIRM_RESTORE=restore-staging \
+  bun run staging:restore -- /absolute/path/rosta-mysql-YYYYMMDDTHHMMSSZ.sql.gz
 ```
 
 6. Object Snapshot را به Bucket Drill برگردانید.

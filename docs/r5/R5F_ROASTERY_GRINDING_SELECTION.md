@@ -62,7 +62,7 @@ R5F does not implement:
 - Hub packaging or multi-leg Hub shipment planning;
 - operator assignment;
 - grinding service processing transitions;
-- customer cancellation or seller rejection changes.
+- customer cancellation or seller exception changes (later superseded by R5H).
 
 Those remain R5G and later phases.
 

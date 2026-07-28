@@ -32,7 +32,7 @@ final class OrderResource extends JsonResource
             'grand_total' => $this->grand_total,
             'currency' => $this->currency,
             'sub_orders' => $this->subOrders
-                ->map(fn (SubOrder $subOrder): array => $this->subOrderPayload($subOrder))
+                ->map(fn (SubOrder $subOrder): array => $this->subOrderPayload($subOrder, $request))
                 ->values()
                 ->all(),
             'events' => $this->events
@@ -58,10 +58,15 @@ final class OrderResource extends JsonResource
     }
 
     /** @return array<string, mixed> */
-    private function subOrderPayload(SubOrder $subOrder): array
+    private function subOrderPayload(SubOrder $subOrder, Request $request): array
     {
         $legacyShipment = $subOrder->shipment;
         $finalSequence = (int) ($subOrder->shipmentLegs->max('sequence') ?? 0);
+        $shipmentLegs = $request->routeIs('api.v1.seller.*')
+            ? $subOrder->shipmentLegs
+                ->reject(static fn (ShipmentLeg $leg): bool => $leg->route_type === 'rosta_hub_to_customer')
+                ->values()
+            : $subOrder->shipmentLegs;
 
         return [
             'id' => $subOrder->id,
@@ -114,7 +119,7 @@ final class OrderResource extends JsonResource
                 'slug' => $subOrder->roastery->slug,
             ],
             'items' => $subOrder->items
-                ->map(fn (OrderItem $item): array => $this->itemPayload($item))
+                ->map(fn (OrderItem $item): array => $this->itemPayload($item, $request))
                 ->values()
                 ->all(),
             'subtotal' => $subOrder->subtotal,
@@ -135,7 +140,7 @@ final class OrderResource extends JsonResource
                     'shipped_at' => $legacyShipment->shipped_at?->toIso8601String(),
                     'delivered_at' => $legacyShipment->delivered_at?->toIso8601String(),
                 ],
-            'shipment_legs' => $subOrder->shipmentLegs
+            'shipment_legs' => $shipmentLegs
                 ->map(static fn (ShipmentLeg $leg): array => [
                     'id' => $leg->id,
                     'route_type' => $leg->route_type,
@@ -196,7 +201,7 @@ final class OrderResource extends JsonResource
     }
 
     /** @return array<string, mixed> */
-    private function itemPayload(OrderItem $item): array
+    private function itemPayload(OrderItem $item, Request $request): array
     {
         $product = $item->product_snapshot;
         $variant = $item->variant_snapshot;
@@ -219,7 +224,7 @@ final class OrderResource extends JsonResource
             'quantity' => $item->quantity,
             'line_total' => $item->line_total,
             'services' => $item->services
-                ->map(static fn (OrderItemService $service): array => [
+                ->map(fn (OrderItemService $service): array => [
                     'id' => $service->id,
                     'type' => $service->service_type,
                     'provider_type' => $service->provider_type,
@@ -241,16 +246,37 @@ final class OrderResource extends JsonResource
                     'currency' => $service->currency,
                     'is_free' => $service->total_amount === 0,
                     'label' => $service->service_snapshot['label'] ?? null,
-                    'hub_operation' => $service->hubWorkItem === null ? null : [
-                        'status' => $service->hubWorkItem->status->value,
-                        'label' => $service->hubWorkItem->status->publicLabel(),
-                        'received_at' => $service->hubWorkItem->received_at?->toIso8601String(),
-                        'ready_at' => $service->hubWorkItem->ready_at?->toIso8601String(),
-                        'handed_off_at' => $service->hubWorkItem->handed_off_at?->toIso8601String(),
-                    ],
+                    'hub_operation' => $this->hubOperationPayload($service, $request),
                 ])
                 ->values()
                 ->all(),
+        ];
+    }
+
+    /** @return array<string, mixed>|null */
+    private function hubOperationPayload(OrderItemService $service, Request $request): ?array
+    {
+        $workItem = $service->hubWorkItem;
+        if ($workItem === null) {
+            return null;
+        }
+
+        if ($request->routeIs('api.v1.seller.*')) {
+            $received = $workItem->received_at !== null;
+
+            return [
+                'status' => $received ? 'received' : 'awaiting_receipt',
+                'label' => $received ? 'دریافت‌شده در هاب رستا' : 'در انتظار دریافت هاب رستا',
+                'received_at' => $workItem->received_at?->toIso8601String(),
+            ];
+        }
+
+        return [
+            'status' => $workItem->status->value,
+            'label' => $workItem->status->publicLabel(),
+            'received_at' => $workItem->received_at?->toIso8601String(),
+            'ready_at' => $workItem->ready_at?->toIso8601String(),
+            'handed_off_at' => $workItem->handed_off_at?->toIso8601String(),
         ];
     }
 }
