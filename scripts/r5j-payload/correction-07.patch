@@ -1,0 +1,18 @@
+--- a/backend/tests/Feature/R5JRostaHubOperationsTest.php
++++ b/backend/tests/Feature/R5JRostaHubOperationsTest.php
+@@ -16,6 +16,7 @@
+ use App\Models\UserRole;
+ use App\Services\Hub\RostaHubOperationsService;
+ use Illuminate\Foundation\Testing\RefreshDatabase;
++use Illuminate\Routing\Middleware\ThrottleRequests;
+ use Illuminate\Support\Facades\Auth;
+ use Tests\Support\AuthenticatesRecordedSession;
+ use Tests\TestCase;
+@@ -27,6 +28,7 @@
+ 
+     public function test_hub_chain_of_custody_is_idempotent_private_and_blocks_early_handoff(): void
+     {
++        $this->withoutMiddleware(ThrottleRequests::class);
+         [$customer, $admin, $operator, $other, $order, $service, $inbound, $outbound] = $this->fixture();
+         $workItem = app(RostaHubOperationsService::class)->createForRoute($service, $inbound, $outbound, 250, 2);
+ 
