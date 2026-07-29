@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { siteConfig } from "../../src/config/site";
 import {
   MAX_SITEMAP_URLS,
   renderSitemap,
@@ -10,10 +11,10 @@ describe("sitemap infrastructure", () => {
   test("renders an index that advertises every bounded shard", () => {
     const xml = renderSitemapIndex();
     expect(xml).toContain("<sitemapindex");
-    expect(xml).toContain("https://rosta.shop/sitemaps/static.xml");
-    expect(xml).toContain("https://rosta.shop/sitemaps/products.xml");
-    expect(xml).toContain("https://rosta.shop/sitemaps/roasteries.xml");
-    expect(xml).toContain("https://rosta.shop/sitemaps/content.xml");
+    expect(xml).toContain(`${siteConfig.siteUrl}/sitemaps/static.xml`);
+    expect(xml).toContain(`${siteConfig.siteUrl}/sitemaps/products.xml`);
+    expect(xml).toContain(`${siteConfig.siteUrl}/sitemaps/roasteries.xml`);
+    expect(xml).toContain(`${siteConfig.siteUrl}/sitemaps/content.xml`);
   });
 
   test("escapes, deduplicates and emits valid absolute URL entries", () => {
@@ -22,7 +23,7 @@ describe("sitemap infrastructure", () => {
       { path: "/products/a&b", priority: "0.8", changefreq: "weekly" },
     ]);
     expect(xml).toContain("<urlset");
-    expect(xml).toContain("https://rosta.shop/products/a&amp;b");
+    expect(xml).toContain(`${siteConfig.siteUrl}/products/a&amp;b`);
     expect(xml.match(/<url>/g)?.length).toBe(1);
   });
 
