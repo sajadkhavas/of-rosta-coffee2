@@ -4,6 +4,7 @@ import {
   bestMediaUrl,
   formatIrr,
   formatRoastDate,
+  mediaSrcSet,
   minimumPrice,
   roastLevelLabel,
 } from "@/lib/catalog-format";
@@ -24,6 +25,8 @@ export function CatalogProductCard({ product }: { product: ProductSummary }) {
           {imageUrl ? (
             <img
               src={imageUrl}
+              srcSet={mediaSrcSet(product.primaryImage)}
+              sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
               alt={product.primaryImage?.alt || product.name}
               loading="lazy"
               width={product.primaryImage?.width}

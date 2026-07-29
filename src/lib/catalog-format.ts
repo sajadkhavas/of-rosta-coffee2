@@ -34,6 +34,22 @@ export function bestMediaUrl(asset?: MediaAsset | null): string | null {
   return [...asset.sources].sort((a, b) => b.width - a.width)[0]?.url ?? null;
 }
 
+export function mediaSrcSet(asset?: MediaAsset | null): string | undefined {
+  if (!asset?.sources.length) return undefined;
+  const widest = [...asset.sources].sort((a, b) => b.width - a.width)[0];
+  if (!widest) return undefined;
+
+  const byWidth = new Map<number, string>();
+  for (const source of asset.sources) {
+    if (source.format === widest.format) byWidth.set(source.width, source.url);
+  }
+
+  const candidates = [...byWidth.entries()]
+    .sort(([left], [right]) => left - right)
+    .map(([width, url]) => `${url} ${width}w`);
+  return candidates.length ? candidates.join(", ") : undefined;
+}
+
 export function availableVariants(product: ProductSummary): ProductVariant[] {
   return product.variants.filter((variant) => variant.isAvailable);
 }

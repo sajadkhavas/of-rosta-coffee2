@@ -13,6 +13,12 @@ const files = {
   router: await readFile("src/router.tsx", "utf8"),
   networkStatus: await readFile("src/components/NetworkStatus.tsx", "utf8"),
   bundle: await readFile("scripts/check-bundle-size.mjs", "utf8"),
+  media: await readFile("src/lib/catalog-format.ts", "utf8"),
+  productCard: await readFile("src/components/catalog/CatalogProductCard.tsx", "utf8"),
+  roasteryCard: await readFile("src/components/catalog/CatalogRoasteryCard.tsx", "utf8"),
+  homeRoasteryCard: await readFile("src/components/catalog/HomeRoasteryCard.tsx", "utf8"),
+  product: await readFile("src/routes/products.$slug.tsx", "utf8"),
+  roastery: await readFile("src/routes/roasteries.$slug.tsx", "utf8"),
 };
 
 const gates = [];
@@ -99,6 +105,32 @@ gate(
     files.bundle.includes("MAX_CLIENT_CHUNK_GZIP_BYTES") &&
     files.bundle.includes("categoryTotals"),
   "bundle gate checks raw and gzip chunk sizes and reports feature categories",
+);
+gate(
+  "responsive_public_media",
+  files.media.includes("mediaSrcSet") &&
+    [
+      files.productCard,
+      files.roasteryCard,
+      files.homeRoasteryCard,
+      files.product,
+      files.roastery,
+    ].every((content) => content.includes("srcSet={mediaSrcSet")) &&
+    [
+      files.productCard,
+      files.roasteryCard,
+      files.homeRoasteryCard,
+      files.product,
+      files.roastery,
+    ].every((content) => content.includes("sizes=")) &&
+    [
+      files.productCard,
+      files.roasteryCard,
+      files.homeRoasteryCard,
+      files.product,
+      files.roastery,
+    ].every((content) => content.includes("width=") && content.includes("height=")),
+  "public catalog and detail media provide responsive sources, sizes and intrinsic dimensions",
 );
 gate(
   "whole_bean_boundary",

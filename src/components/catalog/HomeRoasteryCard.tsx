@@ -1,18 +1,23 @@
 import { Link } from "@tanstack/react-router";
 import type { RoasterySummary } from "@/lib/api/contracts";
-import { bestMediaUrl } from "@/lib/catalog-format";
+import { bestMediaUrl, mediaSrcSet } from "@/lib/catalog-format";
 import { toFa } from "@/lib/persian";
 
 export function HomeRoasteryCard({ roastery }: { roastery: RoasterySummary }) {
-  const cover = bestMediaUrl(roastery.cover ?? roastery.logo);
+  const media = roastery.cover ?? roastery.logo;
+  const cover = bestMediaUrl(media);
   return (
     <article className="card-dark card-dark-hover flex h-full flex-col overflow-hidden rounded-2xl">
       <div className="relative aspect-[16/9] overflow-hidden bg-[color:var(--dark)]">
         {cover ? (
           <img
             src={cover}
+            srcSet={mediaSrcSet(media)}
+            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
             alt={roastery.cover?.alt || roastery.logo?.alt || roastery.name}
             loading="lazy"
+            width={media?.width}
+            height={media?.height}
             className="h-full w-full object-cover opacity-85"
           />
         ) : (

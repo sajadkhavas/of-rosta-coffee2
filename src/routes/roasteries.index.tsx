@@ -18,8 +18,12 @@ type RoasteriesSearch = z.infer<typeof searchSchema>;
 export const Route = createFileRoute("/roasteries/")({
   validateSearch: zodValidator(searchSchema),
   loaderDeps: ({ search }) => searchSchema.parse(search ?? {}),
-  loader: ({ context, deps }) =>
-    context.queryClient.ensureQueryData(roasteriesQueryOptions({ page: deps.page, perPage: 18 })),
+  loader: async ({ context, deps }) => ({
+    search: deps,
+    catalog: await context.queryClient.ensureQueryData(
+      roasteriesQueryOptions({ page: deps.page, perPage: 18 }),
+    ),
+  }),
   head: ({ loaderData }) => ({
     meta: [
       { title: "روستری‌های ایران | خرید مستقیم دانه قهوه | رستا" },
@@ -31,7 +35,14 @@ export const Route = createFileRoute("/roasteries/")({
       { property: "og:title", content: "روستری‌های ایران | رستا" },
       { property: "og:type", content: "website" },
     ],
-    links: [{ rel: "canonical", href: absoluteUrl("/roasteries") }],
+    links: [
+      {
+        rel: "canonical",
+        href: absoluteUrl(
+          `/roasteries${(loaderData?.search.page ?? 1) > 1 ? `?page=${loaderData?.search.page}` : ""}`,
+        ),
+      },
+    ],
     scripts: [
       {
         type: "application/ld+json",
@@ -42,14 +53,14 @@ export const Route = createFileRoute("/roasteries/")({
           ]),
         ),
       },
-      ...(loaderData?.items.length
+      ...(loaderData?.catalog.items.length
         ? [
             {
               type: "application/ld+json",
               children: JSON.stringify({
                 "@context": "https://schema.org",
                 "@type": "ItemList",
-                itemListElement: loaderData.items.map((roastery, index) => ({
+                itemListElement: loaderData.catalog.items.map((roastery, index) => ({
                   "@type": "ListItem",
                   position: index + 1,
                   url: absoluteUrl(`/roasteries/${roastery.slug}`),

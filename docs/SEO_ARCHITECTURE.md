@@ -31,17 +31,17 @@ Product
 
 ## Permanent URL policy
 
-| Entity | Canonical pattern |
-| --- | --- |
-| Product | `/products/{slug}` |
-| Roastery | `/roasteries/{slug}` |
-| Guide | `/guides/{slug}` |
-| Origin landing | `/origins/{slug}` |
-| Brew method | `/brew/{slug}` |
-| Taste landing | `/tastes/{slug}` |
-| Curated collection | `/collections/{slug}` |
-| Comparison | `/compare/{slug}` |
-| Legacy article | `/blog/{slug}` until migrated |
+| Entity             | Canonical pattern             |
+| ------------------ | ----------------------------- |
+| Product            | `/products/{slug}`            |
+| Roastery           | `/roasteries/{slug}`          |
+| Guide              | `/guides/{slug}`              |
+| Origin landing     | `/origins/{slug}`             |
+| Brew method        | `/brew/{slug}`                |
+| Taste landing      | `/tastes/{slug}`              |
+| Curated collection | `/collections/{slug}`         |
+| Comparison         | `/compare/{slug}`             |
+| Legacy article     | `/blog/{slug}` until migrated |
 
 Canonical paths:
 
@@ -55,18 +55,22 @@ Reserved prefixes include `/api`, `/admin`, `/panel`, `/auth`, `/checkout`, `/ca
 
 ## Indexability policy
 
-| Page class | Default policy | Sitemap |
-| --- | --- | --- |
-| Published product | index, follow | yes |
-| Verified roastery | index, follow | yes |
-| Published content with `robots_index=true` | index, follow | yes |
-| Published content with `robots_index=false` | noindex | no |
-| Draft, Review or Archived content | unavailable publicly | no |
-| Search and Quiz | noindex | no |
-| Cart, Checkout, Orders, Profile and Auth | noindex | no |
-| Admin, Seller panel and Design System | noindex | no |
+| Page class                                  | Default policy       | Sitemap |
+| ------------------------------------------- | -------------------- | ------- |
+| Published product                           | index, follow        | yes     |
+| Verified roastery                           | index, follow        | yes     |
+| Published content with `robots_index=true`  | index, follow        | yes     |
+| Published content with `robots_index=false` | noindex              | no      |
+| Draft, Review or Archived content           | unavailable publicly | no      |
+| Search and Quiz                             | noindex              | no      |
+| Cart, Checkout, Orders, Profile and Auth    | noindex              | no      |
+| Admin, Seller panel and Design System       | noindex              | no      |
 
-`/api/v1/seo/indexable` is the authoritative structured-content URL feed. The sitemap paginates the complete product and roastery catalogs and does not trust the browser.
+`/api/v1/seo/indexable` is the authoritative structured-content URL feed. `/sitemap.xml`
+is a sitemap index over bounded static, product, roastery and structured-content
+shards. Each live shard paginates its complete API source and returns HTTP 503
+with `Retry-After` if that source is unavailable or exceeds the 50,000 URL
+protocol limit; it never publishes a silent partial HTTP 200.
 
 `robots_index` stores the desired policy after publication. Draft and Review records may preserve it, but they cannot become public or enter the sitemap until Published.
 
@@ -172,7 +176,9 @@ TanStack Start:
 - renders title, description, canonical and robots in initial HTML;
 - serializes JSON-LD with `<` escaped;
 - renders product and roastery schema from Laravel facts;
-- exposes `robots.txt` and `sitemap.xml`.
+- exposes `robots.txt`, the sitemap index and its bounded live shards;
+- resolves administrator-managed 301/308 redirects only after a public SSR 404;
+- rejects any redirect target that is temporary, external, malformed or same-path.
 
 No product price, inventory, rating or payment fact can be manually invented in SEO fields.
 
@@ -196,7 +202,21 @@ Redirects:
 - record hit count and last hit time;
 - are restricted to administrators.
 
+The SSR entry calls `/api/v1/seo/redirects/resolve` only for GET/HEAD public HTML
+404 responses. API failure preserves the original 404, while a valid result
+emits a same-origin 301/308 response with the normal security headers.
+
 Launch acceptance should reduce known redirects to one hop.
+
+## Crawl-facing media and pagination
+
+- `/products?page=N` and `/roasteries?page=N` self-canonicalize for `N > 1`.
+- Product free-text search, availability filters and non-default sort orders are
+  `noindex,follow`.
+- Public catalog/detail images declare intrinsic dimensions, responsive `srcset`
+  candidates and `sizes`.
+- The default Open Graph image is a real 1200×630 PNG with explicit width,
+  height and alt metadata.
 
 ## Administration interface
 

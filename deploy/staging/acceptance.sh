@@ -146,6 +146,43 @@ security_headers_ok() {
     && header_contains "$headers" X-Robots-Tag noindex
 }
 
+seo_runtime_ok() {
+  local products_html="$report_dir/products-page-2.html"
+  local sitemap_index="$report_dir/sitemap-index.xml"
+  local og_image="$report_dir/og-home.png"
+
+  curl --fail --silent --show-error --max-time "$timeout_seconds" \
+    --output "$products_html" "$site_url/products?page=2" \
+    && grep -Fq "$site_url/products?page=2" "$products_html" \
+    && grep -Eqi 'name="robots"[^>]+noindex|content="noindex[^"]*"[^>]+name="robots"' "$products_html" \
+    && curl --fail --silent --show-error --max-time "$timeout_seconds" \
+      --output "$sitemap_index" "$site_url/sitemap.xml" \
+    && grep -Fq "$site_url/sitemaps/products.xml" "$sitemap_index" \
+    && grep -Fq "$site_url/sitemaps/roasteries.xml" "$sitemap_index" \
+    && grep -Fq "$site_url/sitemaps/content.xml" "$sitemap_index" \
+    && curl --fail --silent --show-error --max-time "$timeout_seconds" \
+      --output "$report_dir/sitemap-static.xml" "$site_url/sitemaps/static.xml" \
+    && curl --fail --silent --show-error --max-time "$timeout_seconds" \
+      --output "$report_dir/sitemap-products.xml" "$site_url/sitemaps/products.xml" \
+    && curl --fail --silent --show-error --max-time "$timeout_seconds" \
+      --output "$report_dir/sitemap-roasteries.xml" "$site_url/sitemaps/roasteries.xml" \
+    && curl --fail --silent --show-error --max-time "$timeout_seconds" \
+      --output "$report_dir/sitemap-content.xml" "$site_url/sitemaps/content.xml" \
+    && curl --fail --silent --show-error --max-time "$timeout_seconds" \
+      --output "$og_image" "$site_url/og-home.png" \
+    && python3 - "$og_image" <<'PY'
+import struct, sys
+with open(sys.argv[1], 'rb') as handle:
+    payload = handle.read(24)
+valid = (
+    payload[:8] == b'\x89PNG\r\n\x1a\n'
+    and len(payload) == 24
+    and struct.unpack('>II', payload[16:24]) == (1200, 630)
+)
+raise SystemExit(0 if valid else 1)
+PY
+}
+
 public_contracts_ok() {
   curl --fail --silent --show-error --max-time "$timeout_seconds" \
     "$api_url/products?per_page=1" > "$report_dir/products.json" \
@@ -171,6 +208,7 @@ run_check public_contracts "Product, roastery and content APIs respond" public_c
 run_check ssr_home "Homepage is server rendered without an application error" ssr_home_ok
 run_check robots_noindex "Staging robots.txt blocks all crawling" robots_locked
 run_check security_headers "TLS edge emits HSTS, CSP and X-Robots-Tag" security_headers_ok
+run_check seo_runtime "SSR canonical/noindex, sitemap shards and Open Graph image are production-shaped" seo_runtime_ok
 run_check cors_credentials "API CORS allows only the staging frontend with credentials" api_cors_ok
 run_check secure_csrf_cookie "Sanctum CSRF cookie is Secure and SameSite=Lax" secure_cookie_ok
 

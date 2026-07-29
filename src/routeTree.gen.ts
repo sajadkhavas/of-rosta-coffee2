@@ -36,6 +36,10 @@ import { Route as OrdersIndexRouteImport } from './routes/orders.index'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as AuthIndexRouteImport } from './routes/auth.index'
 import { Route as TastesSlugRouteImport } from './routes/tastes.$slug'
+import { Route as SitemapsStaticDotxmlRouteImport } from './routes/sitemaps.static[.]xml'
+import { Route as SitemapsRoasteriesDotxmlRouteImport } from './routes/sitemaps.roasteries[.]xml'
+import { Route as SitemapsProductsDotxmlRouteImport } from './routes/sitemaps.products[.]xml'
+import { Route as SitemapsContentDotxmlRouteImport } from './routes/sitemaps.content[.]xml'
 import { Route as RoasteriesSlugRouteImport } from './routes/roasteries.$slug'
 import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
 import { Route as PanelManageRouteImport } from './routes/panel.manage'
@@ -190,6 +194,27 @@ const TastesSlugRoute = TastesSlugRouteImport.update({
   path: '/tastes/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SitemapsStaticDotxmlRoute = SitemapsStaticDotxmlRouteImport.update({
+  id: '/sitemaps/static.xml',
+  path: '/sitemaps/static.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapsRoasteriesDotxmlRoute =
+  SitemapsRoasteriesDotxmlRouteImport.update({
+    id: '/sitemaps/roasteries.xml',
+    path: '/sitemaps/roasteries.xml',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const SitemapsProductsDotxmlRoute = SitemapsProductsDotxmlRouteImport.update({
+  id: '/sitemaps/products.xml',
+  path: '/sitemaps/products.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapsContentDotxmlRoute = SitemapsContentDotxmlRouteImport.update({
+  id: '/sitemaps/content.xml',
+  path: '/sitemaps/content.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RoasteriesSlugRoute = RoasteriesSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
@@ -319,6 +344,10 @@ export interface FileRoutesByFullPath {
   '/panel/manage': typeof PanelManageRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/roasteries/$slug': typeof RoasteriesSlugRoute
+  '/sitemaps/content.xml': typeof SitemapsContentDotxmlRoute
+  '/sitemaps/products.xml': typeof SitemapsProductsDotxmlRoute
+  '/sitemaps/roasteries.xml': typeof SitemapsRoasteriesDotxmlRoute
+  '/sitemaps/static.xml': typeof SitemapsStaticDotxmlRoute
   '/tastes/$slug': typeof TastesSlugRoute
   '/auth/': typeof AuthIndexRoute
   '/blog/': typeof BlogIndexRoute
@@ -360,6 +389,10 @@ export interface FileRoutesByTo {
   '/panel/manage': typeof PanelManageRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/roasteries/$slug': typeof RoasteriesSlugRoute
+  '/sitemaps/content.xml': typeof SitemapsContentDotxmlRoute
+  '/sitemaps/products.xml': typeof SitemapsProductsDotxmlRoute
+  '/sitemaps/roasteries.xml': typeof SitemapsRoasteriesDotxmlRoute
+  '/sitemaps/static.xml': typeof SitemapsStaticDotxmlRoute
   '/tastes/$slug': typeof TastesSlugRoute
   '/auth': typeof AuthIndexRoute
   '/blog': typeof BlogIndexRoute
@@ -408,6 +441,10 @@ export interface FileRoutesById {
   '/panel/manage': typeof PanelManageRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/roasteries/$slug': typeof RoasteriesSlugRoute
+  '/sitemaps/content.xml': typeof SitemapsContentDotxmlRoute
+  '/sitemaps/products.xml': typeof SitemapsProductsDotxmlRoute
+  '/sitemaps/roasteries.xml': typeof SitemapsRoasteriesDotxmlRoute
+  '/sitemaps/static.xml': typeof SitemapsStaticDotxmlRoute
   '/tastes/$slug': typeof TastesSlugRoute
   '/auth/': typeof AuthIndexRoute
   '/blog/': typeof BlogIndexRoute
@@ -457,6 +494,10 @@ export interface FileRouteTypes {
     | '/panel/manage'
     | '/products/$slug'
     | '/roasteries/$slug'
+    | '/sitemaps/content.xml'
+    | '/sitemaps/products.xml'
+    | '/sitemaps/roasteries.xml'
+    | '/sitemaps/static.xml'
     | '/tastes/$slug'
     | '/auth/'
     | '/blog/'
@@ -498,6 +539,10 @@ export interface FileRouteTypes {
     | '/panel/manage'
     | '/products/$slug'
     | '/roasteries/$slug'
+    | '/sitemaps/content.xml'
+    | '/sitemaps/products.xml'
+    | '/sitemaps/roasteries.xml'
+    | '/sitemaps/static.xml'
     | '/tastes/$slug'
     | '/auth'
     | '/blog'
@@ -545,6 +590,10 @@ export interface FileRouteTypes {
     | '/panel/manage'
     | '/products/$slug'
     | '/roasteries/$slug'
+    | '/sitemaps/content.xml'
+    | '/sitemaps/products.xml'
+    | '/sitemaps/roasteries.xml'
+    | '/sitemaps/static.xml'
     | '/tastes/$slug'
     | '/auth/'
     | '/blog/'
@@ -586,6 +635,10 @@ export interface RootRouteChildren {
   GuidesSlugRoute: typeof GuidesSlugRoute
   HubOperationsRoute: typeof HubOperationsRoute
   OriginsSlugRoute: typeof OriginsSlugRoute
+  SitemapsContentDotxmlRoute: typeof SitemapsContentDotxmlRoute
+  SitemapsProductsDotxmlRoute: typeof SitemapsProductsDotxmlRoute
+  SitemapsRoasteriesDotxmlRoute: typeof SitemapsRoasteriesDotxmlRoute
+  SitemapsStaticDotxmlRoute: typeof SitemapsStaticDotxmlRoute
   TastesSlugRoute: typeof TastesSlugRoute
   AdminContentEditEntryIdRoute: typeof AdminContentEditEntryIdRoute
 }
@@ -779,6 +832,34 @@ declare module '@tanstack/react-router' {
       path: '/tastes/$slug'
       fullPath: '/tastes/$slug'
       preLoaderRoute: typeof TastesSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemaps/static.xml': {
+      id: '/sitemaps/static.xml'
+      path: '/sitemaps/static.xml'
+      fullPath: '/sitemaps/static.xml'
+      preLoaderRoute: typeof SitemapsStaticDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemaps/roasteries.xml': {
+      id: '/sitemaps/roasteries.xml'
+      path: '/sitemaps/roasteries.xml'
+      fullPath: '/sitemaps/roasteries.xml'
+      preLoaderRoute: typeof SitemapsRoasteriesDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemaps/products.xml': {
+      id: '/sitemaps/products.xml'
+      path: '/sitemaps/products.xml'
+      fullPath: '/sitemaps/products.xml'
+      preLoaderRoute: typeof SitemapsProductsDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemaps/content.xml': {
+      id: '/sitemaps/content.xml'
+      path: '/sitemaps/content.xml'
+      fullPath: '/sitemaps/content.xml'
+      preLoaderRoute: typeof SitemapsContentDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/roasteries/$slug': {
@@ -1020,6 +1101,10 @@ const rootRouteChildren: RootRouteChildren = {
   GuidesSlugRoute: GuidesSlugRoute,
   HubOperationsRoute: HubOperationsRoute,
   OriginsSlugRoute: OriginsSlugRoute,
+  SitemapsContentDotxmlRoute: SitemapsContentDotxmlRoute,
+  SitemapsProductsDotxmlRoute: SitemapsProductsDotxmlRoute,
+  SitemapsRoasteriesDotxmlRoute: SitemapsRoasteriesDotxmlRoute,
+  SitemapsStaticDotxmlRoute: SitemapsStaticDotxmlRoute,
   TastesSlugRoute: TastesSlugRoute,
   AdminContentEditEntryIdRoute: AdminContentEditEntryIdRoute,
 }

@@ -2,6 +2,7 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { resolveSeoRedirect } from "./lib/seo-redirect";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -40,6 +41,14 @@ function isPrivatePath(pathname: string): boolean {
   return PRIVATE_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
+}
+
+async function applyPublicSeoRedirect(request: Request, response: Response): Promise<Response> {
+  if (response.status !== 404 || isPrivatePath(new URL(request.url).pathname)) return response;
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!contentType.includes("text/html")) return response;
+
+  return (await resolveSeoRedirect(request)) ?? response;
 }
 
 function withSecurityHeaders(request: Request, response: Response): Response {
@@ -110,7 +119,8 @@ export default {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return withSecurityHeaders(request, await normalizeCatastrophicSsrResponse(response));
+      const normalized = await normalizeCatastrophicSsrResponse(response);
+      return withSecurityHeaders(request, await applyPublicSeoRedirect(request, normalized));
     } catch (error) {
       console.error(error);
       return withSecurityHeaders(

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { CatalogProductCard } from "@/components/catalog/CatalogProductCard";
 import { EmptyState } from "@/components/system";
+import { absoluteUrl } from "@/config/site";
 import { productsQueryOptions } from "@/lib/api/catalog";
 import {
   EMPTY_PROFILE,
@@ -34,7 +35,7 @@ export const Route = createFileRoute("/quiz")({
       },
       { name: "robots", content: "noindex,follow" },
     ],
-    links: [{ rel: "canonical", href: "/quiz" }],
+    links: [{ rel: "canonical", href: absoluteUrl("/quiz") }],
   }),
   component: QuizPage,
 });

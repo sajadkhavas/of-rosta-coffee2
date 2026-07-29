@@ -14,10 +14,17 @@ const paths = {
   siteConfig: "src/config/site.ts",
   root: "src/routes/__root.tsx",
   robots: "src/routes/robots[.]txt.ts",
-  sitemap: "src/routes/sitemap[.]xml.ts",
+  sitemapIndex: "src/routes/sitemap[.]xml.ts",
+  sitemapStatic: "src/routes/sitemaps.static[.]xml.ts",
+  sitemapProducts: "src/routes/sitemaps.products[.]xml.ts",
+  sitemapRoasteries: "src/routes/sitemaps.roasteries[.]xml.ts",
+  sitemapContent: "src/routes/sitemaps.content[.]xml.ts",
+  sitemapLib: "src/lib/sitemap.ts",
   routeTree: "src/routeTree.gen.ts",
   server: "src/server.ts",
+  redirectLib: "src/lib/seo-redirect.ts",
   staging: ".env.staging.example",
+  acceptance: "deploy/staging/acceptance.sh",
   home: "src/routes/index.tsx",
   products: "src/routes/products.index.tsx",
   product: "src/routes/products.$slug.tsx",
@@ -25,6 +32,12 @@ const paths = {
   roastery: "src/routes/roasteries.$slug.tsx",
   blog: "src/routes/blog.index.tsx",
   article: "src/routes/blog.$slug.tsx",
+  about: "src/routes/about.tsx",
+  privacy: "src/routes/privacy.tsx",
+  terms: "src/routes/terms.tsx",
+  quiz: "src/routes/quiz.tsx",
+  ogSvg: "public/og-home.svg",
+  ogPng: "public/og-home.png",
 };
 
 const missing = [];
@@ -34,7 +47,7 @@ for (const [name, path] of Object.entries(paths)) {
     missing.push(path);
     continue;
   }
-  files[name] = await readFile(path, "utf8");
+  if (name !== "ogPng") files[name] = await readFile(path, "utf8");
 }
 
 const packageJson = files.package ? JSON.parse(files.package) : {};
@@ -52,8 +65,6 @@ const publicMetadata = [
   files.blog,
   files.article,
 ].filter(Boolean);
-
-const seoSurface = Object.values(files).join("\n");
 
 const rootHasRouteCanonical =
   files.root?.includes('rel: "canonical"') || files.root?.includes('property: "og:url"');
@@ -79,14 +90,16 @@ gate(
     "allowIndexing",
     "absoluteUrl",
     'direction: "rtl"',
-  ]) && !files.siteConfig?.includes("rosta.coffee"),
-  "Canonical URLs and indexing state must come from the central RTL site configuration.",
+  ]) &&
+    files.siteConfig?.includes('socialImagePath: "/og-home.png"') &&
+    !files.siteConfig?.includes("در حال توسعه"),
+  "Canonical URLs, indexing and the production social image must come from central configuration.",
 );
 
 gate(
   "root_does_not_duplicate_route_canonicals",
   !rootHasRouteCanonical,
-  "The root layout must provide only universal metadata; public routes own their canonical and og:url values.",
+  "The root layout must provide only universal metadata; public routes own canonical and og:url.",
 );
 
 gate(
@@ -96,14 +109,13 @@ gate(
     "!siteConfig.allowIndexing",
     "NOINDEX_PATHS",
     "NOINDEX_PREFIXES",
-    'name: "robots"',
     'content: "noindex,follow"',
     '"/admin"',
     '"/auth"',
     '"/orders"',
     '"/panel"',
   ]),
-  "Global indexing policy must keep private customer, seller and administrator routes out of search.",
+  "Private customer, seller and administrator routes must stay out of search.",
 );
 
 gate(
@@ -124,30 +136,63 @@ gate(
 );
 
 gate(
-  "live_authoritative_sitemap",
-  hasAll(files.sitemap, [
-    'createFileRoute("/sitemap.xml")',
-    "listProducts",
-    "listRoasteries",
-    "listIndexableContent",
-    'product.status === "published"',
-    "absoluteUrl(entry.path)",
-    'Content-Type": "application/xml; charset=utf-8"',
+  "runtime_permanent_redirects",
+  hasAll(files.server, [
+    "applyPublicSeoRedirect",
+    "response.status !== 404",
+    "resolveSeoRedirect(request)",
   ]) &&
-    !files.sitemap?.includes("@/data/seed") &&
-    !files.sitemap?.includes("@/data/blog-posts"),
-  "The sitemap must use live published Laravel catalog/CMS data and never static production fixtures.",
+    hasAll(files.redirectLib, [
+      "/seo/redirects/resolve?path=",
+      "PERMANENT_REDIRECT_STATUSES",
+      "new Set([301, 308])",
+      "destination.origin === requestUrl.origin",
+    ]),
+  "Laravel-managed permanent redirects must execute at the SSR 404 boundary and remain same-origin.",
 );
 
 gate(
-  "robots_and_sitemap_registered",
-  hasAll(files.routeTree, [
-    "RobotsDottxtRouteImport",
-    "SitemapDotxmlRouteImport",
+  "sharded_live_authoritative_sitemap",
+  hasAll(files.sitemapIndex, ['createFileRoute("/sitemap.xml")', "sitemapIndexResponse"]) &&
+    hasAll(files.sitemapLib, [
+      "SITEMAP_SHARDS",
+      "listProducts",
+      "listRoasteries",
+      "listIndexableContent",
+      'product.status === "published"',
+      "roastery.isVerified",
+      "absoluteUrl(entry.path)",
+    ]) &&
+    hasAll(files.sitemapProducts, ["productSitemapEntries", "sitemapShardResponse"]) &&
+    hasAll(files.sitemapRoasteries, ["roasterySitemapEntries", "sitemapShardResponse"]) &&
+    hasAll(files.sitemapContent, ["contentSitemapEntries", "sitemapShardResponse"]) &&
+    hasAll(files.sitemapStatic, ["STATIC_SITEMAP_ENTRIES", "sitemapShardResponse"]),
+  "The sitemap index must use bounded live catalog, roastery, content and static shards.",
+);
+
+gate(
+  "sitemap_is_bounded_and_fail_visible",
+  hasAll(files.sitemapLib, [
+    "MAX_SITEMAP_URLS = 50_000",
+    "status: 503",
+    '"Retry-After": "300"',
+    '"Cache-Control": "no-store"',
+    "Sitemap shard exceeds",
+  ]),
+  "A failed or oversized upstream shard must never be published as a silent incomplete HTTP 200.",
+);
+
+gate(
+  "robots_and_sitemaps_registered",
+  [
     "/robots.txt",
     "/sitemap.xml",
-  ]),
-  "The generated TanStack route tree must register both crawler endpoints.",
+    "/sitemaps/static.xml",
+    "/sitemaps/products.xml",
+    "/sitemaps/roasteries.xml",
+    "/sitemaps/content.xml",
+  ].every((route) => files.routeTree?.includes(route)),
+  "The generated TanStack route tree must register every crawler endpoint.",
 );
 
 gate(
@@ -158,6 +203,40 @@ gate(
       .every((source) => source.includes("application/ld+json") || source.includes("seoHead")) &&
     publicMetadata.every((source) => !source.includes("rosta.coffee")),
   "Major public SSR routes must derive canonical URLs centrally and retain structured metadata.",
+);
+
+gate(
+  "static_route_canonicals_are_absolute",
+  [files.about, files.privacy, files.terms, files.quiz].every(
+    (source) => source?.includes("absoluteUrl") && !source.includes('href: "/'),
+  ),
+  "About, privacy, terms and quiz canonical links must be absolute in initial HTML.",
+);
+
+gate(
+  "pagination_and_query_indexability",
+  hasAll(files.products, [
+    "if (search.page > 1)",
+    'params.set("page", String(search.page))',
+    "shouldNoIndex",
+    "search.q.trim()",
+    "search.available",
+    'search.sort !== "recommended"',
+    'content: "noindex,follow"',
+  ]) && hasAll(files.roasteries, ["`?page=${loaderData?.search.page}`", 'rel: "canonical"']),
+  "Paginated catalogs must self-canonicalize while search, availability and alternate sorts noindex.",
+);
+
+gate(
+  "social_preview_asset",
+  (await exists(paths.ogPng)) &&
+    hasAll(files.ogSvg, ['width="1200"', 'height="630"', "رستا"]) &&
+    hasAll(files.root, [
+      'property: "og:image:width"',
+      'property: "og:image:height"',
+      'property: "og:image:alt"',
+    ]),
+  "The default Open Graph card must be a real 1200x630 asset with explicit dimensions and alt.",
 );
 
 gate(
@@ -176,16 +255,18 @@ gate(
 );
 
 gate(
-  "staging_indexing_disabled",
-  files.staging?.includes("VITE_ALLOW_INDEXING=false"),
-  "Staging must stay non-indexable until release acceptance.",
+  "staging_indexing_and_seo_acceptance",
+  files.staging?.includes("VITE_ALLOW_INDEXING=false") &&
+    hasAll(files.acceptance, ["seo_runtime_ok", "sitemaps/products.xml", "og-home.png"]),
+  "Staging must remain noindex and prove canonical, sitemap and social-image behavior at runtime.",
 );
 
 gate(
-  "whole_bean_search_surface",
-  seoSurface.includes("دانه کامل") &&
-    !/grind[_-]?(selector|state)|grind_option|grind_preference/i.test(seoSurface),
-  "SEO surfaces must describe whole beans without introducing grind selection or preference state.",
+  "whole_bean_product_identity_is_consistent",
+  files.product?.includes("هویت محصول و موجودی همیشه دانه کامل است") &&
+    files.product?.includes("خدمت جداگانه") &&
+    !files.product?.includes("هیچ انتخاب آسیابی وجود ندارد"),
+  "Product schema and FAQ must keep whole-bean identity while describing optional grinding as a service.",
 );
 
 const failed = gates.filter((item) => !item.passed);

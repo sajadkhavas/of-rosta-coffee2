@@ -149,6 +149,12 @@ export const Route = createRootRouteWithContext<{
           property: "og:image",
           content: absoluteUrl(siteConfig.socialImagePath),
         },
+        { property: "og:image:width", content: "1200" },
+        { property: "og:image:height", content: "630" },
+        {
+          property: "og:image:alt",
+          content: "رستا؛ مارکت‌پلیس دانه کامل قهوه تازه‌رست",
+        },
         { name: "twitter:card", content: "summary_large_image" },
         {
           name: "twitter:image",

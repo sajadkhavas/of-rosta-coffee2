@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Breadcrumb, breadcrumbJsonLd } from "@/components/Breadcrumb";
+import { absoluteUrl } from "@/config/site";
 
 const CRUMBS = [{ label: "خانه", to: "/" }, { label: "قوانین و مقررات" }];
 
@@ -18,10 +19,10 @@ export const Route = createFileRoute("/terms")({
         property: "og:description",
         content: "قوانین استفاده از پلتفرم رستا، شرایط خرید، ارسال و بازگشت کالا.",
       },
-      { property: "og:url", content: "/terms" },
+      { property: "og:url", content: absoluteUrl("/terms") },
       { property: "og:type", content: "website" },
     ],
-    links: [{ rel: "canonical", href: "/terms" }],
+    links: [{ rel: "canonical", href: absoluteUrl("/terms") }],
     scripts: [
       {
         type: "application/ld+json",
