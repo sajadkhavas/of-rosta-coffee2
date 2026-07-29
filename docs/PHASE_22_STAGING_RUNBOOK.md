@@ -194,7 +194,7 @@ Preflight verifies:
 - fully resolved Compose configuration
 - Caddy configuration
 - permanent frontend and backend Phase 22 audits
-- presence or planned generation of `backend/composer.lock`
+- presence and validity of the committed `backend/composer.lock`
 
 ## 6. First deployment
 
@@ -209,7 +209,7 @@ The deploy pipeline performs, in order:
 
 1. exclusive deployment lock
 2. PHP 8.3 quality image build
-3. `backend/composer.lock` generation when absent
+3. validation and security audit of the committed `backend/composer.lock`
 4. locked Composer install
 5. every backend audit
 6. PHPUnit
@@ -227,7 +227,8 @@ The deploy pipeline performs, in order:
 18. internal and external Phase 22 acceptance
 19. signed acceptance evidence and release metadata
 
-Generated `backend/composer.lock` must be committed to GitHub before production release.
+Deployment fails closed when `backend/composer.lock` is absent or invalid; dependencies
+are never generated or changed on the server.
 
 ## 7. Acceptance evidence
 
