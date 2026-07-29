@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { RoasterySummary } from "@/lib/api/contracts";
-import { bestMediaUrl } from "@/lib/catalog-format";
+import { bestMediaUrl, mediaSrcSet } from "@/lib/catalog-format";
 
 export function CatalogRoasteryCard({ roastery }: { roastery: RoasterySummary }) {
   const cover = bestMediaUrl(roastery.cover);
@@ -12,8 +12,12 @@ export function CatalogRoasteryCard({ roastery }: { roastery: RoasterySummary })
           {cover ? (
             <img
               src={cover}
+              srcSet={mediaSrcSet(roastery.cover)}
+              sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
               alt={`کاور ${roastery.name}`}
               loading="lazy"
+              width={roastery.cover?.width}
+              height={roastery.cover?.height}
               className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
             />
           ) : (
@@ -24,8 +28,12 @@ export function CatalogRoasteryCard({ roastery }: { roastery: RoasterySummary })
           {logo ? (
             <img
               src={logo}
+              srcSet={mediaSrcSet(roastery.logo)}
+              sizes="64px"
               alt={`لوگوی ${roastery.name}`}
               loading="lazy"
+              width={roastery.logo?.width}
+              height={roastery.logo?.height}
               className="absolute -bottom-7 end-5 size-16 rounded-2xl border-4 border-[color:var(--dark)] bg-white object-cover"
             />
           ) : null}

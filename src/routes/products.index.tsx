@@ -52,8 +52,13 @@ function canonicalFor(search: ProductsSearch) {
   if (search.roast) params.set("roast", search.roast);
   if (search.processing) params.set("processing", search.processing);
   if (search.roastery) params.set("roastery", search.roastery);
+  if (search.page > 1) params.set("page", String(search.page));
   const query = params.toString();
   return absoluteUrl(`/products${query ? `?${query}` : ""}`);
+}
+
+function shouldNoIndex(search: ProductsSearch): boolean {
+  return Boolean(search.q.trim() || search.available || search.sort !== "recommended");
 }
 
 export const Route = createFileRoute("/products/")({
@@ -81,6 +86,7 @@ export const Route = createFileRoute("/products/")({
         { property: "og:title", content: title },
         { property: "og:description", content: description },
         { property: "og:type", content: "website" },
+        ...(shouldNoIndex(resolved) ? [{ name: "robots", content: "noindex,follow" }] : []),
       ],
       links: [{ rel: "canonical", href: canonicalFor(resolved) }],
       scripts: [

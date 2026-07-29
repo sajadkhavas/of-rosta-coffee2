@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Breadcrumb, breadcrumbJsonLd } from "@/components/Breadcrumb";
+import { absoluteUrl } from "@/config/site";
 import { toFa } from "@/lib/persian";
 
 export const Route = createFileRoute("/about")({
@@ -18,10 +19,10 @@ export const Route = createFileRoute("/about")({
         property: "og:description",
         content: "پلتفرم خرید مستقیم قهوه تازه‌رست از روستری‌های ایران.",
       },
-      { property: "og:url", content: "/about" },
+      { property: "og:url", content: absoluteUrl("/about") },
       { property: "og:type", content: "website" },
     ],
-    links: [{ rel: "canonical", href: "/about" }],
+    links: [{ rel: "canonical", href: absoluteUrl("/about") }],
     scripts: [
       {
         type: "application/ld+json",

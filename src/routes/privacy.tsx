@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Breadcrumb, breadcrumbJsonLd } from "@/components/Breadcrumb";
+import { absoluteUrl } from "@/config/site";
 
 const CRUMBS = [{ label: "خانه", to: "/" }, { label: "حریم خصوصی" }];
 
@@ -18,10 +19,10 @@ export const Route = createFileRoute("/privacy")({
         property: "og:description",
         content: "نحوه جمع‌آوری، استفاده و حفاظت از اطلاعات شخصی کاربران در رستا.",
       },
-      { property: "og:url", content: "/privacy" },
+      { property: "og:url", content: absoluteUrl("/privacy") },
       { property: "og:type", content: "website" },
     ],
-    links: [{ rel: "canonical", href: "/privacy" }],
+    links: [{ rel: "canonical", href: absoluteUrl("/privacy") }],
     scripts: [
       {
         type: "application/ld+json",

@@ -120,7 +120,7 @@ const configuredApiUrl = normalizeConfiguredUrl(
 
 export const siteConfig = {
   name: "رستا",
-  description: "پلتفرم در حال توسعه برای کشف و مقایسه ساختاریافته دانه کامل قهوه.",
+  description: "مارکت‌پلیس کشف، مقایسه و خرید دانه کامل قهوه تازه‌رست از روستری‌های منتخب ایران.",
   siteUrl: configuredSiteUrl,
   apiUrl: configuredApiUrl,
   paymentRedirectHosts: parsePaymentRedirectHosts(

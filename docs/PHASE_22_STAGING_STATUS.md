@@ -63,6 +63,9 @@ The report covers:
 - R2 write/read/public delivery/CORS/delete
 - public API endpoints
 - SSR homepage
+- absolute SSR canonical and noindex metadata
+- sitemap index plus static, product, roastery and content shards
+- 1200×630 PNG Open Graph delivery
 - robots noindex
 - TLS security headers
 - credentialed CORS
@@ -83,12 +86,14 @@ These values cannot be created or inferred from the repository:
 - R2 account endpoint
 - R2 custom domain and CORS policy
 
-Until those values are installed on the server, this branch is correctly classified as:
+The R5K program merge and release-candidate freeze are complete at the same
+verified commit. Until the external values are installed on the server, this
+branch is correctly classified as:
 
 ```text
 code-level complete
 runtime unverified
-release candidate pending R5K merge and freeze
+release candidate frozen; staging inputs pending
 ```
 
 Payment, refund execution, SMS and Google indexing remain disabled throughout Phase 22.

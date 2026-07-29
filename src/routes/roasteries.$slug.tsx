@@ -8,7 +8,7 @@ import { Navbar } from "@/components/Navbar";
 import { absoluteUrl, siteConfig } from "@/config/site";
 import { productsQueryOptions, roasteryQueryOptions } from "@/lib/api/catalog";
 import { isApiError } from "@/lib/api/client";
-import { bestMediaUrl } from "@/lib/catalog-format";
+import { bestMediaUrl, mediaSrcSet } from "@/lib/catalog-format";
 import { seoHead } from "@/lib/seo";
 
 export const Route = createFileRoute("/roasteries/$slug")({
@@ -112,7 +112,11 @@ function RoasteryPage() {
             {cover ? (
               <img
                 src={cover}
+                srcSet={mediaSrcSet(roastery.cover)}
+                sizes="(min-width: 1152px) 1152px, 100vw"
                 alt={`کاور ${roastery.name}`}
+                width={roastery.cover?.width}
+                height={roastery.cover?.height}
                 className="absolute inset-0 h-full w-full object-cover opacity-55"
                 fetchPriority="high"
               />
@@ -123,7 +127,11 @@ function RoasteryPage() {
                 {logo ? (
                   <img
                     src={logo}
+                    srcSet={mediaSrcSet(roastery.logo)}
+                    sizes="96px"
                     alt={`لوگوی ${roastery.name}`}
+                    width={roastery.logo?.width}
+                    height={roastery.logo?.height}
                     className="size-24 rounded-2xl border-4 border-[color:var(--dark)] bg-white object-cover"
                   />
                 ) : (

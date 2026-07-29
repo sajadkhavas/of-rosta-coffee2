@@ -29,6 +29,10 @@ const paths = {
   router: "src/router.tsx",
   icon: "public/icon.svg",
   maskableIcon: "public/icon-maskable.svg",
+  icon192Png: "public/icon-192.png",
+  icon512Png: "public/icon-512.png",
+  icon512MaskablePng: "public/icon-512-maskable.png",
+  ogHomePng: "public/og-home.png",
   productionDockerfile: "backend/Dockerfile.production",
   stagingCompose: "deploy/staging/docker-compose.yml",
   backendDeploy: "deploy/staging/deploy.sh",
@@ -43,6 +47,13 @@ for (const [name, path] of Object.entries(paths)) {
 const packageJson = JSON.parse(files.package);
 const manifest = JSON.parse(files.manifest);
 const gates = [];
+const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+async function hasPngSignature(path) {
+  if (!(await exists(path))) return false;
+  const value = await readFile(path);
+  return value.subarray(0, pngSignature.length).equals(pngSignature);
+}
 
 function gate(name, condition, evidence) {
   gates.push({ name, passed: Boolean(condition), evidence });
@@ -79,7 +90,11 @@ gate(
         icon.purpose === "maskable",
     ) &&
     files.icon?.startsWith("<svg") &&
-    files.maskableIcon?.startsWith("<svg"),
+    files.maskableIcon?.startsWith("<svg") &&
+    (await hasPngSignature(paths.icon192Png)) &&
+    (await hasPngSignature(paths.icon512Png)) &&
+    (await hasPngSignature(paths.icon512MaskablePng)) &&
+    (await hasPngSignature(paths.ogHomePng)),
   "manifest icon MIME types, file contents and maskable purpose must agree",
 );
 

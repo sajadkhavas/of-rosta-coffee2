@@ -13,6 +13,7 @@ import {
   formatIrr,
   formatRoastDate,
   formatWeight,
+  mediaSrcSet,
   processingLabel,
   roastLevelLabel,
 } from "@/lib/catalog-format";
@@ -26,7 +27,8 @@ import { seoHead } from "@/lib/seo";
 const PRODUCT_FAQ = [
   {
     question: "این قهوه به چه شکل ارسال می‌شود؟",
-    answer: "تمام محصولات رستا فقط به‌صورت دانه کامل ارسال می‌شوند و هیچ انتخاب آسیابی وجود ندارد.",
+    answer:
+      "هویت محصول و موجودی همیشه دانه کامل است. اگر روستری یا هاب رستا برای وزن انتخابی سرویس آسیاب فعال داشته باشد، این خدمت جداگانه در مرحله سبد سفارش انتخاب می‌شود و نوع محصول را تغییر نمی‌دهد.",
   },
   {
     question: "قیمت و موجودی چه زمانی قطعی می‌شود؟",
@@ -168,6 +170,7 @@ function ProductPage() {
     : product.primaryImage
       ? [product.primaryImage]
       : [];
+  const selectedAsset = gallery.find((asset) => bestMediaUrl(asset) === selectedImage);
 
   const addSelectedVariant = () => {
     if (!selectedVariant?.isAvailable) return;
@@ -202,7 +205,11 @@ function ProductPage() {
               {selectedImage ? (
                 <img
                   src={selectedImage}
+                  srcSet={mediaSrcSet(selectedAsset)}
+                  sizes="(min-width: 768px) 50vw, 100vw"
                   alt={product.name}
+                  width={selectedAsset?.width}
+                  height={selectedAsset?.height}
                   className="h-full w-full object-cover"
                   fetchPriority="high"
                 />
@@ -225,8 +232,12 @@ function ProductPage() {
                     >
                       <img
                         src={url}
+                        srcSet={mediaSrcSet(asset)}
+                        sizes="(min-width: 768px) 12vw, 25vw"
                         alt={asset.alt || product.name}
                         loading="lazy"
+                        width={asset.width}
+                        height={asset.height}
                         className="h-full w-full object-cover"
                       />
                     </button>
