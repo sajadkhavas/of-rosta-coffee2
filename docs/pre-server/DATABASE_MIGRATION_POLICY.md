@@ -8,9 +8,9 @@ Deployment evidence in `deploy/staging` already treats schema migration as forwa
 
 ## Ownership
 
-Financial model and financial migration changes are **PS4-only**. No other pre-server phase may add, rewrite or opportunistically alter financial persistence.
+Financial model and financial migration changes are **PS4.1/PS4.2-only**. No other pre-server phase may add, rewrite or opportunistically alter financial persistence.
 
-A non-financial phase that discovers a required financial schema change must record the requirement and hand it to PS4.
+A non-financial phase that discovers a required financial schema change must record the requirement and hand it to PS4.1 or PS4.2 according to the wave contract.
 
 ## Expand/contract rule
 
@@ -91,7 +91,7 @@ Existing source evidence includes `deploy/staging/backup.sh`, `deploy/staging/re
 
 ## Financial safety
 
-PS4 financial migrations must additionally prove:
+PS4.1/PS4.2 financial migrations must additionally prove:
 
 - immutable/auditable monetary history is not silently rewritten;
 - amount and currency units are explicit;
@@ -99,6 +99,6 @@ PS4 financial migrations must additionally prove:
 - backfills do not create fake payment/refund/payout success;
 - constraints reflect approved business rules, not guessed rates.
 
-## PS8 freeze
+## PS8 acceptance freeze and PS9 final freeze
 
-At Feature Freeze, no new schema change is accepted unless it fixes a release-blocking defect and is routed through the owning PS with the full migration evidence above. PS8 itself does not introduce new schema scope.
+PS8A/B/C are evidence-only and introduce no schema change. If they find a release blocker, the freeze reopens for the owning implementation phase; after the accepted fix, all three PS8 audits restart from the same new candidate SHA. PS9 does not introduce schema scope and does not tag until the retested candidate passes.

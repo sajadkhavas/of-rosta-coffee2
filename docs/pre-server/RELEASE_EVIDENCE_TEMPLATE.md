@@ -1,6 +1,6 @@
 # ROSTA Release Evidence Template
 
-Use this template for every PS handoff and for PS8 final freeze. Do not remove sections; write `N/A` with a reason when a section truly does not apply.
+Use this template for every implementation handoff, each PS8 evidence audit and the PS9 final freeze. Do not remove sections; write `N/A` with a reason when a section truly does not apply.
 
 ## Identity
 
@@ -123,7 +123,7 @@ All required workflow evidence must point to the exact phase-head SHA.
 | Backup/restore | | |
 | Monitoring/alerts | | |
 
-`EXTERNAL PENDING` is not a synonym for PASS. PS8 must decide whether each pending item blocks release.
+`EXTERNAL PENDING` is not a synonym for PASS. PS8 records the source-independent boundary and PS9 decides whether it blocks `PRE-SERVER GO`; no item may be represented as real staging/provider acceptance before that execution exists.
 
 ## Risks
 

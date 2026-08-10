@@ -29,16 +29,16 @@ The baseline staging files currently use:
 
 That cookie domain covers production hosts and therefore does **not** satisfy the new pre-server isolation requirement.
 
-Required end state before PS8:
+PS1 must establish the source-level isolated staging contract; PS7 must re-verify it against the completed Production package before PS8:
 
 1. Staging session cookie name must be explicit and staging-only.
 2. Staging cookie domain must not scope cookies to production `rosta.shop` / `api.rosta.shop`.
 3. Frontend and API staging hostnames must be arranged so Sanctum/XSRF can work without a cookie domain that also covers production.
 4. Staging `SANCTUM_STATEFUL_DOMAINS`, allowed origins, payment redirect allowlist and media origins must be reconciled to the chosen staging hosts.
-5. The existing Phase 17/22/R4A audits must be updated by the owning phase if their old literal `.rosta.shop` expectation conflicts with the accepted isolated design.
+5. PS1 must update the existing Phase 17/22/R4A audits if their old literal `.rosta.shop` expectation conflicts with the accepted isolated design; PS7 must preserve the corrected contract.
 6. Production and staging must use different session-cookie names even after domain isolation.
 
-PS0 does not invent a final staging hostname topology because DNS is an operational decision. PS7 must choose and evidence a topology that satisfies all six requirements. Until then, staging cookie isolation is **FAIL** on the baseline.
+PS0 does not mutate DNS or runtime configuration. PS1 owns the repository correction across the staging environment examples, Caddy/Compose/acceptance and cookie/XSRF tests; PS7 owns final Production/Staging reconciliation and hosted rehearsal. Until the PS1 correction is accepted, staging cookie isolation is **FAIL** on the baseline.
 
 ## Response envelope
 

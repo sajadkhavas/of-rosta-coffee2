@@ -37,7 +37,7 @@ For every external provider:
 
 PS0 deliberately supplies **no** tax rate, commission rate, carrier price, bank account, settlement schedule, refund policy or payout policy.
 
-PS4 may implement an approved rule only after receiving, at minimum:
+PS4.1 may implement approved Tax/Commission rules, and PS4.2 may implement approved Refund/Payout/Reconciliation behavior, only after receiving at minimum:
 
 - rule owner/approver;
 - exact scope;

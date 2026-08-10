@@ -1,118 +1,114 @@
 # ROSTA Pre-server Wave and Branch Ownership
 
-## Baseline and conflict rule
+## Baseline and integration rule
 
-All pre-server branches are descendants of the accepted release-candidate lineage. PS0 starts from:
+PS0 starts from the immutable accepted baseline:
 
 `integration/rosta-release-candidate@a4d8afed40e55ec6f84d25308c5cde9524042bb0`
 
-Parallel work is allowed only when file ownership is disjoint. A phase must not opportunistically edit another phase's exclusive files. If a required change crosses an ownership boundary, the owning phase makes it first and the dependent phase consumes the accepted integration SHA; history must not be rewritten.
+Every later wave starts only after the previous wave's accepted pull requests have been merged into `integration/rosta-release-candidate` and the central reviewer has published the resulting full 40-character SHA. A phase branch must start from that exact SHA. Placeholders such as `{{WAVE_1_SHA}}` are never valid baselines.
 
-## Wave schedule
+No phase executor merges its own pull request. Direct work on `main` or the integration branch, rebase, amend, squash, force-push and any other published-history rewrite are prohibited by `AGENTS.md` and the Lovable history contract.
 
-| Wave | PS | Canonical branch | Parallelism / dependency |
+## Canonical wave schedule
+
+| Wave | Phase | Canonical branch | Parallelism / dependency |
 |---|---|---|---|
-| 0 | PS0 | `phase/rosta-ps0-pre-server-contract` | Runs first. Establishes the contract; no product behavior changes. |
-| 1 | PS1 | `phase/rosta-ps1-dependency-security` | May run in parallel with PS2–PS6 after PS0. |
-| 1 | PS2 | `phase/rosta-ps2-otp-auth-readiness` | Parallel with PS1/PS3–PS6; must not own lockfiles or deployment files. |
-| 1 | PS3 | `phase/rosta-ps3-media-r2-readiness` | Parallel with PS1/PS2/PS4–PS6. |
-| 1 | PS4 | `phase/rosta-ps4-finance-truth` | Parallel with PS1–PS3/PS5/PS6; exclusive financial model/migration owner. |
-| 1 | PS5 | `phase/rosta-ps5-panel-operations` | Parallel; consumes PS4 finance contracts instead of redefining them. |
-| 1 | PS6 | `phase/rosta-ps6-backup-monitoring-readiness` | Parallel for source/runbook readiness; may not create production deployment files. |
-| 2 | PS7 | `phase/rosta-ps7-production-deployment` | Starts after Wave 1 acceptance. Exclusive production deployment-file owner and staging-domain reconciliation owner. |
-| 3 | PS8 | `phase/rosta-ps8-feature-freeze` | Starts after PS7. Feature Freeze: acceptance/integration only; no new feature scope. |
+| 0 | PS0 | `phase/rosta-ps0-pre-server-contract` | Runs alone from the frozen baseline and creates this contract. |
+| 1 | PS1 | `phase/rosta-ps1-release-security` | Parallel with PS2 and PS3 after PS0 acceptance. Exclusive dependency/lockfile owner. |
+| 1 | PS2 | `phase/rosta-ps2-otp-notifications` | Parallel with PS1 and PS3; no dependency or media scope. |
+| 1 | PS3 | `phase/rosta-ps3-media-pipeline` | Parallel with PS1 and PS2; no auth or release-security scope. |
+| 2 | PS4.1 | `phase/rosta-ps4a-financial-core` | Parallel with PS5.1 and PS5.2 after Wave 1. Exclusive financial-core owner. |
+| 2 | PS5.1 | `phase/rosta-ps5a-quiz-reviews` | Parallel with PS4.1 and PS5.2; Quiz/recommendations/reviews only. |
+| 2 | PS5.2 | `phase/rosta-ps5b-seller-organization` | Parallel with PS4.1 and PS5.1; seller organization/availability only. |
+| 3 | PS4.2 | `phase/rosta-ps4b-refund-payout-reconciliation` | Parallel with PS5.3 after Wave 2; consumes PS4.1 financial truth. |
+| 3 | PS5.3 | `phase/rosta-ps5c-carrier-admin-ops` | Parallel with PS4.2; carrier and non-financial admin operations only. |
+| 4 | PS5.4 | `phase/rosta-ps5d-workspaces-kpi` | Parallel with PS6B after Wave 3; consumes existing APIs and does not recreate business logic. |
+| 4 | PS6B | `phase/rosta-ps6b-backend-observability` | Parallel with PS5.4; backend refactor, queues and instrumentation only. |
+| 5 | PS6A | `phase/rosta-ps6a-frontend-quality` | Parallel with PS7 after Wave 4; frontend quality freeze, not feature work. |
+| 5 | PS7 | `phase/rosta-ps7-production-deployment` | Parallel with PS6A; exclusive `deploy/production` owner. No real server mutation. |
+| 6 | PS8A | `acceptance/rosta-ps8a-frontend` | Independent evidence-only audit of the same Wave 5 candidate SHA. |
+| 6 | PS8B | `acceptance/rosta-ps8b-backend-finance` | Independent evidence-only audit of the same Wave 5 candidate SHA. |
+| 6 | PS8C | `acceptance/rosta-ps8c-infrastructure` | Independent evidence-only audit of the same Wave 5 candidate SHA. |
+| 7 | PS9 | central reviewer on `integration/rosta-release-candidate` | Runs only after all three PS8 verdicts are PASS; integrates evidence, reruns gates, tags and freezes. |
+| 8 | PS10 | assigned after approved feature intake | Starts only from the PS9 final SHA after the new feature is fully defined. |
 
-These branch names are reserved by PS0 as the central pre-server naming contract.
+If any PS8 path fails, Feature Freeze reopens only for the owning phase. After a source fix is integrated, PS8A, PS8B and PS8C all restart from the same new candidate SHA. PS9 must not tag a mixed or partially retested candidate.
 
 ## Exclusive ownership
 
-### PS1 — lockfiles and dependency resolution
+### PS0 — central contract
 
-Only PS1 may intentionally modify:
+PS0 owns the six central files under `docs/pre-server`. Wave implementations reference them and do not rewrite them in parallel. PS8 owns only its phase-specific evidence files. PS9 owns the final acceptance, release notes and final manifest evidence.
 
-- `bun.lock`
-- `backend/composer.lock`
+### PS1 — release security and all lockfiles
 
-When a dependency declaration truly must change, PS1 is also the conflict owner for the dependency-related portions of:
+Only PS1 may intentionally modify dependency declarations, dependency policy or lockfiles during parallel pre-server work:
 
 - `package.json`
+- `bun.lock`
 - `backend/composer.json`
+- `backend/composer.lock`
+- dependency-gate changes under `.github/workflows`
 
-Other phases must not regenerate lockfiles as a side effect. Existing deployment logic in `deploy/staging/deploy.sh` already requires the reviewed committed Composer lock and must not resolve dependencies on a server.
+PS1 also owns the Wave 1 corrections for private `/hub` cache boundaries, the duplicate seller-roasteries route, staging contract-version drift, staging preflight/deploy lock messaging and source-level staging cookie isolation.
 
-### PS2 — auth/session/CSRF application contract
+If PS3 or another phase proves a dependency is essential, it must stop that part, hand the exact requirement to PS1 and consume the later accepted integration SHA. It must not regenerate a lockfile in parallel.
 
-PS2 owns auth-specific changes under the existing application configuration and auth implementation, including:
+### PS2 — OTP and notification delivery
 
-- `backend/config/sanctum.php`
-- `backend/config/session.php`
-- auth/session logic referenced by `backend/routes/api.php`
-- frontend cookie/CSRF behavior in `src/lib/api/client.ts`
+PS2 owns the OTP sender/provider selection, Iranian mobile normalization, OTP/request safety, notification-outbox delivery behavior, redacted observability, readiness and related OpenAPI/config keys. It does not own session-domain topology, dependency files, media or finance.
 
-PS2 must not choose production secrets or provider credentials. Environment-domain reconciliation remains PS7-owned.
+### PS3 — media pipeline
 
-### PS3 — media/R2 application contract
+PS3 owns media ingestion, server-side validation/decoding, variant generation, media state/worker behavior, storage ownership, media OpenAPI and seller media progress. It must preserve private object storage and cannot change a lockfile without the PS1 serialization rule above.
 
-PS3 owns media-storage implementation and the existing media contract. It must preserve the fail-closed provider boundary and must not put credentials in source. The repository's media audit is `backend/scripts/audit-media-storage-contract.php`, invoked by `composer audit:media-storage`.
+### PS4.1 and PS4.2 — financial truth
 
-### PS4 — financial model and financial migrations
+PS4.1 is the exclusive owner of Tax/Commission policies, quote/order financial snapshots, financial-core models and migrations, allocation and ledger conservation.
 
-PS4 is the **only** owner of financial model changes and financial migration changes.
+PS4.2 is the exclusive later-wave owner of Refund/Payout/Reconciliation calculations, reversals, statements and their financial models/migrations. Other phases consume these APIs and never recompute money in the browser or invent rates/provider movement.
 
-Its contract surface includes the current financial API/OpenAPI artifacts such as:
+### PS5.1, PS5.2, PS5.3 and PS5.4 — product domains and workspaces
 
-- `src/lib/api/admin-finance.ts`
-- `src/lib/api/financial-contracts.ts`
-- `backend/routes/finance.php`
-- `docs/openapi/rosta-v1-finance.yaml`
-- finance-specific changes under `backend/database/migrations`
+- PS5.1 owns Quiz, persisted recommendations, seller review replies and review report/abuse.
+- PS5.2 owns seller membership/roles/invites, schedules, closures and the non-financial promotion lifecycle boundary.
+- PS5.3 owns carrier interfaces/manual carrier, signed webhooks and non-financial admin operations including controlled failed-job actions.
+- PS5.4 owns the final Seller/Admin workspace composition and KPI presentation. It consumes accepted server APIs and must report a missing contract instead of adding a permanent mock or reimplementing domain logic.
 
-PS5 may render or navigate to financial surfaces, but it must consume PS4 contracts rather than modifying financial persistence or inventing rates.
+### PS6B and PS6A — behavior-preserving quality work
 
-### PS5 — non-financial admin/panel operations
+PS6B owns backend characterization-led refactors, queue reliability, redaction, metrics/traces and readiness instrumentation. PS6A owns frontend refactor, performance, accessibility and visual regression. Neither phase introduces new business behavior.
 
-PS5 owns general admin/panel operational behavior and the existing admin operations contract, including `src/lib/api/admin-operations.ts`, `backend/routes/admin-operations.php` and `docs/openapi/rosta-v1-admin-operations.yaml`, except for finance-owned semantics.
+### PS7 — production deployment package
 
-### PS6 — backup/restore/monitoring acceptance contract
+Only PS7 may create or modify files whose purpose is production deployment, production cutover, production environment materialization or production backup/restore/monitoring wiring. PS7 also re-verifies staging/production namespace isolation after PS1 and builds `deploy/production` without touching a real server.
 
-PS6 owns pre-production operational requirements and evidence definitions for backup, restore and monitoring. Existing staging scripts under `deploy/staging` are implementation evidence, but PS6 must not turn them into production deployment files. Provider/account selection and real alert delivery remain truth-boundary inputs.
+### PS8 and PS9 — freeze and registration
 
-### PS7 — production deployment files and environment mapping
-
-Only PS7 may create or modify files whose purpose is production deployment, production environment materialization, production runner/deployment automation, or production cutover.
-
-PS0 intentionally does not assert a production deployment path that does not yet exist on the baseline.
-
-PS7 also owns the environment-level reconciliation required by `docs/pre-server/API_DOMAIN_CONTRACT.md`, including staging cookie namespace/domain isolation. Application-level Sanctum/session mechanics remain PS2-owned.
-
-### PS8 — Feature Freeze
-
-At PS8:
-
-- feature work is frozen;
-- no new dependency, schema, provider, pricing, tax, carrier or product behavior is introduced;
-- defects are routed back to their owning PS when a code fix is required;
-- PS8 may update acceptance evidence and release-status documentation but must not use the freeze to bypass ownership.
+PS8A/B/C branches may add only their named evidence file under `docs/pre-server/evidence`. They must not repair product or deployment source. PS9 reviews and merges valid evidence, reruns all final gates on one SHA, writes final acceptance artifacts and creates the collision-free annotated tag only after `PRE-SERVER GO`.
 
 ## Shared-file conflict table
 
-| Shared surface | Conflict owner | Rule |
+| Shared surface | Conflict owner / order | Rule |
 |---|---|---|
-| `package.json`, `backend/composer.json` | PS1 for dependency changes | Other PSs may use existing scripts; dependency changes route through PS1. |
-| `bun.lock`, `backend/composer.lock` | PS1 exclusively | No other phase regenerates or edits. |
-| `backend/routes/api.php` | PS2 for auth/common versioning; feature-specific route files remain feature owner | Avoid unrelated route churn; OpenAPI must move with API changes. |
-| `src/config/site.ts` | PS7 for environment/domain changes | PS2 may not change production/staging host truth. |
-| `.env.staging.example`, `backend/.env.staging.example` | PS7 for domain/cookie/environment reconciliation | Provider values stay placeholders or disabled unless real acceptance inputs exist. |
-| `docs/openapi/rosta-v1-finance.yaml` | PS4 | Financial semantics only. |
-| `docs/openapi/rosta-v1-admin-operations.yaml` | PS5, excluding finance semantics | PS5 must not redefine PS4 money truth. |
-| `deploy/staging` | PS6 for acceptance/runbook concerns; PS7 for deployment/domain reconciliation | Same-file edits must be serialized; no parallel conflicting commits. |
-| `.github/workflows` | PS1 for dependency-gate changes; PS7 for deployment workflow changes | Existing CI names remain stable unless an owner has a documented reason. |
-| `docs/pre-server` | PS0 contract; PS8 final acceptance updates | Wave 1 phases reference these documents; they do not rewrite the central contract in parallel. |
+| `package.json`, `bun.lock`, `backend/composer.json`, `backend/composer.lock` | PS1 | All dependency and lockfile changes serialize through PS1. |
+| `.github/workflows` | PS1 for dependency gates; PS7 for deployment/rehearsal; PS9 for final evidence only | Preserve established workflow names unless the owner documents a necessary change. |
+| `backend/routes/api.php` | PS1 for duplicate-route cleanup; later phases use feature route files | Avoid unrelated route churn and move OpenAPI with API behavior. |
+| `.env.staging.example`, `backend/.env.staging.example`, staging Caddy/Compose/acceptance | PS1 for Wave 1 cookie/contract hardening; PS7 for final production/staging reconciliation | Different sections may not be silently overwritten; later owner consumes accepted earlier behavior. |
+| OTP/notification config, routes and OpenAPI | PS2 | PS1 may not redefine OTP delivery while changing release security. |
+| Media routes, schema, worker and OpenAPI | PS3 | Other Wave 1 branches do not edit media semantics. |
+| Financial models, migrations, finance API/OpenAPI | PS4.1 then PS4.2 | No parallel non-financial phase changes money truth. |
+| Seller/Admin route shells and dashboard navigation | Domain owner first, PS5.4 composition later | Wave 2/3 phases isolate feature modules; PS5.4 consumes them after integration. |
+| Backend services refactored by PS6B | Domain owners in Waves 2/3 first, PS6B after Wave 3 | Characterization tests must prove behavior preservation. |
+| `src/config/site.ts`, `deploy/production`, production runbooks | PS7 | Frontend quality work may consume but not redefine deployment truth. |
+| `docs/pre-server/evidence` | PS8A/B/C by named file | Each audit changes only its own evidence file. |
+| `docs/pre-server/FINAL_PRE_SERVER_ACCEPTANCE.md`, release notes, tag | PS9 | Written and registered only after all valid final gates pass. |
 
 ## Conflict handling
 
-1. Do not solve a shared-file collision by rebase, amend, squash, force-push or history rewrite.
-2. The designated owner lands the change first.
-3. A dependent phase restarts or continues from the newly accepted integration SHA according to its own mission rules.
-4. The dependent PR records the accepted owner SHA in its handoff.
-5. PS8 rejects any branch carrying unrelated cross-owner changes.
+1. Do not solve a shared-file collision through rebase, amend, squash, force-push or any history rewrite.
+2. The designated owner lands first through a reviewed merge commit.
+3. The dependent phase resumes from the newly accepted integration SHA or records a blocker; it does not copy unaccepted code from another branch.
+4. Every pull request records its exact baseline SHA, accepted owner SHA where relevant and cross-owner files.
+5. A failed valid gate blocks the wave. The next wave does not start until all accepted work is integrated and a new SHA is published.
