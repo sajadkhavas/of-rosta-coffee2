@@ -232,9 +232,19 @@ final class SecureImageProcessor
                     }
                     $variant->stripImage();
                     $variant->setImagePage(0, 0, 0, 0);
-                    $blob = $this->encode($variant, $format['format'], $format['quality']);
+                    try {
+                        $blob = $this->encode($variant, $format['format'], $format['quality']);
+                    } catch (ImagickException) {
+                        throw new MediaProcessingException(
+                            'variant_encode_failed_'.$format['format'],
+                            rejected: false,
+                        );
+                    }
                     if ($blob === '') {
-                        throw new MediaProcessingException('variant_encode_failed', rejected: false);
+                        throw new MediaProcessingException(
+                            'variant_encode_failed_'.$format['format'],
+                            rejected: false,
+                        );
                     }
                     $variants[] = [
                         'width' => $variant->getImageWidth(),
