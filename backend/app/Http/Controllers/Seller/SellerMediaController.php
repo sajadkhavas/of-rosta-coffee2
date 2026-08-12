@@ -7,6 +7,7 @@ use App\Http\Requests\Catalog\CompleteMediaUploadRequest;
 use App\Http\Requests\Catalog\CreateMediaUploadRequest;
 use App\Http\Requests\Catalog\RegisterMediaRequest;
 use App\Http\Resources\MediaAssetResource;
+use App\Models\MediaUploadIntent;
 use App\Models\Roastery;
 use App\Models\User;
 use App\Services\Catalog\CatalogAccess;
@@ -138,7 +139,7 @@ final class SellerMediaController
     }
 
     /** @return array<string, mixed> */
-    private function intentPayload(\App\Models\MediaUploadIntent $intent, Request $request): array
+    private function intentPayload(MediaUploadIntent $intent, Request $request): array
     {
         $intent->loadMissing('mediaAsset');
 
