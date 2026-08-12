@@ -3,12 +3,17 @@
 namespace App\Services\Notifications\Providers;
 
 use App\Contracts\Notifications\SmsProvider;
+use App\Exceptions\KavenegarDeliveryException;
 use App\Exceptions\NotificationDeliveryUnavailable;
-use Illuminate\Support\Facades\Http;
-use Throwable;
+use App\Services\Kavenegar\KavenegarClient;
+use App\Support\IranMobile;
 
 final class KavenegarSmsProvider implements SmsProvider
 {
+    public function __construct(
+        private readonly KavenegarClient $client,
+    ) {}
+
     public function name(): string
     {
         return 'kavenegar';
@@ -19,35 +24,40 @@ final class KavenegarSmsProvider implements SmsProvider
         string $message,
         ?string $providerTemplate = null,
     ): ?string {
-        $apiKey = trim((string) config('rosta.notifications.kavenegar.api_key'));
-        $baseUrl = rtrim((string) config('rosta.notifications.kavenegar.base_url'), '/');
         $sender = trim((string) config('rosta.notifications.kavenegar.sender'));
+        $normalizedDestination = IranMobile::normalize($destination);
 
-        if ($apiKey === '') {
-            throw new NotificationDeliveryUnavailable;
+        if (
+            ! $this->client->isConfigured()
+            || ! IranMobile::isValid($normalizedDestination)
+            || $sender === ''
+            || mb_strlen($message) > 2000
+            || trim($message) === ''
+        ) {
+            throw new NotificationDeliveryUnavailable('provider_configuration_or_payload_invalid');
         }
 
-        $payload = [
-            'receptor' => $destination,
-            'message' => $message,
-        ];
-        if ($sender !== '') {
-            $payload['sender'] = $sender;
+        if (! $this->client->isAvailable()) {
+            throw new NotificationDeliveryUnavailable(
+                'circuit_open',
+                retryable: true,
+                retryAfterSeconds: $this->client->circuitRetryAfterSeconds(),
+            );
         }
 
         try {
-            $response = Http::acceptJson()
-                ->timeout(max(1, (int) config('rosta.notifications.timeout_seconds', 8)))
-                ->retry(2, 250, throw: false)
-                ->get("{$baseUrl}/{$apiKey}/sms/send.json", $payload)
-                ->throw()
-                ->json();
-        } catch (Throwable $exception) {
-            throw new NotificationDeliveryUnavailable(previous: $exception);
+            return $this->client->sendMessage(
+                $normalizedDestination,
+                $message,
+                $sender,
+            );
+        } catch (KavenegarDeliveryException $exception) {
+            throw new NotificationDeliveryUnavailable(
+                $exception->reasonCode,
+                $exception->retryable,
+                $exception->ambiguous,
+                $exception->retryAfterSeconds,
+            );
         }
-
-        $messageId = data_get($response, 'entries.0.messageid');
-
-        return $messageId === null ? null : (string) $messageId;
     }
 }

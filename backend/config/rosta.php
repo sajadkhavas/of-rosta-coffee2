@@ -8,6 +8,7 @@ $boolean = static fn (string $key, bool $default = false): bool => filter_var(
 $paymentEnabled = $boolean('ROSTA_PAYMENT_ENABLED');
 $refundEnabled = $boolean('ROSTA_REFUND_ENABLED');
 $smsEnabled = $boolean('ROSTA_SMS_ENABLED');
+$otpEnabled = $boolean('ROSTA_OTP_ENABLED');
 $mediaUploadsEnabled = $boolean('ROSTA_MEDIA_UPLOADS_ENABLED');
 $zarinpalSandbox = $boolean('ZARINPAL_SANDBOX', true);
 
@@ -19,6 +20,16 @@ return [
     'payment_enabled' => $paymentEnabled,
     'refund_enabled' => $refundEnabled,
     'sms_enabled' => $smsEnabled,
+    'kavenegar' => [
+        'api_key' => env('KAVENEGAR_API_KEY'),
+        'base_url' => env('KAVENEGAR_BASE_URL', 'https://api.kavenegar.com/v1'),
+        'connect_timeout_seconds' => max(1, min(10, (int) env('KAVENEGAR_CONNECT_TIMEOUT_SECONDS', 3))),
+        'timeout_seconds' => max(2, min(30, (int) env('KAVENEGAR_TIMEOUT_SECONDS', 8))),
+        'retry_base_seconds' => max(5, min(900, (int) env('KAVENEGAR_RETRY_BASE_SECONDS', 30))),
+        'circuit_failure_threshold' => max(2, min(20, (int) env('KAVENEGAR_CIRCUIT_FAILURE_THRESHOLD', 5))),
+        'circuit_window_seconds' => max(30, min(3600, (int) env('KAVENEGAR_CIRCUIT_WINDOW_SECONDS', 300))),
+        'circuit_open_seconds' => max(30, min(1800, (int) env('KAVENEGAR_CIRCUIT_OPEN_SECONDS', 120))),
+    ],
     'allowed_payment_redirect_hosts' => array_values(array_filter(array_map(
         static fn (string $host): string => strtolower(trim($host)),
         explode(',', (string) env('ROSTA_ALLOWED_PAYMENT_REDIRECT_HOSTS', '')),
@@ -72,10 +83,20 @@ return [
         'ttl_minutes' => max(3, min(60, (int) env('ROSTA_MEDIA_UPLOAD_TTL_MINUTES', 15))),
     ],
     'otp' => [
+        'enabled' => $otpEnabled,
+        'driver' => strtolower(trim((string) env('SMS_DRIVER', 'disabled'))),
         'length' => 6,
         'ttl_seconds' => max(30, min(900, (int) env('ROSTA_OTP_TTL_SECONDS', 120))),
         'resend_after_seconds' => max(15, min(900, (int) env('ROSTA_OTP_RESEND_AFTER_SECONDS', 60))),
         'max_attempts' => max(3, min(10, (int) env('ROSTA_OTP_MAX_ATTEMPTS', 5))),
+        'delivery_max_attempts' => max(1, min(5, (int) env('ROSTA_OTP_DELIVERY_MAX_ATTEMPTS', 3))),
+        'kavenegar' => [
+            'templates' => [
+                'login' => env('KAVENEGAR_OTP_TEMPLATE_LOGIN'),
+                'register' => env('KAVENEGAR_OTP_TEMPLATE_REGISTER'),
+                'verify_mobile' => env('KAVENEGAR_OTP_TEMPLATE_VERIFY_MOBILE'),
+            ],
+        ],
     ],
     'auth_sessions' => [
         'ttl_minutes' => max(30, min(43_200, (int) env('ROSTA_AUTH_SESSION_TTL_MINUTES', 120))),

@@ -47,6 +47,9 @@ final class IdentityOtpTest extends TestCase
         $this->assertSame($challengeId, $message['challenge_id']);
         $this->assertNotSame($message['code'], $challenge->code_digest);
         $this->assertSame(64, strlen($challenge->code_digest));
+        $this->assertSame('sent', $challenge->delivery_status->value);
+        $this->assertSame(1, $challenge->delivery_attempts);
+        $this->assertSame('fake-'.$challengeId, $challenge->provider_message_id);
 
         $verify = $this->postJson('/api/v1/auth/otp/verify', [
             'request_id' => $challengeId,

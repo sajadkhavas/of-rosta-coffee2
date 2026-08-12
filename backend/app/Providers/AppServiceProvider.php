@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Observers\OrderObserver;
 use App\Services\Sms\AcceptanceOtpSender;
 use App\Services\Sms\DisabledOtpSender;
+use App\Services\Sms\KavenegarOtpSender;
 use App\Services\Sms\LogOtpSender;
 use App\Support\IranMobile;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -20,14 +21,18 @@ final class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(OtpSender::class, function (): OtpSender {
-            $driver = (string) config('services.sms.driver');
+            $driver = (string) config('rosta.otp.driver', 'disabled');
 
             if ($driver === 'acceptance' && $this->app->environment('testing')) {
                 return new AcceptanceOtpSender;
             }
 
-            if ($driver === 'log' && $this->app->environment(['local', 'testing'])) {
+            if ($driver === 'log' && $this->app->environment('local')) {
                 return new LogOtpSender;
+            }
+
+            if ($driver === 'kavenegar') {
+                return $this->app->make(KavenegarOtpSender::class);
             }
 
             return new DisabledOtpSender;
@@ -63,7 +68,7 @@ final class AppServiceProvider extends ServiceProvider
         });
 
         $acceptanceOtp = $this->app->environment('testing')
-            && config('services.sms.driver') === 'acceptance';
+            && config('rosta.otp.driver') === 'acceptance';
         $otpRequestsPerMinute = $acceptanceOtp ? 12 : 3;
 
         RateLimiter::for('otp-request', function (Request $request) use ($otpRequestsPerMinute): array {

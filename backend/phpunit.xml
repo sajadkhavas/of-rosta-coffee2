@@ -33,5 +33,6 @@
         <env name="REDIS_PORT" value="6399" force="true"/>
         <env name="ROSTA_PAYMENT_ENABLED" value="false" force="true"/>
         <env name="ROSTA_SMS_ENABLED" value="false" force="true"/>
+        <env name="ROSTA_OTP_ENABLED" value="false" force="true"/>
     </php>
 </phpunit>

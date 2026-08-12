@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Contracts\OtpSender;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,10 @@ use Throwable;
 
 final class HealthController
 {
+    public function __construct(
+        private readonly OtpSender $otp,
+    ) {}
+
     public function live(): JsonResponse
     {
         return ApiResponse::success([
@@ -27,6 +32,7 @@ final class HealthController
         $checks = [
             'database' => false,
             'redis' => false,
+            'otp_delivery' => false,
         ];
 
         try {
@@ -35,6 +41,12 @@ final class HealthController
         } catch (Throwable) {
             // Readiness response below remains intentionally generic.
         }
+
+        $otpEnabled = (bool) config('rosta.otp.enabled', false);
+        $otpAvailable = $otpEnabled && $this->otp->isAvailable();
+        $checks['otp_delivery'] = app()->environment('production')
+            ? $otpAvailable
+            : (! $otpEnabled || $otpAvailable);
 
         try {
             $ping = Redis::connection()->ping();

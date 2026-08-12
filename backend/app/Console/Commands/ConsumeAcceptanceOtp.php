@@ -16,7 +16,7 @@ final class ConsumeAcceptanceOtp extends Command
 
     public function handle(): int
     {
-        if (! app()->environment('testing') || config('services.sms.driver') !== 'acceptance') {
+        if (! app()->environment('testing') || config('rosta.otp.driver') !== 'acceptance') {
             $this->components->error('Acceptance OTP consumption is restricted to the testing driver.');
 
             return self::FAILURE;
