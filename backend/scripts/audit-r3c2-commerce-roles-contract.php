@@ -25,7 +25,7 @@ foreach ($files as $name => $path) {
 
 $required = [
     ['provider', "environment('testing')", 'Expanded OTP acceptance must remain testing-only.'],
-    ['provider', "config('services.sms.driver') === 'acceptance'", 'Expanded OTP acceptance must require the dedicated driver.'],
+    ['provider', "config('rosta.otp.driver') === 'acceptance'", 'Expanded OTP acceptance must require the dedicated driver.'],
     ['provider', 'otpRequestsPerMinute = $acceptanceOtp ? 12 : 3', 'Production OTP request throttling must remain three per minute.'],
     ['payment_manager', "'testing' => ! app()->environment('production')", 'Testing payments must remain forbidden in production.'],
     ['payment_manager', 'payment.testing_provider_forbidden', 'Testing payment production refusal must fail closed.'],

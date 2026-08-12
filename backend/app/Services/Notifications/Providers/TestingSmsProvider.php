@@ -22,8 +22,7 @@ final class TestingSmsProvider implements SmsProvider
         Log::info('Rosta testing SMS dispatched.', [
             'message_id' => $messageId,
             'destination_suffix' => substr($destination, -4),
-            'message' => $message,
-            'provider_template' => $providerTemplate,
+            'template_present' => $providerTemplate !== null,
         ]);
 
         return $messageId;

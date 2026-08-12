@@ -10,5 +10,5 @@ interface SmsProvider
         string $destination,
         string $message,
         ?string $providerTemplate = null,
-    ): ?string;
+    ): string;
 }

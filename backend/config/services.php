@@ -2,9 +2,8 @@
 
 return [
     'sms' => [
-        'driver' => env('SMS_DRIVER'),
-        'api_key' => env('SMS_API_KEY'),
-        'enabled' => (bool) env('ROSTA_SMS_ENABLED', false),
+        'driver' => env('SMS_DRIVER', 'disabled'),
+        'enabled' => filter_var(env('ROSTA_OTP_ENABLED', false), FILTER_VALIDATE_BOOL),
     ],
     'payment' => [
         'driver' => env('PAYMENT_DRIVER'),

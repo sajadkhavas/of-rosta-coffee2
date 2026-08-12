@@ -17,7 +17,7 @@ final class DisabledOtpSender implements OtpSender
         string $code,
         string $purpose,
         string $challengeId,
-    ): void {
+    ): ?string {
         throw new ApiDomainException(
             'sms.unavailable',
             'سرویس ارسال کد تأیید فعال نیست.',
