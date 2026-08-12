@@ -31,12 +31,19 @@ export function processingLabel(value: ProductSummary["processingMethod"]): stri
 
 export function bestMediaUrl(asset?: MediaAsset | null): string | null {
   if (!asset?.sources.length) return null;
-  return [...asset.sources].sort((a, b) => b.width - a.width)[0]?.url ?? null;
+  const fallback = asset.sources.filter((source) => ["jpeg", "png"].includes(source.format));
+  return (
+    [...(fallback.length ? fallback : asset.sources)].sort((a, b) => b.width - a.width)[0]?.url ??
+    null
+  );
 }
 
 export function mediaSrcSet(asset?: MediaAsset | null): string | undefined {
   if (!asset?.sources.length) return undefined;
-  const widest = [...asset.sources].sort((a, b) => b.width - a.width)[0];
+  const preferred = asset.sources.filter((source) => source.format === "webp");
+  const widest = [...(preferred.length ? preferred : asset.sources)].sort(
+    (a, b) => b.width - a.width,
+  )[0];
   if (!widest) return undefined;
 
   const byWidth = new Map<number, string>();

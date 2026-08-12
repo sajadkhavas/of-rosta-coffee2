@@ -76,6 +76,7 @@ final class MediaRegistrationService
                 'width' => $data['width'],
                 'height' => $data['height'],
                 'blur_data_url' => $data['blur_data_url'] ?? null,
+                'variant_version' => $data['variant_version'] ?? null,
                 'sources' => $data['sources'],
             ]);
 

@@ -39,6 +39,11 @@ Schedule::command('media:expire-upload-intents --limit=500')
     ->everyTenMinutes()
     ->withoutOverlapping();
 
+Schedule::command('media:cleanup-terminal --limit=500')
+    ->name('rosta.media.cleanup-terminal')
+    ->dailyAt('04:00')
+    ->withoutOverlapping();
+
 Schedule::call(static function (): void {
     CheckoutQuote::query()
         ->where('expires_at', '<', now()->subHour())

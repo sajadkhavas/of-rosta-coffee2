@@ -20,7 +20,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $size_bytes
  * @property string|null $checksum_sha256
  * @property MediaUploadStatus $status
+ * @property int $processing_attempts
+ * @property string|null $alt_text
+ * @property string|null $detected_mime_type
+ * @property int|null $actual_size_bytes
+ * @property string|null $actual_checksum_sha256
+ * @property int|null $detected_width
+ * @property int|null $detected_height
+ * @property string|null $variant_version
+ * @property bool $failure_retryable
  * @property CarbonImmutable $expires_at
+ * @property CarbonImmutable|null $processing_started_at
+ * @property CarbonImmutable|null $ready_at
+ * @property CarbonImmutable|null $rejected_at
  * @property CarbonImmutable|null $completed_at
  * @property CarbonImmutable|null $failed_at
  * @property string|null $failure_reason
@@ -45,7 +57,19 @@ final class MediaUploadIntent extends Model
         'size_bytes',
         'checksum_sha256',
         'status',
+        'processing_attempts',
+        'alt_text',
+        'detected_mime_type',
+        'actual_size_bytes',
+        'actual_checksum_sha256',
+        'detected_width',
+        'detected_height',
+        'variant_version',
+        'failure_retryable',
         'expires_at',
+        'processing_started_at',
+        'ready_at',
+        'rejected_at',
         'completed_at',
         'failed_at',
         'failure_reason',
@@ -56,7 +80,15 @@ final class MediaUploadIntent extends Model
         return [
             'size_bytes' => 'integer',
             'status' => MediaUploadStatus::class,
+            'processing_attempts' => 'integer',
+            'actual_size_bytes' => 'integer',
+            'detected_width' => 'integer',
+            'detected_height' => 'integer',
+            'failure_retryable' => 'boolean',
             'expires_at' => 'immutable_datetime',
+            'processing_started_at' => 'immutable_datetime',
+            'ready_at' => 'immutable_datetime',
+            'rejected_at' => 'immutable_datetime',
             'completed_at' => 'immutable_datetime',
             'failed_at' => 'immutable_datetime',
         ];

@@ -50,7 +50,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.3"
-          extensions: bcmath, ctype, curl, dom, fileinfo, intl, json, mbstring, openssl, pcntl, pdo_mysql, pdo_sqlite, posix, redis, simplexml, sockets, tokenizer, xml, xmlwriter, zip
+          extensions: bcmath, ctype, curl, dom, fileinfo, imagick, intl, json, mbstring, openssl, pcntl, pdo_mysql, pdo_sqlite, posix, redis, simplexml, sockets, tokenizer, xml, xmlwriter, zip
           coverage: none
           tools: composer:v2
 

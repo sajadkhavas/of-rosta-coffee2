@@ -34,6 +34,8 @@ import {
   listSellerOrigins,
   listSellerRoastBatches,
   reportSellerFulfillmentIncident,
+  retrySellerMedia,
+  RetryableMediaProcessingError,
   sellerOrdersQueryOptions,
   sellerProductsQueryOptions,
   sellerRoasteriesQueryOptions,
@@ -48,6 +50,7 @@ import {
 } from "@/lib/api/seller-operations";
 import { createSellerRoastery } from "@/lib/api/seller-onboarding";
 import { listAuthoritativeStockLedger } from "@/lib/api/seller-stock-ledger";
+import { bestMediaUrl, mediaSrcSet } from "@/lib/catalog-format";
 import { toFa } from "@/lib/persian";
 
 const sellerRoles = new Set([
@@ -1710,18 +1713,34 @@ function SellerMediaWorkspace({ roastery }: { roastery: SellerRoastery }) {
   });
   const [file, setFile] = useState<File | null>(null);
   const [alt, setAlt] = useState("");
+  const [retryUploadId, setRetryUploadId] = useState<string | null>(null);
+  const [uploadStage, setUploadStage] = useState<"idle" | "hashing" | "uploading" | "processing">(
+    "idle",
+  );
   const mutation = useMutation({
     mutationFn: () => {
+      if (retryUploadId) {
+        setUploadStage("processing");
+        return retrySellerMedia(roastery.id, retryUploadId);
+      }
       if (!file) throw new Error("فایل تصویر انتخاب نشده است.");
-      return uploadSellerMedia(roastery.id, { file, alt });
+      return uploadSellerMedia(roastery.id, { file, alt, onProgress: setUploadStage });
     },
     onSuccess: async () => {
       setFile(null);
       setAlt("");
+      setUploadStage("idle");
+      setRetryUploadId(null);
       await queryClient.invalidateQueries({
         queryKey: ["seller", "roasteries", roastery.id, "media"],
       });
       pushToast({ title: "رسانه با موفقیت ثبت شد", variant: "success" });
+    },
+    onError: (error) => {
+      setUploadStage("idle");
+      if (error instanceof RetryableMediaProcessingError) {
+        setRetryUploadId(error.uploadId);
+      }
     },
   });
   const submit = (event: FormEvent) => {
@@ -1745,7 +1764,10 @@ function SellerMediaWorkspace({ roastery }: { roastery: SellerRoastery }) {
             type="file"
             required
             accept="image/jpeg,image/png,image/webp,image/avif"
-            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+            onChange={(event) => {
+              setFile(event.target.files?.[0] ?? null);
+              setRetryUploadId(null);
+            }}
             className={fieldClass}
           />
         </label>
@@ -1768,9 +1790,21 @@ function SellerMediaWorkspace({ roastery }: { roastery: SellerRoastery }) {
             <Alert variant="danger">{errorMessage(mutation.error)}</Alert>
           </div>
         ) : null}
+        {mutation.isPending ? (
+          <p className="mt-4 text-xs leading-6 text-[color:var(--light)]" role="status">
+            {
+              {
+                hashing: "در حال محاسبه SHA-256…",
+                uploading: "در حال بارگذاری خصوصی…",
+                processing: "در حال بررسی امنیتی و ساخت نسخه‌های WebP/AVIF…",
+                idle: "در حال آماده‌سازی…",
+              }[uploadStage]
+            }
+          </p>
+        ) : null}
         <Button type="submit" className="mt-5 w-full" loading={mutation.isPending}>
           <ImagePlus size={16} />
-          محاسبه SHA-256 و آپلود
+          {retryUploadId ? "تلاش دوباره پردازش" : "محاسبه SHA-256 و آپلود"}
         </Button>
       </form>
 
@@ -1806,7 +1840,9 @@ function SellerMediaWorkspace({ roastery }: { roastery: SellerRoastery }) {
                 className="overflow-hidden rounded-2xl border border-[color:var(--mid)] bg-[color:var(--night)]"
               >
                 <img
-                  src={media.sources[0]?.url}
+                  src={bestMediaUrl(media) ?? undefined}
+                  srcSet={mediaSrcSet(media)}
+                  sizes="(min-width: 768px) 20vw, 50vw"
                   alt={media.alt}
                   className="aspect-square w-full object-cover"
                 />

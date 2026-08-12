@@ -131,7 +131,25 @@ paths:
         - { $ref: "#/components/parameters/RoasteryId" }
         - { $ref: "#/components/parameters/UploadId" }
       responses:
-        "200": { description: Object validated and MediaAsset registered }
+        "202": { description: Object queued for server-side validation and variant processing }
+  /seller/roasteries/{roasteryId}/media/uploads/{uploadId}:
+    get:
+      operationId: showSellerMediaUpload
+      parameters:
+        - { $ref: "#/components/parameters/RoasteryId" }
+        - { $ref: "#/components/parameters/UploadId" }
+      responses:
+        "200": { description: Uploading, Processing, Ready, Rejected, Failed or Expired state }
+        "404": { description: Upload is outside seller scope }
+  /seller/roasteries/{roasteryId}/media/uploads/{uploadId}/retry:
+    post:
+      operationId: retrySellerMediaUpload
+      parameters:
+        - { $ref: "#/components/parameters/RoasteryId" }
+        - { $ref: "#/components/parameters/UploadId" }
+      responses:
+        "202": { description: Bounded explicit retry accepted }
+        "409": { description: Upload is not safely retryable }
   /seller/roasteries/{roasteryId}/settlements:
     get:
       operationId: listSellerSettlementOverview

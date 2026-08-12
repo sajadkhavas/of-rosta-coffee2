@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
  * @property int $width
  * @property int $height
  * @property string|null $blur_data_url
+ * @property string|null $variant_version
  * @property array<mixed> $sources
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
@@ -32,6 +33,7 @@ final class MediaAsset extends Model
         'width',
         'height',
         'blur_data_url',
+        'variant_version',
         'sources',
     ];
 

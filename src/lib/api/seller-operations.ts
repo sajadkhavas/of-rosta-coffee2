@@ -104,7 +104,6 @@ const uploadIntentSchema = z
     upload_url: z.string().url().max(4_000),
     method: z.literal("PUT"),
     headers: z.record(z.string(), z.string()),
-    object_key: z.string().trim().min(1).max(512),
     expires_at: isoDate,
   })
   .strict();
@@ -116,6 +115,18 @@ const roastBatchResourceSchema = resourceSchema(roastBatchWireSchema);
 const stockLedgerResourceSchema = resourceSchema(stockLedgerSchema);
 const mediaResourceSchema = resourceSchema(mediaAssetSchema);
 const uploadIntentResourceSchema = resourceSchema(uploadIntentSchema);
+const mediaProcessingSchema = z
+  .object({
+    upload_id: identifier,
+    status: z.enum(["uploading", "processing", "ready", "rejected", "failed", "expired"]),
+    processing_attempts: z.number().int().min(0).max(5),
+    retryable: z.boolean(),
+    failure_code: z.string().trim().max(1000).nullable(),
+    asset: mediaAssetSchema.nullable(),
+    updated_at: isoDate.nullable(),
+  })
+  .strict();
+const mediaProcessingResourceSchema = resourceSchema(mediaProcessingSchema);
 
 export type SellerRoasteryStatus = z.infer<typeof sellerRoasteryWireSchema.shape.status>;
 export type SellerAccessRole = z.infer<typeof sellerRoleSchema>;
@@ -198,6 +209,14 @@ export interface ReportFulfillmentIncidentInput {
 export interface UploadMediaInput {
   file: File;
   alt: string;
+  onProgress?: (stage: "hashing" | "uploading" | "processing") => void;
+}
+
+export class RetryableMediaProcessingError extends Error {
+  constructor(public readonly uploadId: string) {
+    super("پردازش موقتاً ناموفق بود؛ برای ادامه «تلاش دوباره» را بزنید.");
+    this.name = "RetryableMediaProcessingError";
+  }
 }
 
 function mapRoastery(value: RoasteryDetailWire): RoasteryDetail {
@@ -664,6 +683,7 @@ export async function uploadSellerMedia(
   roasteryId: string,
   input: UploadMediaInput,
 ): Promise<MediaAsset> {
+  input.onProgress?.("hashing");
   const checksum = await sha256Hex(input.file);
   const intent = parseContract(
     uploadIntentResourceSchema,
@@ -679,6 +699,7 @@ export async function uploadSellerMedia(
     "ایجاد مجوز آپلود رسانه",
   ).data;
 
+  input.onProgress?.("uploading");
   const uploadResponse = await fetch(intent.upload_url, {
     method: intent.method,
     headers: intent.headers,
@@ -688,26 +709,76 @@ export async function uploadSellerMedia(
     throw new Error(`آپلود مستقیم رسانه ناموفق بود (${uploadResponse.status}).`);
   }
 
-  const dimensions = await imageDimensions(input.file);
-  const completed = parseContract(
-    mediaResourceSchema,
+  input.onProgress?.("processing");
+  let processing = parseContract(
+    mediaProcessingResourceSchema,
     await apiFetch<unknown>(
       `/seller/roasteries/${encodeURIComponent(roasteryId)}/media/uploads/${encodeURIComponent(intent.upload_id)}/complete`,
       {
         method: "POST",
         body: {
           alt: input.alt.trim(),
-          width: dimensions.width,
-          height: dimensions.height,
-          blur_data_url: null,
         },
       },
     ),
     "تکمیل ثبت رسانه",
+  ).data;
+
+  processing = await waitForMediaProcessing(roasteryId, intent.upload_id, processing);
+  const media = readyMedia(processing);
+  if (media) return media;
+  if (processing.status === "failed" && processing.retryable) {
+    throw new RetryableMediaProcessingError(intent.upload_id);
+  }
+  if (processing.status === "rejected") {
+    throw new Error("فایل به‌دلیل ناسازگاری امنیتی پذیرفته نشد.");
+  }
+  throw new Error("پردازش تصویر در مهلت مقرر کامل نشد؛ کمی بعد دوباره تلاش کنید.");
+}
+
+export async function retrySellerMedia(roasteryId: string, uploadId: string): Promise<MediaAsset> {
+  let processing = parseContract(
+    mediaProcessingResourceSchema,
+    await apiFetch<unknown>(
+      `/seller/roasteries/${encodeURIComponent(roasteryId)}/media/uploads/${encodeURIComponent(uploadId)}/retry`,
+      { method: "POST" },
+    ),
+    "تلاش دوباره پردازش رسانه",
+  ).data;
+  processing = await waitForMediaProcessing(roasteryId, uploadId, processing);
+  const media = readyMedia(processing);
+  if (media) return media;
+  if (processing.status === "failed" && processing.retryable) {
+    throw new RetryableMediaProcessingError(uploadId);
+  }
+  throw new Error(
+    processing.status === "rejected"
+      ? "فایل به‌دلیل ناسازگاری امنیتی پذیرفته نشد."
+      : "پردازش تصویر کامل نشد.",
   );
-  const media = parseOptionalMedia(completed.data);
-  if (!media) throw new Error("رسانه ثبت شد اما قرارداد پاسخ معتبر نبود.");
-  return media;
+}
+
+async function waitForMediaProcessing(
+  roasteryId: string,
+  uploadId: string,
+  initial: z.infer<typeof mediaProcessingSchema>,
+): Promise<z.infer<typeof mediaProcessingSchema>> {
+  let processing = initial;
+  for (let attempt = 0; attempt < 40 && processing.status === "processing"; attempt++) {
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    processing = parseContract(
+      mediaProcessingResourceSchema,
+      await apiFetch<unknown>(
+        `/seller/roasteries/${encodeURIComponent(roasteryId)}/media/uploads/${encodeURIComponent(uploadId)}`,
+      ),
+      "وضعیت پردازش رسانه",
+    ).data;
+  }
+  return processing;
+}
+
+function readyMedia(processing: z.infer<typeof mediaProcessingSchema>): MediaAsset | null {
+  return processing.status === "ready" ? parseOptionalMedia(processing.asset) : null;
 }
 
 export const sellerRoasteriesQueryOptions = () =>
@@ -745,24 +816,6 @@ async function sha256Hex(file: File): Promise<string> {
   return Array.from(new Uint8Array(digest))
     .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
-}
-
-async function imageDimensions(file: File): Promise<{ width: number; height: number }> {
-  const url = URL.createObjectURL(file);
-  try {
-    const image = new Image();
-    await new Promise<void>((resolve, reject) => {
-      image.onload = () => resolve();
-      image.onerror = () => reject(new Error("ابعاد تصویر قابل خواندن نیست."));
-      image.src = url;
-    });
-    if (!image.naturalWidth || !image.naturalHeight) {
-      throw new Error("ابعاد تصویر معتبر نیست.");
-    }
-    return { width: image.naturalWidth, height: image.naturalHeight };
-  } finally {
-    URL.revokeObjectURL(url);
-  }
 }
 
 // R5H seller status contract: status: "preparing" | "ready_to_ship" | "shipped"

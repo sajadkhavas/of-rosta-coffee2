@@ -17,6 +17,7 @@ final class MediaAssetResource extends JsonResource
             'width' => $this->width,
             'height' => $this->height,
             'blur_data_url' => $this->blur_data_url,
+            'variant_version' => $this->variant_version,
             'sources' => array_values($this->sources ?? []),
         ];
     }

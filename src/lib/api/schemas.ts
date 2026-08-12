@@ -142,13 +142,20 @@ export const mediaAssetSchema = z
       )
       .nullable()
       .optional(),
+    variant_version: z.string().trim().min(1).max(32).nullable().optional(),
     sources: z
       .array(
         z
           .object({
             url: safeHttpUrlSchema,
             width: z.number().int().positive().max(20_000),
+            height: z.number().int().positive().max(20_000).optional(),
             format: z.enum(["avif", "webp", "jpeg", "png"]),
+            size_bytes: z.number().int().positive().max(50_000_000).optional(),
+            checksum_sha256: z
+              .string()
+              .regex(/^[a-f0-9]{64}$/)
+              .optional(),
           })
           .strict(),
       )
@@ -167,7 +174,15 @@ export function parseOptionalMedia(value: unknown): MediaAsset | null {
     width: parsed.data.width,
     height: parsed.data.height,
     blurDataUrl: parsed.data.blur_data_url ?? null,
-    sources: parsed.data.sources,
+    variantVersion: parsed.data.variant_version ?? null,
+    sources: parsed.data.sources.map((source) => ({
+      url: source.url,
+      width: source.width,
+      height: source.height,
+      format: source.format,
+      sizeBytes: source.size_bytes,
+      checksumSha256: source.checksum_sha256,
+    })),
   };
 }
 

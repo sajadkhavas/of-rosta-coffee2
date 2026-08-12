@@ -10,6 +10,7 @@ use App\Models\FinancialReconciliationCase;
 use App\Models\NotificationOutbox;
 use App\Models\PaymentAttempt;
 use App\Models\RefundAttempt;
+use App\Services\Media\SecureImageProcessor;
 use App\Services\Notifications\SmsProviderManager;
 use App\Services\Payments\PaymentProviderManager;
 use App\Services\Refunds\RefundProviderManager;
@@ -29,6 +30,7 @@ final class BackendReadiness extends Command
         PaymentProviderManager $payments,
         RefundProviderManager $refunds,
         SmsProviderManager $sms,
+        SecureImageProcessor $images,
     ): int {
         $checks = [];
         $warnings = [];
@@ -126,14 +128,18 @@ final class BackendReadiness extends Command
                 : 'Order SMS is intentionally disabled',
         );
         $mediaEnabled = (bool) config('rosta.media_uploads.enabled', false);
-        $mediaReady = trim((string) config('rosta.media_uploads.public_base_url')) !== ''
-            && trim((string) config('rosta.media_uploads.disk')) !== '';
+        $mediaBaseUrl = (string) config('rosta.media_uploads.public_base_url');
+        $mediaReady = trim($mediaBaseUrl) !== ''
+            && parse_url($mediaBaseUrl, PHP_URL_SCHEME) === 'https'
+            && trim((string) config('rosta.media_uploads.disk')) !== ''
+            && config('rosta.media_uploads.malware_policy') === 'decode_reencode'
+            && $images->isAvailable();
         $this->check(
             $checks,
             'media_activation',
             ! $mediaEnabled || $mediaReady,
             $mediaEnabled
-                ? 'Enabled media storage has disk and public CDN URL'
+                ? 'Enabled media pipeline has storage, HTTPS CDN and JPEG/WebP/AVIF decoding'
                 : 'Media uploads are intentionally disabled',
         );
 
