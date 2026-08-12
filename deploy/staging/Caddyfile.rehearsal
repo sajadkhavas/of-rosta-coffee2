@@ -38,5 +38,13 @@
     -Server
   }
 
-  reverse_proxy minio:9000
+  @private path /rosta-media/_private/*
+  respond @private 404
+
+  @published path /rosta-media/published/*
+  handle @published {
+    reverse_proxy minio:9000
+  }
+
+  respond 404
 }
