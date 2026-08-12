@@ -127,10 +127,13 @@ gate(
 gate(
   "staging_is_non_indexable_and_secure",
   files.frontendStaging?.includes("VITE_ALLOW_INDEXING=false") &&
+    files.frontendStaging?.includes("STAGING_API_DOMAIN=api.staging.rosta.shop") &&
     files.backendStaging?.includes("APP_DEBUG=false") &&
     files.backendStaging?.includes("SESSION_SECURE_COOKIE=true") &&
-    files.backendStaging?.includes("SESSION_DOMAIN=.rosta.shop"),
-  "staging must stay non-indexable and use secure cross-subdomain session settings",
+    files.backendStaging?.includes("SESSION_COOKIE=rosta_staging_session") &&
+    files.backendStaging?.includes("SESSION_DOMAIN=.staging.rosta.shop") &&
+    !files.backendStaging?.includes("SESSION_DOMAIN=.rosta.shop\n"),
+  "staging must remain non-indexable and use a staging-only secure cookie namespace",
 );
 
 gate(

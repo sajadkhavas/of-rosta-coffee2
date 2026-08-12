@@ -20,6 +20,7 @@ const PRIVATE_PREFIXES = [
   "/orders",
   "/panel",
   "/profile",
+  "/hub",
 ];
 const ACTIVE_CACHES = new Set([PRECACHE, STATIC_CACHE, MEDIA_CACHE]);
 const MEDIA_LIMIT = 80;
