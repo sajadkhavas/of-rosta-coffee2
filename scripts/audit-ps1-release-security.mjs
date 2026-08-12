@@ -81,11 +81,15 @@ gate(
 
 gate(
   "seller_route_is_single_source",
-  !files.sellerBootstrap &&
-    !files.appProvider?.includes("seller-bootstrap.php") &&
-    hasAll(files.apiRoutes, ["/seller/roasteries", "api.v1.seller.roasteries.index"]) &&
-    hasAll(files.routeTest, ["Duplicate route method/URI", "api/v1/seller/roasteries"]),
-  "The legacy seller-bootstrap duplicate and registration must stay removed and runtime route uniqueness must be tested.",
+  hasAll(files.sellerBootstrap, [
+    "Route::get('/seller/roasteries'",
+    "api.v1.seller.roasteries.bootstrap",
+    "'auth:sanctum', 'rosta.session'",
+  ]) &&
+    files.appProvider?.includes("seller-bootstrap.php") &&
+    !files.apiRoutes?.includes("Route::get('/seller/roasteries'") &&
+    hasAll(files.routeTest, ["Duplicate route method/URI", "api/v1/seller/roasteries", "api.v1.seller.roasteries.bootstrap"]),
+  "The onboarding bootstrap route must be the single GET /seller/roasteries contract with its existing auth/session behavior.",
 );
 
 gate(
@@ -101,10 +105,7 @@ gate(
       "ROSTA_CONTRACT_VERSION=2026-07-26-r5c",
     ]) &&
     !files.backendStaging.includes("SESSION_DOMAIN=.rosta.shop\n") &&
-    hasAll(files.stagingLib, [
-      "rosta_staging_session",
-      "SESSION_DOMAIN must be scoped to the staging-only site domain",
-    ]),
+    hasAll(files.stagingLib, ["rosta_staging_session", "SESSION_DOMAIN must be scoped to the staging-only site domain"]),
   "Staging cookies must be scoped under .staging.rosta.shop and use a distinct session name.",
 );
 
@@ -112,9 +113,7 @@ gate(
   "staging_lock_contract_is_fail_closed",
   hasAll(files.stagingPreflight, ["backend/composer.lock is required", "deploy.sh never generates dependencies"]) &&
     hasAll(files.stagingDeploy, ["backend/composer.lock is required", "deployment never generates dependencies"]) &&
-    !/deploy\.sh will generate|composer update|ensure_composer_lock/.test(
-      `${files.stagingPreflight}\n${files.stagingDeploy}`,
-    ) &&
+    !/deploy\.sh will generate|composer update|ensure_composer_lock/.test(`${files.stagingPreflight}\n${files.stagingDeploy}`) &&
     hasAll(files.stagingContract, ["bash -n", "PS1 staging shell contract passed"]),
   "Preflight and deploy must agree that the committed Composer lock is mandatory.",
 );
