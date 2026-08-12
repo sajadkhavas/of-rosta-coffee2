@@ -306,12 +306,8 @@ final class SecureImageProcessor
     private function flattenForJpeg(Imagick $source): Imagick
     {
         $source->setImageBackgroundColor('white');
-        $flattened = $source->mergeImageLayers(Imagick::LAYERMETHOD_FLATTEN);
-        if ($flattened !== $source) {
-            $source->clear();
-            $source->destroy();
-        }
+        $source->setImageAlphaChannel(Imagick::ALPHACHANNEL_REMOVE);
 
-        return $flattened;
+        return $source;
     }
 }
