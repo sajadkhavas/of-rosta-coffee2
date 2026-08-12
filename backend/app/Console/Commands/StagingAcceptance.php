@@ -199,7 +199,7 @@ final class StagingAcceptance extends Command
             if ($objectCreated) {
                 try {
                     $disk = Storage::disk($diskName);
-                    $privateDeleted = ! $objectCreated || $disk->delete($objectKey);
+                    $privateDeleted = $disk->delete($objectKey);
                     $publishedDeleted = ! $publishedCreated || $disk->delete($publishedKey);
                     $this->record(
                         $checks,

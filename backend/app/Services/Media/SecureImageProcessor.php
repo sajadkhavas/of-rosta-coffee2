@@ -44,10 +44,6 @@ final class SecureImageProcessor
 
             $image->clear();
             $image->readImageBlob($bytes);
-            if ($image->getNumberImages() !== 1) {
-                throw new MediaProcessingException('animated_image_rejected', rejected: true);
-            }
-
             $image->setIteratorIndex(0);
             $this->orient($image);
             $image->stripImage();
@@ -169,11 +165,7 @@ final class SecureImageProcessor
 
     private function orient(Imagick $image): void
     {
-        if (method_exists($image, 'autoOrient')) {
-            $image->autoOrient();
-        } else {
-            $image->autoOrientImage();
-        }
+        $image->autoOrient();
         $image->setImageOrientation(Imagick::ORIENTATION_TOPLEFT);
     }
 
