@@ -48,6 +48,10 @@ Relevant non-secret settings:
 Activation is fail-closed when the storage disk, HTTPS CDN URL, decode/re-encode policy, or any
 of the JPEG/WebP/AVIF delegates is missing.
 
+The isolated staging rehearsal keeps `ROSTA_MEDIA_PUBLIC_BASE_URL` on a logical HTTPS CDN host
+and uses `ROSTA_MEDIA_ACCEPTANCE_BASE_URL` only inside the staging acceptance command to probe
+the internal MinIO edge. Deployments must not set that probe-only override.
+
 ## Rollout and rollback-forward
 
 1. Back up the database and apply the additive migration. It maps `pending` to `uploading` and

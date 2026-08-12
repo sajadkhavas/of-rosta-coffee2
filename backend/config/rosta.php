@@ -79,6 +79,7 @@ return [
         'enabled' => $mediaUploadsEnabled,
         'disk' => env('ROSTA_MEDIA_UPLOAD_DISK', 's3'),
         'public_base_url' => env('ROSTA_MEDIA_PUBLIC_BASE_URL', ''),
+        'acceptance_base_url' => env('ROSTA_MEDIA_ACCEPTANCE_BASE_URL'),
         'max_size_bytes' => max(1_000_000, min(50_000_000, (int) env('ROSTA_MEDIA_MAX_SIZE_BYTES', 12_000_000))),
         'max_pixels' => max(1_000_000, min(100_000_000, (int) env('ROSTA_MEDIA_MAX_PIXELS', 40_000_000))),
         'max_width' => max(1000, min(20_000, (int) env('ROSTA_MEDIA_MAX_WIDTH', 8000))),

@@ -138,7 +138,13 @@ final class StagingAcceptance extends Command
                 'R2 PUT/GET round trip succeeds',
             );
 
-            $publicBase = rtrim((string) config('rosta.media_uploads.public_base_url'), '/');
+            $acceptanceBase = trim((string) config('rosta.media_uploads.acceptance_base_url'));
+            $publicBase = rtrim(
+                $acceptanceBase !== ''
+                    ? $acceptanceBase
+                    : (string) config('rosta.media_uploads.public_base_url'),
+                '/',
+            );
             $privateUrl = $publicBase.'/'.implode('/', array_map('rawurlencode', explode('/', $objectKey)));
             $privateResponse = Http::timeout(15)->get($privateUrl);
             $this->record(
