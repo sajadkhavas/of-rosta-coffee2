@@ -30,7 +30,7 @@ final class MediaUploadCompletionTest extends TestCase
             'rosta.media_uploads.enabled' => true,
             'rosta.media_uploads.disk' => 's3',
             'rosta.media_uploads.public_base_url' => 'https://media.test',
-            'rosta.media_uploads.variant_widths' => [1, 320],
+            'rosta.media_uploads.variant_widths' => [32, 64],
             'rosta.media_uploads.variant_version' => 'v1',
             'rosta.catalog.allowed_media_hosts' => ['media.test'],
         ]);
@@ -38,7 +38,7 @@ final class MediaUploadCompletionTest extends TestCase
 
     public function test_server_truth_generates_versioned_variants_once(): void
     {
-        $png = $this->imageBlob('png', 2, 1);
+        $png = $this->imageBlob('png', 64, 48);
         [$user, $roastery, $intent] = $this->fixture('complete', $png, 'image/png');
         $request = Request::create('/api/v1/media-test', 'POST');
         $service = app(MediaUploadService::class);
@@ -55,8 +55,8 @@ final class MediaUploadCompletionTest extends TestCase
         $this->assertDatabaseCount('media_assets', 1);
         $asset = $completed->mediaAsset;
         $this->assertNotNull($asset);
-        $this->assertSame(2, $asset->width);
-        $this->assertSame(1, $asset->height);
+        $this->assertSame(64, $asset->width);
+        $this->assertSame(48, $asset->height);
         $this->assertSame('v1', $asset->variant_version);
         $this->assertSame('jpeg', $asset->sources[0]['format']);
         $this->assertStringContainsString('/published/roasteries/', $asset->sources[0]['url']);
@@ -196,7 +196,7 @@ final class MediaUploadCompletionTest extends TestCase
 
     public function test_dependency_failure_is_dead_lettered_and_can_be_retried_explicitly(): void
     {
-        $png = $this->imageBlob('png', 2, 2);
+        $png = $this->imageBlob('png', 64, 64);
         [$user, $roastery, $intent] = $this->fixture('retry', $png, 'image/png');
         $intent->forceFill([
             'disk' => 'unconfigured-storage',

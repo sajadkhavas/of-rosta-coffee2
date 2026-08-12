@@ -13,7 +13,7 @@ final class SecureImageProcessorTest extends TestCase
     {
         $source = new Imagick;
         try {
-            $source->newImage(3, 2, '#6f4e37');
+            $source->newImage(30, 20, '#6f4e37');
             $source->setImageFormat('jpeg');
             $source->setImageOrientation(Imagick::ORIENTATION_RIGHTTOP);
             $source->setImageProperty('comment', 'GPS:35.6892,51.3890');
@@ -25,8 +25,8 @@ final class SecureImageProcessorTest extends TestCase
 
         $result = app(SecureImageProcessor::class)->process($bytes, 'image/jpeg');
 
-        $this->assertSame(2, $result['width']);
-        $this->assertSame(3, $result['height']);
+        $this->assertSame(20, $result['width']);
+        $this->assertSame(30, $result['height']);
         $fallback = collect($result['variants'])->firstWhere('format', 'jpeg');
         $this->assertIsArray($fallback);
 

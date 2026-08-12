@@ -56,7 +56,11 @@ final class SecureImageProcessor
             $this->assertDimensions($width, $height);
 
             $blur = $this->blurPlaceholder($image);
-            $variants = $this->variants($image, $startedAt);
+            try {
+                $variants = $this->variants($image, $startedAt);
+            } catch (ImagickException) {
+                throw new MediaProcessingException('variant_encode_failed', rejected: false);
+            }
         } catch (MediaProcessingException $exception) {
             throw $exception;
         } catch (ImagickException) {
@@ -100,7 +104,7 @@ final class SecureImageProcessor
         $memoryBytes = max(16, (int) config('rosta.media_uploads.memory_limit_mb', 128)) * 1024 * 1024;
         Imagick::setResourceLimit(Imagick::RESOURCETYPE_MEMORY, $memoryBytes);
         Imagick::setResourceLimit(Imagick::RESOURCETYPE_MAP, $memoryBytes);
-        Imagick::setResourceLimit(Imagick::RESOURCETYPE_DISK, 0);
+        Imagick::setResourceLimit(Imagick::RESOURCETYPE_DISK, $memoryBytes);
         Imagick::setResourceLimit(Imagick::RESOURCETYPE_THREAD, 1);
     }
 
