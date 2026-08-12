@@ -14,6 +14,7 @@ const paths = {
   dependencyPolicy: "security/dependency-audit-exceptions.json",
   dependencyAudit: "scripts/audit-dependencies.mjs",
   ci: ".github/workflows/ci.yml",
+  viteConfig: "vite.config.ts",
   browserAuditCi: ".github/workflows/browser-audit.yml",
   browserAcceptanceCi: ".github/workflows/browser-acceptance-ci.yml",
   fullStackCi: ".github/workflows/fullstack-integration-ci.yml",
@@ -76,26 +77,29 @@ gate(
 );
 
 gate(
-  "tanstack_runtime_artifact_is_current",
-  packageJson.scripts?.start === "node dist/server/server.js" &&
-    packageJson.scripts?.preview === "node dist/server/server.js" &&
-    packageJson.scripts?.["release:manifest"]?.includes(" dist ") &&
+  "tanstack_node_runtime_is_explicit",
+  packageJson.scripts?.start === "node .output/server/index.mjs" &&
+    packageJson.scripts?.preview === "node .output/server/index.mjs" &&
+    packageJson.scripts?.["release:manifest"]?.includes(" .output ") &&
+    packageJson.devDependencies?.nitro === "3.0.260603-beta" &&
+    files.viteConfig?.includes('nitro: { preset: "node-server" }') &&
     hasAll(files.stagingDockerfile, [
-      "COPY --from=build --chown=node:node /app/dist ./dist",
-      'CMD ["node", "dist/server/server.js"]',
+      "RUN apk add --no-cache bash",
+      "COPY --from=build --chown=node:node /app/.output ./.output",
+      'CMD ["node", ".output/server/index.mjs"]',
     ]) &&
-    hasAll(files.browserAuditCi, ["test -f dist/server/server.js", "bun run preview"]) &&
-    files.browserAcceptanceCi?.includes("node dist/server/server.js") &&
-    files.fullStackCi?.includes("node dist/server/server.js") &&
-    files.finalGateCi?.includes("node dist/server/server.js") &&
+    hasAll(files.browserAuditCi, ["test -f .output/server/index.mjs", "bun run preview"]) &&
+    files.browserAcceptanceCi?.includes("node .output/server/index.mjs") &&
+    files.fullStackCi?.includes("node .output/server/index.mjs") &&
+    files.finalGateCi?.includes("node .output/server/index.mjs") &&
     ![
       files.stagingDockerfile,
       files.browserAuditCi,
       files.browserAcceptanceCi,
       files.fullStackCi,
       files.finalGateCi,
-    ].some((source) => source?.includes(".output/server/index.mjs")),
-  "The upgraded TanStack/Vite build emits dist/server/server.js; package scripts, images and hosted runtimes must boot that exact artifact.",
+    ].some((source) => source?.includes("dist/server/server.js")),
+  "Self-hosted builds must pin Nitro's Node preset and boot its executable .output artifact; the Worker-only dist handler is not a Node entrypoint.",
 );
 
 gate(

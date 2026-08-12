@@ -213,7 +213,7 @@ jobs:
           echo $! > "$EVIDENCE_DIR/laravel.pid"
           (cd backend && php artisan queue:work redis --queue=notifications --sleep=1 --tries=1 --timeout=30) > "$EVIDENCE_DIR/queue-worker.log" 2>&1 &
           echo $! > "$EVIDENCE_DIR/worker.pid"
-          NODE_ENV=production HOST=127.0.0.1 PORT=3000 node dist/server/server.js > "$EVIDENCE_DIR/frontend-runtime.log" 2>&1 &
+          NODE_ENV=production HOST=127.0.0.1 PORT=3000 node .output/server/index.mjs > "$EVIDENCE_DIR/frontend-runtime.log" 2>&1 &
           echo $! > "$EVIDENCE_DIR/frontend.pid"
           for attempt in $(seq 1 50); do
             if curl --fail --silent http://127.0.0.1:8000/api/v1/health/live > /dev/null && curl --fail --silent http://127.0.0.1:3000/robots.txt > /dev/null; then

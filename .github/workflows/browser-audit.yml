@@ -37,12 +37,12 @@ jobs:
           VITE_PAYMENT_REDIRECT_HOSTS: 127.0.0.1:4173,127.0.0.1:8000
           VITE_ALLOW_INDEXING: "false"
         run: bun run build
-      - name: Start production SSR server
+      - name: Start production Node SSR server
         shell: bash
         env:
           CI: "1"
         run: |
-          test -f dist/server/server.js
+          test -f .output/server/index.mjs
           HOST=127.0.0.1 PORT=4173 setsid bun run preview > browser-audit-server.log 2>&1 &
           echo $! > browser-audit-server.pid
           for attempt in $(seq 1 60); do
@@ -77,7 +77,7 @@ jobs:
             browser-audit-server.log
           if-no-files-found: warn
           retention-days: 14
-      - name: Stop production SSR server
+      - name: Stop production Node SSR server
         if: always()
         shell: bash
         run: |
