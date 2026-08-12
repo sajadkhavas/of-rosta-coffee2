@@ -27,7 +27,7 @@ jobs:
         working-directory: backend
         run: |
           set -Eeuo pipefail
-          composer update guzzlehttp/guzzle:7.15.2 league/commonmark:2.9.0 --with-dependencies --no-interaction --no-progress
+          composer update guzzlehttp/guzzle:7.15.2 league/commonmark:2.9.0 --with-dependencies --no-scripts --no-interaction --no-progress
           composer audit --locked --no-interaction | tee composer-audit-after-refresh.log
       - name: Commit audited Composer lock without rewriting history
         shell: bash
