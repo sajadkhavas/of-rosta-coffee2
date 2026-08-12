@@ -523,15 +523,30 @@ components:
         width: { type: integer }
         height: { type: integer }
         blur_data_url: { type: [string, 'null'] }
+        variant_version: { type: [string, 'null'], example: v1 }
         sources:
           type: array
           items:
             type: object
-            required: [url, width, format]
+            required: [url, width, height, format, size_bytes, checksum_sha256]
             properties:
               url: { type: string, format: uri }
               width: { type: integer }
+              height: { type: integer }
               format: { type: string, enum: [avif, webp, jpeg, png] }
+              size_bytes: { type: integer, minimum: 1 }
+              checksum_sha256: { type: string, pattern: '^[a-f0-9]{64}$' }
+    MediaUploadProcessing:
+      type: object
+      required: [upload_id, status, processing_attempts, retryable, failure_code, asset, updated_at]
+      properties:
+        upload_id: { type: string }
+        status: { type: string, enum: [uploading, processing, ready, rejected, failed, expired] }
+        processing_attempts: { type: integer, minimum: 0, maximum: 5 }
+        retryable: { type: boolean }
+        failure_code: { type: [string, 'null'] }
+        asset: { oneOf: [{ $ref: '#/components/schemas/MediaAsset' }, { type: 'null' }] }
+        updated_at: { type: [string, 'null'], format: date-time }
     RoasterySummary:
       type: object
       required: [id, name, slug, is_verified]

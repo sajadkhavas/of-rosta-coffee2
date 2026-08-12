@@ -118,9 +118,35 @@ paths:
           required: true
           schema: { type: string }
       responses:
-        "200": { description: Media asset registered or replayed }
+        "202": { description: Server-side media processing accepted or replayed }
         "409": { description: Stored object missing or does not match intent }
         "410": { description: Upload intent expired }
+  /seller/roasteries/{roasteryId}/media/uploads/{uploadId}:
+    get:
+      operationId: showMediaUploadProcessing
+      security: [{ sanctumSession: [] }]
+      parameters:
+        - $ref: "#/components/parameters/RoasteryId"
+        - name: uploadId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Owned upload processing state and Ready asset only }
+        "404": { description: Upload is outside the authenticated owner scope }
+  /seller/roasteries/{roasteryId}/media/uploads/{uploadId}/retry:
+    post:
+      operationId: retryMediaUploadProcessing
+      security: [{ sanctumSession: [] }]
+      parameters:
+        - $ref: "#/components/parameters/RoasteryId"
+        - name: uploadId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "202": { description: Explicit bounded retry accepted }
+        "409": { description: Failure is rejected, terminal or retry budget exhausted }
   /orders/{orderId}/shipment-legs/{shipmentLegId}/delivery-confirmations:
     post:
       operationId: confirmCustomerDelivery

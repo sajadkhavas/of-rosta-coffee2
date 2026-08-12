@@ -106,9 +106,14 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.3"
-          extensions: bcmath, ctype, curl, dom, fileinfo, intl, json, mbstring, openssl, pcntl, pdo_mysql, posix, redis, simplexml, sockets, tokenizer, xml, xmlwriter, zip
+          extensions: bcmath, ctype, curl, dom, fileinfo, imagick, intl, json, mbstring, openssl, pcntl, pdo_mysql, posix, redis, simplexml, sockets, tokenizer, xml, xmlwriter, zip
           coverage: none
           tools: composer:v2
+
+      - name: Install AVIF encoder delegate
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libheif-plugin-aomenc
 
       - name: Freeze final snapshot
         shell: bash

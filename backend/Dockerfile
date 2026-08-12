@@ -10,6 +10,7 @@ RUN apt-get update \
         unzip \
         libcurl4-openssl-dev \
         libicu-dev \
+        libmagickwand-dev \
         libonig-dev \
         libsqlite3-dev \
         libxml2-dev \
@@ -30,8 +31,8 @@ RUN apt-get update \
         xml \
         xmlwriter \
         zip \
-    && pecl install redis \
-    && docker-php-ext-enable redis \
+    && pecl install imagick redis \
+    && docker-php-ext-enable imagick redis \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/pear
 

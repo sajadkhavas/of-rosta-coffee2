@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use RuntimeException;
 use Throwable;
 
 final class StagingAcceptance extends Command
@@ -118,9 +119,13 @@ final class StagingAcceptance extends Command
         }
 
         $diskName = (string) config('rosta.media_uploads.disk', 's3');
-        $objectKey = 'acceptance/'.app()->environment().'/'.Str::ulid().'.txt';
+        $acceptanceId = (string) Str::ulid();
+        $objectKey = '_private/acceptance/'.app()->environment().'/'.$acceptanceId.'.txt';
+        $publishedKey = 'published/acceptance/'.app()->environment().'/'.$acceptanceId.'.webp';
         $payload = 'rosta-staging-acceptance:'.bin2hex(random_bytes(32));
+        $publishedPayload = base64_decode('UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEALmk0mk0iIiIiIgBoSygABc6zbAAA', true);
         $objectCreated = false;
+        $publishedCreated = false;
 
         try {
             $disk = Storage::disk($diskName);
@@ -133,16 +138,37 @@ final class StagingAcceptance extends Command
                 'R2 PUT/GET round trip succeeds',
             );
 
-            $publicUrl = $disk->url($objectKey);
-            $publicResponse = Http::timeout(15)
-                ->retry(3, 750, throw: false)
-                ->get($publicUrl);
+            $acceptanceBase = trim((string) config('rosta.media_uploads.acceptance_base_url'));
+            $publicBase = rtrim(
+                $acceptanceBase !== ''
+                    ? $acceptanceBase
+                    : (string) config('rosta.media_uploads.public_base_url'),
+                '/',
+            );
+            $privateUrl = $publicBase.'/'.implode('/', array_map('rawurlencode', explode('/', $objectKey)));
+            $privateResponse = Http::timeout(15)->get($privateUrl);
+            $this->record(
+                $checks,
+                'r2_private_origin_denied',
+                ! $privateResponse->successful(),
+                'Raw upload prefixes are not anonymously readable',
+            );
+
+            if (! is_string($publishedPayload)) {
+                throw new RuntimeException('Embedded acceptance WebP is invalid.');
+            }
+            $publishedCreated = $disk->put($publishedKey, $publishedPayload, [
+                'ContentType' => 'image/webp',
+            ]);
+            $publicUrl = $publicBase.'/'.implode('/', array_map('rawurlencode', explode('/', $publishedKey)));
+            $publicResponse = Http::timeout(15)->retry(3, 750, throw: false)->get($publicUrl);
             $this->record(
                 $checks,
                 'r2_public_delivery',
-                $publicResponse->successful()
-                    && hash_equals($payload, $publicResponse->body()),
-                'R2 custom-domain delivery returns the uploaded object',
+                $publishedCreated
+                    && $publicResponse->successful()
+                    && hash_equals($publishedPayload, $publicResponse->body()),
+                'R2 custom-domain delivery returns only the published image fixture',
             );
 
             $origin = (string) (config('cors.allowed_origins.0') ?? '');
@@ -169,6 +195,9 @@ final class StagingAcceptance extends Command
             if (! isset($checks['r2_public_delivery'])) {
                 $this->recordFailure($checks, 'r2_public_delivery', $exception);
             }
+            if (! isset($checks['r2_private_origin_denied'])) {
+                $this->recordFailure($checks, 'r2_private_origin_denied', $exception);
+            }
             if (! isset($checks['r2_cors'])) {
                 $this->recordFailure($checks, 'r2_cors', $exception);
             }
@@ -176,12 +205,16 @@ final class StagingAcceptance extends Command
             if ($objectCreated) {
                 try {
                     $disk = Storage::disk($diskName);
-                    $deleted = $disk->delete($objectKey);
+                    $privateDeleted = $disk->delete($objectKey);
+                    $publishedDeleted = ! $publishedCreated || $disk->delete($publishedKey);
                     $this->record(
                         $checks,
                         'r2_cleanup',
-                        $deleted && ! $disk->exists($objectKey),
-                        'Acceptance object is removed from R2',
+                        $privateDeleted
+                            && $publishedDeleted
+                            && ! $disk->exists($objectKey)
+                            && ! $disk->exists($publishedKey),
+                        'Private and published acceptance objects are removed from R2',
                     );
                 } catch (Throwable $exception) {
                     $this->recordFailure($checks, 'r2_cleanup', $exception);

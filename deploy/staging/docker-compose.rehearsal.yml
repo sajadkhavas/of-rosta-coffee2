@@ -52,7 +52,8 @@ x-backend-app: &backend-app
     S3_ENDPOINT: http://minio:9000
     S3_PUBLIC_URL: http://edge:8081/rosta-media
     S3_USE_PATH_STYLE_ENDPOINT: "true"
-    ROSTA_MEDIA_PUBLIC_BASE_URL: http://edge:8081/rosta-media
+    ROSTA_MEDIA_PUBLIC_BASE_URL: https://media.rehearsal.test/rosta-media
+    ROSTA_MEDIA_ACCEPTANCE_BASE_URL: http://edge:8081/rosta-media
   depends_on:
     mysql:
       condition: service_healthy
@@ -174,7 +175,7 @@ services:
       - artisan
       - queue:work
       - redis
-      - --queue=critical,default,notifications
+      - --queue=critical,media,default,notifications
       - --sleep=1
       - --tries=1
       - --timeout=30

@@ -44,10 +44,14 @@ export interface MediaAsset {
   width: number;
   height: number;
   blurDataUrl?: string | null;
+  variantVersion?: string | null;
   sources: Array<{
     url: string;
     width: number;
+    height?: number;
     format: "avif" | "webp" | "jpeg" | "png";
+    sizeBytes?: number;
+    checksumSha256?: string;
   }>;
 }
 
