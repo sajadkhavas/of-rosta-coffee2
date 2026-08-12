@@ -109,8 +109,46 @@ secure_cookie_ok() {
     --dump-header "$headers" \
     --output /dev/null \
     "https://${STAGING_API_DOMAIN}/sanctum/csrf-cookie"
-  header_contains "$headers" Set-Cookie Secure \
-    && header_contains "$headers" Set-Cookie SameSite=Lax
+
+  python3 - "$headers" ".${STAGING_SITE_DOMAIN}" <<'PY'
+import sys
+path, expected_domain = sys.argv[1:]
+cookies = []
+with open(path, encoding='utf-8', errors='replace') as handle:
+    for raw in handle:
+        if raw.lower().startswith('set-cookie:'):
+            cookies.append(raw.split(':', 1)[1].strip())
+
+def parsed(cookie):
+    parts = [part.strip() for part in cookie.split(';')]
+    name = parts[0].split('=', 1)[0]
+    attrs = {}
+    flags = set()
+    for part in parts[1:]:
+        if '=' in part:
+            key, value = part.split('=', 1)
+            attrs[key.lower()] = value.lower()
+        else:
+            flags.add(part.lower())
+    return name, attrs, flags
+
+parsed_cookies = [parsed(cookie) for cookie in cookies]
+by_name = {name: (attrs, flags) for name, attrs, flags in parsed_cookies}
+for required in ('XSRF-TOKEN', 'rosta_staging_session'):
+    if required not in by_name:
+        raise SystemExit(1)
+    attrs, flags = by_name[required]
+    if attrs.get('domain') != expected_domain.lower():
+        raise SystemExit(1)
+    if 'secure' not in flags or attrs.get('samesite') != 'lax':
+        raise SystemExit(1)
+
+session_attrs, session_flags = by_name['rosta_staging_session']
+if 'httponly' not in session_flags:
+    raise SystemExit(1)
+if expected_domain.lower() == '.rosta.shop':
+    raise SystemExit(1)
+PY
 }
 
 ssr_home_ok() {
@@ -143,6 +181,16 @@ security_headers_ok() {
     "$site_url/"
   header_contains "$headers" Strict-Transport-Security max-age= \
     && header_contains "$headers" Content-Security-Policy default-src \
+    && header_contains "$headers" X-Robots-Tag noindex
+}
+
+hub_private_ok() {
+  local headers="$report_dir/hub.headers"
+  curl --silent --show-error --max-time "$timeout_seconds" \
+    --head --dump-header "$headers" --output /dev/null "$site_url/hub/operations"
+  header_contains "$headers" Cache-Control private \
+    && header_contains "$headers" Cache-Control no-store \
+    && header_contains "$headers" Pragma no-cache \
     && header_contains "$headers" X-Robots-Tag noindex
 }
 
@@ -208,9 +256,10 @@ run_check public_contracts "Product, roastery and content APIs respond" public_c
 run_check ssr_home "Homepage is server rendered without an application error" ssr_home_ok
 run_check robots_noindex "Staging robots.txt blocks all crawling" robots_locked
 run_check security_headers "TLS edge emits HSTS, CSP and X-Robots-Tag" security_headers_ok
+run_check hub_private_cache "Hub responses are private/no-store/noindex at the staging edge" hub_private_ok
 run_check seo_runtime "SSR canonical/noindex, sitemap shards and Open Graph image are production-shaped" seo_runtime_ok
 run_check cors_credentials "API CORS allows only the staging frontend with credentials" api_cors_ok
-run_check secure_csrf_cookie "Sanctum CSRF cookie is Secure and SameSite=Lax" secure_cookie_ok
+run_check secure_csrf_cookie "Staging XSRF/session cookies are Secure, isolated and SameSite=Lax" secure_cookie_ok
 
 python3 - "$results_file" "$report_dir/acceptance.json" "$release_tag" <<'PY'
 import datetime as dt

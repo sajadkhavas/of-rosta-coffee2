@@ -67,6 +67,7 @@ assert_staging_contract() {
   [[ "${SESSION_SECURE_COOKIE:-}" == "true" ]] || fail "Secure session cookies are required"
   [[ "${SESSION_ENCRYPT:-}" == "true" ]] || fail "Encrypted sessions are required"
   [[ "${SESSION_SAME_SITE:-}" == "lax" ]] || fail "SESSION_SAME_SITE must be lax"
+  [[ "${SESSION_COOKIE:-}" == "rosta_staging_session" ]] || fail "Staging session cookie name must be rosta_staging_session"
 
   local required=(
     APP_KEY
@@ -90,6 +91,18 @@ assert_staging_contract() {
     require_secret "$name"
   done
 
+  [[ "${STAGING_API_DOMAIN:-}" == "api.${STAGING_SITE_DOMAIN}" ]] \
+    || fail "STAGING_API_DOMAIN must be a child of the staging-only site domain"
+  [[ "${STAGING_MEDIA_DOMAIN:-}" == "media.${STAGING_SITE_DOMAIN}" ]] \
+    || fail "STAGING_MEDIA_DOMAIN must be a child of the staging-only site domain"
+  [[ "${SESSION_DOMAIN:-}" == ".${STAGING_SITE_DOMAIN}" ]] \
+    || fail "SESSION_DOMAIN must be scoped to the staging-only site domain"
+  [[ "${SESSION_DOMAIN:-}" != ".rosta.shop" ]] \
+    || fail "Staging must never use the production parent cookie domain"
+  [[ "${SANCTUM_STATEFUL_DOMAINS:-}" == "$STAGING_SITE_DOMAIN" ]] \
+    || fail "SANCTUM_STATEFUL_DOMAINS must match the staging frontend"
+  [[ "${FRONTEND_ALLOWED_ORIGINS:-}" == "https://${STAGING_SITE_DOMAIN}" ]] \
+    || fail "FRONTEND_ALLOWED_ORIGINS must match the staging frontend"
   [[ "${VITE_SITE_URL:-}" == "https://${STAGING_SITE_DOMAIN}" ]] \
     || fail "VITE_SITE_URL must match STAGING_SITE_DOMAIN"
   [[ "${VITE_API_URL:-}" == "https://${STAGING_API_DOMAIN}/api/v1" ]] \

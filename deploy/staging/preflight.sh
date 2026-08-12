@@ -121,9 +121,9 @@ else
 fi
 
 if [[ -s "$ROSTA_ROOT_DIR/backend/composer.lock" ]]; then
-  pass "backend/composer.lock is present"
+  pass "backend/composer.lock is present and deploy.sh will consume the reviewed lock"
 else
-  printf '[WARN] backend/composer.lock is absent; deploy.sh will generate it with PHP 8.3 before image build\n'
+  reject "backend/composer.lock is required; deploy.sh never generates dependencies"
 fi
 
 if [[ "$failures" -ne 0 ]]; then

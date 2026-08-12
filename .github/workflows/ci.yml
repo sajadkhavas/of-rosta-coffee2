@@ -32,6 +32,12 @@ jobs:
       - name: Audit High/Critical dependencies
         run: bun run audit:dependencies
 
+      - name: Validate staging shell contracts
+        shell: bash
+        run: |
+          bash -n deploy/staging/*.sh
+          bash deploy/staging/contract-test.sh
+
       - name: Run complete frontend quality gate
         env:
           VITE_SITE_URL: https://rosta.shop
