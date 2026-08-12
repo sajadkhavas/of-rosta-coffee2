@@ -29,6 +29,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Audit High/Critical dependencies
+        run: bun run audit:dependencies
+
       - name: Run complete frontend quality gate
         env:
           VITE_SITE_URL: https://rosta.shop
@@ -43,6 +46,7 @@ jobs:
         with:
           name: frontend-quality-${{ github.run_id }}
           path: |
+            dependency-audit.log
             frontend-check.log
             bundle-report.json
             release-integrity-audit.json
