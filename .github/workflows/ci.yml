@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -38,6 +40,20 @@ jobs:
           bash -n deploy/staging/*.sh
           bash deploy/staging/contract-test.sh
 
+      - name: Audit PS1 release security contract
+        run: node scripts/audit-ps1-release-security.mjs
+
+      - name: Check PR patch whitespace
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [[ -n "${GITHUB_BASE_REF:-}" ]]; then
+            git rev-parse --verify "origin/${GITHUB_BASE_REF}"
+            git diff --check "origin/${GITHUB_BASE_REF}...HEAD"
+          else
+            git diff --check HEAD^..HEAD
+          fi
+
       - name: Run complete frontend quality gate
         env:
           VITE_SITE_URL: https://rosta.shop
@@ -53,6 +69,7 @@ jobs:
           name: frontend-quality-${{ github.run_id }}
           path: |
             dependency-audit.log
+            ps1-release-security-audit.json
             frontend-check.log
             bundle-report.json
             release-integrity-audit.json
