@@ -30,9 +30,12 @@ object contents and signed URLs are never persisted as failure details.
 
 ## Configuration and workers
 
-The PHP runtime must load Imagick with JPEG, WebP and AVIF delegates. Production images install
-`libmagickwand` and the PECL Imagick extension. The worker must consume the `media` queue with a
-memory limit greater than `ROSTA_MEDIA_MEMORY_LIMIT_MB`.
+The PHP runtime must load Imagick with JPEG, WebP and AVIF delegates, including an AV1 encoder
+such as AOM. Production images install `libmagickwand` and the PECL Imagick extension; systems
+that split libheif codecs into separate packages must also install the AVIF encoder plugin (for
+example `libheif-plugin-aomenc` on Ubuntu 24.04). Readiness performs real in-memory encodes for
+all three output formats instead of trusting ImageMagick's advertised format list. The worker
+must consume the `media` queue with a memory limit greater than `ROSTA_MEDIA_MEMORY_LIMIT_MB`.
 
 Relevant non-secret settings:
 

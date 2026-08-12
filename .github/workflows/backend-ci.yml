@@ -97,6 +97,11 @@ jobs:
           coverage: none
           tools: composer:v2
 
+      - name: Install AVIF encoder delegate
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libheif-plugin-aomenc
+
       - name: Freeze exact backend snapshot
         shell: bash
         run: |

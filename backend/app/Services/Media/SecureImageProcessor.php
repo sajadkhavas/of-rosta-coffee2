@@ -8,6 +8,8 @@ use ImagickException;
 
 final class SecureImageProcessor
 {
+    private ?bool $runtimeAvailable = null;
+
     /**
      * @return array{
      *     detected_mime: string,
@@ -81,15 +83,24 @@ final class SecureImageProcessor
 
     public function isAvailable(): bool
     {
+        if ($this->runtimeAvailable !== null) {
+            return $this->runtimeAvailable;
+        }
+
         if (! extension_loaded('imagick') || ! class_exists(Imagick::class)) {
-            return false;
+            return $this->runtimeAvailable = false;
         }
 
         $formats = array_map('strtoupper', Imagick::queryFormats());
+        if (
+            ! in_array('JPEG', $formats, true)
+            || ! in_array('WEBP', $formats, true)
+            || ! in_array('AVIF', $formats, true)
+        ) {
+            return $this->runtimeAvailable = false;
+        }
 
-        return in_array('JPEG', $formats, true)
-            && in_array('WEBP', $formats, true)
-            && in_array('AVIF', $formats, true);
+        return $this->runtimeAvailable = $this->canEncodeRequiredFormats();
     }
 
     private function assertRuntime(): void
@@ -221,11 +232,7 @@ final class SecureImageProcessor
                     }
                     $variant->stripImage();
                     $variant->setImagePage(0, 0, 0, 0);
-                    $variant->setImageDepth(8);
-                    $variant->setFormat($format['format']);
-                    $variant->setImageFormat($format['format']);
-                    $variant->setImageCompressionQuality($format['quality']);
-                    $blob = $variant->getImagesBlob();
+                    $blob = $this->encode($variant, $format['format'], $format['quality']);
                     if ($blob === '') {
                         throw new MediaProcessingException('variant_encode_failed', rejected: false);
                     }
@@ -246,6 +253,46 @@ final class SecureImageProcessor
         }
 
         return $variants;
+    }
+
+    private function canEncodeRequiredFormats(): bool
+    {
+        $this->applyResourceLimits();
+        $probe = new Imagick;
+
+        try {
+            $probe->newImage(16, 16, '#7a4b2a');
+            $probe->setImageColorspace(Imagick::COLORSPACE_SRGB);
+
+            foreach ([['jpeg', 82], ['webp', 80], ['avif', 55]] as [$format, $quality]) {
+                $candidate = clone $probe;
+                try {
+                    if ($this->encode($candidate, $format, $quality) === '') {
+                        return false;
+                    }
+                } finally {
+                    $candidate->clear();
+                    $candidate->destroy();
+                }
+            }
+
+            return true;
+        } catch (\Throwable) {
+            return false;
+        } finally {
+            $probe->clear();
+            $probe->destroy();
+        }
+    }
+
+    private function encode(Imagick $image, string $format, int $quality): string
+    {
+        $image->setImageDepth(8);
+        $image->setFormat($format);
+        $image->setImageFormat($format);
+        $image->setImageCompressionQuality($quality);
+
+        return $image->getImagesBlob();
     }
 
     private function flattenForJpeg(Imagick $source): Imagick
