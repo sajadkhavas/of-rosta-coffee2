@@ -1,0 +1,50 @@
+name: PS1 Composer Advisory Refresh Helper
+
+on:
+  pull_request:
+    paths:
+      - "backend/app/Providers/AppServiceProvider.php"
+      - ".github/workflows/ps1-composer-advisory-refresh.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: github.head_ref == 'phase/rosta-ps1-release-security'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          coverage: none
+          tools: composer:v2
+      - name: Refresh only directly proven advisory packages
+        working-directory: backend
+        run: |
+          set -Eeuo pipefail
+          composer update guzzlehttp/guzzle:7.15.2 league/commonmark:2.9.0 --with-dependencies --no-interaction --no-progress
+          composer audit --locked --no-interaction | tee composer-audit-after-refresh.log
+      - name: Commit audited Composer lock without rewriting history
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git add backend/composer.lock
+          if git diff --cached --quiet; then
+            echo "backend/composer.lock already matches the audited advisory remediation"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(ps1): refresh Composer lock for proven advisories"
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
+      - name: Upload Composer advisory evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ps1-composer-advisory-refresh-${{ github.run_id }}
+          path: backend/composer-audit-after-refresh.log
+          retention-days: 2
