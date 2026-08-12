@@ -46,11 +46,15 @@ final class MediaUploadCompletionTest extends TestCase
         $completed = $service->complete($roastery, $user, $intent->id, [
             'alt' => 'تصویر بسته قهوه دانه کامل',
         ], $request);
+        $this->assertSame(
+            MediaUploadStatus::Ready,
+            $completed->status,
+            $this->failureContext($completed),
+        );
         $replayed = $service->complete($roastery, $user, $intent->id, [
             'alt' => 'این مقدار در اجرای تکراری استفاده نمی‌شود',
         ], $request);
 
-        $this->assertSame(MediaUploadStatus::Ready, $completed->status);
         $this->assertSame($completed->media_asset_id, $replayed->media_asset_id);
         $this->assertDatabaseCount('media_assets', 1);
         $asset = $completed->mediaAsset;
@@ -222,7 +226,11 @@ final class MediaUploadCompletionTest extends TestCase
             Request::create('/api/v1/media-test/retry', 'POST'),
         );
 
-        $this->assertSame(MediaUploadStatus::Ready, $retried->status);
+        $this->assertSame(
+            MediaUploadStatus::Ready,
+            $retried->status,
+            $this->failureContext($retried),
+        );
         $this->assertDatabaseCount('media_assets', 1);
     }
 
@@ -266,5 +274,15 @@ final class MediaUploadCompletionTest extends TestCase
             $image->clear();
             $image->destroy();
         }
+    }
+
+    private function failureContext(MediaUploadIntent $intent): string
+    {
+        return sprintf(
+            'status=%s reason=%s published=%s',
+            $intent->status->value,
+            (string) $intent->failure_reason,
+            implode(',', Storage::disk('s3')->allFiles('published')),
+        );
     }
 }

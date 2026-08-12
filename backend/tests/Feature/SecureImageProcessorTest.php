@@ -15,9 +15,8 @@ final class SecureImageProcessorTest extends TestCase
         try {
             $source->newImage(30, 20, '#6f4e37');
             $source->setImageFormat('jpeg');
-            $source->setImageOrientation(Imagick::ORIENTATION_RIGHTTOP);
-            $source->setImageProperty('comment', 'GPS:35.6892,51.3890');
-            $bytes = $source->getImageBlob();
+            $jpeg = $source->getImageBlob();
+            $bytes = $this->withExifOrientation($jpeg, 6);
         } finally {
             $source->clear();
             $source->destroy();
@@ -73,5 +72,18 @@ final class SecureImageProcessorTest extends TestCase
             $this->assertSame('animated_image_rejected', $exception->reasonCode);
             $this->assertTrue($exception->rejected);
         }
+    }
+
+    private function withExifOrientation(string $jpeg, int $orientation): string
+    {
+        $tiff = "II\x2A\x00\x08\x00\x00\x00"
+            ."\x01\x00"
+            ."\x12\x01\x03\x00\x01\x00\x00\x00"
+            .pack('v', $orientation)."\x00\x00"
+            ."\x00\x00\x00\x00";
+        $exif = "Exif\x00\x00".$tiff;
+        $segment = "\xFF\xE1".pack('n', strlen($exif) + 2).$exif;
+
+        return substr($jpeg, 0, 2).$segment.substr($jpeg, 2);
     }
 }
