@@ -77,7 +77,8 @@ $gate(
 $gate(
     'durable_notification_outbox',
     str_contains($files['outbox_service'], 'NotificationStatus::Processing')
-        && str_contains($files['outbox_service'], 'stale_processing_recovered')
+        && str_contains($files['outbox_service'], 'stale_processing_outcome_unknown')
+        && str_contains($files['outbox_service'], 'provider_accepted_persistence_unknown')
         && str_contains($files['outbox_service'], 'dispatchPending')
         && str_contains($files['observer'], "'order.paid'")
         && str_contains($files['outbox_migration'], "deduplication_key', 190)->nullable()->unique()"),
@@ -89,7 +90,7 @@ $gate(
     str_contains($files['sms_manager'], "'disabled'")
         && str_contains($files['sms_manager'], "'testing'")
         && str_contains($files['sms_manager'], "'kavenegar'")
-        && str_contains($files['sms_manager'], "! app()->environment('production')")
+        && str_contains($files['sms_manager'], "'testing' => app()->environment('testing')")
         && str_contains($files['config'], "'enabled' => \$smsEnabled"),
     'SMS delivery is disabled by default and testing delivery is non-production only.',
 );

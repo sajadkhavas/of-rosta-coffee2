@@ -17,6 +17,8 @@ x-backend-app: &backend-app
   environment:
     APP_ENV: staging
     APP_DEBUG: "false"
+    SESSION_COOKIE: ${SESSION_COOKIE:?SESSION_COOKIE is required}
+    SESSION_DOMAIN: ${SESSION_DOMAIN:?SESSION_DOMAIN is required}
   restart: unless-stopped
   depends_on:
     mysql:

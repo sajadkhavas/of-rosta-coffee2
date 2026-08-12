@@ -21,13 +21,15 @@ final class FakeOtpSender implements OtpSender
         string $code,
         string $purpose,
         string $challengeId,
-    ): void {
+    ): string {
         $this->messages[] = [
             'mobile' => $mobile,
             'code' => $code,
             'purpose' => $purpose,
             'challenge_id' => $challengeId,
         ];
+
+        return 'fake-'.$challengeId;
     }
 
     /**

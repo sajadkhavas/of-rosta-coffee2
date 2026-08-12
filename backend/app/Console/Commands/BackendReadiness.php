@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Contracts\OtpSender;
 use App\Enums\NotificationStatus;
 use App\Enums\PaymentAttemptStatus;
 use App\Enums\ReconciliationStatus;
@@ -31,6 +32,7 @@ final class BackendReadiness extends Command
         RefundProviderManager $refunds,
         SmsProviderManager $sms,
         SecureImageProcessor $images,
+        OtpSender $otp,
     ): int {
         $checks = [];
         $warnings = [];
@@ -80,6 +82,7 @@ final class BackendReadiness extends Command
             'reviews',
             'inquiries',
             'media_upload_intents',
+            'otp_challenges',
         ];
         $missingTables = [];
         foreach ($requiredTables as $table) {
@@ -126,6 +129,18 @@ final class BackendReadiness extends Command
             $smsEnabled
                 ? 'Enabled order SMS provider is configured'
                 : 'Order SMS is intentionally disabled',
+        );
+        $otpEnabled = (bool) config('rosta.otp.enabled', false);
+        $otpReady = $otpEnabled && $otp->isAvailable();
+        $this->check(
+            $checks,
+            'otp_activation',
+            app()->environment('production') ? $otpReady : (! $otpEnabled || $otpReady),
+            $otpReady
+                ? 'OTP delivery is enabled and configured'
+                : (app()->environment('production')
+                    ? 'Production requires an enabled, configured OTP provider'
+                    : 'OTP delivery is intentionally disabled'),
         );
         $mediaEnabled = (bool) config('rosta.media_uploads.enabled', false);
         $mediaBaseUrl = (string) config('rosta.media_uploads.public_base_url');

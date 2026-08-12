@@ -17,6 +17,7 @@ const PRIVATE_PREFIXES = [
   "/profile",
   "/orders",
   "/panel",
+  "/hub",
   "/forbidden",
 ];
 const BASE_CSP = [

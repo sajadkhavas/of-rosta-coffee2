@@ -14,7 +14,7 @@ final class AcceptanceOtpBridgeTest extends TestCase
     {
         parent::setUp();
 
-        config()->set('services.sms.driver', 'acceptance');
+        config()->set('rosta.otp.driver', 'acceptance');
     }
 
     public function test_acceptance_otp_is_encrypted_at_rest_and_consumed_once(): void

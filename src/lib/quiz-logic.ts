@@ -1,12 +1,7 @@
 import type { ProductSummary } from "@/lib/api/contracts";
 
 export type BrewMethod =
-  | "اسپرسوساز خانگی"
-  | "موکاپات"
-  | "فرنچ‌پرس"
-  | "V60 یا دریپ"
-  | "کلدبرو"
-  | "هنوز مشخص نیست";
+  "اسپرسوساز خانگی" | "موکاپات" | "فرنچ‌پرس" | "V60 یا دریپ" | "کلدبرو" | "هنوز مشخص نیست";
 export type RoastPref = "روشن" | "متوسط" | "تیره" | "پیشنهاد بده";
 export type Adventure = "safe" | "balanced" | "adventurous";
 export type Experience = "beginner" | "some" | "pro";

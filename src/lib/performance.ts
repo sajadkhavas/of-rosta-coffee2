@@ -221,8 +221,7 @@ export function startWebVitals(options?: {
   };
 
   const navigation = performance.getEntriesByType("navigation")[0] as
-    | PerformanceNavigationTiming
-    | undefined;
+    PerformanceNavigationTiming | undefined;
   if (navigation?.responseStart) publish("TTFB", navigation.responseStart);
 
   const paintObserver = observe("paint", (list) => {

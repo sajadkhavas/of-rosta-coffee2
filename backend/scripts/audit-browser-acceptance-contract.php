@@ -23,7 +23,7 @@ foreach ($files as $name => $path) {
 
 $required = [
     ['sender', "environment('testing')", 'Acceptance OTP sender must be restricted to testing.'],
-    ['sender', "config('services.sms.driver') === 'acceptance'", 'Acceptance OTP sender must require its dedicated driver.'],
+    ['sender', "config('rosta.otp.driver') === 'acceptance'", 'Acceptance OTP sender must require its dedicated driver.'],
     ['sender', 'Crypt::encryptString($code)', 'Acceptance OTP must be encrypted before cache storage.'],
     ['sender', 'now()->addMinutes(3)', 'Acceptance OTP storage must have a bounded lifetime.'],
     ['command', 'Cache::pull(', 'Acceptance OTP consumption must be destructive and one-time.'],

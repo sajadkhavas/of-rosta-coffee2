@@ -47,11 +47,12 @@ paths:
                     type: object
                     required: [request_id, expires_in, retry_after]
                     properties:
-                      request_id: { type: string, format: uuid }
+                      request_id: { type: string, pattern: '^[0-9A-HJKMNP-TV-Z]{26}$' }
                       expires_in: { type: integer }
                       retry_after: { type: integer }
         '422': { $ref: '#/components/responses/ValidationError' }
         '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
 
   /auth/otp/verify:
     post:
@@ -66,11 +67,12 @@ paths:
               type: object
               required: [request_id, code]
               properties:
-                request_id: { type: string, format: uuid }
+                request_id: { type: string, pattern: '^[0-9A-HJKMNP-TV-Z]{26}$' }
                 code: { type: string, pattern: '^\d{6}$' }
       responses:
         '200': { $ref: '#/components/responses/AuthUser' }
         '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/RateLimited' }
 
   /auth/logout:
     post:
@@ -466,6 +468,7 @@ components:
     NotFound: { description: Resource not found, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
     ValidationError: { description: Invalid input, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
     RateLimited: { description: Too many requests, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
+    ServiceUnavailable: { description: OTP delivery is disabled, misconfigured, or temporarily unavailable, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
     Conflict: { description: Price, stock or idempotency conflict, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
   schemas:
     IranMobile: { type: string, pattern: '^09\d{9}$', example: '09123456789' }

@@ -3,6 +3,7 @@
 namespace App\Services\Notifications;
 
 use App\Enums\NotificationStatus;
+use App\Exceptions\NotificationDeliveryUnavailable;
 use App\Models\NotificationOutbox;
 use App\Models\NotificationTemplate;
 use App\Models\Order;
@@ -70,10 +71,10 @@ final class NotificationOutboxService
             ->where('status', NotificationStatus::Processing->value)
             ->where('processing_at', '<=', now()->subMinutes(10))
             ->update([
-                'status' => NotificationStatus::Pending->value,
-                'available_at' => now(),
+                'status' => NotificationStatus::Failed->value,
                 'processing_at' => null,
-                'last_error' => 'stale_processing_recovered',
+                'last_error' => 'stale_processing_outcome_unknown',
+                'failed_at' => now(),
                 'updated_at' => now(),
             ]);
 
@@ -129,6 +130,8 @@ final class NotificationOutboxService
             return false;
         }
 
+        $providerAccepted = false;
+
         try {
             $template = NotificationTemplate::query()
                 ->where('key', $notification->template_key)
@@ -150,6 +153,7 @@ final class NotificationOutboxService
                 $message,
                 $template->provider_template,
             );
+            $providerAccepted = true;
 
             DB::transaction(function () use (
                 $notification,
@@ -182,7 +186,17 @@ final class NotificationOutboxService
 
             return true;
         } catch (Throwable $exception) {
-            $this->recordFailure($notification, $exception);
+            $failure = match (true) {
+                $providerAccepted => new NotificationDeliveryUnavailable(
+                    'provider_accepted_persistence_unknown',
+                    ambiguous: true,
+                ),
+                $exception instanceof NotificationDeliveryUnavailable => $exception,
+                default => new NotificationDeliveryUnavailable(
+                    'notification_payload_invalid',
+                ),
+            };
+            $this->recordFailure($notification, $failure);
 
             return false;
         }
@@ -190,7 +204,7 @@ final class NotificationOutboxService
 
     private function recordFailure(
         NotificationOutbox $notification,
-        Throwable $exception,
+        NotificationDeliveryUnavailable $exception,
     ): void {
         DB::transaction(function () use ($notification, $exception): void {
             $locked = NotificationOutbox::query()
@@ -202,19 +216,29 @@ final class NotificationOutboxService
             }
 
             $maximum = max(1, (int) config('rosta.notifications.max_attempts', 5));
-            $terminal = $locked->attempts >= $maximum;
+            $retryable = $exception->retryable
+                && ! $exception->ambiguous;
+            $terminal = ! $retryable || $locked->attempts >= $maximum;
+            $reasonCode = $exception->reasonCode;
+            $retryBase = max(
+                30,
+                $exception->retryAfterSeconds
+                    ?? (int) config('rosta.notifications.retry_seconds', 60),
+            );
+            $retryDelay = min(
+                3600,
+                ($retryBase * max(1, $locked->attempts))
+                    + random_int(0, max(1, intdiv($retryBase, 4))),
+            );
             $locked->forceFill([
                 'status' => $terminal
                     ? NotificationStatus::Failed
                     : NotificationStatus::Pending,
-                'last_error' => mb_substr($exception->getMessage(), 0, 1000),
+                'last_error' => $reasonCode,
                 'processing_at' => null,
                 'available_at' => $terminal
                     ? $locked->available_at
-                    : now()->addSeconds(
-                        max(30, (int) config('rosta.notifications.retry_seconds', 60))
-                        * max(1, $locked->attempts),
-                    ),
+                    : now()->addSeconds($retryDelay),
                 'failed_at' => $terminal ? now() : null,
             ])->save();
         }, 3);

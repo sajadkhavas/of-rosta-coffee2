@@ -3,14 +3,15 @@
 namespace App\Exceptions;
 
 use RuntimeException;
-use Throwable;
 
 final class NotificationDeliveryUnavailable extends RuntimeException
 {
     public function __construct(
-        string $message = 'سرویس ارسال پیامک در دسترس نیست.',
-        ?Throwable $previous = null,
+        public readonly string $reasonCode = 'sms_unavailable',
+        public readonly bool $retryable = false,
+        public readonly bool $ambiguous = false,
+        public readonly ?int $retryAfterSeconds = null,
     ) {
-        parent::__construct($message, 0, $previous);
+        parent::__construct('SMS delivery is unavailable.');
     }
 }

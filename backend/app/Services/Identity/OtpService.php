@@ -3,6 +3,7 @@
 namespace App\Services\Identity;
 
 use App\Contracts\OtpSender;
+use App\Enums\OtpDeliveryStatus;
 use App\Exceptions\ApiDomainException;
 use App\Jobs\SendOtpCode;
 use App\Models\OtpChallenge;
@@ -114,6 +115,8 @@ final class OtpService
                             'rosta.otp.max_attempts',
                             5,
                         ),
+                        'delivery_status' => OtpDeliveryStatus::Pending,
+                        'delivery_attempts' => 0,
                         'expires_at' => now()->addSeconds($ttl),
                         'resend_available_at' => now()->addSeconds($resendAfter),
                         'requested_ip_hash' => RequestFingerprint::ip($request),

@@ -14,7 +14,7 @@ final class AcceptanceOtpSender implements OtpSender
     public function isAvailable(): bool
     {
         return app()->environment('testing')
-            && (string) config('services.sms.driver') === 'acceptance';
+            && (string) config('rosta.otp.driver') === 'acceptance';
     }
 
     public function send(
@@ -22,7 +22,7 @@ final class AcceptanceOtpSender implements OtpSender
         string $code,
         string $purpose,
         string $challengeId,
-    ): void {
+    ): string {
         if (! $this->isAvailable()) {
             throw new LogicException('The acceptance OTP sender is restricted to the testing environment.');
         }
@@ -32,5 +32,7 @@ final class AcceptanceOtpSender implements OtpSender
             Crypt::encryptString($code),
             now()->addMinutes(3),
         );
+
+        return 'acceptance-'.$challengeId;
     }
 }

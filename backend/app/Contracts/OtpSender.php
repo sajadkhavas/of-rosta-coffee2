@@ -11,5 +11,5 @@ interface OtpSender
         string $code,
         string $purpose,
         string $challengeId,
-    ): void;
+    ): ?string;
 }

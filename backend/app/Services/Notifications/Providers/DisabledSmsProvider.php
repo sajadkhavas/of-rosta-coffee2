@@ -16,7 +16,7 @@ final class DisabledSmsProvider implements SmsProvider
         string $destination,
         string $message,
         ?string $providerTemplate = null,
-    ): ?string {
-        throw new NotificationDeliveryUnavailable;
+    ): string {
+        throw new NotificationDeliveryUnavailable('provider_disabled');
     }
 }
