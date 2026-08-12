@@ -232,14 +232,7 @@ final class SecureImageProcessor
                     }
                     $variant->stripImage();
                     $variant->setImagePage(0, 0, 0, 0);
-                    try {
-                        $blob = $this->encode($variant, $format['format'], $format['quality']);
-                    } catch (ImagickException) {
-                        throw new MediaProcessingException(
-                            'variant_encode_failed_'.$format['format'],
-                            rejected: false,
-                        );
-                    }
+                    $blob = $this->encode($variant, $format['format'], $format['quality']);
                     if ($blob === '') {
                         throw new MediaProcessingException(
                             'variant_encode_failed_'.$format['format'],
@@ -255,6 +248,11 @@ final class SecureImageProcessor
                         'bytes' => $blob,
                         'checksum_sha256' => hash('sha256', $blob),
                     ];
+                } catch (ImagickException) {
+                    throw new MediaProcessingException(
+                        'variant_encode_failed_'.$format['format'],
+                        rejected: false,
+                    );
                 } finally {
                     $variant->clear();
                     $variant->destroy();
