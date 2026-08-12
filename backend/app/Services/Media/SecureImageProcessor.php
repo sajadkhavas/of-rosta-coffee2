@@ -221,9 +221,11 @@ final class SecureImageProcessor
                     }
                     $variant->stripImage();
                     $variant->setImagePage(0, 0, 0, 0);
+                    $variant->setImageDepth(8);
+                    $variant->setFormat($format['format']);
                     $variant->setImageFormat($format['format']);
                     $variant->setImageCompressionQuality($format['quality']);
-                    $blob = $variant->getImageBlob();
+                    $blob = $variant->getImagesBlob();
                     if ($blob === '') {
                         throw new MediaProcessingException('variant_encode_failed', rejected: false);
                     }
