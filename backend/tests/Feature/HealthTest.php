@@ -10,16 +10,19 @@ final class HealthTest extends TestCase
 {
     public function test_liveness_returns_the_frozen_contract_envelope(): void
     {
+        $expectedContract = (string) config('rosta.contract_version');
+        $this->assertNotSame('', $expectedContract);
+
         $response = $this->withHeader('X-Request-ID', 'test-request-123')
             ->getJson('/api/v1/health/live');
 
         $response
             ->assertOk()
             ->assertHeader('X-Request-ID', 'test-request-123')
-            ->assertHeader('X-Rosta-Contract-Version', '2026-07-21-phase-6')
+            ->assertHeader('X-Rosta-Contract-Version', $expectedContract)
             ->assertJsonPath('data.status', 'ok')
             ->assertJsonPath('data.service', 'rosta-api')
-            ->assertJsonPath('data.contract_version', '2026-07-21-phase-6');
+            ->assertJsonPath('data.contract_version', $expectedContract);
     }
 
     public function test_invalid_request_id_is_replaced_with_a_safe_identifier(): void

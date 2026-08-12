@@ -24,11 +24,14 @@ $gate(
     'accessible_roastery_bootstrap_is_scoped',
     str_contains($files['bootstrap_routes'], "Route::get('/seller/roasteries'")
         && str_contains($files['bootstrap_routes'], "'auth:sanctum', 'rosta.session'")
-        && ! str_contains($files['bootstrap_routes'], 'rosta.role:')
+        && str_contains(
+            $files['bootstrap_routes'],
+            'rosta.role:roastery_owner,roastery_manager,roastery_staff,administrator',
+        )
         && str_contains($files['roastery_controller'], "scope_type === 'roastery'")
         && str_contains($files['roastery_controller'], "whereIn('id', \$rolesByRoastery->keys()->all())")
         && str_contains($files['roastery_controller'], "'access_roles'"),
-    'Authenticated onboarding users may receive an empty list, while scoped sellers see only assigned roasteries and administrators are the explicit global exception.',
+    'The seller bootstrap requires a seller role and returns only assigned roasteries, with administrators as the explicit global exception.',
 );
 
 $gate(

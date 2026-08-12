@@ -7,6 +7,10 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
+  // Rosta's staging/production runtime is a self-hosted Node container. Keep the
+  // deploy target explicit so Lovable's Cloudflare fallback cannot silently
+  // replace the executable Node artifact with a Worker-only fetch handler.
+  nitro: { preset: "node-server" },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
