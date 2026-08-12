@@ -223,15 +223,19 @@ final class SecureImageProcessor
             foreach ($widths as $width) {
                 $this->assertElapsed($startedAt);
                 $variant = clone $source;
+                $stage = 'resize';
                 try {
                     if ($variant->getImageWidth() !== $width) {
                         $variant->thumbnailImage($width, 0, true);
                     }
+                    $stage = 'flatten';
                     if ($format['format'] === 'jpeg') {
                         $variant = $this->flattenForJpeg($variant);
                     }
+                    $stage = 'sanitize';
                     $variant->stripImage();
                     $variant->setImagePage(0, 0, 0, 0);
+                    $stage = 'encode';
                     $blob = $this->encode($variant, $format['format'], $format['quality']);
                     if ($blob === '') {
                         throw new MediaProcessingException(
@@ -250,7 +254,7 @@ final class SecureImageProcessor
                     ];
                 } catch (ImagickException) {
                     throw new MediaProcessingException(
-                        'variant_encode_failed_'.$format['format'],
+                        'variant_encode_failed_'.$format['format'].'_'.$stage,
                         rejected: false,
                     );
                 } finally {
