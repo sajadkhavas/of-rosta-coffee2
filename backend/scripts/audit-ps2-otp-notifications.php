@@ -49,7 +49,8 @@ $gates = [
     'outbox_unknown_outcome_is_dead_lettered' => $contains('outbox', [
         'stale_processing_outcome_unknown',
         'provider_accepted_persistence_unknown',
-        '$providerFailure?->ambiguous === false',
+        '$exception->retryable',
+        '! $exception->ambiguous',
     ]),
     'sensitive_values_are_not_logged' => ! preg_match('/[\'\"]code[\'\"]\s*=>\s*\$code/', $files['log_sender'])
         && ! preg_match('/[\'\"]message[\'\"]\s*=>\s*\$message/', file_get_contents($root.'/app/Services/Notifications/Providers/TestingSmsProvider.php'))

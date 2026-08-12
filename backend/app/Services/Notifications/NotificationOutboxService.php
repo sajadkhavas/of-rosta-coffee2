@@ -186,12 +186,16 @@ final class NotificationOutboxService
 
             return true;
         } catch (Throwable $exception) {
-            $failure = $providerAccepted
-                ? new NotificationDeliveryUnavailable(
+            $failure = match (true) {
+                $providerAccepted => new NotificationDeliveryUnavailable(
                     'provider_accepted_persistence_unknown',
                     ambiguous: true,
-                )
-                : $exception;
+                ),
+                $exception instanceof NotificationDeliveryUnavailable => $exception,
+                default => new NotificationDeliveryUnavailable(
+                    'notification_payload_invalid',
+                ),
+            };
             $this->recordFailure($notification, $failure);
 
             return false;
@@ -200,7 +204,7 @@ final class NotificationOutboxService
 
     private function recordFailure(
         NotificationOutbox $notification,
-        Throwable $exception,
+        NotificationDeliveryUnavailable $exception,
     ): void {
         DB::transaction(function () use ($notification, $exception): void {
             $locked = NotificationOutbox::query()
@@ -212,16 +216,13 @@ final class NotificationOutboxService
             }
 
             $maximum = max(1, (int) config('rosta.notifications.max_attempts', 5));
-            $providerFailure = $exception instanceof NotificationDeliveryUnavailable
-                ? $exception
-                : null;
-            $retryable = $providerFailure?->retryable === true
-                && $providerFailure?->ambiguous === false;
+            $retryable = $exception->retryable
+                && ! $exception->ambiguous;
             $terminal = ! $retryable || $locked->attempts >= $maximum;
-            $reasonCode = $providerFailure?->reasonCode ?? 'notification_payload_invalid';
+            $reasonCode = $exception->reasonCode;
             $retryBase = max(
                 30,
-                $providerFailure?->retryAfterSeconds
+                $exception->retryAfterSeconds
                     ?? (int) config('rosta.notifications.retry_seconds', 60),
             );
             $retryDelay = min(

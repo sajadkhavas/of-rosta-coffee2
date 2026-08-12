@@ -23,7 +23,7 @@ final class KavenegarSmsProvider implements SmsProvider
         string $destination,
         string $message,
         ?string $providerTemplate = null,
-    ): ?string {
+    ): string {
         $sender = trim((string) config('rosta.notifications.kavenegar.sender'));
         $normalizedDestination = IranMobile::normalize($destination);
 
