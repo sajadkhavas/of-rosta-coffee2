@@ -7,7 +7,7 @@ on:
       - ".github/workflows/ps1-lock-refresh.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   refresh:
@@ -16,14 +16,29 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.2.22
-      - name: Resolve PS1 dependency graph
+      - name: Resolve and audit PS1 dependency graph
         run: |
           rm -f bun.lock
           bun install
           bun audit --audit-level=high | tee dependency-audit-after-refresh.log
+      - name: Commit reviewed lock without rewriting history
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git add bun.lock
+          if git diff --cached --quiet; then
+            echo "bun.lock already matches the audited dependency graph"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(ps1): refresh Bun lock after security upgrades"
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
       - name: Upload refreshed lock and audit
         uses: actions/upload-artifact@v4
         with:
