@@ -1,0 +1,34 @@
+name: PS1 Lock Refresh Helper
+
+on:
+  pull_request:
+    paths:
+      - "package.json"
+      - ".github/workflows/ps1-lock-refresh.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    if: github.head_ref == 'phase/rosta-ps1-release-security'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.22
+      - name: Resolve PS1 dependency graph
+        run: |
+          rm -f bun.lock
+          bun install
+          bun audit --audit-level=high | tee dependency-audit-after-refresh.log
+      - name: Upload refreshed lock and audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: ps1-refreshed-lock-${{ github.run_id }}
+          path: |
+            bun.lock
+            dependency-audit-after-refresh.log
+          retention-days: 2
