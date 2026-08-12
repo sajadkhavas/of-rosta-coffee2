@@ -4,10 +4,10 @@ namespace App\Services\Notifications;
 
 use App\Contracts\Notifications\SmsProvider;
 use App\Exceptions\NotificationDeliveryUnavailable;
+use App\Services\Kavenegar\KavenegarClient;
 use App\Services\Notifications\Providers\DisabledSmsProvider;
 use App\Services\Notifications\Providers\KavenegarSmsProvider;
 use App\Services\Notifications\Providers\TestingSmsProvider;
-use App\Services\Kavenegar\KavenegarClient;
 
 final class SmsProviderManager
 {
