@@ -29,11 +29,7 @@ const required = [
     "php artisan serve --host=127.0.0.1 --port=8000",
     "Integrated CI must boot Laravel.",
   ],
-  [
-    "workflow",
-    "node .output/server/index.mjs",
-    "Integrated CI must boot the production SSR output.",
-  ],
+  ["workflow", "node dist/server/server.js", "Integrated CI must boot the production SSR output."],
   ["workflow", "ROSTA_INTERNAL_API_URL", "SSR must use the explicit internal Laravel URL."],
   [
     "workflow",

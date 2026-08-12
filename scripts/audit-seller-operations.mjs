@@ -12,6 +12,7 @@ const paths = {
   navbar: "src/components/Navbar.tsx",
   routeTree: "src/routeTree.gen.ts",
   backendRoutes: "backend/routes/api.php",
+  sellerBootstrapRoutes: "backend/routes/seller-bootstrap.php",
   fulfillmentRoutes: "backend/routes/fulfillment.php",
   mediaRoutes: "backend/routes/media-uploads.php",
 };
@@ -56,7 +57,7 @@ gate(
   files.client.includes('apiFetch<unknown>("/seller/roasteries")') &&
     files.client.includes("access_roles") &&
     files.dashboard.includes("selectedRoasteryId") &&
-    files.backendRoutes.includes("Route::get('/seller/roasteries'"),
+    files.sellerBootstrapRoutes.includes("Route::get('/seller/roasteries'"),
   "The browser must start from the backend-scoped roastery selector instead of accepting an arbitrary roastery ID.",
 );
 

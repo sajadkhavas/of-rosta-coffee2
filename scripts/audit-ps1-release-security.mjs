@@ -14,6 +14,11 @@ const paths = {
   dependencyPolicy: "security/dependency-audit-exceptions.json",
   dependencyAudit: "scripts/audit-dependencies.mjs",
   ci: ".github/workflows/ci.yml",
+  browserAuditCi: ".github/workflows/browser-audit.yml",
+  browserAcceptanceCi: ".github/workflows/browser-acceptance-ci.yml",
+  fullStackCi: ".github/workflows/fullstack-integration-ci.yml",
+  finalGateCi: ".github/workflows/r3-final-gate.yml",
+  stagingDockerfile: "Dockerfile.staging",
   server: "src/server.ts",
   sw: "public/sw.js",
   robots: "src/routes/robots[.]txt.ts",
@@ -41,7 +46,8 @@ const packageJson = JSON.parse(files.package);
 const policy = JSON.parse(files.dependencyPolicy);
 const gates = [];
 const gate = (name, passed, evidence) => gates.push({ name, passed: Boolean(passed), evidence });
-const hasAll = (source, tokens) => typeof source === "string" && tokens.every((token) => source.includes(token));
+const hasAll = (source, tokens) =>
+  typeof source === "string" && tokens.every((token) => source.includes(token));
 
 gate(
   "dependency_audit_is_permanent",
@@ -54,7 +60,8 @@ gate(
 
 gate(
   "dependency_exceptions_are_explicit",
-  policy.schemaVersion === 1 && Array.isArray(policy.exceptions) &&
+  policy.schemaVersion === 1 &&
+    Array.isArray(policy.exceptions) &&
     files.dependencyAudit?.includes("advisoryId") &&
     files.dependencyAudit?.includes("expiresAt") &&
     files.dependencyAudit?.includes("MAX_EXCEPTION_DAYS = 30"),
@@ -66,6 +73,29 @@ gate(
   !Object.hasOwn(packageJson.dependencies ?? {}, "react-router-dom") &&
     !Object.hasOwn(packageJson.devDependencies ?? {}, "react-router-dom"),
   "react-router-dom must remain absent unless a real import is introduced.",
+);
+
+gate(
+  "tanstack_runtime_artifact_is_current",
+  packageJson.scripts?.start === "node dist/server/server.js" &&
+    packageJson.scripts?.preview === "node dist/server/server.js" &&
+    packageJson.scripts?.["release:manifest"]?.includes(" dist ") &&
+    hasAll(files.stagingDockerfile, [
+      "COPY --from=build --chown=node:node /app/dist ./dist",
+      'CMD ["node", "dist/server/server.js"]',
+    ]) &&
+    hasAll(files.browserAuditCi, ["test -f dist/server/server.js", "bun run preview"]) &&
+    files.browserAcceptanceCi?.includes("node dist/server/server.js") &&
+    files.fullStackCi?.includes("node dist/server/server.js") &&
+    files.finalGateCi?.includes("node dist/server/server.js") &&
+    ![
+      files.stagingDockerfile,
+      files.browserAuditCi,
+      files.browserAcceptanceCi,
+      files.fullStackCi,
+      files.finalGateCi,
+    ].some((source) => source?.includes(".output/server/index.mjs")),
+  "The upgraded TanStack/Vite build emits dist/server/server.js; package scripts, images and hosted runtimes must boot that exact artifact.",
 );
 
 gate(
@@ -88,7 +118,11 @@ gate(
   ]) &&
     files.appProvider?.includes("seller-bootstrap.php") &&
     !files.apiRoutes?.includes("Route::get('/seller/roasteries'") &&
-    hasAll(files.routeTest, ["Duplicate route method/URI", "api/v1/seller/roasteries", "api.v1.seller.roasteries.bootstrap"]),
+    hasAll(files.routeTest, [
+      "Duplicate route method/URI",
+      "api/v1/seller/roasteries",
+      "api.v1.seller.roasteries.bootstrap",
+    ]),
   "The onboarding bootstrap route must be the single GET /seller/roasteries contract with its existing auth/session behavior.",
 );
 
@@ -105,15 +139,26 @@ gate(
       "ROSTA_CONTRACT_VERSION=2026-07-26-r5c",
     ]) &&
     !files.backendStaging.includes("SESSION_DOMAIN=.rosta.shop\n") &&
-    hasAll(files.stagingLib, ["rosta_staging_session", "SESSION_DOMAIN must be scoped to the staging-only site domain"]),
+    hasAll(files.stagingLib, [
+      "rosta_staging_session",
+      "SESSION_DOMAIN must be scoped to the staging-only site domain",
+    ]),
   "Staging cookies must be scoped under .staging.rosta.shop and use a distinct session name.",
 );
 
 gate(
   "staging_lock_contract_is_fail_closed",
-  hasAll(files.stagingPreflight, ["backend/composer.lock is required", "deploy.sh never generates dependencies"]) &&
-    hasAll(files.stagingDeploy, ["backend/composer.lock is required", "deployment never generates dependencies"]) &&
-    !/deploy\.sh will generate|composer update|ensure_composer_lock/.test(`${files.stagingPreflight}\n${files.stagingDeploy}`) &&
+  hasAll(files.stagingPreflight, [
+    "backend/composer.lock is required",
+    "deploy.sh never generates dependencies",
+  ]) &&
+    hasAll(files.stagingDeploy, [
+      "backend/composer.lock is required",
+      "deployment never generates dependencies",
+    ]) &&
+    !/deploy\.sh will generate|composer update|ensure_composer_lock/.test(
+      `${files.stagingPreflight}\n${files.stagingDeploy}`,
+    ) &&
     hasAll(files.stagingContract, ["bash -n", "PS1 staging shell contract passed"]),
   "Preflight and deploy must agree that the committed Composer lock is mandatory.",
 );

@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const artifactDir = path.resolve(process.argv[2] ?? ".output");
+const artifactDir = path.resolve(process.argv[2] ?? "dist");
 const outputPath = path.resolve(process.argv[3] ?? "release-manifest.json");
 const forbiddenNames = [
   /^\.env(?:\.|$)/i,
