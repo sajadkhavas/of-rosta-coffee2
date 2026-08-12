@@ -226,7 +226,10 @@ final class SecureImageProcessor
                 $stage = 'resize';
                 try {
                     if ($variant->getImageWidth() !== $width) {
-                        $variant->thumbnailImage($width, 0, true);
+                        $height = max(1, (int) round(
+                            $variant->getImageHeight() * ($width / $variant->getImageWidth()),
+                        ));
+                        $variant->thumbnailImage($width, $height, false);
                     }
                     $stage = 'flatten';
                     if ($format['format'] === 'jpeg') {
