@@ -48,6 +48,9 @@ final class RouteUniquenessContractTest extends TestCase
         $this->assertContains('throttle:api', $middleware);
         $this->assertContains('auth:sanctum', $middleware);
         $this->assertContains('rosta.session', $middleware);
-        $this->assertFalse(collect($middleware)->contains(static fn (string $item): bool => str_starts_with($item, 'rosta.role:')));
+        $this->assertContains(
+            'rosta.role:roastery_owner,roastery_manager,roastery_staff,administrator',
+            $middleware,
+        );
     }
 }

@@ -119,6 +119,7 @@ gate(
     "Route::get('/seller/roasteries'",
     "api.v1.seller.roasteries.bootstrap",
     "'auth:sanctum', 'rosta.session'",
+    "rosta.role:roastery_owner,roastery_manager,roastery_staff,administrator",
   ]) &&
     files.appProvider?.includes("seller-bootstrap.php") &&
     !files.apiRoutes?.includes("Route::get('/seller/roasteries'") &&
@@ -126,8 +127,9 @@ gate(
       "Duplicate route method/URI",
       "api/v1/seller/roasteries",
       "api.v1.seller.roasteries.bootstrap",
+      "rosta.role:roastery_owner,roastery_manager,roastery_staff,administrator",
     ]),
-  "The onboarding bootstrap route must be the single GET /seller/roasteries contract with its existing auth/session behavior.",
+  "The seller bootstrap route must remain unique and preserve its auth, session and seller-role boundary.",
 );
 
 gate(
