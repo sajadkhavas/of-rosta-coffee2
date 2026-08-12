@@ -20,6 +20,7 @@ const paths = {
   hub: "src/routes/hub.operations.tsx",
   browserCache: "tests/browser/ps1-private-cache.spec.ts",
   sellerBootstrap: "backend/routes/seller-bootstrap.php",
+  appProvider: "backend/app/Providers/AppServiceProvider.php",
   apiRoutes: "backend/routes/api.php",
   routeTest: "backend/tests/Feature/RouteUniquenessContractTest.php",
   frontendStaging: ".env.staging.example",
@@ -81,9 +82,10 @@ gate(
 gate(
   "seller_route_is_single_source",
   !files.sellerBootstrap &&
+    !files.appProvider?.includes("seller-bootstrap.php") &&
     hasAll(files.apiRoutes, ["/seller/roasteries", "api.v1.seller.roasteries.index"]) &&
     hasAll(files.routeTest, ["Duplicate route method/URI", "api/v1/seller/roasteries"]),
-  "The legacy seller-bootstrap duplicate must stay removed and runtime route uniqueness must be tested.",
+  "The legacy seller-bootstrap duplicate and registration must stay removed and runtime route uniqueness must be tested.",
 );
 
 gate(
@@ -101,7 +103,7 @@ gate(
     !files.backendStaging.includes("SESSION_DOMAIN=.rosta.shop\n") &&
     hasAll(files.stagingLib, [
       "rosta_staging_session",
-      'SESSION_DOMAIN must be scoped to the staging-only site domain',
+      "SESSION_DOMAIN must be scoped to the staging-only site domain",
     ]),
   "Staging cookies must be scoped under .staging.rosta.shop and use a distinct session name.",
 );
