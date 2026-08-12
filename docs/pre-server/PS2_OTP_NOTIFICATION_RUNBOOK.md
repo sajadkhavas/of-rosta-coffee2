@@ -23,6 +23,9 @@ OTP delivery states are `pending`, `processing`, `sent`, `failed`, and `unknown`
 
 ## Redaction and local development
 
+Fresh installs are fail-closed (`ROSTA_OTP_ENABLED=false`, `SMS_DRIVER=disabled`).
+For local development, explicitly enable OTP and select the `log` driver.
+
 Logs may contain a challenge identifier, a provider message identifier, a purpose, and the final four digits of a mobile number. They must never contain an OTP code, full mobile number, API key, rendered SMS body, raw provider response, or exception URL.
 
 The local `log` driver stores the OTP encrypted in cache and logs only redacted metadata. Consume it once with:

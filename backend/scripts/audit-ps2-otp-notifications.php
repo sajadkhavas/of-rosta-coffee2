@@ -64,7 +64,7 @@ $gates = [
         'KAVENEGAR_OTP_TEMPLATE_REGISTER',
         'KAVENEGAR_OTP_TEMPLATE_VERIFY_MOBILE',
         'KAVENEGAR_CIRCUIT_FAILURE_THRESHOLD',
-    ]) && $contains('env', ['ROSTA_OTP_ENABLED=true', 'SMS_DRIVER=log'])
+    ]) && $contains('env', ['ROSTA_OTP_ENABLED=false', 'SMS_DRIVER=disabled'])
         && $contains('staging_env', ['ROSTA_OTP_ENABLED=false', 'SMS_DRIVER=disabled']),
     'provider_contract_tests_are_offline' => $contains('tests', [
         'Http::fake',
