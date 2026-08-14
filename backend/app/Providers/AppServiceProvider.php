@@ -51,6 +51,7 @@ final class AppServiceProvider extends ServiceProvider
             'finance.php',
             'admin-operations.php',
             'seller-bootstrap.php',
+            'seller-organization.php',
             'grinding-capability.php',
             'hub-operations.php',
         ] as $routes) {
