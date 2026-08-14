@@ -138,6 +138,7 @@ function QuizPage() {
         <div
           className="mt-6 h-1 overflow-hidden rounded-full bg-[color:var(--dark)]"
           role="progressbar"
+          aria-label="پیشرفت کوییز"
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={result ? 100 : progress}
