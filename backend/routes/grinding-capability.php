@@ -23,6 +23,7 @@ Route::prefix('/seller/roasteries/{roasteryId}')
         'rosta.session',
         'throttle:api',
         'rosta.role:roastery_owner,roastery_manager,roastery_staff,administrator',
+        'rosta.seller',
     ])
     ->group(function (): void {
         Route::get('/grinding-capability', [SellerGrindingCapabilityController::class, 'show'])

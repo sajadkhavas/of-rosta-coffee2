@@ -72,6 +72,7 @@ Route::middleware([
     'auth:sanctum',
     'rosta.session',
     'rosta.role:roastery_owner,roastery_manager,roastery_staff,administrator',
+    'rosta.seller',
     'throttle:admin-operations',
 ])->get(
     '/seller/roasteries/{roasteryId}/settlements',

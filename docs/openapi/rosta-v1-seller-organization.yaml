@@ -1,0 +1,342 @@
+openapi: 3.1.0
+info:
+  title: Rosta Seller Organization & Availability API
+  version: 2026-08-14-ps5b
+  description: >-
+    Scoped seller membership, invitation, availability, closure and promotion lifecycle contract.
+    Pricing and discount application are deliberately excluded from this contract.
+servers:
+  - url: /api/v1
+security:
+  - sanctumCookie: []
+paths:
+  /seller/invitations/accept:
+    post:
+      operationId: acceptSellerInvitation
+      summary: Accept an account-bound seller invitation once
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string, pattern: '^[a-f0-9]{64}$' }
+      responses:
+        '200': { description: Membership created }
+        '404': { description: Token not found for this account }
+        '409': { description: Invitation already consumed or revoked }
+        '410': { description: Invitation expired }
+  /seller/roasteries/{roasteryId}/organization:
+    get:
+      operationId: getSellerOrganization
+      parameters: [{$ref: '#/components/parameters/RoasteryId'}]
+      responses:
+        '200':
+          description: Effective scoped organization truth
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/OrganizationEnvelope'}
+        '403': { description: Authenticated but insufficient permission }
+        '404': { description: Roastery hidden outside membership scope }
+  /seller/roasteries/{roasteryId}/members:
+    get:
+      operationId: listSellerMembers
+      parameters: [{$ref: '#/components/parameters/RoasteryId'}]
+      responses:
+        '200': { description: Masked scoped membership list }
+  /seller/roasteries/{roasteryId}/members/{membershipId}:
+    patch:
+      operationId: updateSellerMemberRole
+      parameters:
+        - {$ref: '#/components/parameters/RoasteryId'}
+        - {$ref: '#/components/parameters/MembershipId'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: {$ref: '#/components/schemas/MembershipRole'}
+      responses:
+        '200': { description: Membership role updated }
+        '403': { description: Role boundary rejected }
+        '409': { description: Last-owner invariant rejected }
+    delete:
+      operationId: removeSellerMember
+      parameters:
+        - {$ref: '#/components/parameters/RoasteryId'}
+        - {$ref: '#/components/parameters/MembershipId'}
+      responses:
+        '200': { description: Membership removed }
+        '409': { description: Last-owner invariant rejected }
+  /seller/roasteries/{roasteryId}/invitations:
+    get:
+      operationId: listSellerInvitations
+      parameters: [{$ref: '#/components/parameters/RoasteryId'}]
+      responses:
+        '200': { description: Masked invitation list }
+    post:
+      operationId: createSellerInvitation
+      parameters: [{$ref: '#/components/parameters/RoasteryId'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mobile, role]
+              properties:
+                mobile: { type: string, description: Normalized Iranian mobile target }
+                role: {$ref: '#/components/schemas/MembershipRole'}
+      responses:
+        '201': { description: Invitation created; raw token returned only in this response }
+        '409': { description: Pending invitation or membership already exists }
+  /seller/roasteries/{roasteryId}/invitations/{inviteId}:
+    delete:
+      operationId: revokeSellerInvitation
+      parameters:
+        - {$ref: '#/components/parameters/RoasteryId'}
+        - {$ref: '#/components/parameters/InviteId'}
+      responses:
+        '200': { description: Invitation revoked }
+        '409': { description: Accepted invitation is immutable }
+  /seller/roasteries/{roasteryId}/schedule:
+    get:
+      operationId: getSellerSchedule
+      parameters: [{$ref: '#/components/parameters/RoasteryId'}]
+      responses:
+        '200': { description: Weekly and exception schedule plus availability }
+    put:
+      operationId: replaceSellerSchedule
+      parameters: [{$ref: '#/components/parameters/RoasteryId'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ScheduleInput'}
+      responses:
+        '200': { description: Schedule replaced atomically }
+        '422': { description: Invalid timezone, duplicate day/date, or open interval }
+  /seller/roasteries/{roasteryId}/closures:
+    get:
+      operationId: listSellerClosures
+      parameters: [{$ref: '#/components/parameters/RoasteryId'}]
+      responses:
+        '200': { description: Recent temporary closure records }
+    post:
+      operationId: createSellerClosure
+      parameters: [{$ref: '#/components/parameters/RoasteryId'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ClosureInput'}
+      responses:
+        '201': { description: Closure scheduled }
+        '409': { description: Overlapping active closure }
+        '422': { description: Unsafe public reason or invalid range }
+  /seller/roasteries/{roasteryId}/closures/{closureId}:
+    delete:
+      operationId: revokeSellerClosure
+      parameters:
+        - {$ref: '#/components/parameters/RoasteryId'}
+        - name: closureId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Closure revoked and availability re-evaluated }
+  /seller/roasteries/{roasteryId}/promotions:
+    get:
+      operationId: listSellerPromotions
+      parameters: [{$ref: '#/components/parameters/RoasteryId'}]
+      responses:
+        '200': { description: Promotion lifecycle records; pricing_applied is always false }
+    post:
+      operationId: createSellerPromotion
+      parameters: [{$ref: '#/components/parameters/RoasteryId'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PromotionInput'}
+      responses:
+        '201': { description: Draft or scheduled lifecycle created }
+        '422': { description: Pricing fields or invalid lifecycle rejected }
+  /seller/roasteries/{roasteryId}/promotions/{promotionId}:
+    patch:
+      operationId: updateSellerPromotionStatus
+      parameters:
+        - {$ref: '#/components/parameters/RoasteryId'}
+        - name: promotionId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: {$ref: '#/components/schemas/PromotionStatus'}
+      responses:
+        '200': { description: Lifecycle status updated }
+        '409': { description: Expired lifecycle cannot reactivate }
+  /admin/seller-organizations/roasteries/{roasteryId}:
+    get:
+      operationId: adminReadSellerOrganization
+      parameters: [{$ref: '#/components/parameters/RoasteryId'}]
+      responses:
+        '200': { description: Masked read-only oversight; impersonation is false }
+        '403': { description: Administrator role required }
+  /admin/seller-organizations/invitations/{inviteId}/revoke:
+    post:
+      operationId: adminRevokeSellerInvitation
+      parameters: [{$ref: '#/components/parameters/InviteId'}]
+      responses:
+        '200': { description: Invitation revoked with audit }
+  /admin/seller-organizations/memberships/{membershipId}/lock:
+    patch:
+      operationId: adminSetSellerMembershipLock
+      parameters: [{$ref: '#/components/parameters/MembershipId'}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [locked]
+              properties:
+                locked: { type: boolean }
+      responses:
+        '200': { description: Membership lock updated with audit }
+        '409': { description: Last active owner cannot be locked }
+components:
+  securitySchemes:
+    sanctumCookie:
+      type: apiKey
+      in: cookie
+      name: rosta_session
+  parameters:
+    RoasteryId:
+      name: roasteryId
+      in: path
+      required: true
+      schema: { type: string }
+    MembershipId:
+      name: membershipId
+      in: path
+      required: true
+      schema: { type: string }
+    InviteId:
+      name: inviteId
+      in: path
+      required: true
+      schema: { type: string }
+  schemas:
+    MembershipRole:
+      type: string
+      enum: [owner, manager, catalog, fulfillment, finance, support]
+    SellerPermission:
+      type: string
+      enum:
+        - workspace.read
+        - organization.read
+        - organization.manage
+        - catalog.read
+        - catalog.write
+        - inventory.read
+        - inventory.write
+        - orders.read
+        - fulfillment.write
+        - finance.read
+        - availability.read
+        - availability.write
+        - promotion.read
+        - promotion.write
+    Availability:
+      type: object
+      required: [timezone, status, operating_now, accepting_orders, order_policy]
+      properties:
+        timezone: { type: string }
+        status: { type: string, enum: [open, outside_hours, temporarily_closed] }
+        operating_now: { type: boolean }
+        accepting_orders: { type: boolean }
+        public_reason: { type: [string, 'null'], maxLength: 180 }
+        closed_until: { type: [string, 'null'], format: date-time }
+        next_open_at: { type: [string, 'null'], format: date-time }
+        order_policy:
+          type: string
+          enum: [accepting_new_orders, new_orders_blocked_by_temporary_closure]
+    OrganizationEnvelope:
+      type: object
+      properties:
+        data:
+          type: object
+          required: [roastery_id, timezone, role, permissions, availability, members, invitations]
+          properties:
+            roastery_id: { type: string }
+            timezone: { type: string }
+            role:
+              oneOf:
+                - {$ref: '#/components/schemas/MembershipRole'}
+                - { type: 'null' }
+            permissions:
+              type: array
+              items: {$ref: '#/components/schemas/SellerPermission'}
+            availability: {$ref: '#/components/schemas/Availability'}
+            members: { type: array, items: { type: object } }
+            invitations: { type: array, items: { type: object } }
+    ScheduleInput:
+      type: object
+      required: [timezone, weekly_hours, exceptions]
+      properties:
+        timezone: { type: string, description: IANA timezone identifier }
+        weekly_hours:
+          type: array
+          maxItems: 7
+          items:
+            type: object
+            required: [weekday, is_closed]
+            properties:
+              weekday: { type: integer, minimum: 0, maximum: 6 }
+              is_closed: { type: boolean }
+              opens_at: { type: [string, 'null'], pattern: '^\d{2}:\d{2}$' }
+              closes_at: { type: [string, 'null'], pattern: '^\d{2}:\d{2}$' }
+        exceptions:
+          type: array
+          maxItems: 180
+          items:
+            type: object
+            required: [local_date, is_closed]
+            properties:
+              local_date: { type: string, format: date }
+              is_closed: { type: boolean }
+              opens_at: { type: [string, 'null'] }
+              closes_at: { type: [string, 'null'] }
+              public_reason: { type: [string, 'null'], maxLength: 180 }
+    ClosureInput:
+      type: object
+      required: [starts_at, ends_at, blocks_new_orders]
+      properties:
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        public_reason: { type: [string, 'null'], maxLength: 180 }
+        blocks_new_orders: { type: boolean }
+    PromotionStatus:
+      type: string
+      enum: [draft, scheduled, paused, expired]
+    PromotionInput:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 160 }
+        starts_at: { type: [string, 'null'], format: date-time }
+        ends_at: { type: [string, 'null'], format: date-time }

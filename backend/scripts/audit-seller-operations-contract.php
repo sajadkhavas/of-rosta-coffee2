@@ -8,6 +8,7 @@ $files = [
     'media_routes' => file_get_contents($root.'/routes/media-uploads.php'),
     'roastery_controller' => file_get_contents($root.'/app/Http/Controllers/Seller/SellerRoasteryController.php'),
     'access' => file_get_contents($root.'/app/Services/Catalog/CatalogAccess.php'),
+    'seller_access' => file_get_contents($root.'/app/Services/Seller/SellerAccess.php'),
     'variant_request' => file_get_contents($root.'/app/Http/Requests/Catalog/UpsertVariantRequest.php'),
     'stock_request' => file_get_contents($root.'/app/Http/Requests/Catalog/AdjustStockRequest.php'),
     'fulfillment_request' => file_get_contents($root.'/app/Http/Requests/Fulfillment/UpdateFulfillmentRequest.php'),
@@ -28,10 +29,15 @@ $gate(
             $files['bootstrap_routes'],
             'rosta.role:roastery_owner,roastery_manager,roastery_staff,administrator',
         )
-        && str_contains($files['roastery_controller'], "scope_type === 'roastery'")
+        && str_contains($files['roastery_controller'], 'SellerAccess $sellerAccess')
+        && str_contains($files['roastery_controller'], '$sellerAccess->rolesByRoastery($user)')
         && str_contains($files['roastery_controller'], "whereIn('id', \$rolesByRoastery->keys()->all())")
-        && str_contains($files['roastery_controller'], "'access_roles'"),
-    'The seller bootstrap requires a seller role and returns only assigned roasteries, with administrators as the explicit global exception.',
+        && str_contains($files['roastery_controller'], "'access_roles'")
+        && str_contains($files['seller_access'], 'RoasteryMembership::query()')
+        && str_contains($files['seller_access'], "->where('is_locked', false)")
+        && str_contains($files['seller_access'], "->where('scope_type', 'roastery')")
+        && str_contains($files['seller_access'], "->where('scope_id', \$roasteryId)"),
+    'The seller bootstrap requires a seller role and returns only active scoped memberships, with a scoped legacy migration fallback and administrators as the explicit global exception.',
 );
 
 $gate(

@@ -3,7 +3,7 @@
 use App\Http\Controllers\Seller\SellerMediaController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth:sanctum', 'rosta.session'])->group(function (): void {
+Route::middleware(['auth:sanctum', 'rosta.session', 'rosta.seller'])->group(function (): void {
     Route::post(
         '/seller/roasteries/{roasteryId}/media/uploads',
         [SellerMediaController::class, 'createUpload'],

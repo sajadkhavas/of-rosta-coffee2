@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Seller;
 
+use App\Enums\RoasteryMembershipRole;
 use App\Enums\RoasteryStatus;
 use App\Enums\Role;
 use App\Http\Requests\Catalog\StoreRoasteryRequest;
@@ -9,10 +10,11 @@ use App\Http\Requests\Catalog\UpdateRoasteryRequest;
 use App\Http\Resources\RoasteryDetailResource;
 use App\Models\MediaAsset;
 use App\Models\Roastery;
+use App\Models\RoasteryMembership;
 use App\Models\User;
-use App\Models\UserRole;
 use App\Services\AuditRecorder;
 use App\Services\Catalog\CatalogAccess;
+use App\Services\Seller\SellerAccess;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,32 +22,12 @@ use Illuminate\Support\Facades\DB;
 
 final class SellerRoasteryController
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, SellerAccess $sellerAccess): JsonResponse
     {
         /** @var User $user */
         $user = $request->user();
-        $user->loadMissing('roleAssignments');
         $administrator = $user->hasRole(Role::Administrator);
-        $sellerRoles = [
-            Role::RoasteryOwner->value,
-            Role::RoasteryManager->value,
-            Role::RoasteryStaff->value,
-        ];
-
-        $rolesByRoastery = $user->roleAssignments
-            ->filter(static fn (UserRole $assignment): bool => $assignment->scope_type === 'roastery'
-                && is_string($assignment->scope_id)
-                && in_array($assignment->role->value, $sellerRoles, true)
-            )
-            ->groupBy('scope_id')
-            ->map(static fn ($assignments): array => $assignments
-                ->pluck('role')
-                ->map(static fn (Role|string $role): string => $role instanceof Role ? $role->value : $role)
-                ->unique()
-                ->sort()
-                ->values()
-                ->all()
-            );
+        $rolesByRoastery = collect($sellerAccess->rolesByRoastery($user));
 
         if (! $administrator && $rolesByRoastery->isEmpty()) {
             return ApiResponse::success(['items' => []]);
@@ -80,27 +62,30 @@ final class SellerRoasteryController
     public function store(
         StoreRoasteryRequest $request,
         AuditRecorder $audit,
+        SellerAccess $sellerAccess,
     ): JsonResponse {
         /** @var User $user */
         $user = $request->user();
 
-        $roastery = DB::transaction(function () use ($request, $user, $audit): Roastery {
+        $roastery = DB::transaction(function () use ($request, $user, $audit, $sellerAccess): Roastery {
             $roastery = Roastery::query()->create([
                 ...$request->validated(),
                 'status' => RoasteryStatus::Pending->value,
             ]);
 
-            UserRole::query()->firstOrCreate([
+            $membership = RoasteryMembership::query()->create([
+                'roastery_id' => $roastery->id,
                 'user_id' => $user->id,
-                'role' => Role::RoasteryOwner->value,
-                'scope_type' => 'roastery',
-                'scope_id' => $roastery->id,
+                'role' => RoasteryMembershipRole::Owner,
+                'created_by' => $user->id,
             ]);
+            $sellerAccess->syncLegacyRole($membership);
 
             $audit->record(
                 'catalog.roastery.created',
                 actor: $user,
                 auditable: $roastery,
+                metadata: ['membership_role' => RoasteryMembershipRole::Owner->value],
                 request: $request,
             );
 

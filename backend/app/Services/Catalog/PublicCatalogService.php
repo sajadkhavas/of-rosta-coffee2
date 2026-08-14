@@ -4,14 +4,15 @@ namespace App\Services\Catalog;
 
 use App\Models\Product;
 use App\Models\Roastery;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 final class PublicCatalogService
 {
     /**
      * @param  array<string, mixed>  $filters
+     * @return LengthAwarePaginator<Product>
      */
     public function products(array $filters): LengthAwarePaginator
     {
