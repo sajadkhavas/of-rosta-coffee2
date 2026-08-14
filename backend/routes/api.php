@@ -68,7 +68,10 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
 
         Route::prefix('/seller/roasteries/{roasteryId}')
             ->where(['roasteryId' => '[A-Za-z0-9._:-]+'])
-            ->middleware('rosta.role:roastery_owner,roastery_manager,roastery_staff,administrator')
+            ->middleware([
+                'rosta.role:roastery_owner,roastery_manager,roastery_staff,administrator',
+                'rosta.seller',
+            ])
             ->group(function (): void {
                 Route::get('/', [SellerRoasteryController::class, 'show'])->name('api.v1.seller.roasteries.show');
                 Route::patch('/', [SellerRoasteryController::class, 'update'])->name('api.v1.seller.roasteries.update');
