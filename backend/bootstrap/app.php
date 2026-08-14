@@ -2,6 +2,7 @@
 
 use App\Exceptions\ApiDomainException;
 use App\Http\Middleware\AssignRequestId;
+use App\Http\Middleware\EnforceSellerPermission;
 use App\Http\Middleware\EnsureActiveAuthSession;
 use App\Http\Middleware\RequireAnyRole;
 use App\Support\ApiResponse;
@@ -37,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'rosta.session' => EnsureActiveAuthSession::class,
             'rosta.role' => RequireAnyRole::class,
+            'rosta.seller' => EnforceSellerPermission::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) use ($copyHeaders): void {
