@@ -25,7 +25,7 @@ return new class extends Migration
             $table->foreignUlid('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->unique(['roastery_id', 'user_id']);
-            $table->index(['user_id', 'is_locked', 'roastery_id']);
+            $table->index(['user_id', 'is_locked', 'roastery_id'], 'roastery_membership_access_idx');
         });
 
         Schema::create('roastery_invitations', function (Blueprint $table): void {
@@ -42,7 +42,10 @@ return new class extends Migration
             $table->timestamp('revoked_at')->nullable()->index();
             $table->foreignUlid('revoked_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
-            $table->index(['roastery_id', 'target_mobile_hash', 'expires_at']);
+            $table->index(
+                ['roastery_id', 'target_mobile_hash', 'expires_at'],
+                'roastery_invitation_target_expiry_idx',
+            );
         });
 
         Schema::create('roastery_weekly_hours', function (Blueprint $table): void {
@@ -79,7 +82,10 @@ return new class extends Migration
             $table->timestamp('revoked_at')->nullable()->index();
             $table->foreignUlid('revoked_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
-            $table->index(['roastery_id', 'revoked_at', 'starts_at', 'ends_at']);
+            $table->index(
+                ['roastery_id', 'revoked_at', 'starts_at', 'ends_at'],
+                'roastery_closure_window_idx',
+            );
         });
 
         Schema::create('roastery_promotions', function (Blueprint $table): void {
@@ -91,7 +97,10 @@ return new class extends Migration
             $table->timestamp('ends_at')->nullable()->index();
             $table->foreignUlid('created_by')->constrained('users')->cascadeOnDelete();
             $table->timestamps();
-            $table->index(['roastery_id', 'status', 'starts_at', 'ends_at']);
+            $table->index(
+                ['roastery_id', 'status', 'starts_at', 'ends_at'],
+                'roastery_promotion_lifecycle_idx',
+            );
         });
 
         $now = now();
