@@ -73,7 +73,7 @@ final class ReviewReplyReportSafetyTest extends TestCase
         $this->authenticateWithRole($reporter, Role::Customer);
         $payload = ['reason' => 'personal_data', 'evidence' => '<b>فقط توضیح ضروری</b>'];
         $first = $this->postJson('/api/v1/reviews/'.$review['id'].'/reports', $payload)
-            ->assertCreated()->assertHeader('Cache-Control', 'private, no-store, max-age=0')->json('data');
+            ->assertCreated()->assertHeader('Cache-Control', 'max-age=0, no-store, private')->json('data');
         $second = $this->postJson('/api/v1/reviews/'.$review['id'].'/reports', $payload)->assertCreated()->json('data');
         $this->assertSame($first['id'], $second['id']);
         $this->assertDatabaseCount('review_reports', 1);

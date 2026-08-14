@@ -1,4 +1,5 @@
-export type BrewMethod = "espresso" | "moka" | "french_press" | "pour_over" | "cold_brew" | "unknown";
+export type BrewMethod =
+  "espresso" | "moka" | "french_press" | "pour_over" | "cold_brew" | "unknown";
 export type RoastPref = "light" | "medium" | "dark" | "recommend";
 export type Adventure = "safe" | "balanced" | "adventurous";
 export type Experience = "beginner" | "some" | "pro";
@@ -52,7 +53,13 @@ export function loadQuizSession(): QuizGuestSession | null {
   if (!raw) return null;
   try {
     const value = JSON.parse(raw) as Partial<QuizGuestSession>;
-    if (typeof value.attemptId !== "string" || typeof value.guestToken !== "string" || typeof value.version !== "number" || value.guestToken.length < 32) return null;
+    if (
+      typeof value.attemptId !== "string" ||
+      typeof value.guestToken !== "string" ||
+      typeof value.version !== "number" ||
+      value.guestToken.length < 32
+    )
+      return null;
     return { attemptId: value.attemptId, guestToken: value.guestToken, version: value.version };
   } catch {
     return null;

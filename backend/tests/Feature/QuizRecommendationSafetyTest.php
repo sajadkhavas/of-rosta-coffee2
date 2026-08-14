@@ -27,7 +27,7 @@ final class QuizRecommendationSafetyTest extends TestCase
 
         $first = $this->postJson('/api/v1/quiz/attempts', $payload)
             ->assertCreated()
-            ->assertHeader('Cache-Control', 'private, no-store, max-age=0')
+            ->assertHeader('Cache-Control', 'max-age=0, no-store, private')
             ->assertJsonCount(1, 'data.recommendations.items')
             ->json('data');
         $second = $this->postJson('/api/v1/quiz/attempts', $payload)->assertCreated()->json('data');
@@ -41,7 +41,7 @@ final class QuizRecommendationSafetyTest extends TestCase
         $this->withHeader('X-Quiz-Guest-Token', $token)
             ->getJson('/api/v1/quiz/attempts/'.$first['attempt']['id'].'/recommendations')
             ->assertOk()
-            ->assertHeader('Cache-Control', 'private, no-store, max-age=0')
+            ->assertHeader('Cache-Control', 'max-age=0, no-store, private')
             ->assertJsonCount(0, 'data.items')
             ->assertJsonPath('data.stale_safe', true);
 
@@ -66,7 +66,7 @@ final class QuizRecommendationSafetyTest extends TestCase
 
         $this->getJson('/api/v1/me/quiz-attempts')
             ->assertOk()
-            ->assertHeader('Cache-Control', 'private, no-store, max-age=0')
+            ->assertHeader('Cache-Control', 'max-age=0, no-store, private')
             ->assertJsonPath('data.items.0.id', $created['id']);
 
         $other = User::factory()->create();
