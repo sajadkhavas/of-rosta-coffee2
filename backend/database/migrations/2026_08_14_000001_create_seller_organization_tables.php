@@ -126,6 +126,7 @@ return new class extends Migration
                         'is_locked' => false,
                         'updated_at' => $now,
                     ]);
+
                     continue;
                 }
 
@@ -156,6 +157,7 @@ return new class extends Migration
             ];
             if ($template->exists()) {
                 $template->update($values);
+
                 continue;
             }
 

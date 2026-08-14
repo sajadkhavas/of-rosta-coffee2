@@ -312,8 +312,8 @@ final class SellerOrganizationService
     }
 
     /**
-     * @param list<array{weekday:int,is_closed:bool,opens_at:?string,closes_at:?string}> $weekly
-     * @param list<array{local_date:string,is_closed:bool,opens_at:?string,closes_at:?string,public_reason:?string}> $exceptions
+     * @param  list<array{weekday:int,is_closed:bool,opens_at:?string,closes_at:?string}>  $weekly
+     * @param  list<array{local_date:string,is_closed:bool,opens_at:?string,closes_at:?string,public_reason:?string}>  $exceptions
      */
     public function replaceSchedule(
         User $actor,

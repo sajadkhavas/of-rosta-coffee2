@@ -479,8 +479,8 @@ final class SellerOrganizationController
     }
 
     /**
-     * @param list<array<string, mixed>> $weekly
-     * @param list<array<string, mixed>> $exceptions
+     * @param  list<array<string, mixed>>  $weekly
+     * @param  list<array<string, mixed>>  $exceptions
      */
     private function assertScheduleRows(array $weekly, array $exceptions): void
     {
