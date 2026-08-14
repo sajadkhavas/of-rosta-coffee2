@@ -32,8 +32,8 @@ final class TaxPolicyRule extends Model
                 throw new LogicException('Rules of a published tax policy are immutable.');
             }
         };
-        static::saving($guard);
-        static::deleting($guard);
+        self::saving($guard);
+        self::deleting($guard);
     }
 
     /** @return BelongsTo<TaxPolicy, $this> */

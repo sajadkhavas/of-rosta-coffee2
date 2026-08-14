@@ -32,8 +32,8 @@ final class CommissionPolicyRule extends Model
                 throw new LogicException('Rules of a published commission policy are immutable.');
             }
         };
-        static::saving($guard);
-        static::deleting($guard);
+        self::saving($guard);
+        self::deleting($guard);
     }
 
     /** @return BelongsTo<CommissionPolicy, $this> */

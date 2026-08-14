@@ -48,12 +48,12 @@ final class CommissionPolicy extends Model
 
     protected static function booted(): void
     {
-        static::updating(function (CommissionPolicy $policy): void {
+        self::updating(function (CommissionPolicy $policy): void {
             if ($policy->getOriginal('status') === 'published') {
                 throw new LogicException('Published commission policies are immutable.');
             }
         });
-        static::deleting(function (CommissionPolicy $policy): void {
+        self::deleting(function (CommissionPolicy $policy): void {
             if ($policy->status === 'published') {
                 throw new LogicException('Published commission policies cannot be deleted.');
             }

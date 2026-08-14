@@ -123,8 +123,8 @@ final class FinancialPolicyService
     }
 
     /**
-     * @param class-string<TaxPolicy|CommissionPolicy> $model
-     * @param array<string, mixed> $data
+     * @param  class-string<TaxPolicy|CommissionPolicy>  $model
+     * @param  array<string, mixed>  $data
      */
     private function create(string $model, string $foreignKey, User $actor, array $data, Request $request): Model
     {

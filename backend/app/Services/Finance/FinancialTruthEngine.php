@@ -2,8 +2,8 @@
 
 namespace App\Services\Finance;
 
-use App\Models\CommissionPolicyRule;
 use App\Models\CommissionPolicy;
+use App\Models\CommissionPolicyRule;
 use App\Models\TaxPolicy;
 use App\Models\TaxPolicyRule;
 use Carbon\CarbonInterface;

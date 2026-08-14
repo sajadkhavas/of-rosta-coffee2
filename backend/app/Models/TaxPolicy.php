@@ -48,12 +48,12 @@ final class TaxPolicy extends Model
 
     protected static function booted(): void
     {
-        static::updating(function (TaxPolicy $policy): void {
+        self::updating(function (TaxPolicy $policy): void {
             if ($policy->getOriginal('status') === 'published') {
                 throw new LogicException('Published tax policies are immutable.');
             }
         });
-        static::deleting(function (TaxPolicy $policy): void {
+        self::deleting(function (TaxPolicy $policy): void {
             if ($policy->status === 'published') {
                 throw new LogicException('Published tax policies cannot be deleted.');
             }
