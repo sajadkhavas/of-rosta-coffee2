@@ -1,0 +1,224 @@
+openapi: 3.1.0
+info:
+  title: Rosta Quiz and Review Safety API
+  version: 1.0.0
+  description: Persisted versioned quiz, live recommendations, seller replies and review abuse moderation.
+servers:
+  - url: /api/v1
+paths:
+  /quiz/current:
+    get:
+      operationId: quizCurrent
+      responses:
+        '200': { description: Published immutable quiz definition }
+  /quiz/attempts:
+    post:
+      operationId: quizAttemptCreate
+      description: Guest-first submission. Raw guest token is never persisted; answers are private server-side data.
+      responses:
+        '201': { description: Persisted attempt and live-catalog recommendations }
+        '422': { description: Invalid answer or version contract }
+        '429': { description: Rate limited }
+  /quiz/attempts/{attemptId}:
+    parameters:
+      - $ref: '#/components/parameters/AttemptId'
+    get:
+      operationId: quizAttemptGuestRead
+      parameters:
+        - $ref: '#/components/parameters/GuestTokenHeader'
+      responses:
+        '200': { description: Private guest attempt }
+        '404': { description: Not found or ownership token mismatch }
+    delete:
+      operationId: quizAttemptGuestDelete
+      parameters:
+        - $ref: '#/components/parameters/GuestTokenHeader'
+      responses:
+        '200': { description: Deleted }
+        '404': { description: Not found or ownership token mismatch }
+  /quiz/attempts/{attemptId}/recommendations:
+    parameters:
+      - $ref: '#/components/parameters/AttemptId'
+    get:
+      operationId: quizAttemptGuestRecommendations
+      description: Recomputes against currently published and in-stock catalog; no recommendation snapshot is trusted.
+      parameters:
+        - $ref: '#/components/parameters/GuestTokenHeader'
+      responses:
+        '200': { description: Live stale-safe recommendations and explainable reasons }
+        '404': { description: Attempt unavailable }
+  /quiz/attempts/{attemptId}/sync:
+    parameters:
+      - $ref: '#/components/parameters/AttemptId'
+    post:
+      operationId: quizAttemptSync
+      security: [{ sanctum: [] }]
+      description: Explicit consent action transferring a guest attempt to the authenticated customer. Append-history conflict policy; no silent overwrite.
+      responses:
+        '200': { description: Account-owned attempt; idempotent on retries }
+        '404': { description: Attempt unavailable to actor }
+  /me/quiz-attempts:
+    get:
+      operationId: quizProfileIndex
+      security: [{ sanctum: [] }]
+      responses:
+        '200': { description: Private customer quiz history }
+  /me/quiz-attempts/{attemptId}:
+    parameters:
+      - $ref: '#/components/parameters/AttemptId'
+    delete:
+      operationId: quizProfileDelete
+      security: [{ sanctum: [] }]
+      responses:
+        '200': { description: Private quiz data deleted }
+        '404': { description: Not owned }
+  /reviews/{reviewId}/reports:
+    parameters:
+      - $ref: '#/components/parameters/ReviewId'
+    post:
+      operationId: reviewReportCreate
+      security: [{ sanctum: [] }]
+      description: One report per customer/review. Evidence is optional, text-only and capped at 500 characters.
+      responses:
+        '201': { description: Created or duplicate-safe canonical report }
+        '404': { description: Review not public verified-purchase }
+        '429': { description: Rate limited }
+  /seller/roasteries/{roasteryId}/reviews:
+    get:
+      operationId: sellerReviewIndex
+      security: [{ sanctum: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RoasteryId'
+      responses:
+        '200': { description: Ownership-scoped reviews and canonical replies }
+        '404': { description: Roastery not owned by actor }
+  /seller/roasteries/{roasteryId}/reviews/{reviewId}/reply:
+    put:
+      operationId: sellerReviewReplyUpsert
+      security: [{ sanctum: [] }]
+      parameters:
+        - $ref: '#/components/parameters/RoasteryId'
+        - $ref: '#/components/parameters/ReviewId'
+      description: Creates or edits the single canonical reply; previous body/status is retained as revision history.
+      responses:
+        '200': { description: Canonical reply }
+        '404': { description: Ownership mismatch }
+  /admin/quiz/versions:
+    get:
+      operationId: adminQuizVersions
+      security: [{ sanctum: [] }]
+      responses:
+        '200': { description: Version list }
+    post:
+      operationId: adminQuizVersionCreate
+      security: [{ sanctum: [] }]
+      responses:
+        '201': { description: New draft }
+        '422': { description: Invalid version definition }
+  /admin/quiz/versions/{versionId}:
+    parameters:
+      - $ref: '#/components/parameters/VersionId'
+    get:
+      operationId: adminQuizVersionRead
+      security: [{ sanctum: [] }]
+      responses:
+        '200': { description: Version detail }
+    patch:
+      operationId: adminQuizVersionUpdateDraft
+      security: [{ sanctum: [] }]
+      responses:
+        '200': { description: Updated draft }
+        '409': { description: Published or archived version is immutable }
+  /admin/quiz/versions/{versionId}/preview:
+    parameters:
+      - $ref: '#/components/parameters/VersionId'
+    post:
+      operationId: adminQuizVersionPreview
+      security: [{ sanctum: [] }]
+      responses:
+        '200': { description: Preview recommendations against live catalog without publishing }
+  /admin/quiz/versions/{versionId}/publish:
+    parameters:
+      - $ref: '#/components/parameters/VersionId'
+    post:
+      operationId: adminQuizVersionPublish
+      security: [{ sanctum: [] }]
+      responses:
+        '200': { description: Published version; prior published version atomically archived }
+        '409': { description: Version is not a draft }
+  /admin/quiz/versions/{versionId}/archive:
+    parameters:
+      - $ref: '#/components/parameters/VersionId'
+    post:
+      operationId: adminQuizVersionArchive
+      security: [{ sanctum: [] }]
+      responses:
+        '200': { description: Archived version }
+        '409': { description: Cannot remove the only published version }
+  /admin/review-reports:
+    get:
+      operationId: adminReviewReportQueue
+      security: [{ sanctum: [] }]
+      responses:
+        '200': { description: Moderation queue }
+  /admin/review-reports/{reportId}:
+    patch:
+      operationId: adminReviewReportModerate
+      security: [{ sanctum: [] }]
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Audited report decision }
+  /admin/review-replies:
+    get:
+      operationId: adminReviewReplyQueue
+      security: [{ sanctum: [] }]
+      responses:
+        '200': { description: Seller reply moderation queue }
+  /admin/review-replies/{replyId}:
+    patch:
+      operationId: adminReviewReplyModerate
+      security: [{ sanctum: [] }]
+      parameters:
+        - name: replyId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Audited reply moderation decision }
+components:
+  securitySchemes:
+    sanctum:
+      type: apiKey
+      in: cookie
+      name: rosta_session
+  parameters:
+    AttemptId:
+      name: attemptId
+      in: path
+      required: true
+      schema: { type: string }
+    VersionId:
+      name: versionId
+      in: path
+      required: true
+      schema: { type: string }
+    ReviewId:
+      name: reviewId
+      in: path
+      required: true
+      schema: { type: string }
+    RoasteryId:
+      name: roasteryId
+      in: path
+      required: true
+      schema: { type: string }
+    GuestTokenHeader:
+      name: X-Quiz-Guest-Token
+      in: header
+      required: true
+      description: Opaque high-entropy guest ownership secret. Only its hash is stored server-side.
+      schema: { type: string, minLength: 32, maxLength: 200 }
