@@ -272,9 +272,7 @@ final class OrderService
                 $hubRoute = is_array($group->pricing_snapshot)
                     ? ($group->pricing_snapshot['hub_route'] ?? null)
                     : null;
-                $shippingFinancial = is_array($group->financial_snapshot)
-                    ? ($group->financial_snapshot['components']['shipping'] ?? [])
-                    : [];
+                $shippingFinancial = $group->financial_snapshot['components']['shipping'] ?? [];
                 $subOrder = SubOrder::query()->create([
                     'order_id' => $order->id,
                     'roastery_id' => $group->roastery_id,
@@ -858,19 +856,15 @@ final class OrderService
                 }
             }
 
-            $shippingFinancial = is_array($group->financial_snapshot)
-                ? ($group->financial_snapshot['components']['shipping'] ?? [])
-                : [];
+            $shippingFinancial = $group->financial_snapshot['components']['shipping'] ?? [];
             $itemTax += (int) ($shippingFinancial['tax_amount'] ?? 0);
             $itemCommission += (int) ($shippingFinancial['commission_amount'] ?? 0);
-            $expectedPayable = is_array($group->financial_snapshot)
-                ? array_sum(array_map(
-                    static fn (array $component): int => ($component['owner_type'] ?? null) === 'roastery'
-                        ? (int) ($component['payable_amount'] ?? 0)
-                        : 0,
-                    $group->financial_snapshot['components'] ?? [],
-                ))
-                : $group->grand_total;
+            $expectedPayable = array_sum(array_map(
+                static fn (array $component): int => ($component['owner_type'] ?? null) === 'roastery'
+                    ? (int) ($component['payable_amount'] ?? 0)
+                    : 0,
+                $group->financial_snapshot['components'] ?? [],
+            ));
 
             $expectedGrand = $group->subtotal
                 + $group->packaging_total

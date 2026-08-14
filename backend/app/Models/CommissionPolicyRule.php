@@ -2,11 +2,25 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use LogicException;
 
+/**
+ * @property string $id
+ * @property string $commission_policy_id
+ * @property string $code
+ * @property string $component
+ * @property string|null $owner_type
+ * @property int $rate_basis_points
+ * @property int $priority
+ * @property array<string, mixed>|null $applicability
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
+ * @property-read CommissionPolicy|null $policy
+ */
 final class CommissionPolicyRule extends Model
 {
     use HasUlids;
