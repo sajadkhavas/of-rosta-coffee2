@@ -24,21 +24,22 @@ final class RoasteryAvailability
             ->where('ends_at', '>', $moment)
             ->orderBy('starts_at')
             ->first();
+        $hasActiveClosure = $closure instanceof RoasteryClosure;
         $operating = $this->isOperatingAt($roastery, $local, $timezone);
         $acceptingOrders = ! ($closure?->blocks_new_orders ?? false);
-        $status = $closure instanceof RoasteryClosure
+        $status = $hasActiveClosure
             ? 'temporarily_closed'
             : ($operating ? 'open' : 'outside_hours');
 
         return [
             'timezone' => $timezone,
             'status' => $status,
-            'operating_now' => $operating && ! $closure instanceof RoasteryClosure,
+            'operating_now' => $operating && ! $hasActiveClosure,
             'accepting_orders' => $acceptingOrders,
             'public_reason' => $closure?->public_reason
                 ?? $this->exceptionReason($roastery, $local),
             'closed_until' => $closure?->ends_at?->utc()->toIso8601String(),
-            'next_open_at' => $operating && ! $closure instanceof RoasteryClosure
+            'next_open_at' => $operating && ! $hasActiveClosure
                 ? null
                 : $this->nextOperatingAt(
                     $roastery,
@@ -72,7 +73,7 @@ final class RoasteryAvailability
                 ->where('roastery_id', $roastery->id)
                 ->whereDate('local_date', $local->toDateString())
                 ->first();
-            if (! $exception instanceof RoasteryScheduleException) {
+            if (! ($exception instanceof RoasteryScheduleException)) {
                 return true;
             }
         }
@@ -107,6 +108,7 @@ final class RoasteryAvailability
             if ($exception->is_closed || $exception->opens_at === null || $exception->closes_at === null) {
                 return null;
             }
+
             return $this->interval($date, $exception->opens_at, $exception->closes_at, $timezone);
         }
 
@@ -122,7 +124,7 @@ final class RoasteryAvailability
             ->where('weekday', $date->dayOfWeek)
             ->first();
         if (
-            ! $hours instanceof RoasteryWeeklyHour
+            ! ($hours instanceof RoasteryWeeklyHour)
             || $hours->is_closed
             || $hours->opens_at === null
             || $hours->closes_at === null
