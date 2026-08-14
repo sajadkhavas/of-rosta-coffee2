@@ -98,7 +98,7 @@ final class QuizController extends Controller
             'answers' => $attempt->answers,
             'score_profile' => $attempt->score_profile,
             'synced' => $attempt->user_id !== null,
-            'completed_at' => $attempt->completed_at?->toIso8601String(),
+            'completed_at' => $attempt->completed_at->toIso8601String(),
         ];
     }
 
