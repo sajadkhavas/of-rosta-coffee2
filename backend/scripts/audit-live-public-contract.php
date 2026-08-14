@@ -14,6 +14,8 @@ $files = [
     'home' => file_get_contents($frontend.'/routes/index.tsx'),
     'blog' => file_get_contents($frontend.'/routes/blog.$slug.tsx'),
     'quiz' => file_get_contents($frontend.'/routes/quiz.tsx'),
+    'quiz_client' => file_get_contents($frontend.'/lib/api/quiz.ts'),
+    'quiz_service' => file_get_contents($root.'/app/Services/Quiz/QuizService.php'),
 ];
 
 $gates = [];
@@ -63,7 +65,12 @@ $gate(
     'frontend_consumes_live_contracts',
     str_contains($files['home'], 'homepageQueryOptions')
         && str_contains($files['blog'], 'blogEntryQueryOptions')
-        && str_contains($files['quiz'], 'productsQueryOptions'),
+        && str_contains($files['quiz'], 'getCurrentQuiz')
+        && str_contains($files['quiz'], 'submitQuizAttempt')
+        && str_contains($files['quiz_client'], '"/quiz/current"')
+        && str_contains($files['quiz_client'], '"/quiz/attempts"')
+        && str_contains($files['quiz_service'], 'Product::query()->published()')
+        && str_contains($files['quiz_service'], "whereColumn('stock_on_hand', '>', 'stock_reserved')"),
     'Homepage, editorial and quiz surfaces must consume live API/CMS contracts.',
 );
 

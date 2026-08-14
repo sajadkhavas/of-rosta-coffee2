@@ -1,11 +1,37 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Alert, EmptyState, Skeleton } from "@/components/system";
-import { productReviewsQueryOptions } from "@/lib/api/reviews";
 import { isApiError } from "@/lib/api/client";
+import {
+  productReviewsQueryOptions,
+  reportReview,
+  type ReviewReportReason,
+} from "@/lib/api/reviews";
 import { toFa } from "@/lib/persian";
+
+const reasons: Array<{ value: ReviewReportReason; label: string }> = [
+  { value: "spam", label: "هرزنامه" },
+  { value: "harassment", label: "آزار یا توهین" },
+  { value: "hate", label: "محتوای نفرت‌پراکن" },
+  { value: "personal_data", label: "اطلاعات شخصی" },
+  { value: "fraud", label: "فریب یا ادعای مشکوک" },
+  { value: "off_topic", label: "نامرتبط" },
+  { value: "other", label: "سایر" },
+];
 
 export function ProductReviews({ productSlug }: { productSlug: string }) {
   const query = useQuery(productReviewsQueryOptions(productSlug));
+  const [reportingId, setReportingId] = useState<string | null>(null);
+  const [reason, setReason] = useState<ReviewReportReason>("spam");
+  const [evidence, setEvidence] = useState("");
+  const report = useMutation({
+    mutationFn: ({ reviewId }: { reviewId: string }) =>
+      reportReview(reviewId, { reason, evidence }),
+    onSuccess: () => {
+      setEvidence("");
+      setReportingId(null);
+    },
+  });
   if (query.isLoading)
     return (
       <section className="mt-14">
@@ -71,18 +97,91 @@ export function ProductReviews({ productSlug }: { productSlug: string }) {
               <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[color:var(--light)]">
                 {review.body}
               </p>
-              <div className="mt-4 flex items-center justify-between text-[10px] text-[color:var(--muted-gold)]">
+              {review.seller_reply ? (
+                <div className="mt-4 rounded-xl border border-[color:var(--mid)] bg-[color:var(--night)] p-3 text-sm leading-7">
+                  <strong className="text-[color:var(--roast)]">پاسخ فروشنده</strong>
+                  <p className="mt-1 whitespace-pre-wrap text-[color:var(--light)]">
+                    {review.seller_reply.body}
+                  </p>
+                </div>
+              ) : null}
+              <div className="mt-4 flex items-center justify-between gap-3 text-[10px] text-[color:var(--muted-gold)]">
                 <span>✓ خرید تأییدشده</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReportingId(reportingId === review.id ? null : review.id);
+                    report.reset();
+                  }}
+                  className="rounded px-2 py-1 underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--roast)]"
+                >
+                  گزارش
+                </button>
                 {review.created_at ? (
                   <time dateTime={review.created_at}>
                     {new Date(review.created_at).toLocaleDateString("fa-IR")}
                   </time>
                 ) : null}
               </div>
+              {reportingId === review.id ? (
+                <div className="mt-3 rounded-xl border border-[color:var(--mid)] p-3">
+                  <label className="text-xs font-bold" htmlFor={`report-reason-${review.id}`}>
+                    دلیل گزارش
+                  </label>
+                  <select
+                    id={`report-reason-${review.id}`}
+                    value={reason}
+                    onChange={(event) => setReason(event.target.value as ReviewReportReason)}
+                    className="mt-2 min-h-11 w-full rounded-lg border border-[color:var(--mid)] bg-[color:var(--night)] px-3"
+                  >
+                    {reasons.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                  <label className="mt-3 block text-xs" htmlFor={`report-evidence-${review.id}`}>
+                    توضیح اختیاری، حداکثر ۵۰۰ نویسه
+                  </label>
+                  <textarea
+                    id={`report-evidence-${review.id}`}
+                    value={evidence}
+                    maxLength={500}
+                    onChange={(event) => setEvidence(event.target.value)}
+                    className="mt-2 min-h-20 w-full rounded-lg border border-[color:var(--mid)] bg-[color:var(--night)] p-3"
+                  />
+                  {report.isError ? (
+                    <div className="mt-2">
+                      <Alert variant="warning">
+                        {isApiError(report.error) && report.error.status === 401
+                          ? "برای ثبت گزارش وارد حساب شو."
+                          : isApiError(report.error)
+                            ? report.error.message
+                            : "گزارش ثبت نشد."}
+                      </Alert>
+                    </div>
+                  ) : null}
+                  <button
+                    type="button"
+                    disabled={report.isPending}
+                    onClick={() => report.mutate({ reviewId: review.id })}
+                    className="mt-3 min-h-11 rounded-lg bg-[color:var(--roast)] px-4 text-sm font-bold text-[color:var(--night)] disabled:opacity-50"
+                  >
+                    {report.isPending ? "در حال ثبت…" : "ثبت گزارش"}
+                  </button>
+                </div>
+              ) : null}
             </article>
           ))}
         </div>
       )}
+      {report.isSuccess ? (
+        <div className="mt-4">
+          <Alert variant="success">
+            گزارش ثبت شد و گزارش تکراری برای همین حساب دوباره ساخته نمی‌شود.
+          </Alert>
+        </div>
+      ) : null}
     </section>
   );
 }

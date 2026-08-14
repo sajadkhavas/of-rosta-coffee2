@@ -7,17 +7,19 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @property string $id
- * @property string|null $user_id
- * @property string|null $order_id
- * @property string|null $order_item_id
- * @property string|null $product_id
- * @property string|null $roastery_id
+ * @property string $user_id
+ * @property string $order_id
+ * @property string $order_item_id
+ * @property string $product_id
+ * @property string $roastery_id
  * @property int $rating
  * @property string|null $title
- * @property string|null $body
+ * @property string $body
  * @property ReviewStatus $status
  * @property bool $is_verified_purchase
  * @property string|null $moderated_by
@@ -31,35 +33,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property-read Product|null $product
  * @property-read Roastery|null $roastery
  * @property-read User|null $moderator
+ * @property-read ReviewReply|null $reply
  */
 final class Review extends Model
 {
     use HasUlids;
 
-    protected $fillable = [
-        'user_id',
-        'order_id',
-        'order_item_id',
-        'product_id',
-        'roastery_id',
-        'rating',
-        'title',
-        'body',
-        'status',
-        'is_verified_purchase',
-        'moderated_by',
-        'moderated_at',
-        'moderation_reason',
-    ];
+    protected $fillable = ['user_id', 'order_id', 'order_item_id', 'product_id', 'roastery_id', 'rating', 'title', 'body', 'status', 'is_verified_purchase', 'moderated_by', 'moderated_at', 'moderation_reason'];
 
     protected function casts(): array
     {
-        return [
-            'rating' => 'integer',
-            'status' => ReviewStatus::class,
-            'is_verified_purchase' => 'boolean',
-            'moderated_at' => 'immutable_datetime',
-        ];
+        return ['rating' => 'integer', 'status' => ReviewStatus::class, 'is_verified_purchase' => 'boolean', 'moderated_at' => 'immutable_datetime'];
     }
 
     /** @return BelongsTo<User, $this> */
@@ -96,5 +80,17 @@ final class Review extends Model
     public function moderator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'moderated_by');
+    }
+
+    /** @return HasOne<ReviewReply, $this> */
+    public function reply(): HasOne
+    {
+        return $this->hasOne(ReviewReply::class);
+    }
+
+    /** @return HasMany<ReviewReport, $this> */
+    public function reports(): HasMany
+    {
+        return $this->hasMany(ReviewReport::class);
     }
 }

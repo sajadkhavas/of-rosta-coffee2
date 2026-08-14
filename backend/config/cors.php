@@ -19,6 +19,7 @@ return [
         'Origin',
         'X-Requested-With',
         'X-XSRF-TOKEN',
+        'X-Quiz-Guest-Token',
         'X-Request-ID',
         'Idempotency-Key',
     ],

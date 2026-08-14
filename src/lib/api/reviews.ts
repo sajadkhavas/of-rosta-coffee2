@@ -3,6 +3,9 @@ import { z } from "zod";
 import { apiFetch } from "./client";
 import { parseContract, resourceSchema } from "./schemas";
 
+const replySchema = z
+  .object({ body: z.string().min(1).max(5_000), updated_at: z.string().nullable().optional() })
+  .strict();
 const reviewItemSchema = z
   .object({
     id: z.string().min(1).max(240),
@@ -12,6 +15,7 @@ const reviewItemSchema = z
     author: z.string().min(1).max(160),
     is_verified_purchase: z.literal(true),
     created_at: z.string().nullable().optional(),
+    seller_reply: replySchema.nullable().optional(),
   })
   .strict();
 const publicReviewSchema = z
@@ -42,38 +46,68 @@ const privateReviewSchema = z
     created_at: z.string().nullable().optional(),
   })
   .strict();
+const reportSchema = z
+  .object({
+    id: z.string().min(1).max(240),
+    review_id: z.string().min(1).max(240),
+    reason: z.enum(["spam", "harassment", "hate", "personal_data", "fraud", "off_topic", "other"]),
+    evidence: z.string().max(500).nullable().optional(),
+    status: z.enum(["open", "reviewing", "resolved", "dismissed"]),
+    created_at: z.string().nullable().optional(),
+    moderated_at: z.string().nullable().optional(),
+    resolution_reason: z.string().max(500).nullable().optional(),
+  })
+  .strict();
 
 export type PublicReviewData = z.infer<typeof publicReviewSchema>;
 export type PublicReviewItem = z.infer<typeof reviewItemSchema>;
+export type ReviewReportReason = z.infer<typeof reportSchema.shape.reason>;
 
 export async function listProductReviews(
   productSlug: string,
   limit = 20,
 ): Promise<PublicReviewData> {
-  const payload = await apiFetch<unknown>(
-    `/products/${encodeURIComponent(productSlug)}/reviews?limit=${Math.min(100, Math.max(1, limit))}`,
-  );
-  return parseContract(resourceSchema(publicReviewSchema), payload, "نظرهای محصول").data;
+  return parseContract(
+    resourceSchema(publicReviewSchema),
+    await apiFetch<unknown>(
+      `/products/${encodeURIComponent(productSlug)}/reviews?limit=${Math.min(100, Math.max(1, limit))}`,
+    ),
+    "نظرهای محصول",
+  ).data;
 }
-
 export async function createVerifiedReview(input: {
   orderItemId: string;
   rating: number;
   title?: string;
   body: string;
 }) {
-  const payload = await apiFetch<unknown>("/reviews", {
-    method: "POST",
-    body: {
-      order_item_id: input.orderItemId,
-      rating: input.rating,
-      title: input.title?.trim() || undefined,
-      body: input.body.trim(),
-    },
-  });
-  return parseContract(resourceSchema(privateReviewSchema), payload, "ثبت نظر خرید تأییدشده").data;
+  return parseContract(
+    resourceSchema(privateReviewSchema),
+    await apiFetch<unknown>("/reviews", {
+      method: "POST",
+      body: {
+        order_item_id: input.orderItemId,
+        rating: input.rating,
+        title: input.title?.trim() || undefined,
+        body: input.body.trim(),
+      },
+    }),
+    "ثبت نظر خرید تأییدشده",
+  ).data;
 }
-
+export async function reportReview(
+  reviewId: string,
+  input: { reason: ReviewReportReason; evidence?: string },
+) {
+  return parseContract(
+    resourceSchema(reportSchema),
+    await apiFetch<unknown>(`/reviews/${encodeURIComponent(reviewId)}/reports`, {
+      method: "POST",
+      body: { reason: input.reason, evidence: input.evidence?.trim() || null },
+    }),
+    "گزارش نظر",
+  ).data;
+}
 export const productReviewsQueryOptions = (productSlug: string) =>
   queryOptions({
     queryKey: ["public", "products", productSlug, "reviews"],

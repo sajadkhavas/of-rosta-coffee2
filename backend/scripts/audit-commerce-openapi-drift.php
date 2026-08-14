@@ -6,6 +6,7 @@ $openApi = implode("\n", [
     file_get_contents(dirname($root).'/docs/openapi/rosta-v1-finance.yaml'),
     file_get_contents(dirname($root).'/docs/openapi/rosta-v1-seller-operations.yaml'),
     file_get_contents(dirname($root).'/docs/openapi/rosta-v1-admin-operations.yaml'),
+    file_get_contents(dirname($root).'/docs/openapi/rosta-v1-quiz-reviews.yaml'),
 ]);
 require_once $root.'/scripts/route-contract-support.php';
 $routeContracts = rostaRouteContracts($root);
@@ -60,6 +61,25 @@ $contracts = [
     '/admin/finance/settlement-batches/{batchId}/resolve',
     '/admin/sub-orders/{subOrderId}/settlement-hold',
     '/seller/roasteries/{roasteryId}/settlements',
+    '/quiz/current',
+    '/quiz/attempts',
+    '/quiz/attempts/{attemptId}',
+    '/quiz/attempts/{attemptId}/recommendations',
+    '/quiz/attempts/{attemptId}/sync',
+    '/me/quiz-attempts',
+    '/me/quiz-attempts/{attemptId}',
+    '/reviews/{reviewId}/reports',
+    '/seller/roasteries/{roasteryId}/reviews',
+    '/seller/roasteries/{roasteryId}/reviews/{reviewId}/reply',
+    '/admin/quiz/versions',
+    '/admin/quiz/versions/{versionId}',
+    '/admin/quiz/versions/{versionId}/preview',
+    '/admin/quiz/versions/{versionId}/publish',
+    '/admin/quiz/versions/{versionId}/archive',
+    '/admin/review-reports',
+    '/admin/review-reports/{reportId}',
+    '/admin/review-replies',
+    '/admin/review-replies/{replyId}',
 ];
 
 $missingRoutes = [];
