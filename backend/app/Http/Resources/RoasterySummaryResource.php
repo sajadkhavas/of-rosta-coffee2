@@ -3,7 +3,6 @@
 namespace App\Http\Resources;
 
 use App\Models\Roastery;
-use App\Services\Seller\RoasteryAvailability;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -38,7 +37,6 @@ class RoasterySummaryResource extends JsonResource
             'cover' => $this->cover ? new MediaAssetResource($this->cover) : null,
             'preparation_time' => $preparation,
             'rating' => $rating,
-            'availability' => app(RoasteryAvailability::class)->snapshot($this->resource),
         ];
     }
 }
