@@ -101,7 +101,11 @@ final class SellerAccess
             ->where('user_id', $user->id)
             ->where('is_locked', false)
             ->get() as $membership) {
-            $result[$membership->roastery_id] = [$membership->role->value];
+            $result[$membership->roastery_id] = [match ($membership->role) {
+                RoasteryMembershipRole::Owner => Role::RoasteryOwner->value,
+                RoasteryMembershipRole::Manager => Role::RoasteryManager->value,
+                default => Role::RoasteryStaff->value,
+            }];
         }
 
         foreach (UserRole::query()
