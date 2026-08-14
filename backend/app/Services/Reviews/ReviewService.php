@@ -28,12 +28,15 @@ final class ReviewService
                 })
                 ->lockForUpdate()
                 ->firstOrFail();
+
             if ($item->order->status !== OrderStatus::Delivered) {
                 throw new ApiDomainException('review.order_not_delivered', 'ثبت نظر فقط پس از تحویل سفارش امکان‌پذیر است.', 409);
             }
+
             if (Review::query()->where('order_item_id', $item->id)->exists()) {
                 throw new ApiDomainException('review.already_submitted', 'برای این آیتم سفارش قبلاً نظر ثبت شده است.', 409);
             }
+
             $review = Review::query()->create([
                 'user_id' => $user->id,
                 'order_id' => $item->order_id,
@@ -46,6 +49,7 @@ final class ReviewService
                 'status' => ReviewStatus::Pending,
                 'is_verified_purchase' => true,
             ]);
+
             $this->audit->record('review.created', actor: $user, auditable: $review, metadata: [
                 'order_id' => $review->order_id,
                 'order_item_id' => $review->order_item_id,
@@ -71,6 +75,7 @@ final class ReviewService
                 'moderated_at' => now(),
                 'moderation_reason' => $this->cleanNullableText($reason, 500),
             ])->save();
+
             $this->audit->record('review.moderated', actor: $administrator, auditable: $locked, metadata: [
                 'status' => $status->value,
                 'product_id' => $locked->product_id,
@@ -88,14 +93,18 @@ final class ReviewService
             ->where('is_verified_purchase', true);
         $count = (clone $query)->count();
         $average = $count > 0 ? round((float) (clone $query)->avg('rating'), 2) : null;
-        $items = $query->with(['user:id,name', 'reply'])
+        $items = $query
+            ->with(['user:id,name', 'reply'])
             ->latest('created_at')
             ->limit(max(1, min(100, $limit)))
             ->get()
             ->map(fn (Review $review): array => $this->publicPayload($review))
             ->all();
 
-        return ['summary' => ['count' => $count, 'average' => $average], 'items' => $items];
+        return [
+            'summary' => ['count' => $count, 'average' => $average],
+            'items' => $items,
+        ];
     }
 
     public function privatePayload(Review $review): array
@@ -139,8 +148,11 @@ final class ReviewService
     private function publicName(?string $name): string
     {
         $name = trim((string) $name);
+        if ($name === '') {
+            return 'خریدار رستا';
+        }
 
-        return $name === '' ? 'خریدار رستا' : mb_substr($name, 0, 1).'***';
+        return mb_substr($name, 0, 1).'***';
     }
 
     private function cleanNullableText(?string $value, int $max): ?string
