@@ -417,8 +417,8 @@ final class SellerOrganizationController
     {
         return [
             'id' => $closure->id,
-            'starts_at' => $closure->starts_at->toIso8601String(),
-            'ends_at' => $closure->ends_at->toIso8601String(),
+            'starts_at' => $closure->starts_at->utc()->toIso8601String(),
+            'ends_at' => $closure->ends_at->utc()->toIso8601String(),
             'public_reason' => $closure->public_reason,
             'blocks_new_orders' => $closure->blocks_new_orders,
             'is_active' => $closure->revoked_at === null
@@ -454,8 +454,8 @@ final class SellerOrganizationController
             'id' => $promotion->id,
             'name' => $promotion->name,
             'status' => $promotion->status->value,
-            'starts_at' => $promotion->starts_at?->toIso8601String(),
-            'ends_at' => $promotion->ends_at?->toIso8601String(),
+            'starts_at' => $promotion->starts_at?->utc()->toIso8601String(),
+            'ends_at' => $promotion->ends_at?->utc()->toIso8601String(),
             'pricing_applied' => false,
         ];
     }

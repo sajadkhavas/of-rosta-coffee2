@@ -20,9 +20,10 @@ final class ProductController
         RoasteryAvailability $availability,
     ): AnonymousResourceCollection {
         $products = $catalog->products($request->validated());
+        $truth = $this->availabilityMap($products->getCollection(), $availability);
 
         return ProductSummaryResource::collection($products)
-            ->additional(['availability' => $this->availabilityMap($products->getCollection(), $availability)]);
+            ->additional(['availability' => $truth]);
     }
 
     public function show(
@@ -45,9 +46,10 @@ final class ProductController
     ): AnonymousResourceCollection {
         $product = $catalog->product($slug);
         $related = $catalog->related($product);
+        $truth = $this->availabilityMap($related, $availability);
 
         return ProductSummaryResource::collection($related)
-            ->additional(['availability' => $this->availabilityMap($related, $availability)]);
+            ->additional(['availability' => $truth]);
     }
 
     /** @param Collection<int, Product> $products */

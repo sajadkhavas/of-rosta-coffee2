@@ -367,12 +367,16 @@ final class SellerOrganizationService
             throw new ApiDomainException('seller.closure_invalid_range', 'پایان تعطیلی باید بعد از شروع باشد.', 422);
         }
         $publicReason = $this->safePublicReason($publicReason);
+        $databaseStartsAt = $this->databaseTime($startsAt);
+        $databaseEndsAt = $this->databaseTime($endsAt);
 
         return DB::transaction(function () use (
             $actor,
             $roastery,
             $startsAt,
             $endsAt,
+            $databaseStartsAt,
+            $databaseEndsAt,
             $publicReason,
             $blocksNewOrders,
             $request,
@@ -381,8 +385,8 @@ final class SellerOrganizationService
             $overlap = RoasteryClosure::query()
                 ->where('roastery_id', $roastery->id)
                 ->whereNull('revoked_at')
-                ->where('starts_at', '<', $endsAt)
-                ->where('ends_at', '>', $startsAt)
+                ->where('starts_at', '<', $databaseEndsAt)
+                ->where('ends_at', '>', $databaseStartsAt)
                 ->lockForUpdate()
                 ->exists();
             if ($overlap) {
@@ -395,8 +399,8 @@ final class SellerOrganizationService
 
             $closure = RoasteryClosure::query()->create([
                 'roastery_id' => $roastery->id,
-                'starts_at' => $startsAt->utc(),
-                'ends_at' => $endsAt->utc(),
+                'starts_at' => $databaseStartsAt,
+                'ends_at' => $databaseEndsAt,
                 'public_reason' => $publicReason,
                 'blocks_new_orders' => $blocksNewOrders,
                 'created_by' => $actor->id,
@@ -481,8 +485,8 @@ final class SellerOrganizationService
             'status' => $startsAt === null
                 ? RoasteryPromotionStatus::Draft
                 : RoasteryPromotionStatus::Scheduled,
-            'starts_at' => $startsAt?->utc(),
-            'ends_at' => $endsAt?->utc(),
+            'starts_at' => $startsAt === null ? null : $this->databaseTime($startsAt),
+            'ends_at' => $endsAt === null ? null : $this->databaseTime($endsAt),
             'created_by' => $actor->id,
         ]);
         $this->audit->record(
@@ -611,6 +615,11 @@ final class SellerOrganizationService
         }
 
         return $reason;
+    }
+
+    private function databaseTime(CarbonImmutable $value): CarbonImmutable
+    {
+        return $value->setTimezone((string) config('app.timezone', 'UTC'));
     }
 
     /** @param array<string, mixed> $payload */

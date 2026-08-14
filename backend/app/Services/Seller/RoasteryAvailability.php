@@ -15,13 +15,14 @@ final class RoasteryAvailability
     public function snapshot(Roastery $roastery, ?CarbonImmutable $at = null): array
     {
         $moment = ($at ?? CarbonImmutable::now('UTC'))->utc();
+        $databaseMoment = $moment->setTimezone((string) config('app.timezone', 'UTC'));
         $timezone = $this->timezone($roastery->timezone ?? 'Asia/Tehran');
         $local = $moment->setTimezone($timezone);
         $closure = RoasteryClosure::query()
             ->where('roastery_id', $roastery->id)
             ->whereNull('revoked_at')
-            ->where('starts_at', '<=', $moment)
-            ->where('ends_at', '>', $moment)
+            ->where('starts_at', '<=', $databaseMoment)
+            ->where('ends_at', '>', $databaseMoment)
             ->orderBy('starts_at')
             ->first();
         $hasActiveClosure = $closure instanceof RoasteryClosure;

@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string|null $name
  * @property string|null $slug
  * @property string|null $city
+ * @property string $timezone
  * @property string|null $description
  * @property string|null $shipping_policy
  * @property RoasteryStatus $status
@@ -49,6 +50,7 @@ final class Roastery extends Model
         'name',
         'slug',
         'city',
+        'timezone',
         'description',
         'shipping_policy',
         'status',

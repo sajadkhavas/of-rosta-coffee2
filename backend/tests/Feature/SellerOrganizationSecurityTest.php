@@ -99,6 +99,14 @@ final class SellerOrganizationSecurityTest extends TestCase
         $roastery = $this->roastery('admin');
         $owner = $this->member($roastery, RoasteryMembershipRole::Owner);
         $secondOwner = $this->member($roastery, RoasteryMembershipRole::Owner);
+        $ownerMembership = RoasteryMembership::query()
+            ->where('roastery_id', $roastery->id)
+            ->where('user_id', $owner->id)
+            ->firstOrFail();
+        $secondOwnerMembership = RoasteryMembership::query()
+            ->where('roastery_id', $roastery->id)
+            ->where('user_id', $secondOwner->id)
+            ->firstOrFail();
         $admin = User::factory()->create();
         $this->authenticateWithRole($admin, Role::Administrator);
 
@@ -110,13 +118,13 @@ final class SellerOrganizationSecurityTest extends TestCase
             'name' => 'نام غیرمجاز',
         ])->assertForbidden();
 
-        $this->patchJson("/api/v1/admin/seller-organizations/memberships/{$secondOwner->id}/lock", [
+        $this->patchJson("/api/v1/admin/seller-organizations/memberships/{$secondOwnerMembership->id}/lock", [
             'locked' => true,
         ])
             ->assertOk()
             ->assertJsonPath('data.is_locked', true);
 
-        $this->patchJson("/api/v1/admin/seller-organizations/memberships/{$owner->id}/lock", [
+        $this->patchJson("/api/v1/admin/seller-organizations/memberships/{$ownerMembership->id}/lock", [
             'locked' => true,
         ])
             ->assertConflict()
