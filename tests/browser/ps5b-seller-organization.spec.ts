@@ -87,19 +87,22 @@ test("PS5B seller organization is private, uncached, keyboard-labeled and mobile
   });
   expect(leakedEntries).toEqual([]);
 
-  const unnamedControls = await page.locator("button, input, select, textarea").evaluateAll((nodes) =>
-    nodes
-      .filter((node) => {
-        const element = node as HTMLElement;
-        const id = element.getAttribute("id");
-        const label = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`) : null;
-        const wrapped = element.closest("label");
-        const name = element.getAttribute("aria-label") ?? element.getAttribute("aria-labelledby");
-        const buttonText = element.tagName === "BUTTON" ? element.textContent?.trim() : "";
-        return !label && !wrapped && !name && !buttonText;
-      })
-      .map((node) => (node as HTMLElement).outerHTML.slice(0, 160)),
-  );
+  const unnamedControls = await page
+    .locator("button, input, select, textarea")
+    .evaluateAll((nodes) =>
+      nodes
+        .filter((node) => {
+          const element = node as HTMLElement;
+          const id = element.getAttribute("id");
+          const label = id ? document.querySelector(`label[for="${CSS.escape(id)}"]`) : null;
+          const wrapped = element.closest("label");
+          const name =
+            element.getAttribute("aria-label") ?? element.getAttribute("aria-labelledby");
+          const buttonText = element.tagName === "BUTTON" ? element.textContent?.trim() : "";
+          return !label && !wrapped && !name && !buttonText;
+        })
+        .map((node) => (node as HTMLElement).outerHTML.slice(0, 160)),
+    );
   expect(unnamedControls).toEqual([]);
 
   await page.keyboard.press("Tab");

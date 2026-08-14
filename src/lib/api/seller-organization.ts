@@ -35,10 +35,7 @@ const availabilitySchema = z
     public_reason: z.string().max(180).nullable(),
     closed_until: z.string().nullable(),
     next_open_at: z.string().nullable(),
-    order_policy: z.enum([
-      "accepting_new_orders",
-      "new_orders_blocked_by_temporary_closure",
-    ]),
+    order_policy: z.enum(["accepting_new_orders", "new_orders_blocked_by_temporary_closure"]),
   })
   .strict();
 const memberSchema = z
@@ -66,16 +63,28 @@ const weeklyHourSchema = z
   .object({
     weekday: z.number().int().min(0).max(6),
     is_closed: z.boolean(),
-    opens_at: z.string().regex(/^\d{2}:\d{2}$/).nullable(),
-    closes_at: z.string().regex(/^\d{2}:\d{2}$/).nullable(),
+    opens_at: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/)
+      .nullable(),
+    closes_at: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/)
+      .nullable(),
   })
   .strict();
 const exceptionSchema = z
   .object({
     local_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     is_closed: z.boolean(),
-    opens_at: z.string().regex(/^\d{2}:\d{2}$/).nullable(),
-    closes_at: z.string().regex(/^\d{2}:\d{2}$/).nullable(),
+    opens_at: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/)
+      .nullable(),
+    closes_at: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/)
+      .nullable(),
     public_reason: z.string().max(180).nullable(),
   })
   .strict();
@@ -128,9 +137,7 @@ export type ScheduleExceptionInput = z.infer<typeof exceptionSchema>;
 
 export async function getSellerOrganization(roasteryId: string): Promise<SellerOrganization> {
   return organizationSchema.parse(
-    await apiFetch<unknown>(
-      `/seller/roasteries/${encodeURIComponent(roasteryId)}/organization`,
-    ),
+    await apiFetch<unknown>(`/seller/roasteries/${encodeURIComponent(roasteryId)}/organization`),
   ).data;
 }
 
@@ -153,10 +160,10 @@ export async function createSellerInvitation(
     })
     .passthrough()
     .parse(
-      await apiFetch<unknown>(
-        `/seller/roasteries/${encodeURIComponent(roasteryId)}/invitations`,
-        { method: "POST", body: { mobile, role } },
-      ),
+      await apiFetch<unknown>(`/seller/roasteries/${encodeURIComponent(roasteryId)}/invitations`, {
+        method: "POST",
+        body: { mobile, role },
+      }),
     );
   return { token: response.data.token };
 }
