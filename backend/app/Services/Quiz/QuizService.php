@@ -290,7 +290,7 @@ final class QuizService
             throw new ApiDomainException('quiz.guest_token_invalid', 'شناسه مهمان معتبر نیست.', 422);
         }
 
-return hash('sha256', $token);
+        return hash('sha256', $token);
     }
 
     private function assertGuestToken(QuizAttempt $attempt, string $token): void
