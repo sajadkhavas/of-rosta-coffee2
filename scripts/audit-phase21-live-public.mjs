@@ -29,6 +29,8 @@ const paths = {
   contentBlocks: "src/components/content/ContentBlocks.tsx",
   quiz: "src/routes/quiz.tsx",
   quizLogic: "src/lib/quiz-logic.ts",
+  quizClient: "src/lib/api/quiz.ts",
+  quizService: "backend/app/Services/Quiz/QuizService.php",
   products: "src/routes/products.index.tsx",
   roasteries: "src/routes/roasteries.index.tsx",
   product: "src/routes/products.$slug.tsx",
@@ -84,13 +86,15 @@ gate(
 );
 gate(
   "quiz_uses_live_available_catalog",
-  /ensureQueryData\s*\(\s*productsQueryOptions\s*\(/.test(files.quiz) &&
-    /available\s*:\s*true/.test(files.quiz) &&
-    files.quizLogic.includes("products: ProductSummary[]") &&
-    files.quizLogic.includes('product.status === "published"') &&
-    files.quizLogic.includes("variant.isAvailable") &&
+  files.quiz.includes("getCurrentQuiz") &&
+    files.quiz.includes("submitQuizAttempt") &&
+    files.quizClient.includes('apiFetch<unknown>("/quiz/current")') &&
+    files.quizClient.includes('apiFetch<unknown>("/quiz/attempts"') &&
+    files.quizService.includes("Product::query()->published()") &&
+    files.quizService.includes("whereHas('variants'") &&
+    files.quizService.includes("whereColumn('stock_on_hand', '>', 'stock_reserved')") &&
     !files.quizLogic.includes("data/seed"),
-  "Quiz ranking must run only against live published and available products.",
+  "Persisted Quiz ranking must execute server-side against published products with live available stock.",
 );
 gate(
   "public_catalog_lists_are_ssr",
