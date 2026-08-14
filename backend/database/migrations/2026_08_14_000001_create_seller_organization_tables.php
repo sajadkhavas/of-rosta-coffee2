@@ -107,19 +107,28 @@ return new class extends Migration
                 if (! DB::table('roasteries')->where('id', $assignment->scope_id)->exists()) {
                     continue;
                 }
-                DB::table('roastery_memberships')->updateOrInsert(
-                    [
-                        'roastery_id' => $assignment->scope_id,
-                        'user_id' => $assignment->user_id,
-                    ],
-                    [
-                        'id' => (string) Str::ulid(),
+
+                $membership = DB::table('roastery_memberships')
+                    ->where('roastery_id', $assignment->scope_id)
+                    ->where('user_id', $assignment->user_id);
+                if ($membership->exists()) {
+                    $membership->update([
                         'role' => $membershipRole,
                         'is_locked' => false,
-                        'created_at' => $now,
                         'updated_at' => $now,
-                    ],
-                );
+                    ]);
+                    continue;
+                }
+
+                DB::table('roastery_memberships')->insert([
+                    'id' => (string) Str::ulid(),
+                    'roastery_id' => $assignment->scope_id,
+                    'user_id' => $assignment->user_id,
+                    'role' => $membershipRole,
+                    'is_locked' => false,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
             }
         }
 
@@ -128,18 +137,25 @@ return new class extends Migration
             'seller.closure.started' => 'تعطیلی موقت {{roastery_name}} ثبت شد و تا {{ends_at}} ادامه دارد.',
             'seller.closure.ended' => 'تعطیلی موقت {{roastery_name}} پایان یافت و پذیرش سفارش طبق برنامه روستری ادامه دارد.',
         ] as $key => $body) {
-            DB::table('notification_templates')->updateOrInsert(
-                ['key' => $key],
-                [
-                    'id' => (string) Str::ulid(),
-                    'channel' => 'sms',
-                    'body' => $body,
-                    'provider_template' => null,
-                    'is_active' => true,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ],
-            );
+            $template = DB::table('notification_templates')->where('key', $key);
+            $values = [
+                'channel' => 'sms',
+                'body' => $body,
+                'provider_template' => null,
+                'is_active' => true,
+                'updated_at' => $now,
+            ];
+            if ($template->exists()) {
+                $template->update($values);
+                continue;
+            }
+
+            DB::table('notification_templates')->insert([
+                'id' => (string) Str::ulid(),
+                'key' => $key,
+                ...$values,
+                'created_at' => $now,
+            ]);
         }
     }
 
