@@ -27,7 +27,7 @@ final class RoasteryAvailability
             ->first();
         $hasActiveClosure = $closure instanceof RoasteryClosure;
         $operating = $this->isOperatingAt($roastery, $local, $timezone);
-        $acceptingOrders = ! ($closure?->blocks_new_orders ?? false);
+        $acceptingOrders = ! ($closure->blocks_new_orders ?? false);
         $status = $hasActiveClosure
             ? 'temporarily_closed'
             : ($operating ? 'open' : 'outside_hours');
@@ -37,7 +37,7 @@ final class RoasteryAvailability
             'status' => $status,
             'operating_now' => $operating && ! $hasActiveClosure,
             'accepting_orders' => $acceptingOrders,
-            'public_reason' => $closure?->public_reason
+            'public_reason' => $closure->public_reason
                 ?? $this->exceptionReason($roastery, $local),
             'closed_until' => $closure?->ends_at?->utc()->toIso8601String(),
             'next_open_at' => $operating && ! $hasActiveClosure

@@ -119,9 +119,7 @@ final class SellerAccess
             ->get() as $assignment) {
             if (! isset($result[$assignment->scope_id])) {
                 $result[$assignment->scope_id] ??= [];
-                $value = $assignment->role instanceof Role
-                    ? $assignment->role->value
-                    : (string) $assignment->role;
+                $value = $assignment->role->value;
                 if (! in_array($value, $result[$assignment->scope_id], true)) {
                     $result[$assignment->scope_id][] = $value;
                 }
