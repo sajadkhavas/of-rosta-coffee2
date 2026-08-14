@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminDispatchRefundController;
 use App\Http\Controllers\Admin\AdminFinanceController;
+use App\Http\Controllers\Admin\AdminFinancialPolicyController;
 use App\Http\Controllers\Admin\AdminSettlementController;
 use App\Http\Controllers\Seller\SellerSettlementController;
 use Illuminate\Support\Facades\Route;
@@ -16,6 +17,24 @@ Route::middleware([
         ->name('api.v1.admin.finance.refunds.index');
     Route::get('/admin/finance/reconciliation', [AdminFinanceController::class, 'reconciliation'])
         ->name('api.v1.admin.finance.reconciliation.index');
+    Route::get('/admin/finance/policies', [AdminFinancialPolicyController::class, 'index'])
+        ->name('api.v1.admin.finance.policies.index');
+    Route::post('/admin/finance/tax-policies', [AdminFinancialPolicyController::class, 'storeTax'])
+        ->name('api.v1.admin.finance.tax_policies.store');
+    Route::patch('/admin/finance/tax-policies/{policyId}', [AdminFinancialPolicyController::class, 'updateTax'])
+        ->where('policyId', '[A-Za-z0-9._:-]+')->name('api.v1.admin.finance.tax_policies.update');
+    Route::post('/admin/finance/tax-policies/{policyId}/submit', [AdminFinancialPolicyController::class, 'submitTax'])
+        ->where('policyId', '[A-Za-z0-9._:-]+')->name('api.v1.admin.finance.tax_policies.submit');
+    Route::post('/admin/finance/tax-policies/{policyId}/publish', [AdminFinancialPolicyController::class, 'publishTax'])
+        ->where('policyId', '[A-Za-z0-9._:-]+')->name('api.v1.admin.finance.tax_policies.publish');
+    Route::post('/admin/finance/commission-policies', [AdminFinancialPolicyController::class, 'storeCommission'])
+        ->name('api.v1.admin.finance.commission_policies.store');
+    Route::patch('/admin/finance/commission-policies/{policyId}', [AdminFinancialPolicyController::class, 'updateCommission'])
+        ->where('policyId', '[A-Za-z0-9._:-]+')->name('api.v1.admin.finance.commission_policies.update');
+    Route::post('/admin/finance/commission-policies/{policyId}/submit', [AdminFinancialPolicyController::class, 'submitCommission'])
+        ->where('policyId', '[A-Za-z0-9._:-]+')->name('api.v1.admin.finance.commission_policies.submit');
+    Route::post('/admin/finance/commission-policies/{policyId}/publish', [AdminFinancialPolicyController::class, 'publishCommission'])
+        ->where('policyId', '[A-Za-z0-9._:-]+')->name('api.v1.admin.finance.commission_policies.publish');
 
     Route::get('/admin/finance/settlement-batches', [AdminSettlementController::class, 'index'])
         ->name('api.v1.admin.finance.settlement_batches.index');

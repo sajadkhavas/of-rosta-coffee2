@@ -26,10 +26,12 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property int $packaging_fee
  * @property int $shipping_fee
  * @property int $tax_amount
+ * @property int $commission_amount
  * @property int $total_amount
  * @property string $currency
  * @property array<mixed> $pricing_snapshot
  * @property array<mixed> $service_snapshot
+ * @property array<mixed> $financial_snapshot
  * @property CarbonImmutable|null $started_at
  * @property CarbonImmutable|null $completed_at
  * @property CarbonImmutable|null $failed_at
@@ -62,10 +64,12 @@ final class OrderItemService extends Model
         'packaging_fee',
         'shipping_fee',
         'tax_amount',
+        'commission_amount',
         'total_amount',
         'currency',
         'pricing_snapshot',
         'service_snapshot',
+        'financial_snapshot',
         'failure_code',
         'started_at',
         'completed_at',
@@ -80,9 +84,11 @@ final class OrderItemService extends Model
             'packaging_fee' => 'integer',
             'shipping_fee' => 'integer',
             'tax_amount' => 'integer',
+            'commission_amount' => 'integer',
             'total_amount' => 'integer',
             'pricing_snapshot' => 'array',
             'service_snapshot' => 'array',
+            'financial_snapshot' => 'array',
             'started_at' => 'immutable_datetime',
             'completed_at' => 'immutable_datetime',
             'failed_at' => 'immutable_datetime',

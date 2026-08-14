@@ -23,7 +23,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property int $subtotal
  * @property int $shipping_total
  * @property int $discount_total
+ * @property int $tax_total
+ * @property int $commission_total
  * @property int $grand_total
+ * @property array<mixed> $financial_snapshot
  * @property string|null $currency
  * @property CarbonImmutable|null $placed_at
  * @property CarbonImmutable|null $paid_at
@@ -65,7 +68,10 @@ final class Order extends Model
         'subtotal',
         'shipping_total',
         'discount_total',
+        'tax_total',
+        'commission_total',
         'grand_total',
+        'financial_snapshot',
         'currency',
         'placed_at',
         'paid_at',
@@ -82,7 +88,10 @@ final class Order extends Model
             'subtotal' => 'integer',
             'shipping_total' => 'integer',
             'discount_total' => 'integer',
+            'tax_total' => 'integer',
+            'commission_total' => 'integer',
             'grand_total' => 'integer',
+            'financial_snapshot' => 'array',
             'placed_at' => 'immutable_datetime',
             'paid_at' => 'immutable_datetime',
             'refunded_at' => 'immutable_datetime',

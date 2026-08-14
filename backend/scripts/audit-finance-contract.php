@@ -12,6 +12,13 @@ $files = [
     'config' => file_get_contents($root.'/config/rosta.php'),
     'env' => file_get_contents($root.'/.env.example'),
     'openapi' => file_get_contents(dirname($root).'/docs/openapi/rosta-v1-finance.yaml'),
+    'policy_migration' => file_get_contents($root.'/database/migrations/2026_08_14_080000_create_financial_truth_policies.php'),
+    'policy_service' => file_get_contents($root.'/app/Services/Finance/FinancialPolicyService.php'),
+    'policy_resolver' => file_get_contents($root.'/app/Services/Finance/FinancialPolicyResolver.php'),
+    'truth_engine' => file_get_contents($root.'/app/Services/Finance/FinancialTruthEngine.php'),
+    'quote_service' => file_get_contents($root.'/app/Services/Checkout/QuoteService.php'),
+    'order_service' => file_get_contents($root.'/app/Services/Checkout/OrderService.php'),
+    'readiness' => file_get_contents($root.'/app/Console/Commands/BackendReadiness.php'),
 ];
 
 $gates = [];
@@ -91,8 +98,47 @@ $gate(
     str_contains($files['openapi'], '/admin/orders/{orderId}/refunds:')
         && str_contains($files['openapi'], '/admin/refunds/{refundId}/approve:')
         && str_contains($files['openapi'], '/admin/refunds/{refundId}/dispatch:')
-        && str_contains($files['openapi'], '/admin/finance/reconciliation/{caseId}:'),
+        && str_contains($files['openapi'], '/admin/finance/reconciliation/{caseId}:')
+        && str_contains($files['openapi'], '/admin/finance/tax-policies:')
+        && str_contains($files['openapi'], '/admin/finance/commission-policies:'),
     'All administrator finance endpoints must remain represented in the frozen API contract.',
+);
+
+$gate(
+    'versioned_effective_policies_without_guessed_rates',
+    str_contains($files['policy_migration'], "Schema::create('tax_policies'")
+        && str_contains($files['policy_migration'], "Schema::create('commission_policies'")
+        && str_contains($files['policy_migration'], "'status' => 'legacy_unknown'")
+        && ! str_contains($files['config'], 'default_tax_rate')
+        && ! str_contains($files['config'], 'default_commission_rate'),
+    'Tax and commission truth must be effective-dated and legacy rows must be explicitly unknown, never guessed.',
+);
+
+$gate(
+    'policy_dual_control_and_immutability',
+    str_contains($files['policy_service'], 'finance.policy_dual_control')
+        && str_contains($files['policy_service'], 'finance.policy_immutable')
+        && str_contains($files['policy_service'], "'checksum' => $checksum")
+        && str_contains($files['policy_service'], 'finance.policy.published'),
+    'Publishing requires a second administrator and produces an audited immutable checksum.',
+);
+
+$gate(
+    'integer_snapshots_and_ledger_conservation',
+    str_contains($files['truth_engine'], 'MoneyMath')
+        && str_contains($files['quote_service'], "'financial_snapshot'")
+        && str_contains($files['order_service'], 'recordCommissionAllocation')
+        && str_contains($files['order_service'], 'recordTaxLine')
+        && str_contains($files['policy_migration'], "'commission_amount'"),
+    'Quote, order, allocation and tax-line records must retain integer policy snapshots and separate platform commission.',
+);
+
+$gate(
+    'production_finance_fail_closed',
+    str_contains($files['policy_resolver'], "environment('production')")
+        && str_contains($files['policy_resolver'], 'finance.policy_unavailable')
+        && str_contains($files['readiness'], "'financial_policies'"),
+    'Production checkout and readiness must fail closed when the effective policy pair is absent.',
 );
 
 $gate(

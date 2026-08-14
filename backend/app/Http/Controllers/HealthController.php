@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Contracts\OtpSender;
+use App\Services\Finance\FinancialPolicyResolver;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +16,7 @@ final class HealthController
 {
     public function __construct(
         private readonly OtpSender $otp,
+        private readonly FinancialPolicyResolver $financialPolicies,
     ) {}
 
     public function live(): JsonResponse
@@ -33,6 +35,7 @@ final class HealthController
             'database' => false,
             'redis' => false,
             'otp_delivery' => false,
+            'financial_policies' => false,
         ];
 
         try {
@@ -47,6 +50,7 @@ final class HealthController
         $checks['otp_delivery'] = app()->environment('production')
             ? $otpAvailable
             : (! $otpEnabled || $otpAvailable);
+        $checks['financial_policies'] = $this->financialPolicies->ready();
 
         try {
             $ping = Redis::connection()->ping();

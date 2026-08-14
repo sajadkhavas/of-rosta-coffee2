@@ -21,6 +21,7 @@ use App\Models\OrderEvent;
 use App\Models\OrderIdempotencyKey;
 use App\Models\OrderItem;
 use App\Models\OrderItemService;
+use App\Models\OrderTaxLine;
 use App\Models\ProductVariant;
 use App\Models\RoastBatch;
 use App\Models\SettlementAllocation;
@@ -251,7 +252,10 @@ final class OrderService
                 'subtotal' => $quote->subtotal,
                 'shipping_total' => $quote->shipping_total,
                 'discount_total' => $quote->discount_total,
+                'tax_total' => $quote->tax_total,
+                'commission_total' => $quote->commission_total,
                 'grand_total' => $quote->grand_total,
+                'financial_snapshot' => $quote->financial_snapshot,
                 'currency' => $quote->currency,
                 'placed_at' => now(),
             ]);
@@ -268,25 +272,7 @@ final class OrderService
                 $hubRoute = is_array($group->pricing_snapshot)
                     ? ($group->pricing_snapshot['hub_route'] ?? null)
                     : null;
-                $isHubRoute = is_array($hubRoute);
-                $roasteryServicePayable = 0;
-                foreach ($group->items as $quoteItemForPayable) {
-                    foreach ($quoteItemForPayable->services as $serviceForPayable) {
-                        if ($serviceForPayable->provider_type !== 'roastery') {
-                            continue;
-                        }
-                        $roasteryServicePayable += $serviceForPayable->packaging_fee;
-                        if ($serviceForPayable->service_type === 'grinding') {
-                            $roasteryServicePayable += $serviceForPayable->service_fee;
-                        }
-                    }
-                }
-                $roasteryShippingPayable = $isHubRoute ? 0 : $group->shipping_total;
-                $roasteryPayable = $group->subtotal
-                    - $group->discount_total
-                    + $roasteryServicePayable
-                    + $roasteryShippingPayable;
-
+                $shippingFinancial = $group->financial_snapshot['components']['shipping'] ?? [];
                 $subOrder = SubOrder::query()->create([
                     'order_id' => $order->id,
                     'roastery_id' => $group->roastery_id,
@@ -299,9 +285,10 @@ final class OrderService
                     'discount_total' => $group->discount_total,
                     'tax_total' => $group->tax_total,
                     'grand_total' => $group->grand_total,
-                    'commission_total' => 0,
-                    'payable_total' => $roasteryPayable,
+                    'commission_total' => $group->commission_total,
+                    'payable_total' => $group->payable_total,
                     'currency' => $group->currency,
+                    'financial_snapshot' => $group->financial_snapshot,
                 ]);
 
                 $hubGrindingService = null;
@@ -328,6 +315,11 @@ final class OrderService
                         'quantity' => $quoteItem->quantity,
                         'unit_price' => $quoteItem->unit_price,
                         'line_total' => $quoteItem->line_total,
+                        'discount_amount' => $quoteItem->discount_amount,
+                        'tax_amount' => $quoteItem->tax_amount,
+                        'commission_amount' => $quoteItem->commission_amount,
+                        'net_amount' => $quoteItem->net_amount,
+                        'financial_snapshot' => $quoteItem->financial_snapshot,
                         'product_snapshot' => $quoteItem->product_snapshot,
                         'variant_snapshot' => $quoteItem->variant_snapshot,
                         'roast_batch_snapshot' => $quoteItem->roast_batch_snapshot,
@@ -348,7 +340,10 @@ final class OrderService
                     ]);
 
                     $discount = $itemDiscounts[(string) $quoteItem->id] ?? 0;
-                    SettlementAllocation::query()->create([
+                    if ($discount !== $quoteItem->discount_amount) {
+                        throw new ApiDomainException('mixed_state_conflict', 'تخصیص تخفیف Quote با snapshot مالی ناسازگار است.', 409);
+                    }
+                    $productAllocation = SettlementAllocation::query()->create([
                         'order_id' => $order->id,
                         'sub_order_id' => $subOrder->id,
                         'order_item_id' => $orderItem->id,
@@ -358,17 +353,22 @@ final class OrderService
                         'status' => SettlementAllocationStatus::Held,
                         'gross_amount' => $quoteItem->line_total,
                         'discount_amount' => $discount,
-                        'tax_amount' => 0,
-                        'net_amount' => $quoteItem->line_total - $discount,
+                        'tax_amount' => $quoteItem->tax_amount,
+                        'commission_amount' => $quoteItem->commission_amount,
+                        'net_amount' => $quoteItem->net_amount,
                         'currency' => $group->currency,
-                        'pricing_version' => 'r5c-marketplace-v1',
+                        'tax_code' => $quoteItem->financial_snapshot['tax_rule']['code'] ?? null,
+                        'pricing_version' => 'ps4a-financial-truth-v1',
                         'source_reference' => 'quote_item:'.$quoteItem->id,
                         'idempotency_key' => 'order:'.$order->id.':item:'.$orderItem->id.':product',
                         'metadata' => [
                             'quote_id' => $quote->id,
                             'quote_group_id' => $group->id,
                         ],
+                        'financial_snapshot' => $quoteItem->financial_snapshot,
                     ]);
+                    $this->recordTaxLine($productAllocation, $order, $subOrder, $orderItem, null, 'product', $quoteItem->financial_snapshot);
+                    $this->recordCommissionAllocation($productAllocation, $order, $subOrder, $orderItem, null, $quoteItem->commission_amount, $quoteItem->financial_snapshot);
 
                     foreach ($quoteItem->services as $quoteService) {
                         if ($quoteService->service_type === 'grinding') {
@@ -394,14 +394,16 @@ final class OrderService
                             'packaging_fee' => $quoteService->packaging_fee,
                             'shipping_fee' => $quoteService->shipping_fee,
                             'tax_amount' => $quoteService->tax_amount,
+                            'commission_amount' => $quoteService->commission_amount,
                             'total_amount' => $quoteService->total_amount,
                             'currency' => $quoteService->currency,
                             'pricing_snapshot' => $quoteService->pricing_snapshot,
                             'service_snapshot' => $quoteService->service_snapshot,
+                            'financial_snapshot' => $quoteService->financial_snapshot,
                         ]);
 
                         if ($orderService->packaging_fee > 0) {
-                            SettlementAllocation::query()->create([
+                            $packagingAllocation = SettlementAllocation::query()->create([
                                 'order_id' => $order->id,
                                 'sub_order_id' => $subOrder->id,
                                 'order_item_id' => $orderItem->id,
@@ -413,9 +415,11 @@ final class OrderService
                                 'gross_amount' => $orderService->packaging_fee,
                                 'discount_amount' => 0,
                                 'tax_amount' => $orderService->tax_amount,
-                                'net_amount' => $orderService->total_amount,
+                                'commission_amount' => $orderService->commission_amount,
+                                'net_amount' => $orderService->total_amount - $orderService->commission_amount,
                                 'currency' => $orderService->currency,
-                                'pricing_version' => 'r5d-product-packaging-v1',
+                                'tax_code' => $orderService->financial_snapshot['tax_rule']['code'] ?? null,
+                                'pricing_version' => 'ps4a-financial-truth-v1',
                                 'source_reference' => 'quote_service:'.$quoteService->id,
                                 'idempotency_key' => 'order:'.$order->id.':service:'.$orderService->id.':packaging',
                                 'metadata' => [
@@ -423,7 +427,10 @@ final class OrderService
                                     'quote_group_id' => $group->id,
                                     'quote_item_service_id' => $quoteService->id,
                                 ],
+                                'financial_snapshot' => $orderService->financial_snapshot,
                             ]);
+                            $this->recordTaxLine($packagingAllocation, $order, $subOrder, $orderItem, $orderService, 'packaging', $orderService->financial_snapshot);
+                            $this->recordCommissionAllocation($packagingAllocation, $order, $subOrder, $orderItem, $orderService, $orderService->commission_amount, $orderService->financial_snapshot);
                         }
 
                         if ($orderService->service_type === 'grinding') {
@@ -433,7 +440,7 @@ final class OrderService
                             }
 
                             if ($orderService->service_fee > 0) {
-                                SettlementAllocation::query()->create([
+                                $grindingAllocation = SettlementAllocation::query()->create([
                                     'order_id' => $order->id,
                                     'sub_order_id' => $subOrder->id,
                                     'order_item_id' => $orderItem->id,
@@ -445,11 +452,11 @@ final class OrderService
                                     'gross_amount' => $orderService->service_fee,
                                     'discount_amount' => 0,
                                     'tax_amount' => $orderService->tax_amount,
-                                    'net_amount' => $orderService->total_amount,
+                                    'commission_amount' => $orderService->commission_amount,
+                                    'net_amount' => $orderService->total_amount - $orderService->commission_amount,
                                     'currency' => $orderService->currency,
-                                    'pricing_version' => $isHubGrinding
-                                        ? 'r5g-rosta-hub-grinding-v1'
-                                        : 'r5f-roastery-grinding-v1',
+                                    'tax_code' => $orderService->financial_snapshot['tax_rule']['code'] ?? null,
+                                    'pricing_version' => 'ps4a-financial-truth-v1',
                                     'source_reference' => 'quote_service:'.$quoteService->id,
                                     'idempotency_key' => 'order:'.$order->id.':service:'.$orderService->id.':grinding',
                                     'metadata' => [
@@ -459,7 +466,10 @@ final class OrderService
                                         'provider_type' => $orderService->provider_type,
                                         'provider_hub_id' => $orderService->provider_hub_id,
                                     ],
+                                    'financial_snapshot' => $orderService->financial_snapshot,
                                 ]);
+                                $this->recordTaxLine($grindingAllocation, $order, $subOrder, $orderItem, $orderService, 'grinding', $orderService->financial_snapshot);
+                                $this->recordCommissionAllocation($grindingAllocation, $order, $subOrder, $orderItem, $orderService, $orderService->commission_amount, $orderService->financial_snapshot);
                             }
 
                             $this->appendEvent(
@@ -530,12 +540,32 @@ final class OrderService
                         'planned_at' => now(),
                     ]);
 
+                    $legBases = [
+                        (string) $inboundLeg->id => $inboundLeg->gross_amount,
+                        (string) $outboundLeg->id => $outboundLeg->gross_amount,
+                    ];
+                    $legTaxes = $this->allocateMoney((int) ($shippingFinancial['tax_amount'] ?? 0), $legBases);
+                    $legCommissions = $this->allocateMoney((int) ($shippingFinancial['commission_amount'] ?? 0), $legBases);
                     foreach ([$inboundLeg, $outboundLeg] as $leg) {
                         if ($leg->gross_amount <= 0) {
                             continue;
                         }
 
-                        SettlementAllocation::query()->create([
+                        $legTax = $legTaxes[(string) $leg->id] ?? 0;
+                        $legCommission = $legCommissions[(string) $leg->id] ?? 0;
+                        $leg->forceFill([
+                            'tax_amount' => $legTax,
+                            'total_amount' => $leg->gross_amount + $legTax,
+                        ])->save();
+                        $legFinancial = [
+                            ...$shippingFinancial,
+                            'gross_amount' => $leg->gross_amount,
+                            'tax_amount' => $legTax,
+                            'commission_amount' => $legCommission,
+                            'payable_amount' => $leg->total_amount - $legCommission,
+                            'allocation_scope' => $leg->route_type,
+                        ];
+                        $shippingAllocation = SettlementAllocation::query()->create([
                             'order_id' => $order->id,
                             'sub_order_id' => $subOrder->id,
                             'order_item_service_id' => $hubGrindingService->id,
@@ -546,10 +576,12 @@ final class OrderService
                             'status' => SettlementAllocationStatus::Held,
                             'gross_amount' => $leg->gross_amount,
                             'discount_amount' => 0,
-                            'tax_amount' => 0,
-                            'net_amount' => $leg->total_amount,
+                            'tax_amount' => $legTax,
+                            'commission_amount' => $legCommission,
+                            'net_amount' => $leg->total_amount - $legCommission,
                             'currency' => $leg->currency,
-                            'pricing_version' => 'r5g-rosta-hub-route-v1',
+                            'tax_code' => $shippingFinancial['tax_rule']['code'] ?? null,
+                            'pricing_version' => 'ps4a-financial-truth-v1',
                             'source_reference' => 'shipment_leg:'.$leg->id,
                             'idempotency_key' => 'order:'.$order->id.':shipment-leg:'.$leg->id.':shipping',
                             'metadata' => [
@@ -557,7 +589,9 @@ final class OrderService
                                 'quote_group_id' => $group->id,
                                 'route_type' => $leg->route_type,
                             ],
+                            'financial_snapshot' => $legFinancial,
                         ]);
+                        $this->recordTaxLine($shippingAllocation, $order, $subOrder, null, $hubGrindingService, 'shipping', $legFinancial);
                     }
 
                     $this->appendEvent(
@@ -580,6 +614,8 @@ final class OrderService
                         $hubOrderItem->quantity,
                     );
                 } else {
+                    $shippingTax = (int) ($shippingFinancial['tax_amount'] ?? 0);
+                    $shippingCommission = (int) ($shippingFinancial['commission_amount'] ?? 0);
                     $shipmentLeg = ShipmentLeg::query()->create([
                         'order_id' => $order->id,
                         'sub_order_id' => $subOrder->id,
@@ -589,8 +625,8 @@ final class OrderService
                         'charge_owner_type' => 'roastery',
                         'charge_owner_id' => $group->roastery_id,
                         'gross_amount' => $group->shipping_total,
-                        'tax_amount' => 0,
-                        'total_amount' => $group->shipping_total,
+                        'tax_amount' => $shippingTax,
+                        'total_amount' => $group->shipping_total + $shippingTax,
                         'currency' => $group->currency,
                         'origin_snapshot' => [
                             'type' => 'roastery',
@@ -602,7 +638,7 @@ final class OrderService
                         'planned_at' => now(),
                     ]);
 
-                    SettlementAllocation::query()->create([
+                    $shippingAllocation = SettlementAllocation::query()->create([
                         'order_id' => $order->id,
                         'sub_order_id' => $subOrder->id,
                         'shipment_leg_id' => $shipmentLeg->id,
@@ -612,17 +648,22 @@ final class OrderService
                         'status' => SettlementAllocationStatus::Held,
                         'gross_amount' => $group->shipping_total,
                         'discount_amount' => 0,
-                        'tax_amount' => 0,
-                        'net_amount' => $group->shipping_total,
+                        'tax_amount' => $shippingTax,
+                        'commission_amount' => $shippingCommission,
+                        'net_amount' => $group->shipping_total + $shippingTax - $shippingCommission,
                         'currency' => $group->currency,
-                        'pricing_version' => 'r5c-marketplace-v1',
+                        'tax_code' => $shippingFinancial['tax_rule']['code'] ?? null,
+                        'pricing_version' => 'ps4a-financial-truth-v1',
                         'source_reference' => 'quote_group:'.$group->id.':shipping',
                         'idempotency_key' => 'order:'.$order->id.':sub-order:'.$subOrder->id.':shipping',
                         'metadata' => [
                             'quote_id' => $quote->id,
                             'quote_group_id' => $group->id,
                         ],
+                        'financial_snapshot' => $shippingFinancial,
                     ]);
+                    $this->recordTaxLine($shippingAllocation, $order, $subOrder, null, null, 'shipping', $shippingFinancial);
+                    $this->recordCommissionAllocation($shippingAllocation, $order, $subOrder, null, null, $shippingCommission, $shippingFinancial);
                 }
 
                 $this->appendEvent(
@@ -729,12 +770,16 @@ final class OrderService
         $subtotal = $quote->groups->sum('subtotal');
         $shipping = $quote->groups->sum('shipping_total');
         $discount = $quote->groups->sum('discount_total');
+        $tax = $quote->groups->sum('tax_total');
+        $commission = $quote->groups->sum('commission_total');
         $grand = $quote->groups->sum('grand_total');
 
         if (
             $subtotal !== $quote->subtotal
             || $shipping !== $quote->shipping_total
             || $discount !== $quote->discount_total
+            || $tax !== $quote->tax_total
+            || $commission !== $quote->commission_total
             || $grand !== $quote->grand_total
         ) {
             throw new ApiDomainException(
@@ -748,7 +793,11 @@ final class OrderService
             $itemSubtotal = $group->items->sum('line_total');
             $packagingTotal = 0;
             $grindingTotal = 0;
+            $itemTax = 0;
+            $itemCommission = 0;
             foreach ($group->items as $quoteItem) {
+                $itemTax += $quoteItem->tax_amount;
+                $itemCommission += $quoteItem->commission_amount;
                 $hasHubGrinding = $quoteItem->services->contains(
                     static fn ($service): bool => $service->service_type === 'grinding'
                         && $service->provider_type === 'rosta_hub',
@@ -760,6 +809,8 @@ final class OrderService
                     if ($service->service_type === 'grinding') {
                         $grindingTotal += $service->service_fee;
                     }
+                    $itemTax += $service->tax_amount;
+                    $itemCommission += $service->commission_amount;
                     if (
                         $service->service_type === 'packaging'
                         && $service->provider_type === 'rosta_hub'
@@ -805,6 +856,16 @@ final class OrderService
                 }
             }
 
+            $shippingFinancial = $group->financial_snapshot['components']['shipping'] ?? [];
+            $itemTax += (int) ($shippingFinancial['tax_amount'] ?? 0);
+            $itemCommission += (int) ($shippingFinancial['commission_amount'] ?? 0);
+            $expectedPayable = array_sum(array_map(
+                static fn (array $component): int => ($component['owner_type'] ?? null) === 'roastery'
+                    ? (int) ($component['payable_amount'] ?? 0)
+                    : 0,
+                $group->financial_snapshot['components'] ?? [],
+            ));
+
             $expectedGrand = $group->subtotal
                 + $group->packaging_total
                 + $group->grinding_total
@@ -816,6 +877,9 @@ final class OrderService
                 $itemSubtotal !== $group->subtotal
                 || $packagingTotal !== $group->packaging_total
                 || $grindingTotal !== $group->grinding_total
+                || $itemTax !== $group->tax_total
+                || $itemCommission !== $group->commission_total
+                || $expectedPayable !== $group->payable_total
                 || $expectedGrand !== $group->grand_total
             ) {
                 throw new ApiDomainException(
@@ -893,6 +957,85 @@ final class OrderService
         }
 
         return $totalWhole;
+    }
+
+    /** @param array<string, mixed> $snapshot */
+    private function recordTaxLine(
+        SettlementAllocation $allocation,
+        Order $order,
+        SubOrder $subOrder,
+        ?OrderItem $orderItem,
+        ?OrderItemService $orderItemService,
+        string $component,
+        array $snapshot,
+    ): void {
+        if ($allocation->tax_amount <= 0) {
+            return;
+        }
+
+        OrderTaxLine::query()->create([
+            'settlement_allocation_id' => $allocation->id,
+            'order_id' => $order->id,
+            'sub_order_id' => $subOrder->id,
+            'order_item_id' => $orderItem?->id,
+            'order_item_service_id' => $orderItemService?->id,
+            'component' => $component,
+            'tax_code' => (string) ($snapshot['tax_rule']['code'] ?? 'policy-defined'),
+            'jurisdiction' => (string) ($snapshot['tax_rule']['jurisdiction'] ?? 'policy-defined'),
+            'taxable_amount' => (int) ($snapshot['taxable_amount'] ?? 0),
+            'tax_amount' => $allocation->tax_amount,
+            'rate_basis_points' => isset($snapshot['tax_rule']['rate_basis_points'])
+                ? (int) $snapshot['tax_rule']['rate_basis_points']
+                : null,
+            'policy_version' => isset($snapshot['policy_snapshot']['tax']['version'])
+                ? (int) $snapshot['policy_snapshot']['tax']['version']
+                : null,
+            'calculation_snapshot' => $snapshot,
+        ]);
+    }
+
+    /** @param array<string, mixed> $snapshot */
+    private function recordCommissionAllocation(
+        SettlementAllocation $source,
+        Order $order,
+        SubOrder $subOrder,
+        ?OrderItem $orderItem,
+        ?OrderItemService $orderItemService,
+        int $commission,
+        array $snapshot,
+    ): void {
+        if ($commission <= 0) {
+            return;
+        }
+
+        SettlementAllocation::query()->create([
+            'order_id' => $order->id,
+            'sub_order_id' => $subOrder->id,
+            'order_item_id' => $orderItem?->id,
+            'order_item_service_id' => $orderItemService?->id,
+            'allocation_type' => 'commission',
+            'owner_type' => 'rosta',
+            'owner_id' => null,
+            'status' => SettlementAllocationStatus::Held,
+            'gross_amount' => $commission,
+            'discount_amount' => 0,
+            'tax_amount' => 0,
+            'commission_amount' => 0,
+            'net_amount' => $commission,
+            'currency' => $source->currency,
+            'pricing_version' => 'ps4a-financial-truth-v1',
+            'source_reference' => 'settlement_allocation:'.$source->id.':commission',
+            'idempotency_key' => $source->idempotency_key.':commission',
+            'metadata' => [
+                'source_allocation_id' => $source->id,
+                'commission_rule' => $snapshot['commission_rule'] ?? null,
+            ],
+            'financial_snapshot' => [
+                ...$snapshot,
+                'allocation_role' => 'platform_commission',
+                'source_allocation_id' => $source->id,
+            ],
+        ]);
     }
 
     private function appendEvent(

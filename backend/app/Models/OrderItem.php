@@ -20,6 +20,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property int $quantity
  * @property int $unit_price
  * @property int $line_total
+ * @property int $discount_amount
+ * @property int $tax_amount
+ * @property int $commission_amount
+ * @property int $net_amount
+ * @property array<mixed> $financial_snapshot
  * @property array<mixed> $product_snapshot
  * @property array<mixed> $variant_snapshot
  * @property array<mixed> $roast_batch_snapshot
@@ -48,6 +53,11 @@ final class OrderItem extends Model
         'quantity',
         'unit_price',
         'line_total',
+        'discount_amount',
+        'tax_amount',
+        'commission_amount',
+        'net_amount',
+        'financial_snapshot',
         'product_snapshot',
         'variant_snapshot',
         'roast_batch_snapshot',
@@ -59,6 +69,11 @@ final class OrderItem extends Model
             'quantity' => 'integer',
             'unit_price' => 'integer',
             'line_total' => 'integer',
+            'discount_amount' => 'integer',
+            'tax_amount' => 'integer',
+            'commission_amount' => 'integer',
+            'net_amount' => 'integer',
+            'financial_snapshot' => 'array',
             'product_snapshot' => 'array',
             'variant_snapshot' => 'array',
             'roast_batch_snapshot' => 'array',

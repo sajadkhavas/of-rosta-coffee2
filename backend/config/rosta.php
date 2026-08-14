@@ -58,6 +58,12 @@ return [
         'dispute_window_hours' => max(1, min(720, (int) env('ROSTA_DISPUTE_WINDOW_HOURS', 72))),
         'carrier_webhook_secret' => env('ROSTA_CARRIER_WEBHOOK_SECRET', ''),
     ],
+    'finance' => [
+        // Production ignores this opt-out and always requires an effective published pair.
+        'require_policies' => $boolean('ROSTA_FINANCIAL_POLICIES_REQUIRED', false),
+        'calculation_version' => 'ps4a-financial-truth-v1',
+        'currency' => 'IRR',
+    ],
     'refund' => [
         'enabled' => $refundEnabled,
         'provider' => env('REFUND_DRIVER', 'disabled'),

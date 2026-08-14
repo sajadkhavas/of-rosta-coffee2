@@ -30,6 +30,8 @@ final class OrderResource extends JsonResource
             'status' => $publicOrderStatus,
             'placed_at' => $this->placed_at?->toIso8601String(),
             'grand_total' => $this->grand_total,
+            'tax_total' => $this->tax_total,
+            'commission_total' => $this->commission_total,
             'currency' => $this->currency,
             'sub_orders' => $this->subOrders
                 ->map(fn (SubOrder $subOrder): array => $this->subOrderPayload($subOrder, $request))
@@ -128,6 +130,8 @@ final class OrderResource extends JsonResource
             'shipping_total' => $subOrder->shipping_total,
             'discount_total' => $subOrder->discount_total,
             'tax_total' => $subOrder->tax_total,
+            'commission_total' => $subOrder->commission_total,
+            'payable_total' => $subOrder->payable_total,
             'grand_total' => $subOrder->grand_total,
             'currency' => $subOrder->currency,
             'shipment' => $legacyShipment === null
@@ -223,6 +227,10 @@ final class OrderResource extends JsonResource
             ],
             'quantity' => $item->quantity,
             'line_total' => $item->line_total,
+            'discount_amount' => $item->discount_amount,
+            'tax_amount' => $item->tax_amount,
+            'commission_amount' => $item->commission_amount,
+            'payable_amount' => $item->net_amount,
             'services' => $item->services
                 ->map(fn (OrderItemService $service): array => [
                     'id' => $service->id,
@@ -242,6 +250,7 @@ final class OrderResource extends JsonResource
                     'packaging_fee' => $service->packaging_fee,
                     'shipping_fee' => $service->shipping_fee,
                     'tax_amount' => $service->tax_amount,
+                    'commission_amount' => $service->commission_amount,
                     'total_amount' => $service->total_amount,
                     'currency' => $service->currency,
                     'is_free' => $service->total_amount === 0,

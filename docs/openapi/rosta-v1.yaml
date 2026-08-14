@@ -627,7 +627,7 @@ components:
     CartInput: { type: object, required: [items], properties: { items: { $ref: '#/components/schemas/CartItems' } } }
     CartQuote:
       type: object
-      required: [id, expires_at, subtotal, shipping_total, discount_total, grand_total, currency, warnings]
+      required: [id, expires_at, subtotal, shipping_total, discount_total, tax_total, commission_total, grand_total, currency, warnings]
       properties:
         id: { type: string }
         expires_at: { type: string, format: date-time }
@@ -635,6 +635,8 @@ components:
         subtotal: { type: integer }
         shipping_total: { type: integer }
         discount_total: { type: integer }
+        tax_total: { type: integer }
+        commission_total: { type: integer }
         grand_total: { type: integer }
         currency: { type: string, const: IRR }
         warnings: { type: array, items: { type: object, properties: { code: { type: string }, message: { type: string } } } }
@@ -649,6 +651,8 @@ components:
         subtotal: { type: integer }
         shipping_total: { type: integer }
         discount_total: { type: integer }
+        tax_total: { type: integer }
+        commission_total: { type: integer }
         grand_total: { type: integer }
         currency: { type: string, const: IRR }
         address: { oneOf: [{ $ref: '#/components/schemas/Address' }, { type: 'null' }] }

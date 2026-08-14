@@ -872,10 +872,10 @@ components:
         message: { type: string, minLength: 1, maxLength: 1000 }
         cart_item_id: { $ref: '#/components/schemas/Identifier' }
     CartQuote:
-      description: دقیقاً یک گروه روستری؛ grand_total = subtotal + shipping_total - discount_total
+      description: مبلغ immutable هر گروه؛ grand_total = subtotal + packaging_total + grinding_total + shipping_total + tax_total - discount_total
       type: object
       additionalProperties: false
-      required: [id, expires_at, groups, subtotal, shipping_total, discount_total, grand_total, currency, warnings]
+      required: [id, expires_at, groups, subtotal, shipping_total, discount_total, tax_total, commission_total, grand_total, currency, warnings]
       properties:
         id: { $ref: '#/components/schemas/Identifier' }
         expires_at: { type: string, format: date-time }
@@ -888,6 +888,8 @@ components:
         subtotal: { $ref: '#/components/schemas/Money' }
         shipping_total: { $ref: '#/components/schemas/Money' }
         discount_total: { $ref: '#/components/schemas/Money' }
+        tax_total: { $ref: '#/components/schemas/Money' }
+        commission_total: { $ref: '#/components/schemas/Money' }
         grand_total: { $ref: '#/components/schemas/Money' }
         currency: { $ref: '#/components/schemas/Currency' }
         warnings:
