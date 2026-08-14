@@ -41,7 +41,7 @@ Route::middleware(['auth:sanctum', 'rosta.session'])->group(function (): void {
             'roasteryId' => '[A-Za-z0-9._:-]+',
             'orderId' => '[A-Za-z0-9._:-]+',
         ])
-        ->middleware('throttle:fulfillment-transition')
+        ->middleware(['rosta.seller', 'throttle:fulfillment-transition'])
         ->name('api.v1.seller.orders.fulfillment');
 
     Route::post(
@@ -52,7 +52,7 @@ Route::middleware(['auth:sanctum', 'rosta.session'])->group(function (): void {
             'roasteryId' => '[A-Za-z0-9._:-]+',
             'orderId' => '[A-Za-z0-9._:-]+',
         ])
-        ->middleware('throttle:fulfillment-transition')
+        ->middleware(['rosta.seller', 'throttle:fulfillment-transition'])
         ->name('api.v1.seller.orders.incidents.store');
 
     Route::get(
