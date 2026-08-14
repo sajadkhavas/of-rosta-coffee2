@@ -112,6 +112,7 @@ final class QuizRecommendationSafetyTest extends TestCase
         $roastery = Roastery::query()->create(['name' => 'Quiz Roastery', 'slug' => 'quiz-roastery', 'description' => '', 'status' => 'verified', 'verified_at' => now()]);
         $product = Product::query()->create(['roastery_id' => $roastery->id, 'origin_id' => $origin->id, 'name' => 'Quiz Coffee', 'slug' => 'quiz-coffee', 'description' => '', 'processing_method' => 'washed', 'roast_level' => 'medium', 'arabica_percentage' => 100, 'tasting_notes' => ['شکلات'], 'brewing_suggestions' => [], 'status' => 'published', 'published_at' => now()]);
         $variant = ProductVariant::query()->create(['product_id' => $product->id, 'sku' => 'QUIZ-250', 'weight_grams' => 250, 'price' => 1_000_000, 'currency' => 'IRR', 'is_active' => true, 'stock_on_hand' => 5, 'stock_reserved' => 0]);
+
         return [$product, $variant];
     }
 }

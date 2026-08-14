@@ -16,48 +16,62 @@ final class AdminQuizController extends Controller
 {
     public function index(Request $request, CatalogAccess $access): JsonResponse
     {
-        /** @var User $user */ $user = $request->user(); $access->assertAdministrator($user);
+        /** @var User $user */ $user = $request->user();
+        $access->assertAdministrator($user);
         $items = QuizVersion::query()->orderByDesc('version')->get()->map(fn (QuizVersion $version): array => $this->payload($version))->all();
+
         return $this->response(['items' => $items]);
     }
 
     public function show(Request $request, string $versionId, CatalogAccess $access): JsonResponse
     {
-        /** @var User $user */ $user = $request->user(); $access->assertAdministrator($user);
+        /** @var User $user */ $user = $request->user();
+        $access->assertAdministrator($user);
+
         return $this->response($this->payload(QuizVersion::query()->findOrFail($versionId)));
     }
 
     public function store(Request $request, CatalogAccess $access, QuizService $quiz): JsonResponse
     {
-        /** @var User $user */ $user = $request->user(); $access->assertAdministrator($user);
+        /** @var User $user */ $user = $request->user();
+        $access->assertAdministrator($user);
         $input = $request->validate(['title' => ['required', 'string', 'max:160'], 'questions' => ['required', 'array', 'min:1', 'max:20'], 'scoring_profile' => ['required', 'array'], 'recommendation_rules' => ['required', 'array']]);
+
         return $this->response($this->payload($quiz->adminCreate($user, $input, $request)), 201);
     }
 
     public function update(Request $request, string $versionId, CatalogAccess $access, QuizService $quiz): JsonResponse
     {
-        /** @var User $user */ $user = $request->user(); $access->assertAdministrator($user);
+        /** @var User $user */ $user = $request->user();
+        $access->assertAdministrator($user);
         $input = $request->validate(['title' => ['required', 'string', 'max:160'], 'questions' => ['required', 'array', 'min:1', 'max:20'], 'scoring_profile' => ['required', 'array'], 'recommendation_rules' => ['required', 'array']]);
+
         return $this->response($this->payload($quiz->adminUpdate($user, QuizVersion::query()->findOrFail($versionId), $input, $request)));
     }
 
     public function preview(Request $request, string $versionId, CatalogAccess $access, QuizService $quiz): JsonResponse
     {
-        /** @var User $user */ $user = $request->user(); $access->assertAdministrator($user);
+        /** @var User $user */ $user = $request->user();
+        $access->assertAdministrator($user);
         $answers = $request->validate(['answers' => ['required', 'array']])['answers'];
         $items = collect($quiz->preview(QuizVersion::query()->findOrFail($versionId), $answers))->map(fn (array $item): array => ['product' => (new ProductSummaryResource($item['product']))->resolve($request), 'score' => $item['score'], 'reasons' => $item['reasons']])->all();
+
         return $this->response(['items' => $items, 'preview' => true]);
     }
 
     public function publish(Request $request, string $versionId, CatalogAccess $access, QuizService $quiz): JsonResponse
     {
-        /** @var User $user */ $user = $request->user(); $access->assertAdministrator($user);
+        /** @var User $user */ $user = $request->user();
+        $access->assertAdministrator($user);
+
         return $this->response($this->payload($quiz->publish($user, QuizVersion::query()->findOrFail($versionId), $request)));
     }
 
     public function archive(Request $request, string $versionId, CatalogAccess $access, QuizService $quiz): JsonResponse
     {
-        /** @var User $user */ $user = $request->user(); $access->assertAdministrator($user);
+        /** @var User $user */ $user = $request->user();
+        $access->assertAdministrator($user);
+
         return $this->response($this->payload($quiz->archive($user, QuizVersion::query()->findOrFail($versionId), $request)));
     }
 

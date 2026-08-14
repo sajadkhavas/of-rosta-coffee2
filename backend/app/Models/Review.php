@@ -47,19 +47,50 @@ final class Review extends Model
     }
 
     /** @return BelongsTo<User, $this> */
-    public function user(): BelongsTo { return $this->belongsTo(User::class); }
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
     /** @return BelongsTo<Order, $this> */
-    public function order(): BelongsTo { return $this->belongsTo(Order::class); }
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class);
+    }
+
     /** @return BelongsTo<OrderItem, $this> */
-    public function orderItem(): BelongsTo { return $this->belongsTo(OrderItem::class); }
+    public function orderItem(): BelongsTo
+    {
+        return $this->belongsTo(OrderItem::class);
+    }
+
     /** @return BelongsTo<Product, $this> */
-    public function product(): BelongsTo { return $this->belongsTo(Product::class); }
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
+    }
+
     /** @return BelongsTo<Roastery, $this> */
-    public function roastery(): BelongsTo { return $this->belongsTo(Roastery::class); }
+    public function roastery(): BelongsTo
+    {
+        return $this->belongsTo(Roastery::class);
+    }
+
     /** @return BelongsTo<User, $this> */
-    public function moderator(): BelongsTo { return $this->belongsTo(User::class, 'moderated_by'); }
+    public function moderator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'moderated_by');
+    }
+
     /** @return HasOne<ReviewReply, $this> */
-    public function reply(): HasOne { return $this->hasOne(ReviewReply::class); }
+    public function reply(): HasOne
+    {
+        return $this->hasOne(ReviewReply::class);
+    }
+
     /** @return HasMany<ReviewReport, $this> */
-    public function reports(): HasMany { return $this->hasMany(ReviewReport::class); }
+    public function reports(): HasMany
+    {
+        return $this->hasMany(ReviewReport::class);
+    }
 }

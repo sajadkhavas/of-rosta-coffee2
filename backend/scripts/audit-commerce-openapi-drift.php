@@ -76,8 +76,12 @@ $contracts = [
 $missingRoutes = [];
 $missingOpenApi = [];
 foreach ($contracts as $path) {
-    if (! isset($routeContracts[$path])) $missingRoutes[] = $path;
-    if (! str_contains($openApi, $path.':')) $missingOpenApi[] = $path;
+    if (! isset($routeContracts[$path])) {
+        $missingRoutes[] = $path;
+    }
+    if (! str_contains($openApi, $path.':')) {
+        $missingOpenApi[] = $path;
+    }
 }
 
 $passed = $missingRoutes === [] && $missingOpenApi === [];
@@ -91,8 +95,12 @@ file_put_contents($root.'/commerce-openapi-drift-audit.json', json_encode([
 
 if (! $passed) {
     fwrite(STDERR, "Commerce OpenAPI drift detected.\n");
-    foreach ($missingRoutes as $path) fwrite(STDERR, "- Missing route: {$path}\n");
-    foreach ($missingOpenApi as $path) fwrite(STDERR, "- Missing OpenAPI path: {$path}\n");
+    foreach ($missingRoutes as $path) {
+        fwrite(STDERR, "- Missing route: {$path}\n");
+    }
+    foreach ($missingOpenApi as $path) {
+        fwrite(STDERR, "- Missing OpenAPI path: {$path}\n");
+    }
     exit(1);
 }
 

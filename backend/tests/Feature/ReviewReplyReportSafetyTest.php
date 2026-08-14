@@ -10,7 +10,6 @@ use App\Models\OrderItem;
 use App\Models\Origin;
 use App\Models\Product;
 use App\Models\ProductVariant;
-use App\Models\ReviewReply;
 use App\Models\ReviewReplyRevision;
 use App\Models\ReviewReport;
 use App\Models\Roastery;
@@ -98,6 +97,7 @@ final class ReviewReplyReportSafetyTest extends TestCase
         $order = Order::query()->create(['user_id' => $customer->id, 'roastery_id' => $roastery->id, 'quote_id' => $quote->id, 'order_number' => 'R-SAFE-'.strtoupper($suffix), 'status' => OrderStatus::Delivered, 'address_snapshot' => $quote->address_snapshot, 'subtotal' => 2_000_000, 'shipping_total' => 0, 'discount_total' => 0, 'grand_total' => 2_000_000, 'currency' => 'IRR', 'placed_at' => now()->subDay(), 'paid_at' => now()->subDay()]);
         $subOrder = SubOrder::query()->create(['order_id' => $order->id, 'roastery_id' => $roastery->id, 'status' => 'delivered', 'subtotal' => 2_000_000, 'shipping_total' => 0, 'delivered_at' => now()]);
         $item = OrderItem::query()->create(['order_id' => $order->id, 'sub_order_id' => $subOrder->id, 'product_id' => $product->id, 'variant_id' => $variant->id, 'roast_batch_id' => null, 'quantity' => 1, 'unit_price' => 2_000_000, 'line_total' => 2_000_000, 'product_snapshot' => ['id' => $product->id, 'name' => $product->name, 'slug' => $product->slug, 'primary_image' => null], 'variant_snapshot' => ['id' => $variant->id, 'sku' => $variant->sku, 'weight_grams' => 250, 'price' => 2_000_000, 'currency' => 'IRR'], 'roast_batch_snapshot' => null]);
+
         return [$customer, $roastery, $product, $item];
     }
 }

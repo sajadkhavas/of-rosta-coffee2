@@ -35,9 +35,20 @@ final class ReviewReply extends Model
     }
 
     /** @return BelongsTo<Review, $this> */
-    public function review(): BelongsTo { return $this->belongsTo(Review::class); }
+    public function review(): BelongsTo
+    {
+        return $this->belongsTo(Review::class);
+    }
+
     /** @return BelongsTo<User, $this> */
-    public function author(): BelongsTo { return $this->belongsTo(User::class, 'author_id'); }
+    public function author(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'author_id');
+    }
+
     /** @return HasMany<ReviewReplyRevision, $this> */
-    public function revisions(): HasMany { return $this->hasMany(ReviewReplyRevision::class, 'reply_id'); }
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(ReviewReplyRevision::class, 'reply_id');
+    }
 }

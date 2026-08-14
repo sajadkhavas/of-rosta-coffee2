@@ -19,6 +19,7 @@ final class ReviewSafetyController extends Controller
     public function sellerIndex(Request $request, string $roasteryId, ReviewSafetyService $safety): JsonResponse
     {
         /** @var User $user */ $user = $request->user();
+
         return $this->response(['items' => $safety->sellerReviews($user, Roastery::query()->findOrFail($roasteryId), (int) $request->query('limit', 50))]);
     }
 
@@ -27,6 +28,7 @@ final class ReviewSafetyController extends Controller
         $body = $request->validate(['body' => ['required', 'string', 'min:1', 'max:5000']])['body'];
         /** @var User $user */ $user = $request->user();
         $reply = $safety->upsertReply($user, Roastery::query()->findOrFail($roasteryId), Review::query()->findOrFail($reviewId), $body, $request);
+
         return $this->response($safety->replyPayload($reply));
     }
 
@@ -35,22 +37,27 @@ final class ReviewSafetyController extends Controller
         $input = $request->validate(['reason' => ['required', 'string', 'max:32'], 'evidence' => ['nullable', 'string', 'max:500']]);
         /** @var User $user */ $user = $request->user();
         $report = $safety->report($user, Review::query()->findOrFail($reviewId), $input['reason'], $input['evidence'] ?? null, $request);
+
         return $this->response($safety->reportPayload($report), 201);
     }
 
     public function adminReports(Request $request, CatalogAccess $access, ReviewSafetyService $safety): JsonResponse
     {
-        /** @var User $user */ $user = $request->user(); $access->assertAdministrator($user);
+        /** @var User $user */ $user = $request->user();
+        $access->assertAdministrator($user);
         $status = $request->validate(['status' => ['nullable', 'in:open,reviewing,resolved,dismissed']])['status'] ?? 'open';
         $items = ReviewReport::query()->where('status', $status)->latest()->limit(100)->get()->map(fn (ReviewReport $report): array => $safety->reportPayload($report))->all();
+
         return $this->response(['items' => $items]);
     }
 
     public function adminReplies(Request $request, CatalogAccess $access, ReviewSafetyService $safety): JsonResponse
     {
-        /** @var User $user */ $user = $request->user(); $access->assertAdministrator($user);
+        /** @var User $user */ $user = $request->user();
+        $access->assertAdministrator($user);
         $status = $request->validate(['status' => ['nullable', 'in:visible,hidden,rejected']])['status'] ?? 'visible';
         $items = ReviewReply::query()->where('status', $status)->latest()->limit(100)->get()->map(fn (ReviewReply $reply): array => $safety->replyPayload($reply))->all();
+
         return $this->response(['items' => $items]);
     }
 
@@ -58,6 +65,7 @@ final class ReviewSafetyController extends Controller
     {
         $input = $request->validate(['status' => ['required', 'string', 'max:24'], 'resolution_reason' => ['nullable', 'string', 'max:500']]);
         /** @var User $user */ $user = $request->user();
+
         return $this->response($safety->reportPayload($safety->moderateReport($user, ReviewReport::query()->findOrFail($reportId), $input['status'], $input['resolution_reason'] ?? null, $request)));
     }
 
@@ -65,6 +73,7 @@ final class ReviewSafetyController extends Controller
     {
         $input = $request->validate(['status' => ['required', 'string', 'max:24'], 'reason' => ['nullable', 'string', 'max:500']]);
         /** @var User $user */ $user = $request->user();
+
         return $this->response($safety->replyPayload($safety->moderateReply($user, ReviewReply::query()->findOrFail($replyId), $input['status'], $input['reason'] ?? null, $request)));
     }
 

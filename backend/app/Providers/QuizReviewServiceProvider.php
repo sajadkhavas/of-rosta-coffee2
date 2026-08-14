@@ -16,6 +16,7 @@ final class QuizReviewServiceProvider extends ServiceProvider
 
         RateLimiter::for('quiz-submit', function (Request $request): array {
             $token = (string) $request->input('guest_token');
+
             return [
                 Limit::perMinute(12)->by('quiz:ip:'.$request->ip()),
                 Limit::perMinute(6)->by('quiz:guest:'.hash('sha256', $token)),
@@ -24,6 +25,7 @@ final class QuizReviewServiceProvider extends ServiceProvider
 
         RateLimiter::for('review-report', function (Request $request): array {
             $userId = (string) $request->user()?->getAuthIdentifier();
+
             return [
                 Limit::perMinute(5)->by('review-report:user:'.$userId),
                 Limit::perHour(20)->by('review-report-hour:user:'.$userId),
