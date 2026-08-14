@@ -87,11 +87,16 @@ function QuizPage() {
   });
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      if (result && guestToken) await deleteGuestQuizAttempt(result.attempt.id, guestToken);
+      if (!result || !guestToken) throw new Error("نتیجه مهمان در دسترس نیست.");
+      await deleteGuestQuizAttempt(result.attempt.id, guestToken);
     },
     onSuccess: () => {
       clearQuizSession();
+      setAnswers({});
+      setStep(0);
       setResult(null);
+      setGuestToken(null);
+      setSynced(false);
       setDeleted(true);
     },
   });
@@ -256,6 +261,13 @@ function QuizPage() {
                 <div className="mt-3">
                   <Alert variant="success" title="در حساب ذخیره شد">
                     اکنون می‌توانی آن را در تاریخچه ببینی یا حذف کنی.
+                  </Alert>
+                </div>
+              ) : null}
+              {deleteMutation.isError ? (
+                <div className="mt-3">
+                  <Alert variant="danger" title="حذف نتیجه انجام نشد">
+                    {message(deleteMutation.error)}
                   </Alert>
                 </div>
               ) : null}
