@@ -31,19 +31,23 @@ final class QuizService
         $version = $this->publishedVersion();
         $tokenHash = $this->hashToken($guestToken);
         $submissionHash = hash('sha256', $guestToken.'|'.$idempotencyKey.'|'.$version->id);
-        $existing = QuizAttempt::query()->where('submission_key_hash', $submissionHash)->first();
-        if ($existing) {
-            $this->assertGuestToken($existing, $guestToken);
-            return $existing->load('version');
-        }
         $normalized = $this->validateAnswers($version, $answers);
 
         return DB::transaction(function () use ($version, $normalized, $tokenHash, $submissionHash, $request): QuizAttempt {
-            $attempt = QuizAttempt::query()->create([
-                'quiz_version_id' => $version->id, 'guest_token_hash' => $tokenHash, 'submission_key_hash' => $submissionHash,
-                'answers' => $normalized, 'score_profile' => $this->buildScoreProfile($version, $normalized), 'completed_at' => now(),
-            ]);
-            $this->audit->record('quiz.attempt.created', auditable: $attempt, metadata: ['quiz_version' => $version->version], request: $request);
+            $attempt = QuizAttempt::query()->firstOrCreate(
+                ['submission_key_hash' => $submissionHash],
+                [
+                    'quiz_version_id' => $version->id,
+                    'guest_token_hash' => $tokenHash,
+                    'answers' => $normalized,
+                    'score_profile' => $this->buildScoreProfile($version, $normalized),
+                    'completed_at' => now(),
+                ],
+            );
+            $this->assertGuestToken($attempt, $guestToken);
+            if ($attempt->wasRecentlyCreated) {
+                $this->audit->record('quiz.attempt.created', auditable: $attempt, metadata: ['quiz_version' => $version->version], request: $request);
+            }
             return $attempt->load('version');
         }, 3);
     }

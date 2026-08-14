@@ -92,21 +92,16 @@ final class ReviewSafetyService
         $evidence = $evidence === null ? null : $this->cleanText($evidence, 500);
 
         return DB::transaction(function () use ($user, $review, $reason, $evidence, $request): ReviewReport {
-            $existing = ReviewReport::query()->where('review_id', $review->id)->where('user_id', $user->id)->first();
-            if ($existing) {
-                return $existing;
+            $report = ReviewReport::query()->firstOrCreate(
+                ['review_id' => $review->id, 'user_id' => $user->id],
+                ['reason' => $reason, 'evidence' => $evidence, 'status' => 'open'],
+            );
+            if ($report->wasRecentlyCreated) {
+                $this->audit->record('review.report.created', actor: $user, auditable: $report, metadata: [
+                    'review_id' => $review->id,
+                    'reason' => $reason,
+                ], request: $request);
             }
-            $report = ReviewReport::query()->create([
-                'review_id' => $review->id,
-                'user_id' => $user->id,
-                'reason' => $reason,
-                'evidence' => $evidence,
-                'status' => 'open',
-            ]);
-            $this->audit->record('review.report.created', actor: $user, auditable: $report, metadata: [
-                'review_id' => $review->id,
-                'reason' => $reason,
-            ], request: $request);
 
             return $report;
         }, 3);
