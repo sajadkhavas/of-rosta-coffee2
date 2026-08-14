@@ -33,7 +33,7 @@ final class QuizService
         $submissionHash = hash('sha256', $guestToken.'|'.$idempotencyKey.'|'.$version->id);
         $normalized = $this->validateAnswers($version, $answers);
 
-        return DB::transaction(function () use ($version, $normalized, $tokenHash, $submissionHash, $request): QuizAttempt {
+        return DB::transaction(function () use ($version, $normalized, $guestToken, $tokenHash, $submissionHash, $request): QuizAttempt {
             $attempt = QuizAttempt::query()->firstOrCreate(
                 ['submission_key_hash' => $submissionHash],
                 [
