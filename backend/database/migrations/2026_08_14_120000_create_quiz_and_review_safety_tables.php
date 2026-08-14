@@ -29,7 +29,7 @@ return new class extends Migration
         Schema::create('quiz_attempts', function (Blueprint $table): void {
             $table->ulid('id')->primary();
             $table->foreignUlid('quiz_version_id')->constrained('quiz_versions')->restrictOnDelete();
-            $table->foreignUlid('user_id')->nullable()->constrained('users')->nullOnDelete()->index();
+            $table->foreignUlid('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->char('guest_token_hash', 64)->nullable()->index();
             $table->char('submission_key_hash', 64)->unique();
             $table->char('sync_key_hash', 64)->nullable()->unique();
@@ -43,7 +43,7 @@ return new class extends Migration
         Schema::create('review_replies', function (Blueprint $table): void {
             $table->ulid('id')->primary();
             $table->foreignUlid('review_id')->unique()->constrained('reviews')->cascadeOnDelete();
-            $table->foreignUlid('roastery_id')->constrained('roasteries')->restrictOnDelete()->index();
+            $table->foreignUlid('roastery_id')->constrained('roasteries')->restrictOnDelete();
             $table->foreignUlid('author_id')->constrained('users')->restrictOnDelete();
             $table->text('body');
             $table->string('status', 24)->default('visible')->index();
@@ -55,7 +55,7 @@ return new class extends Migration
 
         Schema::create('review_reply_revisions', function (Blueprint $table): void {
             $table->ulid('id')->primary();
-            $table->foreignUlid('reply_id')->constrained('review_replies')->cascadeOnDelete()->index();
+            $table->foreignUlid('reply_id')->constrained('review_replies')->cascadeOnDelete();
             $table->foreignUlid('editor_id')->nullable()->constrained('users')->nullOnDelete();
             $table->text('body');
             $table->string('previous_status', 24);
