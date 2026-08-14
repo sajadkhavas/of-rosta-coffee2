@@ -18,9 +18,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $shipping_total
  * @property int $discount_total
  * @property int $tax_total
+ * @property int $commission_total
+ * @property int $payable_total
  * @property int $grand_total
  * @property string $currency
  * @property array<mixed>|null $pricing_snapshot
+ * @property array<mixed> $financial_snapshot
  * @property-read CheckoutQuote|null $quote
  * @property-read Roastery|null $roastery
  * @property-read Collection<int, CheckoutQuoteItem> $items
@@ -39,9 +42,12 @@ final class CheckoutQuoteGroup extends Model
         'shipping_total',
         'discount_total',
         'tax_total',
+        'commission_total',
+        'payable_total',
         'grand_total',
         'currency',
         'pricing_snapshot',
+        'financial_snapshot',
     ];
 
     protected function casts(): array
@@ -53,8 +59,11 @@ final class CheckoutQuoteGroup extends Model
             'shipping_total' => 'integer',
             'discount_total' => 'integer',
             'tax_total' => 'integer',
+            'commission_total' => 'integer',
+            'payable_total' => 'integer',
             'grand_total' => 'integer',
             'pricing_snapshot' => 'array',
+            'financial_snapshot' => 'array',
         ];
     }
 

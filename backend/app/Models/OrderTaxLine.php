@@ -12,6 +12,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $order_id
  * @property string|null $sub_order_id
  * @property string|null $order_item_service_id
+ * @property string|null $order_item_id
+ * @property string|null $component
+ * @property int|null $policy_version
  * @property string $tax_code
  * @property int $taxable_amount
  * @property int $tax_amount
@@ -27,6 +30,9 @@ final class OrderTaxLine extends Model
         'order_id',
         'sub_order_id',
         'order_item_service_id',
+        'order_item_id',
+        'component',
+        'policy_version',
         'tax_code',
         'jurisdiction',
         'taxable_amount',
@@ -41,6 +47,7 @@ final class OrderTaxLine extends Model
             'taxable_amount' => 'integer',
             'tax_amount' => 'integer',
             'rate_basis_points' => 'integer',
+            'policy_version' => 'integer',
             'calculation_snapshot' => 'array',
         ];
     }
@@ -67,5 +74,11 @@ final class OrderTaxLine extends Model
     public function orderItemService(): BelongsTo
     {
         return $this->belongsTo(OrderItemService::class);
+    }
+
+    /** @return BelongsTo<OrderItem, $this> */
+    public function orderItem(): BelongsTo
+    {
+        return $this->belongsTo(OrderItem::class);
     }
 }

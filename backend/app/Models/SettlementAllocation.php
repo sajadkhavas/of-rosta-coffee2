@@ -24,9 +24,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $gross_amount
  * @property int $discount_amount
  * @property int $tax_amount
+ * @property int $commission_amount
  * @property int $net_amount
  * @property string $currency
  * @property array<mixed>|null $metadata
+ * @property array<mixed> $financial_snapshot
  * @property CarbonImmutable|null $eligible_at
  * @property CarbonImmutable|null $scheduled_at
  * @property CarbonImmutable|null $paid_at
@@ -56,6 +58,7 @@ final class SettlementAllocation extends Model
         'gross_amount',
         'discount_amount',
         'tax_amount',
+        'commission_amount',
         'net_amount',
         'currency',
         'tax_code',
@@ -63,6 +66,7 @@ final class SettlementAllocation extends Model
         'source_reference',
         'idempotency_key',
         'metadata',
+        'financial_snapshot',
         'eligible_at',
         'scheduled_at',
         'paid_at',
@@ -76,8 +80,10 @@ final class SettlementAllocation extends Model
             'gross_amount' => 'integer',
             'discount_amount' => 'integer',
             'tax_amount' => 'integer',
+            'commission_amount' => 'integer',
             'net_amount' => 'integer',
             'metadata' => 'array',
+            'financial_snapshot' => 'array',
             'eligible_at' => 'immutable_datetime',
             'scheduled_at' => 'immutable_datetime',
             'paid_at' => 'immutable_datetime',

@@ -28,6 +28,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property int $grand_total
  * @property int $commission_total
  * @property int $payable_total
+ * @property array<mixed> $financial_snapshot
  * @property string $currency
  * @property CarbonImmutable|null $accepted_at
  * @property CarbonImmutable|null $fulfillment_committed_at
@@ -84,6 +85,7 @@ final class SubOrder extends Model
         'grand_total',
         'commission_total',
         'payable_total',
+        'financial_snapshot',
         'currency',
         'accepted_at',
         'fulfillment_committed_at',
@@ -123,6 +125,7 @@ final class SubOrder extends Model
             'grand_total' => 'integer',
             'commission_total' => 'integer',
             'payable_total' => 'integer',
+            'financial_snapshot' => 'array',
             'accepted_at' => 'immutable_datetime',
             'fulfillment_committed_at' => 'immutable_datetime',
             'preparation_due_at' => 'immutable_datetime',

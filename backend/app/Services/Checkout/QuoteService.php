@@ -18,6 +18,7 @@ use App\Models\RoastBatch;
 use App\Models\Roastery;
 use App\Models\User;
 use App\Services\Catalog\ProductPackagingPolicy;
+use App\Services\Finance\FinancialTruthEngine;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -33,6 +34,7 @@ final class QuoteService
         private readonly ShippingQuoteService $shipping,
         private readonly ProductPackagingPolicy $packaging,
         private readonly RoasteryGrindingSelection $grinding,
+        private readonly FinancialTruthEngine $financialTruth,
     ) {}
 
     /**
@@ -326,9 +328,90 @@ final class QuoteService
         $discountTotal = min($subtotal, (int) $couponResult['discount']);
         $discounts = $this->allocateMoney($discountTotal, $groupSubtotals);
         $grandTotal = 0;
+        $taxTotal = 0;
+        $commissionTotal = 0;
+        $financialSnapshots = [];
+        $calculatedAt = now()->toImmutable();
 
         foreach ($resolvedGroups as $roasteryId => &$group) {
             $group['discount_total'] = $discounts[$roasteryId] ?? 0;
+            $itemBases = [];
+            foreach ($group['items'] as $index => $resolved) {
+                $itemBases['product:'.$index] = $resolved['line_total'];
+            }
+            $itemDiscounts = $this->allocateMoney($group['discount_total'], $itemBases);
+            $components = [];
+            foreach ($group['items'] as $index => $resolved) {
+                $productKey = 'product:'.$index;
+                $components[] = [
+                    'key' => $productKey,
+                    'component' => 'product',
+                    'owner_type' => 'roastery',
+                    'gross_amount' => $resolved['line_total'],
+                    'discount_amount' => $itemDiscounts[$productKey] ?? 0,
+                    'attributes' => [
+                        'roastery_id' => $roasteryId,
+                        'product_id' => $resolved['product']->id,
+                        'provider_type' => 'roastery',
+                    ],
+                ];
+                $components[] = [
+                    'key' => 'packaging:'.$index,
+                    'component' => 'packaging',
+                    'owner_type' => 'roastery',
+                    'gross_amount' => $resolved['line_packaging_total'],
+                    'attributes' => [
+                        'roastery_id' => $roasteryId,
+                        'product_id' => $resolved['product']->id,
+                        'provider_type' => 'roastery',
+                    ],
+                ];
+                if ($resolved['grinding'] !== null) {
+                    $components[] = [
+                        'key' => 'grinding:'.$index,
+                        'component' => 'grinding',
+                        'owner_type' => $resolved['grinding']['provider_type'] === 'rosta_hub' ? 'rosta' : 'roastery',
+                        'gross_amount' => $resolved['line_grinding_total'],
+                        'attributes' => [
+                            'roastery_id' => $roasteryId,
+                            'product_id' => $resolved['product']->id,
+                            'provider_type' => $resolved['grinding']['provider_type'],
+                        ],
+                    ];
+                }
+            }
+            $components[] = [
+                'key' => 'shipping',
+                'component' => 'shipping',
+                'owner_type' => $group['hub_route'] === null ? 'roastery' : 'rosta',
+                'gross_amount' => $group['shipping_total'],
+                'attributes' => [
+                    'roastery_id' => $roasteryId,
+                    'provider_type' => $group['hub_route'] === null ? 'roastery' : 'rosta_hub',
+                ],
+            ];
+
+            $financial = $this->financialTruth->calculate($components, $calculatedAt);
+            foreach ($group['items'] as $index => &$resolved) {
+                $resolved['financial'] = [
+                    'product' => $financial['components']['product:'.$index],
+                    'packaging' => $financial['components']['packaging:'.$index],
+                    'grinding' => $financial['components']['grinding:'.$index] ?? null,
+                ];
+            }
+            unset($resolved);
+            $group['tax_total'] = $financial['totals']['tax'];
+            $group['commission_total'] = $financial['totals']['commission'];
+            $group['payable_total'] = array_sum(array_map(
+                static fn (array $component): int => $component['owner_type'] === 'roastery'
+                    ? (int) $component['payable_amount']
+                    : 0,
+                $financial['components'],
+            ));
+            $group['financial_snapshot'] = [
+                ...$financial['snapshot'],
+                'components' => $financial['components'],
+            ];
             $group['grand_total'] = $this->addMoney(
                 $this->addMoney(
                     $this->addMoney(
@@ -339,7 +422,14 @@ final class QuoteService
                 ),
                 $group['shipping_total'],
             );
+            $group['grand_total'] = $this->addMoney($group['grand_total'], $group['tax_total']);
             $grandTotal = $this->addMoney($grandTotal, $group['grand_total']);
+            $taxTotal = $this->addMoney($taxTotal, $group['tax_total']);
+            $commissionTotal = $this->addMoney($commissionTotal, $group['commission_total']);
+            $financialSnapshots[] = [
+                'roastery_id' => $roasteryId,
+                'snapshot' => $group['financial_snapshot'],
+            ];
         }
         unset($group);
 
@@ -360,10 +450,13 @@ final class QuoteService
             $subtotal,
             $shippingTotal,
             $discountTotal,
+            $taxTotal,
+            $commissionTotal,
             $grandTotal,
             $shippingSnapshots,
             $resolvedGroups,
             $warnings,
+            $financialSnapshots,
         ): CheckoutQuote {
             $singleRoasteryId = count($resolvedGroups) === 1
                 ? array_key_first($resolvedGroups)
@@ -379,6 +472,8 @@ final class QuoteService
                 'subtotal' => $subtotal,
                 'shipping_total' => $shippingTotal,
                 'discount_total' => $discountTotal,
+                'tax_total' => $taxTotal,
+                'commission_total' => $commissionTotal,
                 'grand_total' => $grandTotal,
                 'currency' => 'IRR',
                 'address_snapshot' => $address === null
@@ -386,6 +481,10 @@ final class QuoteService
                     : $this->addressSnapshot($address),
                 'shipping_snapshot' => ['groups' => $shippingSnapshots],
                 'warnings' => $warnings,
+                'financial_snapshot' => [
+                    'version' => 'ps4a-financial-truth-v1',
+                    'groups' => $financialSnapshots,
+                ],
                 'expires_at' => now()->addMinutes(
                     (int) config('rosta.checkout.quote_ttl_minutes', 15),
                 ),
@@ -400,7 +499,9 @@ final class QuoteService
                     'grinding_total' => $group['grinding_total'],
                     'shipping_total' => $group['shipping_total'],
                     'discount_total' => $group['discount_total'],
-                    'tax_total' => 0,
+                    'tax_total' => $group['tax_total'],
+                    'commission_total' => $group['commission_total'],
+                    'payable_total' => $group['payable_total'],
                     'grand_total' => $group['grand_total'],
                     'currency' => 'IRR',
                     'pricing_snapshot' => [
@@ -410,6 +511,7 @@ final class QuoteService
                         'shipping' => $group['shipping_snapshot'],
                         'hub_route' => $group['hub_route'],
                     ],
+                    'financial_snapshot' => $group['financial_snapshot'],
                 ]);
 
                 foreach ($group['items'] as $resolved) {
@@ -427,6 +529,11 @@ final class QuoteService
                         'unit_price' => $variant->price,
                         'compare_at_price' => $variant->compare_at_price,
                         'line_total' => $resolved['line_total'],
+                        'discount_amount' => $resolved['financial']['product']['discount_amount'],
+                        'tax_amount' => $resolved['financial']['product']['tax_amount'],
+                        'commission_amount' => $resolved['financial']['product']['commission_amount'],
+                        'net_amount' => $resolved['financial']['product']['payable_amount'],
+                        'financial_snapshot' => $resolved['financial']['product'],
                         'product_snapshot' => $this->productSnapshot($product),
                         'variant_snapshot' => $this->variantSnapshot($variant),
                         'roast_batch_snapshot' => $batch === null
@@ -459,8 +566,9 @@ final class QuoteService
                         'service_fee' => 0,
                         'packaging_fee' => $resolved['line_packaging_total'],
                         'shipping_fee' => 0,
-                        'tax_amount' => 0,
-                        'total_amount' => $resolved['line_packaging_total'],
+                        'tax_amount' => $resolved['financial']['packaging']['tax_amount'],
+                        'commission_amount' => $resolved['financial']['packaging']['commission_amount'],
+                        'total_amount' => $resolved['line_packaging_total'] + $resolved['financial']['packaging']['tax_amount'],
                         'currency' => 'IRR',
                         'pricing_snapshot' => [
                             'version' => $isHubGrinding
@@ -471,6 +579,7 @@ final class QuoteService
                             'line_total' => $resolved['line_packaging_total'],
                         ],
                         'service_snapshot' => $packagingSnapshot,
+                        'financial_snapshot' => $resolved['financial']['packaging'],
                     ]);
 
                     if ($isHubGrinding) {
@@ -486,6 +595,7 @@ final class QuoteService
                             'packaging_fee' => 0,
                             'shipping_fee' => 0,
                             'tax_amount' => 0,
+                            'commission_amount' => 0,
                             'total_amount' => 0,
                             'currency' => 'IRR',
                             'pricing_snapshot' => [
@@ -500,6 +610,14 @@ final class QuoteService
                                 'provider_hub_id' => $grinding['provider_hub_id'],
                                 'is_free' => true,
                                 'label' => 'بسته‌بندی هاب رستا رایگان',
+                            ],
+                            'financial_snapshot' => [
+                                'status' => $group['financial_snapshot']['status'],
+                                'component' => 'packaging',
+                                'gross_amount' => 0,
+                                'tax_amount' => 0,
+                                'commission_amount' => 0,
+                                'payable_amount' => 0,
                             ],
                         ]);
                     }
@@ -516,11 +634,13 @@ final class QuoteService
                             'service_fee' => $resolved['line_grinding_total'],
                             'packaging_fee' => 0,
                             'shipping_fee' => 0,
-                            'tax_amount' => 0,
-                            'total_amount' => $resolved['line_grinding_total'],
+                            'tax_amount' => $resolved['financial']['grinding']['tax_amount'],
+                            'commission_amount' => $resolved['financial']['grinding']['commission_amount'],
+                            'total_amount' => $resolved['line_grinding_total'] + $resolved['financial']['grinding']['tax_amount'],
                             'currency' => 'IRR',
                             'pricing_snapshot' => $grinding['pricing_snapshot'],
                             'service_snapshot' => $grinding['service_snapshot'],
+                            'financial_snapshot' => $resolved['financial']['grinding'],
                         ]);
                     }
                 }

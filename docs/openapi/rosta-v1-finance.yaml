@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: Rosta Refund and Financial Reconciliation API
-  version: 2026-07-23
-  description: Administrator-only, provider-neutral refund ledger and financial reconciliation workflows.
+  version: 2026-08-14-ps4a
+  description: Administrator-only financial policy, immutable calculation snapshot, refund ledger and reconciliation workflows.
 servers:
   - url: https://api-staging.rosta.shop/api/v1
 security:
@@ -20,6 +20,81 @@ paths:
       responses:
         "200": { description: Paginated financial reconciliation cases }
         "403": { description: Administrator role required }
+  /admin/finance/policies:
+    get:
+      operationId: listFinancialPolicies
+      responses:
+        "200": { description: Versioned tax and commission policies with rules and lifecycle state }
+  /admin/finance/tax-policies:
+    post:
+      operationId: createTaxPolicyDraft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TaxPolicyInput" }
+      responses:
+        "201": { description: Tax policy draft created; no rate is inferred by the server }
+  /admin/finance/tax-policies/{policyId}:
+    patch:
+      operationId: updateTaxPolicyDraft
+      parameters: [{ $ref: "#/components/parameters/PolicyId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TaxPolicyInput" }
+      responses:
+        "200": { description: Draft replaced }
+        "409": { description: Submitted and published versions are immutable }
+  /admin/finance/tax-policies/{policyId}/submit:
+    post:
+      operationId: submitTaxPolicy
+      parameters: [{ $ref: "#/components/parameters/PolicyId" }]
+      responses:
+        "200": { description: Draft submitted for independent approval }
+  /admin/finance/tax-policies/{policyId}/publish:
+    post:
+      operationId: publishTaxPolicy
+      parameters: [{ $ref: "#/components/parameters/PolicyId" }]
+      responses:
+        "200": { description: Effective-dated immutable version published with checksum }
+        "409": { description: Author/publisher dual-control or effective-range overlap violation }
+  /admin/finance/commission-policies:
+    post:
+      operationId: createCommissionPolicyDraft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommissionPolicyInput" }
+      responses:
+        "201": { description: Commission policy draft created; no rate is inferred by the server }
+  /admin/finance/commission-policies/{policyId}:
+    patch:
+      operationId: updateCommissionPolicyDraft
+      parameters: [{ $ref: "#/components/parameters/PolicyId" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CommissionPolicyInput" }
+      responses:
+        "200": { description: Draft replaced }
+        "409": { description: Submitted and published versions are immutable }
+  /admin/finance/commission-policies/{policyId}/submit:
+    post:
+      operationId: submitCommissionPolicy
+      parameters: [{ $ref: "#/components/parameters/PolicyId" }]
+      responses:
+        "200": { description: Draft submitted for independent approval }
+  /admin/finance/commission-policies/{policyId}/publish:
+    post:
+      operationId: publishCommissionPolicy
+      parameters: [{ $ref: "#/components/parameters/PolicyId" }]
+      responses:
+        "200": { description: Effective-dated immutable version published with checksum }
+        "409": { description: Author/publisher dual-control or effective-range overlap violation }
   /admin/orders/{orderId}/refunds:
     post:
       operationId: requestOrderRefund
@@ -135,7 +210,60 @@ components:
       in: path
       required: true
       schema: { type: string }
+    PolicyId:
+      name: policyId
+      in: path
+      required: true
+      schema: { type: string }
   schemas:
+    FinancialPolicyBase:
+      type: object
+      additionalProperties: false
+      required: [currency, rounding_mode, effective_from, change_reason, rules]
+      properties:
+        currency: { type: string, enum: [IRR] }
+        rounding_mode: { type: string, enum: [floor, half_up] }
+        effective_from: { type: string, format: date-time }
+        effective_to: { type: [string, "null"], format: date-time }
+        change_reason: { type: string, minLength: 10, maxLength: 2000 }
+    TaxPolicyInput:
+      allOf:
+        - { $ref: "#/components/schemas/FinancialPolicyBase" }
+        - type: object
+          required: [rules]
+          properties:
+            rules:
+              type: array
+              minItems: 1
+              items:
+                type: object
+                required: [code, component, jurisdiction, rate_basis_points, priority]
+                properties:
+                  code: { type: string }
+                  component: { type: string, enum: [product, packaging, grinding, shipping] }
+                  jurisdiction: { type: string }
+                  rate_basis_points: { type: integer, minimum: 0, maximum: 10000 }
+                  priority: { type: integer, minimum: 1, maximum: 1000 }
+                  applicability: { type: [object, "null"] }
+    CommissionPolicyInput:
+      allOf:
+        - { $ref: "#/components/schemas/FinancialPolicyBase" }
+        - type: object
+          required: [rules]
+          properties:
+            rules:
+              type: array
+              minItems: 1
+              items:
+                type: object
+                required: [code, component, rate_basis_points, priority]
+                properties:
+                  code: { type: string }
+                  component: { type: string, enum: [product, packaging, grinding, shipping] }
+                  owner_type: { type: [string, "null"], enum: [roastery, rosta, null] }
+                  rate_basis_points: { type: integer, minimum: 0, maximum: 10000 }
+                  priority: { type: integer, minimum: 1, maximum: 1000 }
+                  applicability: { type: [object, "null"] }
     CreateRefundRequest:
       type: object
       additionalProperties: false

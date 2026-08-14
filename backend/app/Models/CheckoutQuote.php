@@ -22,7 +22,10 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property int $subtotal
  * @property int $shipping_total
  * @property int $discount_total
+ * @property int $tax_total
+ * @property int $commission_total
  * @property int $grand_total
+ * @property array<mixed> $financial_snapshot
  * @property string|null $currency
  * @property array<mixed> $address_snapshot
  * @property array<mixed> $shipping_snapshot
@@ -53,11 +56,14 @@ final class CheckoutQuote extends Model
         'subtotal',
         'shipping_total',
         'discount_total',
+        'tax_total',
+        'commission_total',
         'grand_total',
         'currency',
         'address_snapshot',
         'shipping_snapshot',
         'warnings',
+        'financial_snapshot',
         'expires_at',
         'consumed_at',
     ];
@@ -69,10 +75,13 @@ final class CheckoutQuote extends Model
             'subtotal' => 'integer',
             'shipping_total' => 'integer',
             'discount_total' => 'integer',
+            'tax_total' => 'integer',
+            'commission_total' => 'integer',
             'grand_total' => 'integer',
             'address_snapshot' => 'encrypted:array',
             'shipping_snapshot' => 'array',
             'warnings' => 'array',
+            'financial_snapshot' => 'array',
             'expires_at' => 'immutable_datetime',
             'consumed_at' => 'immutable_datetime',
         ];

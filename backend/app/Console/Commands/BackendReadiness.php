@@ -11,6 +11,7 @@ use App\Models\FinancialReconciliationCase;
 use App\Models\NotificationOutbox;
 use App\Models\PaymentAttempt;
 use App\Models\RefundAttempt;
+use App\Services\Finance\FinancialPolicyResolver;
 use App\Services\Media\SecureImageProcessor;
 use App\Services\Notifications\SmsProviderManager;
 use App\Services\Payments\PaymentProviderManager;
@@ -33,6 +34,7 @@ final class BackendReadiness extends Command
         SmsProviderManager $sms,
         SecureImageProcessor $images,
         OtpSender $otp,
+        FinancialPolicyResolver $financialPolicies,
     ): int {
         $checks = [];
         $warnings = [];
@@ -83,6 +85,8 @@ final class BackendReadiness extends Command
             'inquiries',
             'media_upload_intents',
             'otp_challenges',
+            'tax_policies',
+            'commission_policies',
         ];
         $missingTables = [];
         foreach ($requiredTables as $table) {
@@ -156,6 +160,14 @@ final class BackendReadiness extends Command
             $mediaEnabled
                 ? 'Enabled media pipeline has storage, HTTPS CDN and JPEG/WebP/AVIF decoding'
                 : 'Media uploads are intentionally disabled',
+        );
+        $this->check(
+            $checks,
+            'financial_policies',
+            $financialPolicies->ready(),
+            $financialPolicies->required()
+                ? 'An effective, published tax and commission policy pair is active'
+                : 'Financial policies are optional only outside production',
         );
 
         if ($checks['database']['passed'] && Schema::hasTable('payment_attempts')) {

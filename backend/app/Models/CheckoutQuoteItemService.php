@@ -19,10 +19,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $packaging_fee
  * @property int $shipping_fee
  * @property int $tax_amount
+ * @property int $commission_amount
  * @property int $total_amount
  * @property string $currency
  * @property array<mixed> $pricing_snapshot
  * @property array<mixed> $service_snapshot
+ * @property array<mixed> $financial_snapshot
  */
 final class CheckoutQuoteItemService extends Model
 {
@@ -40,10 +42,12 @@ final class CheckoutQuoteItemService extends Model
         'packaging_fee',
         'shipping_fee',
         'tax_amount',
+        'commission_amount',
         'total_amount',
         'currency',
         'pricing_snapshot',
         'service_snapshot',
+        'financial_snapshot',
     ];
 
     protected function casts(): array
@@ -53,9 +57,11 @@ final class CheckoutQuoteItemService extends Model
             'packaging_fee' => 'integer',
             'shipping_fee' => 'integer',
             'tax_amount' => 'integer',
+            'commission_amount' => 'integer',
             'total_amount' => 'integer',
             'pricing_snapshot' => 'array',
             'service_snapshot' => 'array',
+            'financial_snapshot' => 'array',
         ];
     }
 
