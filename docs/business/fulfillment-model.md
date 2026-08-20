@@ -10,16 +10,19 @@ This document defines the responsibility boundary between Roastery, ROSTA Fulfil
 
 ### 2.1 Direct Fulfillment
 
-**Owner: Roastery**
+**Operational responsibility: Roastery for seller-controlled stages**
 
 Roastery responsibilities:
 
-- prepare the accepted Sub-order;
+- prepare the committed Sub-order;
 - perform any Roastery-provided Order Item Services;
 - pack the goods;
 - dispatch to an authorized Carrier;
 - provide shipment/tracking evidence required by ROSTA;
-- manage seller-side preparation exceptions within SLA.
+- report seller-side preparation incidents truthfully within SLA;
+- complete seller-controlled milestones until evidenced Carrier handoff.
+
+There is no normal post-payment seller reject/cancel step. A seller problem becomes an incident and follows authorized exception policy.
 
 ROSTA responsibilities:
 
@@ -27,13 +30,13 @@ ROSTA responsibilities:
 - SLA monitoring;
 - customer support;
 - exception coordination;
-- policy-based refund/replacement decisions where applicable.
+- policy-based remedy/refund/replacement workflow where applicable.
 
 Carrier responsibility begins at the evidenced handoff according to the carrier agreement.
 
 ### 2.2 ROSTA Fulfillment
 
-**Owner: ROSTA for contracted hub operations after accepted custody handoff**
+**Operational responsibility: ROSTA for contracted hub operations after accepted custody handoff**
 
 Typical stages:
 
@@ -51,6 +54,12 @@ Roastery preparation
 ```
 
 ROSTA responsibility for physical hub operations begins only after a valid custody receipt/handoff. Before that point, Roastery remains responsible for its preparation and transfer obligations.
+
+### 2.3 Supported capability versus launch operating policy
+
+The platform supports both Direct Fulfillment and ROSTA Fulfillment. Operational launch policy may choose to route all or most eligible orders through a centralized ROSTA Hub to consolidate receiving, grinding when required, ROSTA packaging, marketing/partner inserts and outbound dispatch.
+
+Such a policy is versioned/configurable operating policy. It does not remove Direct Fulfillment as a supported platform capability and must not create a false custody event before ROSTA physically receives the goods.
 
 ## 3. ROSTA Hub capability model
 
@@ -93,7 +102,7 @@ ROSTA packaging may include:
 
 ### Marketing Insert
 
-Any insert/gift/sample is governed by the Partner Experience Engine and must not be added ad hoc outside an approved experience/campaign rule.
+Any insert/gift/sample is governed by approved partner/campaign policy and must not be added ad hoc outside an authorized experience.
 
 ### Dispatch
 
@@ -130,7 +139,7 @@ A status label alone is not sufficient proof of a responsibility handoff.
 
 ## 5. Multi-roastery fulfillment
 
-Each Roastery Sub-order may have its own fulfillment mode. A single Master Order can therefore be partially Direct and partially ROSTA Fulfillment.
+Each Roastery Sub-order may have its own fulfillment plan. A single Master Order can therefore be partially Direct and partially ROSTA Fulfillment when policy allows.
 
 Example:
 
@@ -141,6 +150,8 @@ Master Order
 ```
 
 Shipment, SLA, custody and incidents must remain attributable to the correct Sub-order. A failure in Sub-order B must not overwrite the state of Sub-order A.
+
+A centralized launch policy may instead route both eligible Sub-orders through ROSTA Fulfillment. The underlying per-Sub-order truth remains explicit.
 
 ## 6. Carrier boundary
 
@@ -153,7 +164,7 @@ ROSTA remains owner of the customer-facing support case and is responsible for:
 - customer communication;
 - claim coordination;
 - resolution workflow;
-- refund/replacement decision according to ROSTA policy.
+- remedy/refund/replacement decision according to policy, contract and applicable law.
 
 This business contract does not assert absolute legal liability independent of the governing carrier agreement or applicable law.
 
@@ -161,12 +172,15 @@ This business contract does not assert absolute legal liability independent of t
 
 ### Product-quality issue
 
-Owner: Roastery.
-ROSTA coordinates the customer case and marketplace resolution.
+Roastery provides product-domain investigation and evidence. ROSTA coordinates the customer case and marketplace resolution.
+
+### Seller fulfillment incident
+
+A seller problem after paid commitment is reported as an incident rather than handled through a normal reject/cancel action. Incident reporting does not itself cancel, refund, release inventory or alter settlement.
 
 ### ROSTA hub execution issue
 
-Owner: ROSTA Fulfillment.
+Operational responsibility: ROSTA Fulfillment.
 Examples include wrong hub grinding execution, packaging error or hub processing delay.
 
 ### Carrier-caused issue
@@ -178,14 +192,15 @@ Customer-facing case owner: ROSTA.
 
 Roastery obligations are governed by `roastery-sla-model.md`.
 
-ROSTA Fulfillment and Carrier stages may have separate internal/provider SLA contracts. These must remain distinct so a carrier delay is not incorrectly recorded as a Roastery preparation breach.
+ROSTA Fulfillment and Carrier stages may have separate internal/provider SLA contracts. These must remain distinct so a carrier or hub delay is not incorrectly recorded as a Roastery preparation breach.
 
 ## 9. Ownership, boundary, escalation
 
-| Capability | Owner | Boundary | Escalation Path |
+| Capability | Owner / Primary Accountability | Boundary | Escalation Path |
 |---|---|---|---|
 | Product preparation truth | Roastery | before custody handoff | Roastery -> ROSTA Support/Fulfillment |
 | Direct packing/dispatch | Roastery | through carrier handoff | Roastery -> Support -> Carrier claim if applicable |
+| Seller fulfillment incident | Roastery evidence/input + ROSTA authorized resolution | affected committed Sub-order | Roastery -> ROSTA Ops/Support -> authorized exception owner |
 | ROSTA receiving/hub ops | ROSTA | accepted ROSTA custody | Fulfillment Operator -> Fulfillment lead -> Support/Admin |
 | Carrier transport | Carrier | evidenced carrier custody | ROSTA Support -> Carrier claim workflow |
 | Customer-facing resolution | ROSTA | entire marketplace case | Support -> domain owner -> Admin/Finance as policy requires |
