@@ -53,10 +53,14 @@ Customer -> ROSTA Support -> responsible operational/finance owner -> Admin exce
 
 - product truth and product quality;
 - inventory truth for its products;
-- accepting/rejecting its own Sub-orders within SLA;
-- fulfilling Direct Fulfillment responsibilities when selected;
-- handing goods into the ROSTA network correctly when ROSTA Fulfillment is selected;
-- maintaining seller operational information required by marketplace policy.
+- prepare every valid paid/committed Sub-order assigned to it under marketplace availability rules;
+- perform seller-provided Order Item Services when assigned;
+- fulfill Direct Fulfillment responsibilities when selected;
+- hand goods into the ROSTA network correctly when ROSTA Fulfillment is selected;
+- report seller operational incidents truthfully instead of using a normal post-payment reject/cancel path;
+- maintain seller operational information required by marketplace policy.
+
+A valid paid Sub-order is a fulfillment commitment. Routine seller acceptance/rejection after payment is not part of the canonical ROSTA role model.
 
 ### Access
 
@@ -65,6 +69,7 @@ May view or manage, subject to seller permissions:
 - its own products and inventory;
 - its own Roastery Sub-orders;
 - fulfillment information for its own Sub-orders;
+- seller incident-reporting and authorized operational actions for its own scope;
 - only customer delivery/contact fields required to execute its authorized operational step;
 - its own settlement/business records allowed by finance policy.
 
@@ -76,30 +81,33 @@ Must not access:
 - customer purchase history unrelated to its own Sub-orders;
 - behavioral/marketing profiles not required for fulfillment;
 - data belonging to another Roastery;
-- platform secrets or global financial records.
+- platform secrets or global financial records;
+- unrestricted cancellation/refund/settlement mutation merely because the seller reports an incident.
 
 Roastery must not use fulfillment/customer data for unrelated direct marketing unless a separate lawful and policy-approved basis exists.
 
 ### Escalation path
 
-Roastery operator -> Roastery manager/owner -> ROSTA Support/Fulfillment -> Admin/Finance depending on incident type.
+Roastery operator -> Roastery manager/owner -> ROSTA Support/Fulfillment/Ops -> authorized Admin/Finance policy owner depending on incident type.
 
 ## 3. ROSTA Growth Partner
 
 ### Responsibility
 
-- acquire or refer customers under approved campaigns;
+- acquire or refer customers under the approved ROSTA Growth Network policy;
+- source/advance eligible Roastery and B2B leads where applicable;
 - use assigned referral/attribution mechanisms accurately;
-- comply with campaign, privacy and brand rules.
+- comply with campaign, privacy, anti-fraud and brand rules.
 
 ### Access
 
-May view:
+May view only its authorized scope, such as:
 
-- own referral code/campaign state;
-- aggregated attributed performance allowed by policy;
-- ledger-backed commission state and settlement status;
-- own partner tier/eligibility.
+- own referral code/link/QR and campaign state;
+- own qualified-customer/lead portfolio views permitted by policy;
+- aggregated/minimized attributed performance;
+- own ledger-backed commission state and payout history;
+- own official Starter/Growth/Pro tier/eligibility where applicable.
 
 ### Limitations
 
@@ -107,12 +115,13 @@ Must not access:
 
 - full customer profiles;
 - unrestricted customer exports;
-- private order contents unless explicitly required by a specific partner experience and permitted by policy;
-- other partners' commission/attribution data.
+- private order contents unless explicitly required by a specific approved workflow and permitted by policy;
+- other partners' commission/attribution/lead data;
+- the ability to mark signup/unpaid/refunded/fraud/self-referral activity as qualified.
 
 ### Escalation path
 
-Growth Partner -> ROSTA Partner/Growth Operations -> Finance for ledger/settlement disputes -> Admin for policy exceptions.
+Growth Partner -> ROSTA Partner/Growth Operations -> Finance for ledger/payout disputes -> Admin/policy owner for attribution/lead/fraud exceptions.
 
 ## 4. Admin
 
@@ -120,7 +129,8 @@ Growth Partner -> ROSTA Partner/Growth Operations -> Finance for ledger/settleme
 
 - platform governance and exceptional administrative actions;
 - policy enforcement;
-- oversight of users, sellers, operations and risk boundaries.
+- oversight of users, sellers, operations and risk boundaries;
+- authorized resolution of exceptional seller incidents where policy permits scoped cancellation/refund/rerouting or other remedy.
 
 ### Access
 
@@ -140,7 +150,7 @@ Admin decisions involving financial, privacy, legal or high-impact operational e
 
 - customer-facing case management;
 - order-status explanation;
-- coordination of product, fulfillment, carrier and payment incidents;
+- coordination of product, seller-incident, fulfillment, carrier and payment cases;
 - escalation and resolution tracking.
 
 ### Access
@@ -163,7 +173,7 @@ Must not view:
 
 ### Escalation path
 
-Support -> Product issue: Roastery; Fulfillment issue: ROSTA Fulfillment; Carrier-caused issue: Carrier claim workflow; Payment issue: Finance Operator; policy exception: Admin.
+Support -> Product issue: Roastery investigation/input; Seller fulfillment incident: ROSTA Ops/Admin policy workflow; ROSTA Fulfillment issue: ROSTA Fulfillment; Carrier-caused issue: Carrier claim workflow; Payment issue: Finance Operator; policy exception: Admin.
 
 ## 6. Finance Operator
 
@@ -197,7 +207,7 @@ Within ROSTA Fulfillment:
 - optional grinding execution;
 - QC;
 - packaging;
-- partner insert handling;
+- approved partner insert handling;
 - dispatch and operational incident recording.
 
 ### Access
@@ -217,9 +227,9 @@ Fulfillment Operator -> Fulfillment lead -> Support/Admin for customer-impacting
 | Role | Scope | Customer data boundary | Financial boundary |
 |---|---|---|---|
 | Customer | self | own data | own customer-safe payment/refund state |
-| Roastery | own seller scope | minimum required for own Sub-orders | own permitted settlement view |
-| Growth Partner | own attribution scope | aggregate/minimized only | own ledger-backed commission |
-| Admin | platform governance | purpose-limited, no secret bypass | permission-limited |
+| Roastery | own seller scope | minimum required for own Sub-orders | own permitted settlement view; no unilateral refund authority |
+| Growth Partner | own attribution/lead scope | aggregate/minimized only | own ledger-backed commission/payout |
+| Admin | platform governance | purpose-limited, no secret bypass | permission/policy-limited |
 | Support Agent | active support cases | case-minimum | customer-safe status only unless specifically authorized |
 | Finance Operator | finance operations | minimum required | authorized finance records |
 | Fulfillment Operator | assigned physical operations | delivery/operational minimum | no general financial access |
