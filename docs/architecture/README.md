@@ -12,6 +12,7 @@ The business contract in `docs/business/` remains authoritative for business sem
 ## Status vocabulary
 
 - **BUILT**: evidenced in the audited baseline code/configuration.
+- **BUILT FOUNDATION**: durable boundary exists, while later UI/provider/runbook/automation work may remain.
 - **TARGET**: required architecture direction for current/future implementation.
 - **PROPOSED**: an allowed option that still requires a dedicated product/technical decision before implementation.
 - **EXTERNAL GATE**: depends on provider credentials, legal/commercial validation, network/DNS/TLS or another non-source prerequisite.
@@ -20,6 +21,7 @@ A TARGET or PROPOSED statement must never be represented as already deployed.
 
 ## Canonical documents
 
+- `implementation-evidence-matrix.md` — audited code/config evidence for BUILT versus TARGET/PROPOSED claims.
 - `system-context.md` — actors, systems and trust boundaries.
 - `runtime-topology.md` — runtime processes and stateful dependencies.
 - `frontend-architecture.md` — TanStack Start SSR/client architecture and API truth boundary.
@@ -39,8 +41,9 @@ The baseline audit confirmed, among other evidence:
 
 - React/TanStack Start/Router/Query + Vite/TypeScript frontend, with `src/server.ts`, generated route tree and API client.
 - Laravel 13 / PHP 8.3 backend with Sanctum and explicit service/domain folders.
-- Redis defaults for cache, session and queue; queue `after_commit=true`; failed jobs persisted in MySQL.
-- S3-compatible object storage configuration suitable for Cloudflare R2.
+- MySQL default transactional database; Redis defaults for cache, session and queue.
+- queue `after_commit=true`; failed jobs persisted in MySQL.
+- S3-compatible object storage configuration suitable for Cloudflare R2 deployment.
 - payment provider manager plus Disabled/Testing/Zarinpal providers.
 - OTP sender contract, Kavenegar integration and queueable OTP delivery.
 - notification outbox model/service and scheduled dispatcher.
@@ -49,7 +52,7 @@ The baseline audit confirmed, among other evidence:
 - fulfillment commitment/incidents/SLA, ROSTA Hub work items and chain-of-custody flows.
 - scheduler jobs for reservation expiry, SLA monitoring, settlement release, notification dispatch and media cleanup.
 
-These anchors are evidence, not a complete inventory of every class.
+See `implementation-evidence-matrix.md` for path-level evidence and interpretation.
 
 ## Non-negotiable technical invariants
 
