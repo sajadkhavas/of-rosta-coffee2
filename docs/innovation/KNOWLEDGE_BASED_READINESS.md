@@ -1,7 +1,7 @@
 # ROSTA Knowledge-Based Readiness Contract
 
-Status: **Readiness only — not a certification claim**  
-Version: **1.0**  
+Status: **Readiness only — not a certification claim**
+Version: **1.0**
 Date: **2026-08-20**
 
 ## Objective
