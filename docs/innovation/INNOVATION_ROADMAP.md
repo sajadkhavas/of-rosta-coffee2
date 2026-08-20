@@ -1,6 +1,6 @@
 # ROSTA Innovation Roadmap
 
-Version: **1.0**  
+Version: **1.0**
 Date: **2026-08-20**
 
 ## Objective
