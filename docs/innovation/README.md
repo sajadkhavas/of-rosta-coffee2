@@ -32,6 +32,7 @@ No feature may be relabeled as AI, R&D, or knowledge-based merely for incentives
 - `INNOVATION_ROADMAP.md` — staged R&D program and measurable technical milestones.
 - `COMPANY_TRANSITION_PLAN.md` — individual-to-company cutover without losing chain of title or financial history.
 - `ENTREPRENEURSHIP_METRICS.md` — employment, R&D, technology and commercial impact evidence.
+- `FINANCIAL_SEPARATION_POLICY.md` — separates GMV, ordinary service revenue, technology revenue and R&D costs.
 - `EVALUATION_EVIDENCE_CHECKLIST.md` — application-readiness evidence pack and revalidation gates.
 - `evidence/README.md` — evidence registry format.
 
