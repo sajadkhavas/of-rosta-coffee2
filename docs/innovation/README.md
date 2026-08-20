@@ -1,9 +1,9 @@
 # ROSTA Innovation & Knowledge-Based Readiness
 
-Status: **Architecture / evidence readiness contract**  
-Version: **1.0**  
-Baseline: `integration/rosta-release-candidate @ a96d0e05478bc2c61852fdf91bb46da1782030df`  
-Phase: **PS0.6 — Entrepreneurship & Knowledge-Based Readiness**  
+Status: **Architecture / evidence readiness contract**
+Version: **1.0**
+Baseline: `integration/rosta-release-candidate @ a96d0e05478bc2c61852fdf91bb46da1782030df`
+Phase: **PS0.6 — Entrepreneurship & Knowledge-Based Readiness**
 Last reviewed: **2026-08-20**
 
 ## Purpose
