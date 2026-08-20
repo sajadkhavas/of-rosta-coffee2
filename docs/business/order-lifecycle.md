@@ -144,7 +144,7 @@ Each physical handoff must preserve Chain of Custody and tracking history.
 
 No paid-order truth may be created from a failed or unverified payment.
 
-Owner: ROSTA payment flow.  
+Owner: ROSTA payment flow.
 Escalation: Finance/Support as appropriate.
 
 ### Cancel

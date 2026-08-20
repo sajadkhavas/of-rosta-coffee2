@@ -24,7 +24,7 @@ Maximum permitted seller-controlled preparation time after acceptance.
 
 ### Handoff/Dispatch SLA
 
-For Direct Fulfillment: time to dispatch/handoff to Carrier after preparation.  
+For Direct Fulfillment: time to dispatch/handoff to Carrier after preparation.
 For ROSTA Fulfillment: time to hand goods to the ROSTA network after preparation.
 
 ## 3. Responsibility stop points

@@ -161,17 +161,17 @@ This business contract does not assert absolute legal liability independent of t
 
 ### Product-quality issue
 
-Owner: Roastery.  
+Owner: Roastery.
 ROSTA coordinates the customer case and marketplace resolution.
 
 ### ROSTA hub execution issue
 
-Owner: ROSTA Fulfillment.  
+Owner: ROSTA Fulfillment.
 Examples include wrong hub grinding execution, packaging error or hub processing delay.
 
 ### Carrier-caused issue
 
-Primary operational responsibility: Carrier under contract/evidence/claim rules.  
+Primary operational responsibility: Carrier under contract/evidence/claim rules.
 Customer-facing case owner: ROSTA.
 
 ## 8. SLA integration

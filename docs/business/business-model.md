@@ -1,6 +1,6 @@
 # ROSTA Business Model Contract
 
-Status: PS0.1 business architecture reference  
+Status: PS0.1 business architecture reference
 Project: ROSTA Coffee Marketplace
 
 ## 1. Business identity
