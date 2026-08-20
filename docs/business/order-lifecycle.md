@@ -20,19 +20,23 @@ Business lifecycle:
 ```text
 Created
   -> Payment Pending
-  -> Paid
-  -> Roastery Accepted
-  -> Fulfillment Decision
+  -> Paid / Payment Verified
+  -> Seller Fulfillment Commitment (automatic for each valid paid Sub-order)
+  -> Preparing
+  -> Ready for Fulfillment/Handoff
+  -> Fulfillment execution according to the snapshotted plan
        -> Direct Fulfillment
        OR
        -> ROSTA Fulfillment
-  -> Optional Grinding (Order Item Service only)
+  -> Optional Grinding execution where requested
   -> QC where applicable
-  -> Packaging
-  -> Shipment
+  -> Packaging where applicable
+  -> Shipment / In Transit
   -> Delivered
   -> Completed
 ```
+
+There is **no normal post-payment seller accept/reject step**. Once a valid paid Sub-order is committed to a Roastery under the marketplace/availability rules, the seller must prepare and hand it off according to its fulfillment obligation.
 
 This is a business lifecycle. Implementation may use more granular technical states, but must preserve these meanings and must not collapse distinct financial, seller or fulfillment truth.
 
@@ -52,13 +56,13 @@ Allowed outcomes include:
 - Failed Payment;
 - Expired/abandoned according to policy.
 
-### Paid
+### Paid / Payment Verified
 
-Payment has been verified according to the payment contract. This does not mean every Roastery has accepted its Sub-order.
+Payment has been verified according to the payment contract. Seller Sub-orders created from that valid payment are fulfillment commitments, not invitations that sellers may routinely reject.
 
 ### In Fulfillment
 
-At least one accepted Sub-order is progressing through preparation/fulfillment and the Master Order is not fully terminal.
+At least one committed Sub-order is progressing through seller preparation, handoff, hub processing or transport and the Master Order is not fully terminal.
 
 ### Partially Delivered / Partially Resolved
 
@@ -70,39 +74,55 @@ All required Sub-orders have reached the policy-defined successful terminal stat
 
 ## 4. Roastery Sub-order lifecycle
 
-Each Sub-order independently tracks:
+Each valid paid Sub-order independently tracks a fulfillment commitment such as:
 
 ```text
-Awaiting Roastery Acceptance
-  -> Accepted
+Committed
   -> Preparing
   -> Ready for Fulfillment/Handoff
+  -> Handoff / Dispatch
   -> Shipped / In Transit
   -> Delivered
   -> Completed
 ```
 
-A Sub-order may instead enter cancellation, refund, return, dispute or other exception states without corrupting sibling Sub-orders.
+The fulfillment plan may require Direct Fulfillment or handoff into ROSTA Fulfillment.
 
-## 5. Roastery acceptance
+A seller operational problem is reported as an **incident**. It does not create a normal seller cancellation/rejection path and does not silently mutate inventory, settlement, sibling Sub-orders or refund state.
 
-After a valid paid order reaches the seller boundary, the Roastery must accept or reject according to its SLA and policy.
+## 5. Seller incident and authorized exception model
 
-Acceptance is seller-specific. One Roastery accepting must not imply another Roastery accepted.
+A Roastery that cannot perform a committed obligation must report an incident with truthful reason/evidence according to policy.
 
-Timeout/non-response is an operational exception and follows the SLA/escalation policy in `roastery-sla-model.md`.
+Examples may include:
 
-## 6. Fulfillment decision
+- unexpected inventory/quality issue discovered after commitment;
+- equipment or facility incident;
+- inability to meet preparation/handoff obligation;
+- other seller-controlled exception recognized by policy.
 
-Fulfillment mode is determined per applicable Sub-order/fulfillment contract:
+Incident reporting:
+
+- does not by itself cancel the Sub-order;
+- does not by itself issue a refund;
+- does not by itself release inventory or settlement;
+- must be auditable and attributable.
+
+Where policy permits, an authorized ROSTA admin/operations workflow may resolve the affected Sub-order through scoped cancellation, refund, inventory release, rerouting or another approved exception action. Healthy sibling Sub-orders remain unchanged.
+
+## 6. Fulfillment plan
+
+Fulfillment mode/plan is determined by the authoritative quote/order/routing policy and snapshotted for the Sub-order. It is not a discretionary post-payment seller acceptance decision.
 
 ### Direct Fulfillment
 
-Roastery retains operational responsibility for preparation, packing, dispatch and carrier handoff.
+Roastery retains operational responsibility for preparation, assigned seller services, packing, dispatch and carrier handoff.
 
 ### ROSTA Fulfillment
 
 Roastery prepares the goods for handoff to ROSTA. Once a valid Chain of Custody receipt is recorded, ROSTA assumes responsibility for the contracted hub stages.
+
+A launch operating policy may centralize all or most eligible Sub-orders through ROSTA Fulfillment while the platform continues to support Direct Fulfillment as a distinct capability.
 
 ## 7. Grinding lifecycle
 
@@ -116,7 +136,7 @@ Order Item Service: Grinding
 Provider: Roastery OR ROSTA Hub
 ```
 
-The service must have its own execution truth and may have its own price, provider, status and failure reason without creating duplicate inventory SKUs for the same coffee solely because of grind choice.
+The service has its own execution truth and may have its own price, provider, status, evidence and failure reason without creating duplicate inventory SKUs for the same coffee solely because of grind choice.
 
 ## 8. Shipping lifecycle
 
@@ -147,13 +167,13 @@ No paid-order truth may be created from a failed or unverified payment.
 Owner: ROSTA payment flow.
 Escalation: Finance/Support as appropriate.
 
-### Cancel
+### Cancellation
 
-Cancellation availability depends on current state and policy. Cancellation of one Sub-order must not silently cancel healthy sibling Sub-orders.
+Cancellation is a policy/authorized exception outcome, not a normal seller accept/reject action after payment. Cancellation of one Sub-order must not silently cancel healthy sibling Sub-orders.
 
 ### Refund
 
-Refund is a financial consequence and must be represented by the financial system. Fulfillment state alone must never be treated as proof that money was refunded.
+Refund is a financial consequence and must be represented by the financial system. Fulfillment state or incident status alone must never be treated as proof that money was refunded.
 
 ### Return
 
@@ -161,12 +181,14 @@ Return is a post-delivery/post-dispatch physical workflow whose eligibility and 
 
 ### Dispute
 
-A dispute records a contested outcome and must identify the responsible domain:
+A dispute records a contested outcome and identifies the responsible domain:
 
-- product issue -> Roastery operational ownership;
+- product issue -> Roastery operational investigation/input;
 - ROSTA fulfillment issue -> ROSTA operational ownership;
 - carrier-caused loss/damage/delay -> Carrier primary operational responsibility subject to agreement/evidence/claim rules, while ROSTA owns customer-facing support and coordination;
 - payment issue -> ROSTA Finance/payment ownership.
+
+Customer remedy, refund/replacement and legal liability remain policy/contract/applicable-law driven rather than being inferred solely from the operational owner label.
 
 ## 10. Completion invariants
 
