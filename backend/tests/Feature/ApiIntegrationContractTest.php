@@ -9,7 +9,7 @@ use Tests\TestCase;
 
 final class ApiIntegrationContractTest extends TestCase
 {
-    public function test_every_versioned_api_route_has_api_and_baseline_throttle_middleware(): void
+    public function test_every_versioned_api_route_has_exactly_one_baseline_api_throttle(): void
     {
         $checked = 0;
 
@@ -22,10 +22,13 @@ final class ApiIntegrationContractTest extends TestCase
             $middleware = $route->gatherMiddleware();
 
             $this->assertContains('api', $middleware, "Missing api middleware on {$route->uri()}");
-            $this->assertContains(
-                'throttle:api',
-                $middleware,
-                "Missing baseline API throttle on {$route->uri()}",
+            $this->assertSame(
+                1,
+                count(array_filter(
+                    $middleware,
+                    static fn (string $entry): bool => $entry === 'throttle:api',
+                )),
+                "Expected exactly one baseline API throttle on {$route->uri()}",
             );
         }
 
