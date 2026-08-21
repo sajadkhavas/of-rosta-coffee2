@@ -1,7 +1,8 @@
 # ROSTA Technical Architecture Contract
 
-Status: ARCH-0.2 / legacy PS0.2 technical architecture consolidation
-Baseline: `integration/rosta-release-candidate@d50af5ab516f64fe47072c8e67938d64614d8373`
+Status: ARCH-0.2 core contract with audited supplements through ARCH-0.4
+Core baseline: `integration/rosta-release-candidate@d50af5ab516f64fe47072c8e67938d64614d8373`
+Latest supplement baseline: `ARCH-0.4 / PS0.4 @ f51fc7cbbb1ae98570fa6fea9ba47e09b298f2cf`
 
 ## Purpose
 
@@ -30,6 +31,7 @@ A TARGET or PROPOSED statement must never be represented as already deployed.
 - `data-storage-and-consistency.md` — MySQL/Redis/object-storage truth and transaction rules.
 - `async-queues-and-outbox.md` — queue, scheduler, outbox and retry semantics.
 - `integration-boundaries.md` — payment/SMS/storage/carrier/partner provider ports.
+- `api-integration-contract.md` — ARCH-0.4 audited HTTP/API/OpenAPI/provider integration contract and official-source evidence.
 - `security-trust-boundaries.md` — authentication, authorization, secrets and data minimization.
 - `reliability-and-observability.md` — failure handling, health, correlation and operational evidence.
 - `production-topology-contract.md` — production-ready-before-server runtime/deployment architecture.
@@ -52,7 +54,7 @@ The baseline audit confirmed, among other evidence:
 - fulfillment commitment/incidents/SLA, ROSTA Hub work items and chain-of-custody flows.
 - scheduler jobs for reservation expiry, SLA monitoring, settlement release, notification dispatch and media cleanup.
 
-See `implementation-evidence-matrix.md` for path-level evidence and interpretation.
+See `implementation-evidence-matrix.md` for path-level evidence and interpretation. See `api-integration-contract.md` for the current API/provider audit supplement.
 
 ## Non-negotiable technical invariants
 
