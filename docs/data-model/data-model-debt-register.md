@@ -6,10 +6,10 @@ This register records schema/data drift found while reconciling the current repo
 
 ## D-01 — Legacy seller acceptance/rejection persistence
 
-**Severity:** High semantic risk / Medium immediate runtime risk  
-**State:** LEGACY DEBT  
-**Primary owner:** Checkout/Order + Fulfillment  
-**Evidence anchors:** `sub_orders.acceptance_status`, acceptance/rejection timestamps/codes, `SubOrderAcceptanceStatus`, `FulfillmentCommitmentService`.
+- **Severity:** High semantic risk / Medium immediate runtime risk
+- **State:** LEGACY DEBT
+- **Primary owner:** Checkout/Order + Fulfillment
+- **Evidence anchors:** `sub_orders.acceptance_status`, acceptance/rejection timestamps/codes, `SubOrderAcceptanceStatus`, `FulfillmentCommitmentService`.
 
 ### Finding
 
@@ -39,9 +39,9 @@ A future developer can mistake legacy columns/enums for a still-supported busine
 
 ## D-02 — Notification template seed drift from obsolete acceptance workflow
 
-**Severity:** High customer-copy risk / Low schema risk  
-**State:** LEGACY DEBT  
-**Primary owner:** Notifications + Fulfillment/Product copy
+- **Severity:** High customer-copy risk / Low schema risk
+- **State:** LEGACY DEBT
+- **Primary owner:** Notifications + Fulfillment/Product copy
 
 ### Finding
 
@@ -63,9 +63,9 @@ A deployed database seeded from those values can send misleading customer messag
 
 ## D-03 — Parallel legacy shipment and shipment-leg representations
 
-**Severity:** Medium  
-**State:** LEGACY DEBT / compatibility bridge  
-**Primary owner:** Fulfillment/Carrier
+- **Severity:** Medium
+- **State:** LEGACY DEBT / compatibility bridge
+- **Primary owner:** Fulfillment/Carrier
 
 ### Finding
 
@@ -86,9 +86,9 @@ New integrations can create a third truth or update one representation without t
 
 ## D-04 — Queryable identity/address PII not uniformly field-encrypted
 
-**Severity:** High security/privacy importance; design-sensitive  
-**State:** TARGET hardening decision, not a confirmed vulnerability  
-**Primary owner:** Security/Identity + Infrastructure
+- **Severity:** High security/privacy importance; design-sensitive
+- **State:** TARGET hardening decision, not a confirmed vulnerability
+- **Primary owner:** Security/Identity + Infrastructure
 
 ### Finding
 
@@ -113,9 +113,9 @@ Over-broad database/admin/export/log access can expose PII. Conversely, blindly 
 
 ## D-05 — Durable JSON/snapshot schema version discipline
 
-**Severity:** Medium  
-**State:** TARGET  
-**Primary owner:** Each domain owning durable JSON
+- **Severity:** Medium
+- **State:** TARGET
+- **Primary owner:** Each domain owning durable JSON
 
 ### Finding
 
@@ -136,9 +136,9 @@ Future readers can assume latest object shape and fail on old persisted payloads
 
 ## D-06 — String-based lifecycle values need state-owner governance
 
-**Severity:** Medium  
-**State:** TARGET governance  
-**Primary owner:** Domain state-machine owners
+- **Severity:** Medium
+- **State:** TARGET governance
+- **Primary owner:** Domain state-machine owners
 
 ### Finding
 
@@ -159,9 +159,9 @@ Ad-hoc writes, scripts or future features can introduce states unknown to APIs/j
 
 ## D-07 — Provider raw-payload retention/redaction policy incomplete as a cross-provider standard
 
-**Severity:** Medium security/operability  
-**State:** TARGET  
-**Primary owner:** Integration owners + Security/Operations
+- **Severity:** Medium security/operability
+- **State:** TARGET
+- **Primary owner:** Integration owners + Security/Operations
 
 ### Finding
 
@@ -178,9 +178,9 @@ Payment/refund/carrier/SMS/provider evidence is operationally valuable, but a si
 
 ## D-08 — Growth Network persistence is not yet current built truth
 
-**Severity:** Governance guard  
-**State:** TARGET / CAP-01 owner  
-**Primary owner:** `phase/rosta-cap01-growth-network`
+- **Severity:** Governance guard
+- **State:** TARGET / CAP-01 owner
+- **Primary owner:** `phase/rosta-cap01-growth-network`
 
 ### Finding
 
@@ -204,8 +204,8 @@ Reuse existing Order/delivery/refund/finance truth; do not create a parallel ord
 
 ## D-09 — Loyalty/subscription/store-credit future balances must use explicit ledger/contract semantics
 
-**Severity:** Governance guard  
-**State:** TARGET, capability-owned
+- **Severity:** Governance guard
+- **State:** TARGET, capability-owned
 
 CAP-03 Loyalty, CAP-11 Store Credit, CAP-12 Coffee Subscription, CAP-13 Discovery Subscription and related capabilities are not to be implemented as speculative generic columns in `users` or `orders`.
 
@@ -215,8 +215,8 @@ Owning phases must define lifecycle, audit, expiration/refund/cancellation/finan
 
 ## D-10 — Legacy schema compatibility fields require usage proof before destructive cleanup
 
-**Severity:** Medium release risk  
-**State:** General rule
+- **Severity:** Medium release risk
+- **State:** General rule
 
 ROSTA has evolved from earlier single-vendor/manual workflows to current multi-vendor/Hub/financial architecture. Nullable legacy references, compatibility links and backfilled fields are expected during evolution.
 
