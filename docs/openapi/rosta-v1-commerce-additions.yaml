@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
   title: Rosta Commerce Additions API
-  version: 2026-07-22
+  version: 2026-08-21-arch-0.4
   description: Provider-neutral payments, marketplace fulfillment, verified reviews, support inquiries and signed media uploads.
 servers:
-  - url: https://api-staging.rosta.shop/api/v1
+  - url: https://api.staging.rosta.shop/api/v1
 paths:
   /payments/request:
     post:
@@ -177,7 +177,8 @@ components:
     sanctumSession:
       type: apiKey
       in: cookie
-      name: rosta_session
+      name: rosta_staging_session
+      description: Staging browser session cookie; deployments may override the cookie name via SESSION_COOKIE and unsafe SPA requests require the Sanctum CSRF contract.
   parameters:
     PaymentId:
       name: paymentId
