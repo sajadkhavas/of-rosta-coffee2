@@ -56,7 +56,7 @@ final class AppServiceProvider extends ServiceProvider
             'hub-operations.php',
         ] as $routes) {
             Route::prefix('api/v1')
-                ->middleware('api')
+                ->middleware(['api', 'throttle:api'])
                 ->group(base_path('routes/'.$routes));
         }
 
