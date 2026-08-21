@@ -6,12 +6,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:sanctum', 'rosta.session'])->group(function (): void {
     Route::post('/seller/invitations/accept', [SellerOrganizationController::class, 'acceptInvitation'])
-        ->middleware('throttle:api')
         ->name('api.v1.seller.invitations.accept');
 
     Route::prefix('/seller/roasteries/{roasteryId}')
         ->where(['roasteryId' => '[A-Za-z0-9._:-]+'])
-        ->middleware(['throttle:api', 'rosta.seller'])
+        ->middleware(['rosta.seller'])
         ->group(function (): void {
             Route::get('/organization', [SellerOrganizationController::class, 'show'])
                 ->name('api.v1.seller.organization.show');
