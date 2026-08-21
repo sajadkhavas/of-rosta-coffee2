@@ -416,7 +416,7 @@ paths:
                       payment_id: { type: string }
                       redirect_url: { type: string, format: uri }
         '409': { $ref: '#/components/responses/Conflict' }
-        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+        '503': { $ref: '#/components/responses/PaymentServiceUnavailable' }
 
   /payments/zarinpal/callback/{paymentId}:
     get:
@@ -432,7 +432,7 @@ paths:
         '302': { description: Result is redirected to the configured and allowlisted frontend callback }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { $ref: '#/components/responses/Conflict' }
-        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+        '503': { $ref: '#/components/responses/PaymentServiceUnavailable' }
 
   /payments/{paymentId}/verify:
     post:
@@ -461,7 +461,7 @@ paths:
                       currency: { type: string, const: IRR }
                       verified_at: { type: [string, 'null'], format: date-time }
         '404': { $ref: '#/components/responses/NotFound' }
-        '503': { $ref: '#/components/responses/ServiceUnavailable' }
+        '503': { $ref: '#/components/responses/PaymentServiceUnavailable' }
 
 components:
   securitySchemes:
@@ -511,7 +511,8 @@ components:
     NotFound: { description: Resource not found, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
     ValidationError: { description: Invalid input, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
     RateLimited: { description: Too many requests, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
-    ServiceUnavailable: { description: Requested capability is disabled, misconfigured, or temporarily unavailable, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
+    ServiceUnavailable: { description: OTP delivery is disabled, misconfigured, or temporarily unavailable, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
+    PaymentServiceUnavailable: { description: Payment capability or provider is disabled, misconfigured, or temporarily unavailable, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
     Conflict: { description: Resource state, idempotency, payment, price, or stock conflict, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
   schemas:
     IranMobile: { type: string, pattern: '^09\d{9}$', example: '09123456789' }
