@@ -11,6 +11,7 @@ paths:
       operationId: requestPayment
       security: [{ sanctumSession: [] }]
       responses:
+        "200": { description: Existing idempotent payment attempt replayed }
         "201": { description: Payment attempt created }
         "409": { description: Idempotency or order-state conflict }
         "503": { description: Payment provider unavailable }
