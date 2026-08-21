@@ -93,6 +93,35 @@ final class ApiIntegrationContractTest extends TestCase
         $this->assertStringContainsString('SESSION_COOKIE', $spec);
     }
 
+    public function test_provider_endpoint_defaults_match_audited_official_contracts(): void
+    {
+        $backendRoot = dirname(__DIR__, 2);
+        $rostaConfig = file_get_contents($backendRoot.'/config/rosta.php');
+        $kavenegarClient = file_get_contents($backendRoot.'/app/Services/Kavenegar/KavenegarClient.php');
+
+        $this->assertIsString($rostaConfig);
+        $this->assertIsString($kavenegarClient);
+
+        $this->assertStringContainsString(
+            'https://payment.zarinpal.com/pg/v4/payment/request.json',
+            $rostaConfig,
+        );
+        $this->assertStringContainsString(
+            'https://payment.zarinpal.com/pg/v4/payment/verify.json',
+            $rostaConfig,
+        );
+        $this->assertStringContainsString(
+            'https://payment.zarinpal.com/pg/StartPay',
+            $rostaConfig,
+        );
+        $this->assertStringNotContainsString('https://api.zarinpal.com/', $rostaConfig);
+        $this->assertStringNotContainsString('https://www.zarinpal.com/pg/StartPay', $rostaConfig);
+
+        $this->assertStringContainsString('https://api.kavenegar.com/v1', $rostaConfig);
+        $this->assertStringContainsString("'verify/lookup.json'", $kavenegarClient);
+        $this->assertStringContainsString("'sms/send.json'", $kavenegarClient);
+    }
+
     /**
      * @return array<string, true>
      */
