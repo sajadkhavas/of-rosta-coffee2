@@ -1,8 +1,26 @@
 # PS4.2 — Refund, Payout & Reconciliation
 
-Status: implemented on `phase/rosta-ps4b-refund-payout-reconciliation`; final acceptance requires green PR CI.
+Status: **verified**. Implementation and repository acceptance were proven on PR #88 at `b9c0ad836a3e4001dee5ec188329d2b670be918f`; this registration commit must pass the same gates before merge.
 
 Baseline: `integration/rosta-release-candidate@f51fc7cbbb1ae98570fa6fea9ba47e09b298f2cf`.
+
+PR: `#88 — PS4.2: Refund, payout and reconciliation closure`.
+
+## Acceptance evidence
+
+The implementation head `b9c0ad836a3e4001dee5ec188329d2b670be918f` passed every repository gate required for this phase:
+
+| Gate | Run | Result |
+|---|---:|---|
+| PS1 Backend Wrapper CI | 74 | success |
+| CI | 822 | success |
+| Backend CI | 532 | success |
+| Full-stack Integration CI | 377 | success |
+| Browser Acceptance CI | 365 | success |
+| R3 Final Gate | 347 | success |
+| R4 Staging Package CI | 327 | success |
+
+The backend wrapper additionally proved `audit:ps4b` (12 rules), all backend audits, 48 tests / 5825 assertions, Larastan with zero errors, and Pint with no style violations.
 
 ## Scope
 
