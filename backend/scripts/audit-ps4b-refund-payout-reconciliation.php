@@ -14,8 +14,9 @@ $files = [
 ];
 
 $rules = [
-    'requires review state' => str_contains($files['enum'], "RequiresReview = 'requires_review'"),
-    'maker checker columns' => str_contains($files['migration'], "confirmed_by_id") && str_contains($files['model'], "confirmed_by_id"),
+    'requires review state' => str_contains($files['enum'], 'RequiresReview = \'requires_review\''),
+    'maker checker columns' => str_contains($files['migration'], 'confirmed_by_id')
+        && str_contains($files['model'], 'confirmed_by_id'),
     'encrypted evidence' => str_contains($files['model'], "'payout_evidence' => 'encrypted:array'"),
     'dual control' => str_contains($files['service'], 'settlement.payout_dual_control_required'),
     'idempotent paid replay' => str_contains($files['service'], 'settlement.payout_idempotency_conflict'),
@@ -28,19 +29,26 @@ $rules = [
     'rollback evidence guard' => str_contains($files['migration'], 'rollback refused because payout confirmation evidence exists'),
 ];
 
-$failed = array_keys(array_filter($rules, static fn (bool $passed): bool => ! $passed));
-file_put_contents($root.'/ps4b-refund-payout-reconciliation-audit.json', json_encode([
-    'generatedAt' => gmdate(DATE_ATOM),
-    'marker' => 'ps4b_refund_payout_reconciliation=clean',
-    'passed' => $failed === [],
-    'rules' => $rules,
-], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES).PHP_EOL);
+$failed = array_keys(array_filter(
+    $rules,
+    static fn (bool $passed): bool => ! $passed,
+));
+file_put_contents(
+    $root.'/ps4b-refund-payout-reconciliation-audit.json',
+    json_encode([
+        'generatedAt' => gmdate(DATE_ATOM),
+        'marker' => 'ps4b_refund_payout_reconciliation=clean',
+        'passed' => $failed === [],
+        'rules' => $rules,
+    ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES).PHP_EOL,
+);
 
 if ($failed !== []) {
     fwrite(STDERR, "PS4.2 refund/payout/reconciliation contract audit failed.\n");
     foreach ($failed as $rule) {
         fwrite(STDERR, "- {$rule}\n");
     }
+
     exit(1);
 }
 
