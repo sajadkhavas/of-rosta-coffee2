@@ -32,25 +32,47 @@ final class SettlementBatchService
         Request $request,
     ): SettlementBatch {
         return DB::transaction(function () use ($actor, $roastery, $currency, $idempotencyKey, $request): SettlementBatch {
-            $existing = SettlementBatch::query()->where('idempotency_key', $idempotencyKey)->lockForUpdate()->first();
+            $existing = SettlementBatch::query()
+                ->where('idempotency_key', $idempotencyKey)
+                ->lockForUpdate()
+                ->first();
+
             if ($existing instanceof SettlementBatch) {
                 if ($existing->roastery_id !== $roastery->id || $existing->currency !== $currency) {
-                    throw new ApiDomainException('settlement.batch_idempotency_conflict', 'کلید تکرارپذیری با Batch دیگری استفاده شده است.', 409);
+                    throw new ApiDomainException(
+                        'settlement.batch_idempotency_conflict',
+                        'کلید تکرارپذیری با Batch دیگری استفاده شده است.',
+                        409,
+                    );
                 }
+
                 return $this->loadBatch($existing);
             }
 
             $allocations = SettlementAllocation::query()
-                ->where('owner_type', 'roastery')->where('owner_id', $roastery->id)->where('currency', $currency)
+                ->where('owner_type', 'roastery')
+                ->where('owner_id', $roastery->id)
+                ->where('currency', $currency)
                 ->where('status', SettlementAllocationStatus::Eligible->value)
                 ->whereNotExists(static function ($query): void {
-                    $query->selectRaw('1')->from('settlement_batch_allocations')->whereColumn(
-                        'settlement_batch_allocations.settlement_allocation_id', 'settlement_allocations.id'
-                    );
+                    $query->selectRaw('1')
+                        ->from('settlement_batch_allocations')
+                        ->whereColumn(
+                            'settlement_batch_allocations.settlement_allocation_id',
+                            'settlement_allocations.id',
+                        );
                 })
-                ->orderBy('eligible_at')->orderBy('id')->lockForUpdate()->get();
+                ->orderBy('eligible_at')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
             if ($allocations->isEmpty()) {
-                throw new ApiDomainException('settlement.no_eligible_allocations', 'Allocation قابل‌تسویه‌ای برای این روستری وجود ندارد.', 409);
+                throw new ApiDomainException(
+                    'settlement.no_eligible_allocations',
+                    'Allocation قابل‌تسویه‌ای برای این روستری وجود ندارد.',
+                    409,
+                );
             }
 
             $scheduledAt = now();
@@ -67,6 +89,7 @@ final class SettlementBatchService
                 'idempotency_key' => $idempotencyKey,
                 'scheduled_at' => $scheduledAt,
             ]);
+
             foreach ($allocations as $allocation) {
                 SettlementBatchAllocation::query()->create([
                     'settlement_batch_id' => $batch->id,
@@ -77,25 +100,53 @@ final class SettlementBatchService
                     'net_amount' => $allocation->net_amount,
                     'attached_at' => $scheduledAt,
                 ]);
-                $allocation->forceFill(['status' => SettlementAllocationStatus::Scheduled, 'scheduled_at' => $scheduledAt])->save();
+
+                $allocation->forceFill([
+                    'status' => SettlementAllocationStatus::Scheduled,
+                    'scheduled_at' => $scheduledAt,
+                ])->save();
             }
+
             $this->audit->record(
-                'settlement.batch_created', actor: $actor, auditable: $batch,
-                metadata: ['roastery_id' => $roastery->id, 'allocation_count' => $batch->allocation_count, 'net_total' => $batch->net_total, 'currency' => $currency],
+                'settlement.batch_created',
+                actor: $actor,
+                auditable: $batch,
+                metadata: [
+                    'roastery_id' => $roastery->id,
+                    'allocation_count' => $batch->allocation_count,
+                    'net_total' => $batch->net_total,
+                    'currency' => $currency,
+                ],
                 request: $request,
             );
+
             return $this->loadBatch($batch);
         }, 3);
     }
 
     /**
-     * @param array{action:string,payout_reference?:string|null,payout_method?:string|null,payout_evidence?:array{source:string,executed_at:string,amount:int,currency:string,note?:string|null}|null,failure_code?:string|null,failure_message?:string|null} $input
+     * @param  array{
+     *     action:string,
+     *     payout_reference?:string|null,
+     *     payout_method?:string|null,
+     *     payout_evidence?:array{source:string,executed_at:string,amount:int,currency:string,note?:string|null}|null,
+     *     failure_code?:string|null,
+     *     failure_message?:string|null
+     * }  $input
+     *
      * @throws JsonException
      */
-    public function resolve(User $actor, SettlementBatch $batch, array $input, Request $request): SettlementBatch
-    {
+    public function resolve(
+        User $actor,
+        SettlementBatch $batch,
+        array $input,
+        Request $request,
+    ): SettlementBatch {
         return DB::transaction(function () use ($actor, $batch, $input, $request): SettlementBatch {
-            $locked = SettlementBatch::query()->whereKey($batch->id)->lockForUpdate()->firstOrFail();
+            $locked = SettlementBatch::query()
+                ->whereKey($batch->id)
+                ->lockForUpdate()
+                ->firstOrFail();
             $action = $input['action'];
             $now = now();
 
@@ -103,9 +154,15 @@ final class SettlementBatchService
                 if ($locked->status === SettlementBatchStatus::Processing) {
                     return $this->loadBatch($locked);
                 }
+
                 if (! in_array($locked->status, [SettlementBatchStatus::Pending, SettlementBatchStatus::Failed], true)) {
-                    throw new ApiDomainException('settlement.batch_not_processable', 'این Batch قابل پردازش نیست.', 409);
+                    throw new ApiDomainException(
+                        'settlement.batch_not_processable',
+                        'این Batch قابل پردازش نیست.',
+                        409,
+                    );
                 }
+
                 $locked->forceFill([
                     'status' => SettlementBatchStatus::Processing,
                     'processed_by_id' => $actor->id,
@@ -118,7 +175,10 @@ final class SettlementBatchService
             } elseif ($action === 'paid') {
                 $reference = trim((string) ($input['payout_reference'] ?? ''));
                 $method = trim((string) ($input['payout_method'] ?? ''));
-                $evidence = $this->normalizePayoutEvidence($locked, $input['payout_evidence'] ?? null);
+                $evidence = $this->normalizePayoutEvidence(
+                    $locked,
+                    $input['payout_evidence'] ?? null,
+                );
                 $evidenceHash = hash('sha256', json_encode([
                     'payout_reference' => $reference,
                     'payout_method' => $method,
@@ -133,19 +193,55 @@ final class SettlementBatchService
                     ) {
                         return $this->loadBatch($locked);
                     }
-                    throw new ApiDomainException('settlement.payout_idempotency_conflict', 'این Batch قبلاً با مدرک پرداخت دیگری بسته شده است.', 409);
+
+                    throw new ApiDomainException(
+                        'settlement.payout_idempotency_conflict',
+                        'این Batch قبلاً با مدرک پرداخت دیگری بسته شده است.',
+                        409,
+                    );
                 }
-                if (! in_array($locked->status, [SettlementBatchStatus::Processing, SettlementBatchStatus::RequiresReview], true)) {
-                    throw new ApiDomainException('settlement.batch_not_processing', 'Batch ابتدا باید در حال پردازش یا بررسی مالی باشد.', 409);
+
+                if (! in_array(
+                    $locked->status,
+                    [SettlementBatchStatus::Processing, SettlementBatchStatus::RequiresReview],
+                    true,
+                )) {
+                    throw new ApiDomainException(
+                        'settlement.batch_not_processing',
+                        'Batch ابتدا باید در حال پردازش یا بررسی مالی باشد.',
+                        409,
+                    );
                 }
+
                 if ($reference === '' || $method === '') {
-                    throw new ApiDomainException('settlement.payout_evidence_required', 'مرجع، روش و مدرک پرداخت الزامی است.', 422);
+                    throw new ApiDomainException(
+                        'settlement.payout_evidence_required',
+                        'مرجع، روش و مدرک پرداخت الزامی است.',
+                        422,
+                    );
                 }
-                if (config('rosta.settlement.require_payout_dual_control', true) && $locked->processed_by_id === $actor->id) {
-                    throw new ApiDomainException('settlement.payout_dual_control_required', 'ثبت‌کننده پردازش نمی‌تواند همان پرداخت را نهایی کند.', 409);
+
+                if (
+                    config('rosta.settlement.require_payout_dual_control', true)
+                    && $locked->processed_by_id === $actor->id
+                ) {
+                    throw new ApiDomainException(
+                        'settlement.payout_dual_control_required',
+                        'ثبت‌کننده پردازش نمی‌تواند همان پرداخت را نهایی کند.',
+                        409,
+                    );
                 }
-                if (SettlementBatch::query()->where('payout_reference', $reference)->where('id', '!=', $locked->id)->exists()) {
-                    throw new ApiDomainException('settlement.payout_reference_conflict', 'این مرجع پرداخت قبلاً ثبت شده است.', 409);
+
+                $referenceInUse = SettlementBatch::query()
+                    ->where('payout_reference', $reference)
+                    ->where('id', '!=', $locked->id)
+                    ->exists();
+                if ($referenceInUse) {
+                    throw new ApiDomainException(
+                        'settlement.payout_reference_conflict',
+                        'این مرجع پرداخت قبلاً ثبت شده است.',
+                        409,
+                    );
                 }
 
                 $locked->forceFill([
@@ -160,17 +256,30 @@ final class SettlementBatchService
                     'failed_at' => null,
                     'paid_at' => $now,
                 ])->save();
+
+                $allocationIds = SettlementBatchAllocation::query()
+                    ->where('settlement_batch_id', $locked->id)
+                    ->select('settlement_allocation_id');
                 SettlementAllocation::query()
-                    ->whereIn('id', SettlementBatchAllocation::query()->where('settlement_batch_id', $locked->id)->select('settlement_allocation_id'))
+                    ->whereIn('id', $allocationIds)
                     ->where('status', SettlementAllocationStatus::Scheduled->value)
-                    ->update(['status' => SettlementAllocationStatus::Paid->value, 'paid_at' => $now]);
+                    ->update([
+                        'status' => SettlementAllocationStatus::Paid->value,
+                        'paid_at' => $now,
+                    ]);
             } elseif ($action === 'review') {
                 if ($locked->status === SettlementBatchStatus::RequiresReview) {
                     return $this->loadBatch($locked);
                 }
+
                 if ($locked->status !== SettlementBatchStatus::Processing) {
-                    throw new ApiDomainException('settlement.batch_not_processing', 'فقط Batch در حال پردازش قابل انتقال به بررسی مالی است.', 409);
+                    throw new ApiDomainException(
+                        'settlement.batch_not_processing',
+                        'فقط Batch در حال پردازش قابل انتقال به بررسی مالی است.',
+                        409,
+                    );
                 }
+
                 $failureCode = trim((string) ($input['failure_code'] ?? 'payout_unknown_outcome'));
                 $failureMessage = $this->nullableTrim($input['failure_message'] ?? null);
                 $locked->forceFill([
@@ -179,11 +288,15 @@ final class SettlementBatchService
                     'failure_message' => $failureMessage,
                     'failed_at' => null,
                 ])->save();
+
                 $this->reconciliation->openSettlementBatchReview(
                     $locked,
                     'settlement_payout_unknown_outcome',
                     'نتیجه انتقال وجه قطعی نیست و پیش از هر تلاش مجدد باید تطبیق مالی شود.',
-                    ['failure_code' => $failureCode, 'failure_message' => $failureMessage],
+                    [
+                        'failure_code' => $failureCode,
+                        'failure_message' => $failureMessage,
+                    ],
                     'critical',
                     $actor,
                 );
@@ -191,9 +304,19 @@ final class SettlementBatchService
                 if ($locked->status === SettlementBatchStatus::Failed) {
                     return $this->loadBatch($locked);
                 }
-                if (! in_array($locked->status, [SettlementBatchStatus::Processing, SettlementBatchStatus::RequiresReview], true)) {
-                    throw new ApiDomainException('settlement.batch_not_processing', 'Batch ابتدا باید در حال پردازش یا بررسی مالی باشد.', 409);
+
+                if (! in_array(
+                    $locked->status,
+                    [SettlementBatchStatus::Processing, SettlementBatchStatus::RequiresReview],
+                    true,
+                )) {
+                    throw new ApiDomainException(
+                        'settlement.batch_not_processing',
+                        'Batch ابتدا باید در حال پردازش یا بررسی مالی باشد.',
+                        409,
+                    );
                 }
+
                 $failureCode = trim((string) ($input['failure_code'] ?? 'payout_failed'));
                 $failureMessage = $this->nullableTrim($input['failure_message'] ?? null);
                 $locked->forceFill([
@@ -202,11 +325,15 @@ final class SettlementBatchService
                     'failure_message' => $failureMessage,
                     'failed_at' => $now,
                 ])->save();
+
                 $this->reconciliation->openSettlementBatchReview(
                     $locked,
                     'settlement_payout_failed',
                     'پرداخت تسویه ناموفق ثبت شده و مانده باید تطبیق داده شود.',
-                    ['failure_code' => $failureCode, 'failure_message' => $failureMessage],
+                    [
+                        'failure_code' => $failureCode,
+                        'failure_message' => $failureMessage,
+                    ],
                     'high',
                     $actor,
                 );
@@ -228,6 +355,7 @@ final class SettlementBatchService
                 ],
                 request: $request,
             );
+
             return $this->loadBatch($locked->refresh());
         }, 3);
     }
@@ -236,20 +364,33 @@ final class SettlementBatchService
      * @param  array{source:string,executed_at:string,amount:int,currency:string,note?:string|null}|null  $evidence
      * @return array{source:string,executed_at:string,amount:int,currency:string,note:string|null}
      */
-    private function normalizePayoutEvidence(SettlementBatch $batch, ?array $evidence): array
-    {
+    private function normalizePayoutEvidence(
+        SettlementBatch $batch,
+        ?array $evidence,
+    ): array {
         if ($evidence === null) {
-            throw new ApiDomainException('settlement.payout_evidence_required', 'مدرک پرداخت برای نهایی‌سازی تسویه الزامی است.', 422);
+            throw new ApiDomainException(
+                'settlement.payout_evidence_required',
+                'مدرک پرداخت برای نهایی‌سازی تسویه الزامی است.',
+                422,
+            );
         }
+
         $amount = (int) $evidence['amount'];
         $currency = strtoupper(trim($evidence['currency']));
         if ($amount !== $batch->net_total || $currency !== $batch->currency) {
-            throw new ApiDomainException('settlement.payout_evidence_amount_mismatch', 'مبلغ و ارز مدرک پرداخت باید دقیقاً با Batch برابر باشد.', 409);
+            throw new ApiDomainException(
+                'settlement.payout_evidence_amount_mismatch',
+                'مبلغ و ارز مدرک پرداخت باید دقیقاً با Batch برابر باشد.',
+                409,
+            );
         }
 
         return [
             'source' => trim($evidence['source']),
-            'executed_at' => CarbonImmutable::parse($evidence['executed_at'])->utc()->toIso8601String(),
+            'executed_at' => CarbonImmutable::parse($evidence['executed_at'])
+                ->utc()
+                ->toIso8601String(),
             'amount' => $amount,
             'currency' => $currency,
             'note' => $this->nullableTrim($evidence['note'] ?? null),
@@ -259,11 +400,18 @@ final class SettlementBatchService
     private function nullableTrim(mixed $value): ?string
     {
         $trimmed = trim((string) $value);
+
         return $trimmed === '' ? null : $trimmed;
     }
 
     public function loadBatch(SettlementBatch $batch): SettlementBatch
     {
-        return $batch->load(['roastery', 'creator', 'processor', 'confirmer', 'allocations']);
+        return $batch->load([
+            'roastery',
+            'creator',
+            'processor',
+            'confirmer',
+            'allocations',
+        ]);
     }
 }
