@@ -9,6 +9,7 @@ use App\Models\CheckoutQuote;
 use App\Models\Order;
 use App\Models\Roastery;
 use App\Models\SettlementAllocation;
+use App\Models\SettlementBatch;
 use App\Models\Shipment;
 use App\Models\ShipmentLeg;
 use App\Models\SubOrder;
@@ -26,6 +27,7 @@ final class R5IDeliverySettlementTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
         config([
             'rosta.notifications.enabled' => false,
             'rosta.notifications.sms_provider' => 'disabled',
@@ -97,13 +99,17 @@ final class R5IDeliverySettlementTest extends TestCase
             'roastery_id' => $roastery->id,
             'currency' => 'IRR',
             'idempotency_key' => 'r5i-direct-batch-idempotency',
-        ])->assertCreated()->assertJsonPath('data.id', $batchId);
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.id', $batchId);
         $this->assertDatabaseCount('settlement_batches', 1);
         $this->assertDatabaseCount('settlement_batch_allocations', 1);
 
         $this->postJson("/api/v1/admin/finance/settlement-batches/{$batchId}/resolve", [
             'action' => 'process',
-        ])->assertOk()->assertJsonPath('data.status', 'processing');
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'processing');
 
         $this->postJson("/api/v1/admin/finance/settlement-batches/{$batchId}/resolve", [
             'action' => 'paid',
@@ -115,7 +121,9 @@ final class R5IDeliverySettlementTest extends TestCase
                 'amount' => 4_000_000,
                 'currency' => 'IRR',
             ],
-        ])->assertStatus(409)->assertJsonPath('error.code', 'settlement.payout_dual_control_required');
+        ])
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'settlement.payout_dual_control_required');
 
         $this->authenticateWithRole($payoutConfirmer, Role::Administrator);
         $paidPayload = [
@@ -130,6 +138,7 @@ final class R5IDeliverySettlementTest extends TestCase
                 'note' => 'PS4.2 acceptance evidence',
             ],
         ];
+
         $this->postJson("/api/v1/admin/finance/settlement-batches/{$batchId}/resolve", $paidPayload)
             ->assertOk()
             ->assertJsonPath('data.status', 'paid')
@@ -144,7 +153,9 @@ final class R5IDeliverySettlementTest extends TestCase
             'confirmed_by_id' => $payoutConfirmer->id,
             'payout_method' => 'manual_bank_transfer',
         ]);
-        $this->assertNotNull(\App\Models\SettlementBatch::query()->findOrFail($batchId)->payout_evidence_hash);
+        $this->assertNotNull(
+            SettlementBatch::query()->findOrFail($batchId)->payout_evidence_hash,
+        );
         $this->assertDatabaseHas('settlement_allocations', [
             'sub_order_id' => $subOrder->id,
             'owner_type' => 'roastery',
@@ -210,6 +221,7 @@ final class R5IDeliverySettlementTest extends TestCase
             'status' => 'shipped',
             'shipped_at' => now()->subHour(),
         ]);
+
         return [$customer, $administrator, $roastery, $order, $subOrder, $leg];
     }
 
@@ -235,8 +247,12 @@ final class R5IDeliverySettlementTest extends TestCase
             'grand_total' => 4_300_000,
             'currency' => 'IRR',
             'address_snapshot' => [
-                'recipient_name' => 'مشتری R5I', 'recipient_mobile' => '09120000000', 'province' => 'تهران',
-                'city' => 'تهران', 'address_line' => 'نشانی تست', 'postal_code' => '1234567890',
+                'recipient_name' => 'مشتری R5I',
+                'recipient_mobile' => '09120000000',
+                'province' => 'تهران',
+                'city' => 'تهران',
+                'address_line' => 'نشانی تست',
+                'postal_code' => '1234567890',
             ],
             'shipping_snapshot' => [],
             'warnings' => [],
@@ -244,48 +260,100 @@ final class R5IDeliverySettlementTest extends TestCase
             'consumed_at' => now(),
         ]);
         $order = Order::query()->create([
-            'user_id' => $customer->id, 'roastery_id' => $roastery->id, 'quote_id' => $quote->id,
-            'order_number' => 'R-R5I-'.strtoupper($suffix), 'status' => OrderStatus::Shipped,
-            'address_snapshot' => $quote->address_snapshot, 'subtotal' => 4_000_000, 'shipping_total' => 300_000,
-            'discount_total' => 0, 'grand_total' => 4_300_000, 'currency' => 'IRR',
-            'placed_at' => now()->subDays(2), 'paid_at' => now()->subDays(2),
+            'user_id' => $customer->id,
+            'roastery_id' => $roastery->id,
+            'quote_id' => $quote->id,
+            'order_number' => 'R-R5I-'.strtoupper($suffix),
+            'status' => OrderStatus::Shipped,
+            'address_snapshot' => $quote->address_snapshot,
+            'subtotal' => 4_000_000,
+            'shipping_total' => 300_000,
+            'discount_total' => 0,
+            'grand_total' => 4_300_000,
+            'currency' => 'IRR',
+            'placed_at' => now()->subDays(2),
+            'paid_at' => now()->subDays(2),
         ]);
         $subOrder = SubOrder::query()->create([
-            'order_id' => $order->id, 'roastery_id' => $roastery->id, 'status' => 'shipped', 'acceptance_status' => 'accepted',
-            'subtotal' => 4_000_000, 'shipping_total' => 300_000, 'packaging_total' => 0, 'grinding_total' => 0,
-            'discount_total' => 0, 'tax_total' => 0, 'grand_total' => 4_300_000, 'commission_total' => 0,
-            'payable_total' => 4_300_000, 'currency' => 'IRR', 'accepted_at' => now()->subDays(2),
-            'fulfillment_committed_at' => now()->subDays(2), 'preparation_due_at' => now()->subDay(),
-            'handoff_due_at' => now()->subHours(12), 'shipped_at' => now()->subHour(), 'sla_status' => 'handed_off',
+            'order_id' => $order->id,
+            'roastery_id' => $roastery->id,
+            'status' => 'shipped',
+            'acceptance_status' => 'accepted',
+            'subtotal' => 4_000_000,
+            'shipping_total' => 300_000,
+            'packaging_total' => 0,
+            'grinding_total' => 0,
+            'discount_total' => 0,
+            'tax_total' => 0,
+            'grand_total' => 4_300_000,
+            'commission_total' => 0,
+            'payable_total' => 4_300_000,
+            'currency' => 'IRR',
+            'accepted_at' => now()->subDays(2),
+            'fulfillment_committed_at' => now()->subDays(2),
+            'preparation_due_at' => now()->subDay(),
+            'handoff_due_at' => now()->subHours(12),
+            'shipped_at' => now()->subHour(),
+            'sla_status' => 'handed_off',
         ]);
         $this->allocation($order, $subOrder, 'roastery', $roastery->id, 4_000_000, $suffix.'-product');
         $this->allocation($order, $subOrder, 'rosta', null, 300_000, $suffix.'-platform-shipping');
+
         return [$customer, $administrator, $roastery, $order, $subOrder];
     }
 
-    private function leg(Order $order, SubOrder $subOrder, int $sequence, string $routeType, string $status): ShipmentLeg
-    {
+    private function leg(
+        Order $order,
+        SubOrder $subOrder,
+        int $sequence,
+        string $routeType,
+        string $status,
+    ): ShipmentLeg {
         return ShipmentLeg::query()->create([
-            'order_id' => $order->id, 'sub_order_id' => $subOrder->id, 'route_type' => $routeType,
-            'sequence' => $sequence, 'status' => $status, 'carrier' => $sequence === 1 ? 'پست' : null,
+            'order_id' => $order->id,
+            'sub_order_id' => $subOrder->id,
+            'route_type' => $routeType,
+            'sequence' => $sequence,
+            'status' => $status,
+            'carrier' => $sequence === 1 ? 'پست' : null,
             'tracking_code' => $sequence === 1 ? 'R5I-TRACK-'.$order->id.'-'.$sequence : null,
             'charge_owner_type' => $routeType === 'rosta_hub_to_customer' ? 'rosta' : 'roastery',
             'charge_owner_id' => $routeType === 'rosta_hub_to_customer' ? null : $subOrder->roastery_id,
-            'gross_amount' => 300_000, 'tax_amount' => 0, 'total_amount' => 300_000, 'currency' => 'IRR',
-            'origin_snapshot' => ['city' => 'تهران'], 'destination_snapshot' => ['city' => 'تهران'],
-            'planned_at' => now()->subHours(2), 'picked_up_at' => $status === 'picked_up' ? now()->subHour() : null,
+            'gross_amount' => 300_000,
+            'tax_amount' => 0,
+            'total_amount' => 300_000,
+            'currency' => 'IRR',
+            'origin_snapshot' => ['city' => 'تهران'],
+            'destination_snapshot' => ['city' => 'تهران'],
+            'planned_at' => now()->subHours(2),
+            'picked_up_at' => $status === 'picked_up' ? now()->subHour() : null,
         ]);
     }
 
-    private function allocation(Order $order, SubOrder $subOrder, string $ownerType, ?string $ownerId, int $amount, string $suffix): void
-    {
+    private function allocation(
+        Order $order,
+        SubOrder $subOrder,
+        string $ownerType,
+        ?string $ownerId,
+        int $amount,
+        string $suffix,
+    ): void {
         SettlementAllocation::query()->create([
-            'order_id' => $order->id, 'sub_order_id' => $subOrder->id,
+            'order_id' => $order->id,
+            'sub_order_id' => $subOrder->id,
             'allocation_type' => $ownerType === 'roastery' ? 'product' : 'shipping',
-            'owner_type' => $ownerType, 'owner_id' => $ownerId, 'status' => SettlementAllocationStatus::Held,
-            'gross_amount' => $amount, 'discount_amount' => 0, 'tax_amount' => 0, 'net_amount' => $amount,
-            'currency' => 'IRR', 'pricing_version' => 'r5i-test-v1', 'source_reference' => 'r5i-test-'.$suffix,
-            'idempotency_key' => 'r5i-test-allocation-'.$suffix, 'metadata' => [],
+            'owner_type' => $ownerType,
+            'owner_id' => $ownerId,
+            'status' => SettlementAllocationStatus::Held,
+            'gross_amount' => $amount,
+            'discount_amount' => 0,
+            'tax_amount' => 0,
+            'net_amount' => $amount,
+            'currency' => 'IRR',
+            'pricing_version' => 'r5i-test-v1',
+            'source_reference' => 'r5i-test-'.$suffix,
+            'idempotency_key' => 'r5i-test-allocation-'.$suffix,
+            'metadata' => [],
         ]);
     }
 }
