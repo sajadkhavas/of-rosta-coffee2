@@ -232,21 +232,24 @@ final class SettlementBatchService
         }, 3);
     }
 
-    /** @param array{source:string,executed_at:string,amount:int,currency:string,note?:string|null}|null $evidence */
+    /**
+     * @param  array{source:string,executed_at:string,amount:int,currency:string,note?:string|null}|null  $evidence
+     * @return array{source:string,executed_at:string,amount:int,currency:string,note:string|null}
+     */
     private function normalizePayoutEvidence(SettlementBatch $batch, ?array $evidence): array
     {
         if ($evidence === null) {
             throw new ApiDomainException('settlement.payout_evidence_required', 'مدرک پرداخت برای نهایی‌سازی تسویه الزامی است.', 422);
         }
-        $amount = (int) ($evidence['amount'] ?? 0);
-        $currency = strtoupper(trim((string) ($evidence['currency'] ?? '')));
+        $amount = (int) $evidence['amount'];
+        $currency = strtoupper(trim($evidence['currency']));
         if ($amount !== $batch->net_total || $currency !== $batch->currency) {
             throw new ApiDomainException('settlement.payout_evidence_amount_mismatch', 'مبلغ و ارز مدرک پرداخت باید دقیقاً با Batch برابر باشد.', 409);
         }
 
         return [
-            'source' => trim((string) ($evidence['source'] ?? '')),
-            'executed_at' => CarbonImmutable::parse((string) ($evidence['executed_at'] ?? ''))->utc()->toIso8601String(),
+            'source' => trim($evidence['source']),
+            'executed_at' => CarbonImmutable::parse($evidence['executed_at'])->utc()->toIso8601String(),
             'amount' => $amount,
             'currency' => $currency,
             'note' => $this->nullableTrim($evidence['note'] ?? null),
