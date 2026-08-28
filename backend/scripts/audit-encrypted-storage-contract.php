@@ -76,6 +76,10 @@ $contracts = [
         'migration' => 'database/migrations/2026_07_23_080001_create_refunds_and_reconciliation.php',
         'field' => 'details',
     ],
+    'app/Models/SettlementBatch.php:payout_evidence' => [
+        'migration' => 'database/migrations/2026_08_28_120001_harden_ps4b_refund_payout_reconciliation.php',
+        'field' => 'payout_evidence',
+    ],
 ];
 
 $discovered = [];
