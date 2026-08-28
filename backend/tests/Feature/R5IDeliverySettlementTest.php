@@ -26,18 +26,19 @@ final class R5IDeliverySettlementTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
         config([
             'rosta.notifications.enabled' => false,
             'rosta.notifications.sms_provider' => 'disabled',
             'rosta.settlement.dispute_window_hours' => 72,
             'rosta.settlement.carrier_webhook_secret' => 'r5i-carrier-secret',
+            'rosta.settlement.require_payout_dual_control' => true,
         ]);
     }
 
     public function test_final_delivery_releases_only_roastery_money_and_pays_one_idempotent_batch(): void
     {
         [$customer, $administrator, $roastery, $order, $subOrder, $finalLeg] = $this->directFixture('direct');
+        $payoutConfirmer = User::factory()->create();
 
         $this->authenticateWithRole($customer, Role::Customer);
         $this->postJson(
@@ -96,23 +97,54 @@ final class R5IDeliverySettlementTest extends TestCase
             'roastery_id' => $roastery->id,
             'currency' => 'IRR',
             'idempotency_key' => 'r5i-direct-batch-idempotency',
-        ])
-            ->assertCreated()
-            ->assertJsonPath('data.id', $batchId);
+        ])->assertCreated()->assertJsonPath('data.id', $batchId);
         $this->assertDatabaseCount('settlement_batches', 1);
         $this->assertDatabaseCount('settlement_batch_allocations', 1);
 
         $this->postJson("/api/v1/admin/finance/settlement-batches/{$batchId}/resolve", [
             'action' => 'process',
         ])->assertOk()->assertJsonPath('data.status', 'processing');
+
         $this->postJson("/api/v1/admin/finance/settlement-batches/{$batchId}/resolve", [
             'action' => 'paid',
+            'payout_reference' => 'BANK-R5I-SAME-ACTOR',
+            'payout_method' => 'manual_bank_transfer',
+            'payout_evidence' => [
+                'source' => 'bank_receipt',
+                'executed_at' => now()->toIso8601String(),
+                'amount' => 4_000_000,
+                'currency' => 'IRR',
+            ],
+        ])->assertStatus(409)->assertJsonPath('error.code', 'settlement.payout_dual_control_required');
+
+        $this->authenticateWithRole($payoutConfirmer, Role::Administrator);
+        $paidPayload = [
+            'action' => 'paid',
             'payout_reference' => 'BANK-R5I-0001',
-        ])
+            'payout_method' => 'manual_bank_transfer',
+            'payout_evidence' => [
+                'source' => 'bank_receipt',
+                'executed_at' => '2026-08-28T12:00:00+00:00',
+                'amount' => 4_000_000,
+                'currency' => 'IRR',
+                'note' => 'PS4.2 acceptance evidence',
+            ],
+        ];
+        $this->postJson("/api/v1/admin/finance/settlement-batches/{$batchId}/resolve", $paidPayload)
             ->assertOk()
             ->assertJsonPath('data.status', 'paid')
             ->assertJsonPath('data.payout_reference', 'BANK-R5I-0001');
+        $this->postJson("/api/v1/admin/finance/settlement-batches/{$batchId}/resolve", $paidPayload)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'paid');
 
+        $this->assertDatabaseHas('settlement_batches', [
+            'id' => $batchId,
+            'processed_by_id' => $administrator->id,
+            'confirmed_by_id' => $payoutConfirmer->id,
+            'payout_method' => 'manual_bank_transfer',
+        ]);
+        $this->assertNotNull(\App\Models\SettlementBatch::query()->findOrFail($batchId)->payout_evidence_hash);
         $this->assertDatabaseHas('settlement_allocations', [
             'sub_order_id' => $subOrder->id,
             'owner_type' => 'roastery',
@@ -178,7 +210,6 @@ final class R5IDeliverySettlementTest extends TestCase
             'status' => 'shipped',
             'shipped_at' => now()->subHour(),
         ]);
-
         return [$customer, $administrator, $roastery, $order, $subOrder, $leg];
     }
 
@@ -204,12 +235,8 @@ final class R5IDeliverySettlementTest extends TestCase
             'grand_total' => 4_300_000,
             'currency' => 'IRR',
             'address_snapshot' => [
-                'recipient_name' => 'مشتری R5I',
-                'recipient_mobile' => '09120000000',
-                'province' => 'تهران',
-                'city' => 'تهران',
-                'address_line' => 'نشانی تست',
-                'postal_code' => '1234567890',
+                'recipient_name' => 'مشتری R5I', 'recipient_mobile' => '09120000000', 'province' => 'تهران',
+                'city' => 'تهران', 'address_line' => 'نشانی تست', 'postal_code' => '1234567890',
             ],
             'shipping_snapshot' => [],
             'warnings' => [],
@@ -217,100 +244,48 @@ final class R5IDeliverySettlementTest extends TestCase
             'consumed_at' => now(),
         ]);
         $order = Order::query()->create([
-            'user_id' => $customer->id,
-            'roastery_id' => $roastery->id,
-            'quote_id' => $quote->id,
-            'order_number' => 'R-R5I-'.strtoupper($suffix),
-            'status' => OrderStatus::Shipped,
-            'address_snapshot' => $quote->address_snapshot,
-            'subtotal' => 4_000_000,
-            'shipping_total' => 300_000,
-            'discount_total' => 0,
-            'grand_total' => 4_300_000,
-            'currency' => 'IRR',
-            'placed_at' => now()->subDays(2),
-            'paid_at' => now()->subDays(2),
+            'user_id' => $customer->id, 'roastery_id' => $roastery->id, 'quote_id' => $quote->id,
+            'order_number' => 'R-R5I-'.strtoupper($suffix), 'status' => OrderStatus::Shipped,
+            'address_snapshot' => $quote->address_snapshot, 'subtotal' => 4_000_000, 'shipping_total' => 300_000,
+            'discount_total' => 0, 'grand_total' => 4_300_000, 'currency' => 'IRR',
+            'placed_at' => now()->subDays(2), 'paid_at' => now()->subDays(2),
         ]);
         $subOrder = SubOrder::query()->create([
-            'order_id' => $order->id,
-            'roastery_id' => $roastery->id,
-            'status' => 'shipped',
-            'acceptance_status' => 'accepted',
-            'subtotal' => 4_000_000,
-            'shipping_total' => 300_000,
-            'packaging_total' => 0,
-            'grinding_total' => 0,
-            'discount_total' => 0,
-            'tax_total' => 0,
-            'grand_total' => 4_300_000,
-            'commission_total' => 0,
-            'payable_total' => 4_300_000,
-            'currency' => 'IRR',
-            'accepted_at' => now()->subDays(2),
-            'fulfillment_committed_at' => now()->subDays(2),
-            'preparation_due_at' => now()->subDay(),
-            'handoff_due_at' => now()->subHours(12),
-            'shipped_at' => now()->subHour(),
-            'sla_status' => 'handed_off',
+            'order_id' => $order->id, 'roastery_id' => $roastery->id, 'status' => 'shipped', 'acceptance_status' => 'accepted',
+            'subtotal' => 4_000_000, 'shipping_total' => 300_000, 'packaging_total' => 0, 'grinding_total' => 0,
+            'discount_total' => 0, 'tax_total' => 0, 'grand_total' => 4_300_000, 'commission_total' => 0,
+            'payable_total' => 4_300_000, 'currency' => 'IRR', 'accepted_at' => now()->subDays(2),
+            'fulfillment_committed_at' => now()->subDays(2), 'preparation_due_at' => now()->subDay(),
+            'handoff_due_at' => now()->subHours(12), 'shipped_at' => now()->subHour(), 'sla_status' => 'handed_off',
         ]);
         $this->allocation($order, $subOrder, 'roastery', $roastery->id, 4_000_000, $suffix.'-product');
         $this->allocation($order, $subOrder, 'rosta', null, 300_000, $suffix.'-platform-shipping');
-
         return [$customer, $administrator, $roastery, $order, $subOrder];
     }
 
-    private function leg(
-        Order $order,
-        SubOrder $subOrder,
-        int $sequence,
-        string $routeType,
-        string $status,
-    ): ShipmentLeg {
+    private function leg(Order $order, SubOrder $subOrder, int $sequence, string $routeType, string $status): ShipmentLeg
+    {
         return ShipmentLeg::query()->create([
-            'order_id' => $order->id,
-            'sub_order_id' => $subOrder->id,
-            'route_type' => $routeType,
-            'sequence' => $sequence,
-            'status' => $status,
-            'carrier' => $sequence === 1 ? 'پست' : null,
+            'order_id' => $order->id, 'sub_order_id' => $subOrder->id, 'route_type' => $routeType,
+            'sequence' => $sequence, 'status' => $status, 'carrier' => $sequence === 1 ? 'پست' : null,
             'tracking_code' => $sequence === 1 ? 'R5I-TRACK-'.$order->id.'-'.$sequence : null,
             'charge_owner_type' => $routeType === 'rosta_hub_to_customer' ? 'rosta' : 'roastery',
             'charge_owner_id' => $routeType === 'rosta_hub_to_customer' ? null : $subOrder->roastery_id,
-            'gross_amount' => 300_000,
-            'tax_amount' => 0,
-            'total_amount' => 300_000,
-            'currency' => 'IRR',
-            'origin_snapshot' => ['city' => 'تهران'],
-            'destination_snapshot' => ['city' => 'تهران'],
-            'planned_at' => now()->subHours(2),
-            'picked_up_at' => $status === 'picked_up' ? now()->subHour() : null,
+            'gross_amount' => 300_000, 'tax_amount' => 0, 'total_amount' => 300_000, 'currency' => 'IRR',
+            'origin_snapshot' => ['city' => 'تهران'], 'destination_snapshot' => ['city' => 'تهران'],
+            'planned_at' => now()->subHours(2), 'picked_up_at' => $status === 'picked_up' ? now()->subHour() : null,
         ]);
     }
 
-    private function allocation(
-        Order $order,
-        SubOrder $subOrder,
-        string $ownerType,
-        ?string $ownerId,
-        int $amount,
-        string $suffix,
-    ): void {
+    private function allocation(Order $order, SubOrder $subOrder, string $ownerType, ?string $ownerId, int $amount, string $suffix): void
+    {
         SettlementAllocation::query()->create([
-            'order_id' => $order->id,
-            'sub_order_id' => $subOrder->id,
+            'order_id' => $order->id, 'sub_order_id' => $subOrder->id,
             'allocation_type' => $ownerType === 'roastery' ? 'product' : 'shipping',
-            'owner_type' => $ownerType,
-            'owner_id' => $ownerId,
-            'status' => SettlementAllocationStatus::Held,
-            'gross_amount' => $amount,
-            'discount_amount' => 0,
-            'tax_amount' => 0,
-            'net_amount' => $amount,
-            'currency' => 'IRR',
-            'pricing_version' => 'r5i-test-v1',
-            'source_reference' => 'r5i-test-'.$suffix,
-            'idempotency_key' => 'r5i-test-allocation-'.$suffix,
-            'metadata' => [],
+            'owner_type' => $ownerType, 'owner_id' => $ownerId, 'status' => SettlementAllocationStatus::Held,
+            'gross_amount' => $amount, 'discount_amount' => 0, 'tax_amount' => 0, 'net_amount' => $amount,
+            'currency' => 'IRR', 'pricing_version' => 'r5i-test-v1', 'source_reference' => 'r5i-test-'.$suffix,
+            'idempotency_key' => 'r5i-test-allocation-'.$suffix, 'metadata' => [],
         ]);
     }
 }

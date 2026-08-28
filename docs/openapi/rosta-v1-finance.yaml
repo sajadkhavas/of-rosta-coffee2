@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: Rosta Refund and Financial Reconciliation API
-  version: 2026-08-14-ps4a
-  description: Administrator-only financial policy, immutable calculation snapshot, refund ledger and reconciliation workflows.
+  version: 2026-08-28-ps4b
+  description: Administrator-only financial policy, refund, payout evidence and reconciliation workflows.
 servers:
   - url: https://api-staging.rosta.shop/api/v1
 security:
@@ -104,15 +104,10 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/CreateRefundRequest"
+            schema: { $ref: "#/components/schemas/CreateRefundRequest" }
       responses:
         "201": { description: Refund request persisted or idempotently replayed }
-        "409":
-          {
-            description: No verified payment,
-            idempotency conflict or amount exceeds refundable balance,
-          }
+        "409": { description: No verified payment, idempotency conflict or amount exceeds refundable balance }
   /admin/refunds/{refundId}/approve:
     post:
       operationId: approveRefund
@@ -138,8 +133,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/ResolveRefundRequest"
+            schema: { $ref: "#/components/schemas/ResolveRefundRequest" }
       responses:
         "200": { description: Manual provider outcome recorded }
         "409": { description: Refund is not awaiting manual resolution }
@@ -152,8 +146,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/ResolveCaseRequest"
+            schema: { $ref: "#/components/schemas/ResolveCaseRequest" }
       responses:
         "200": { description: Reconciliation case resolved or dismissed }
   /admin/finance/settlement-batches:
@@ -174,9 +167,15 @@ paths:
           in: path
           required: true
           schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResolveSettlementBatchRequest" }
       responses:
-        "200": { description: Batch moved to processing, paid or failed }
-        "409": { description: Invalid payout transition }
+        "200": { description: Batch moved to processing, requires-review, paid or failed }
+        "409": { description: Invalid transition, dual-control violation, replay conflict or evidence mismatch }
+        "422": { description: Required payout/failure evidence is missing or invalid }
   /admin/sub-orders/{subOrderId}/settlement-hold:
     post:
       operationId: setSubOrderSettlementHold
@@ -195,26 +194,10 @@ components:
       in: cookie
       name: rosta_session
   parameters:
-    OrderId:
-      name: orderId
-      in: path
-      required: true
-      schema: { type: string }
-    RefundId:
-      name: refundId
-      in: path
-      required: true
-      schema: { type: string }
-    CaseId:
-      name: caseId
-      in: path
-      required: true
-      schema: { type: string }
-    PolicyId:
-      name: policyId
-      in: path
-      required: true
-      schema: { type: string }
+    OrderId: { name: orderId, in: path, required: true, schema: { type: string } }
+    RefundId: { name: refundId, in: path, required: true, schema: { type: string } }
+    CaseId: { name: caseId, in: path, required: true, schema: { type: string } }
+    PolicyId: { name: policyId, in: path, required: true, schema: { type: string } }
   schemas:
     FinancialPolicyBase:
       type: object
@@ -269,42 +252,46 @@ components:
       additionalProperties: false
       required: [reason, idempotency_key]
       properties:
-        amount:
-          type: integer
-          minimum: 1
-          description: IRR amount; omitted means the full remaining refundable amount.
-        reason:
-          type: string
-          maxLength: 2000
-        idempotency_key:
-          type: string
-          minLength: 16
-          maxLength: 160
+        amount: { type: integer, minimum: 1, description: "IRR amount; omitted means the full remaining refundable amount." }
+        reason: { type: string, maxLength: 2000 }
+        idempotency_key: { type: string, minLength: 16, maxLength: 160 }
     ResolveRefundRequest:
       type: object
       additionalProperties: false
       required: [outcome]
       properties:
-        outcome:
-          type: string
-          enum: [succeeded, failed, cancelled]
-        provider_reference:
-          type: [string, "null"]
-          maxLength: 190
-        failure_code:
-          type: [string, "null"]
-          maxLength: 160
-        message:
-          type: [string, "null"]
-          maxLength: 2000
+        outcome: { type: string, enum: [succeeded, failed, cancelled] }
+        provider_reference: { type: [string, "null"], maxLength: 190 }
+        failure_code: { type: [string, "null"], maxLength: 160 }
+        message: { type: [string, "null"], maxLength: 2000 }
     ResolveCaseRequest:
       type: object
       additionalProperties: false
       required: [status, resolution]
       properties:
-        status:
-          type: string
-          enum: [resolved, dismissed]
-        resolution:
-          type: string
-          maxLength: 5000
+        status: { type: string, enum: [resolved, dismissed] }
+        resolution: { type: string, maxLength: 5000 }
+    SettlementPayoutEvidence:
+      type: object
+      additionalProperties: false
+      required: [source, executed_at, amount, currency]
+      properties:
+        source: { type: string, maxLength: 80 }
+        executed_at: { type: string, format: date-time }
+        amount: { type: integer, minimum: 1, description: "Must equal the server-calculated batch net_total." }
+        currency: { type: string, enum: [IRR] }
+        note: { type: [string, "null"], maxLength: 1000 }
+    ResolveSettlementBatchRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action: { type: string, enum: [process, paid, failed, review] }
+        payout_reference: { type: [string, "null"], maxLength: 190 }
+        payout_method: { type: [string, "null"], enum: [manual_bank_transfer, provider_dashboard, null] }
+        payout_evidence:
+          anyOf:
+            - { $ref: "#/components/schemas/SettlementPayoutEvidence" }
+            - { type: "null" }
+        failure_code: { type: [string, "null"], maxLength: 160 }
+        failure_message: { type: [string, "null"], maxLength: 1000 }
