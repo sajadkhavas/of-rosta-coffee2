@@ -39,8 +39,8 @@ $gate(
     'notification_payload_is_never_exposed',
     str_contains($files['controller'], "'destination_hint'")
         && str_contains($files['controller'], 'maskDestination')
-        && !str_contains($files['controller'], "'payload' => \$item->payload")
-        && !str_contains($files['controller'], "'destination' => \$item->destination"),
+        && ! str_contains($files['controller'], "'payload' => \$item->payload")
+        && ! str_contains($files['controller'], "'destination' => \$item->destination"),
     'Notification payloads and full destinations must remain outside administrator browser responses.',
 );
 
@@ -49,7 +49,7 @@ $gate(
     str_contains($files['controller'], 'AuditLog::query()')
         && str_contains($files['controller'], 'redactMetadata')
         && str_contains($files['controller'], "'[redacted]'")
-        && !str_contains($files['routes'], 'Route::patch'),
+        && ! str_contains($files['routes'], 'Route::patch'),
     'Audit access must be read-only and sensitive metadata keys must be redacted recursively.',
 );
 
@@ -93,17 +93,17 @@ $gate(
         && str_contains($files['manual_provider'], 'return false;')
         && str_contains($files['carrier_service'], 'carrier.delivery_confirmation_required')
         && str_contains($files['carrier_service'], 'DeliveryConfirmationService')
-        && !str_contains($files['carrier_service'], 'Http::')
-        && !str_contains($files['carrier_service'], 'SettlementAllocation')
-        && !str_contains($files['carrier_service'], 'RefundAttempt'),
+        && ! str_contains($files['carrier_service'], 'Http::')
+        && ! str_contains($files['carrier_service'], 'SettlementAllocation')
+        && ! str_contains($files['carrier_service'], 'RefundAttempt'),
     'Manual carrier is the only implemented provider and cannot bypass proof-driven delivery or mutate finance.',
 );
 
 $gate(
     'failed_job_browser_is_redacted_and_retry_is_exact',
     str_contains($files['failed_controller'], "select(['id', 'uuid', 'connection', 'queue', 'payload', 'failed_at'])")
-        && !str_contains($files['failed_controller'], "'payload' =>")
-        && !str_contains($files['failed_controller'], "'exception' =>")
+        && ! str_contains($files['failed_controller'], "'payload' =>")
+        && ! str_contains($files['failed_controller'], "'exception' =>")
         && str_contains($files['failed_service'], "Artisan::call('queue:retry'")
         && str_contains($files['failed_service'], "['id' => [\$uuid]]"),
     'Failed-job output must omit serialized payload/trace and retry exactly one operator-selected UUID.',
@@ -127,7 +127,7 @@ $gate(
     'PS5.3 must document its API and explicitly distinguish Rosta-defined contracts from unproven carrier APIs.',
 );
 
-$failed = array_values(array_filter($gates, static fn (array $item): bool => !$item['passed']));
+$failed = array_values(array_filter($gates, static fn (array $item): bool => ! $item['passed']));
 file_put_contents($root.'/admin-operations-contract-audit.json', json_encode([
     'generatedAt' => gmdate(DATE_ATOM),
     'marker' => 'admin_operations_contract=ready',
