@@ -88,7 +88,7 @@ final class CarrierOperationsService
                 ->lockForUpdate()
                 ->first();
             if ($existing instanceof CarrierWebhookReceipt) {
-                if (!hash_equals($existing->payload_hash, $payloadHash)) {
+                if (! hash_equals($existing->payload_hash, $payloadHash)) {
                     throw new ApiDomainException(
                         'carrier.webhook_replay_conflict',
                         'شناسه رویداد قبلاً با محتوای دیگری دریافت شده است.',
@@ -220,7 +220,7 @@ final class CarrierOperationsService
         }
 
         $allowed = $webhook ? $this->webhookTransitions($from) : $this->manualTransitions($from);
-        if (!in_array($target, $allowed, true)) {
+        if (! in_array($target, $allowed, true)) {
             throw new ApiDomainException(
                 'carrier.invalid_transition',
                 "تغییر وضعیت ارسال از {$from->value} به {$target->value} مجاز نیست.",
