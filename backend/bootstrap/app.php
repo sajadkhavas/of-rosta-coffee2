@@ -5,6 +5,7 @@ use App\Http\Middleware\AssignRequestId;
 use App\Http\Middleware\EnforceSellerPermission;
 use App\Http\Middleware\EnsureActiveAuthSession;
 use App\Http\Middleware\RequireAnyRole;
+use App\Http\Middleware\VerifyCarrierWebhookSignature;
 use App\Support\ApiResponse;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -39,6 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'rosta.session' => EnsureActiveAuthSession::class,
             'rosta.role' => RequireAnyRole::class,
             'rosta.seller' => EnforceSellerPermission::class,
+            'rosta.carrier.webhook' => VerifyCarrierWebhookSignature::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) use ($copyHeaders): void {
