@@ -1,0 +1,66 @@
+name: PS5.4 Settlement Status One-shot Fix
+
+on:
+  push:
+    branches:
+      - phase/rosta-ps5d-workspaces-kpi
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase/rosta-ps5d-workspaces-kpi
+          fetch-depth: 0
+
+      - name: Patch requires_review UI contract
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/components/seller/SellerOperationsDashboard.tsx')
+          text = path.read_text()
+          old = '''function settlementBatchStatusLabel(status: "pending" | "processing" | "paid" | "failed") {
+            return {
+              pending: "در انتظار پردازش",
+              processing: "در حال پرداخت",
+              paid: "پرداخت‌شده",
+              failed: "ناموفق؛ قابل تلاش مجدد",
+            }[status];
+          }'''
+          new = '''function settlementBatchStatusLabel(
+            status: "pending" | "processing" | "requires_review" | "paid" | "failed",
+          ) {
+            return {
+              pending: "در انتظار پردازش",
+              processing: "در حال پرداخت",
+              requires_review: "نیازمند بررسی مالی",
+              paid: "پرداخت‌شده",
+              failed: "ناموفق؛ قابل تلاش مجدد",
+            }[status];
+          }'''
+          if old not in text:
+              if 'requires_review: "نیازمند بررسی مالی"' in text:
+                  raise SystemExit(0)
+              raise SystemExit('expected settlement status helper not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+      - name: Commit source fix
+        shell: bash
+        run: |
+          if git diff --quiet -- src/components/seller/SellerOperationsDashboard.tsx; then
+            echo 'No source change required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/components/seller/SellerOperationsDashboard.tsx
+          git commit -m 'PS5.4: handle requires-review settlement state'
+          git push origin HEAD:phase/rosta-ps5d-workspaces-kpi
