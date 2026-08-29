@@ -53,8 +53,13 @@ function AdminWorkspace() {
   return (
     <section className="mt-8 space-y-6" aria-labelledby="admin-workspace-title">
       <header>
-        <p className="text-xs font-bold tracking-[0.18em] text-[color:var(--roast)]">ADMIN WORKSPACE</p>
-        <h1 id="admin-workspace-title" className="mt-2 text-3xl font-bold text-[color:var(--steam)]">
+        <p className="text-xs font-bold tracking-[0.18em] text-[color:var(--roast)]">
+          ADMIN WORKSPACE
+        </p>
+        <h1
+          id="admin-workspace-title"
+          className="mt-2 text-3xl font-bold text-[color:var(--steam)]"
+        >
           مرکز وضعیت رستا
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-[color:var(--light)]">
@@ -85,10 +90,7 @@ function AdminWorkspace() {
           <KpiCard label="محصول در بررسی" value={query.data.kpis.products_in_review} />
           <KpiCard label="Incident باز" value={query.data.kpis.open_fulfillment_incidents} />
           <KpiCard label="اعلان ناموفق" value={query.data.kpis.failed_notifications} />
-          <KpiCard
-            label="تطبیق مالی باز"
-            value={query.data.kpis.open_financial_reconciliation}
-          />
+          <KpiCard label="تطبیق مالی باز" value={query.data.kpis.open_financial_reconciliation} />
         </dl>
       ) : null}
 
@@ -111,7 +113,9 @@ function KpiCard({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-4">
       <dt className="text-xs leading-5 text-[color:var(--light)]">{label}</dt>
-      <dd className="mt-3 text-3xl font-bold tabular-nums text-[color:var(--steam)]">{toFa(value)}</dd>
+      <dd className="mt-3 text-3xl font-bold tabular-nums text-[color:var(--steam)]">
+        {toFa(value)}
+      </dd>
     </div>
   );
 }
