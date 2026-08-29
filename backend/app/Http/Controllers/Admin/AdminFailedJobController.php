@@ -112,7 +112,7 @@ final class AdminFailedJobController
             'reason' => $operation->reason,
             'requested_by_id' => $operation->requested_by_id,
             'confirmed_by_id' => $operation->confirmed_by_id,
-            'requested_at' => $operation->requested_at?->toIso8601String(),
+            'requested_at' => $operation->requested_at->toIso8601String(),
             'confirmed_at' => $operation->confirmed_at?->toIso8601String(),
         ];
     }
