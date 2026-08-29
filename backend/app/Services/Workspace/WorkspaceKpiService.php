@@ -2,6 +2,7 @@
 
 namespace App\Services\Workspace;
 
+use App\Enums\FulfillmentIncidentStatus;
 use App\Enums\NotificationStatus;
 use App\Enums\ProductStatus;
 use App\Enums\ReconciliationStatus;
@@ -42,7 +43,7 @@ final class WorkspaceKpiService
                 ->count(),
             'open_incidents' => FulfillmentIncident::query()
                 ->where('roastery_id', $roastery->id)
-                ->where('status', 'open')
+                ->where('status', FulfillmentIncidentStatus::Open->value)
                 ->count(),
         ];
     }
@@ -58,7 +59,7 @@ final class WorkspaceKpiService
                 ->where('status', ProductStatus::Review->value)
                 ->count(),
             'open_fulfillment_incidents' => FulfillmentIncident::query()
-                ->where('status', 'open')
+                ->where('status', FulfillmentIncidentStatus::Open->value)
                 ->count(),
             'failed_notifications' => NotificationOutbox::query()
                 ->where('status', NotificationStatus::Failed->value)
