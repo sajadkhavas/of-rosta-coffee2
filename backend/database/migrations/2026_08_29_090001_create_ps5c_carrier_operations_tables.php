@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('carrier_webhook_receipts', function (Blueprint $table): void {
             $table->ulid('id')->primary();
             $table->string('event_id', 160)->unique();
-            $table->foreignUlid('shipment_leg_id')->constrained('shipment_legs')->cascadeOnDelete();
+            $table->foreignUlid('shipment_leg_id')->constrained('shipment_legs')->restrictOnDelete();
             $table->string('carrier', 120);
             $table->string('tracking_code', 200);
             $table->string('event_type', 40);
