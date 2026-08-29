@@ -13,6 +13,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Testing\TestResponse;
 use Tests\Support\AuthenticatesRecordedSession;
 use Tests\TestCase;
 
@@ -139,7 +140,7 @@ final class PS5CCarrierAdminOperationsTest extends TestCase
     }
 
     /** @param array<string, mixed> $payload */
-    private function signedCarrierEvent(array $payload, string $eventId, int $timestamp): \Illuminate\Testing\TestResponse
+    private function signedCarrierEvent(array $payload, string $eventId, int $timestamp): TestResponse
     {
         $body = json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         $signature = hash_hmac(
