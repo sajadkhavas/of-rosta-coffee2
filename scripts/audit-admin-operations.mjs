@@ -3,7 +3,10 @@ import { readFile, writeFile } from "node:fs/promises";
 const paths = {
   package: "package.json",
   route: "src/routes/admin.operations.tsx",
+  workspaceRoute: "src/routes/admin.workspace.tsx",
   client: "src/lib/api/admin-operations.ts",
+  workspaceClient: "src/lib/api/workspaces.ts",
+  workspaceService: "backend/app/Services/Workspace/WorkspaceKpiService.php",
   navbar: "src/components/Navbar.tsx",
   routeTree: "src/routeTree.gen.ts",
   controller: "backend/app/Http/Controllers/Admin/AdminOperationsController.php",
@@ -33,6 +36,32 @@ gate(
     files.route.includes('user.roles.includes("administrator")') &&
     files.route.includes('content: "noindex,nofollow"'),
   "The operations workspace must be administrator-only and non-indexable.",
+);
+gate(
+  "server_defined_admin_workspace_kpis",
+  files.workspaceRoute.includes('createFileRoute("/admin/workspace")') &&
+    files.workspaceRoute.includes('user.roles.includes("administrator")') &&
+    files.workspaceRoute.includes('content: "noindex,nofollow"') &&
+    files.workspaceRoute.includes("adminWorkspaceQueryOptions") &&
+    files.workspaceClient.includes('apiFetch<unknown>("/admin/operations/workspace")') &&
+    files.controller.includes("WorkspaceKpiService") &&
+    files.routes.includes("/workspace") &&
+    files.workspaceService.includes("open_financial_reconciliation"),
+  "PS5.4 admin KPIs must be composed by the backend, parsed by a typed client and rendered only to administrators.",
+);
+gate(
+  "admin_workspace_does_not_recompute_money",
+  files.workspaceRoute.includes("هیچ مبلغ، نرخ یا حقیقت مالی را در مرورگر بازسازی نمی‌کند") &&
+    !/(gross_total|net_total|commission_total|gmv|revenue)/i.test(files.workspaceClient),
+  "The admin workspace may count reconciliation cases but must never reconstruct financial amounts in the browser.",
+);
+gate(
+  "admin_workspace_accessibility",
+  files.workspaceRoute.includes("Skeleton") &&
+    files.workspaceRoute.includes('variant="danger"') &&
+    files.workspaceRoute.includes('aria-live="polite"') &&
+    files.workspaceRoute.includes("focus-visible:ring-2"),
+  "The final admin composition needs loading/error/success semantics, live KPI output and keyboard-visible navigation.",
 );
 gate(
   "catalog_moderation_queues",
@@ -73,8 +102,9 @@ gate(
   files.client.includes(".strict()") &&
     files.client.includes("reviewStatusSchema") &&
     files.client.includes("inquiryStatusSchema") &&
-    files.client.includes("notificationStatusSchema"),
-  "Admin operations responses must be parsed through strict runtime schemas.",
+    files.client.includes("notificationStatusSchema") &&
+    files.workspaceClient.includes(".strict()"),
+  "Admin operations and workspace responses must be parsed through strict runtime schemas.",
 );
 gate(
   "route_and_navigation_registered",

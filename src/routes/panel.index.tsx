@@ -4,6 +4,7 @@ import { Breadcrumb } from "@/components/Breadcrumb";
 import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import { SellerOperationsDashboard } from "@/components/seller/SellerOperationsDashboard";
+import { SellerWorkspaceOverview } from "@/components/workspace/SellerWorkspaceOverview";
 
 export const Route = createFileRoute("/panel/")({
   head: () => ({
@@ -40,7 +41,14 @@ function SellerPanelPage() {
             </Link>
           </div>
         </div>
-        <AccountGuard>{(user) => <SellerOperationsDashboard user={user} />}</AccountGuard>
+        <AccountGuard>
+          {(user) => (
+            <>
+              <SellerWorkspaceOverview />
+              <SellerOperationsDashboard user={user} />
+            </>
+          )}
+        </AccountGuard>
       </main>
       <Footer />
     </>

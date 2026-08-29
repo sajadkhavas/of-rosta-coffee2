@@ -2,12 +2,17 @@
 
 use App\Http\Controllers\Admin\AdminSellerOrganizationController;
 use App\Http\Controllers\Seller\SellerOrganizationController;
+use App\Http\Controllers\Seller\SellerWorkspaceController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:sanctum', 'rosta.session'])->group(function (): void {
     Route::post('/seller/invitations/accept', [SellerOrganizationController::class, 'acceptInvitation'])
         ->middleware('throttle:api')
         ->name('api.v1.seller.invitations.accept');
+
+    Route::get('/seller/workspace', [SellerWorkspaceController::class, 'index'])
+        ->middleware(['throttle:api', 'rosta.role:roastery_owner,roastery_manager,roastery_staff,administrator'])
+        ->name('api.v1.seller.workspace.index');
 
     Route::prefix('/seller/roasteries/{roasteryId}')
         ->where(['roasteryId' => '[A-Za-z0-9._:-]+'])

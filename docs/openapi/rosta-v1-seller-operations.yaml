@@ -1,13 +1,55 @@
 openapi: 3.1.0
 info:
   title: Rosta Seller Operations API
-  version: 2026-07-23
-  description: Scoped roastery operations for whole-bean catalog, inventory, media and fulfillment.
+  version: 2026-08-29-ps5d
+  description: Scoped roastery operations and server-defined workspace KPI composition for the whole-bean marketplace.
 servers:
   - url: https://api-staging.rosta.shop/api/v1
 security:
   - sanctumSession: []
 paths:
+  /seller/workspace:
+    get:
+      operationId: getSellerWorkspace
+      description: Returns one server-composed non-financial KPI snapshot per roastery accessible to the authenticated seller.
+      responses:
+        "200":
+          description: Scoped seller workspace snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    required: [items, generated_at]
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          type: object
+                          required: [roastery, access_roles, kpis]
+                          properties:
+                            roastery:
+                              type: object
+                              required: [id, name, status]
+                              properties:
+                                id: { type: string }
+                                name: { type: string }
+                                status: { type: string, enum: [pending, verified, suspended, rejected] }
+                            access_roles:
+                              type: array
+                              items: { type: string }
+                            kpis:
+                              type: object
+                              required: [pending_acceptance, active_fulfillment, active_shipping, open_incidents]
+                              properties:
+                                pending_acceptance: { type: integer, minimum: 0 }
+                                active_fulfillment: { type: integer, minimum: 0 }
+                                active_shipping: { type: integer, minimum: 0 }
+                                open_incidents: { type: integer, minimum: 0 }
+                      generated_at: { type: string, format: date-time }
+        "403": { description: Seller or administrator role required }
   /seller/roasteries:
     get:
       operationId: listAccessibleSellerRoasteries
