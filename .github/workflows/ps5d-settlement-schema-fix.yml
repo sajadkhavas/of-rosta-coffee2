@@ -1,0 +1,40 @@
+name: PS5D Settlement Schema Fix
+
+on:
+  push:
+    branches:
+      - phase/rosta-ps5d-workspaces-kpi
+    paths:
+      - .github/workflows/ps5d-settlement-schema-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch accepted PS4.2 settlement state and remove helper workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('src/lib/api/seller-operations.ts')
+          text = path.read_text()
+          old = 'status: z.enum(["pending", "processing", "paid", "failed"]),'
+          new = 'status: z.enum(["pending", "processing", "requires_review", "paid", "failed"]),'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one settlement status contract, found {text.count(old)}')
+          path.write_text(text.replace(old, new))
+          Path('.github/workflows/ps5d-settlement-schema-fix.yml').unlink()
+          PY
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/lib/api/seller-operations.ts .github/workflows/ps5d-settlement-schema-fix.yml
+          git commit -m 'PS5.4: consume requires-review settlement state'
+          git push origin HEAD:phase/rosta-ps5d-workspaces-kpi
