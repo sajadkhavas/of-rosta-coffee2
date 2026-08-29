@@ -14,6 +14,7 @@ $routeContracts = rostaRouteContracts($root);
 $contracts = [
     '/payments/request',
     '/payments/{paymentId}/verify',
+    '/seller/workspace',
     '/seller/roasteries',
     '/seller/roasteries/{roasteryId}/products',
     '/seller/roasteries/{roasteryId}/products/{productId}/variants',
@@ -36,6 +37,7 @@ $contracts = [
     '/admin/roasteries/{roasteryId}/status',
     '/admin/products',
     '/admin/products/{productId}/status',
+    '/admin/operations/workspace',
     '/admin/operations/audits',
     '/admin/operations/notifications',
     '/admin/finance/refunds',
