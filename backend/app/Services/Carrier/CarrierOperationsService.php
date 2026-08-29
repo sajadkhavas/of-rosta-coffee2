@@ -127,6 +127,13 @@ final class CarrierOperationsService
             $leg = $candidates->first();
             $eventType = CarrierEventType::from($input['event_type']);
             $occurredAt = CarbonImmutable::parse($input['occurred_at'])->utc();
+            if ($occurredAt->isAfter(now()->addMinutes(10))) {
+                throw new ApiDomainException(
+                    'carrier.event_time_invalid',
+                    'زمان رویداد حامل بیش از محدوده مجاز در آینده است.',
+                    422,
+                );
+            }
 
             if ($eventType === CarrierEventType::Delivered) {
                 $this->deliveries->confirm(
@@ -230,18 +237,23 @@ final class CarrierOperationsService
                 : $leg->picked_up_at,
         ])->save();
 
-        Shipment::query()
-            ->where('sub_order_id', $leg->sub_order_id)
-            ->update([
-                'carrier' => $carrier,
-                'tracking_code' => $trackingCode,
-                'status' => in_array($target, [ShipmentLegStatus::PickedUp, ShipmentLegStatus::InTransit], true)
-                    ? 'shipped'
-                    : $target->value,
-                'shipped_at' => in_array($target, [ShipmentLegStatus::PickedUp, ShipmentLegStatus::InTransit], true)
-                    ? ($leg->picked_up_at ?? $occurredAt)
-                    : null,
-            ]);
+        if ($leg->sub_order_id !== null) {
+            $legacyShipment = Shipment::query()
+                ->where('sub_order_id', $leg->sub_order_id)
+                ->lockForUpdate()
+                ->first();
+            if ($legacyShipment instanceof Shipment) {
+                $isMoving = in_array($target, [ShipmentLegStatus::PickedUp, ShipmentLegStatus::InTransit], true);
+                $legacyShipment->forceFill([
+                    'carrier' => $carrier,
+                    'tracking_code' => $trackingCode,
+                    'status' => $isMoving ? 'shipped' : $target->value,
+                    'shipped_at' => $isMoving
+                        ? ($legacyShipment->shipped_at ?? $leg->picked_up_at ?? $occurredAt)
+                        : $legacyShipment->shipped_at,
+                ])->save();
+            }
+        }
 
         OrderEvent::query()->create([
             'order_id' => $leg->order_id,
