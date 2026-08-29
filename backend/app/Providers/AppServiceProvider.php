@@ -2,9 +2,11 @@
 
 namespace App\Providers;
 
+use App\Contracts\CarrierProvider;
 use App\Contracts\OtpSender;
 use App\Models\Order;
 use App\Observers\OrderObserver;
+use App\Services\Carrier\ManualCarrierProvider;
 use App\Services\Sms\AcceptanceOtpSender;
 use App\Services\Sms\DisabledOtpSender;
 use App\Services\Sms\KavenegarOtpSender;
@@ -15,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use LogicException;
 
 final class AppServiceProvider extends ServiceProvider
 {
@@ -37,6 +40,15 @@ final class AppServiceProvider extends ServiceProvider
 
             return new DisabledOtpSender;
         });
+
+        $this->app->singleton(CarrierProvider::class, function (): CarrierProvider {
+            $driver = strtolower(trim((string) config('rosta.carrier.driver', 'manual')));
+
+            return match ($driver) {
+                'manual' => new ManualCarrierProvider,
+                default => throw new LogicException("Unsupported carrier driver [{$driver}]."),
+            };
+        });
     }
 
     public function boot(): void
@@ -50,6 +62,7 @@ final class AppServiceProvider extends ServiceProvider
             'media-uploads.php',
             'finance.php',
             'admin-operations.php',
+            'carrier-operations.php',
             'seller-bootstrap.php',
             'seller-organization.php',
             'grinding-capability.php',
@@ -143,6 +156,15 @@ final class AppServiceProvider extends ServiceProvider
             return [
                 Limit::perMinute(20)->by('fulfillment:user:'.$userId),
                 Limit::perMinute(10)->by('fulfillment:order:'.hash('sha256', $orderId)),
+            ];
+        });
+
+        RateLimiter::for('carrier-webhook', function (Request $request): array {
+            $eventId = trim((string) $request->header('X-Rosta-Carrier-Event-Id', ''));
+
+            return [
+                Limit::perMinute(120)->by('carrier-webhook:ip:'.$request->ip()),
+                Limit::perMinute(10)->by('carrier-webhook:event:'.hash('sha256', $eventId)),
             ];
         });
 

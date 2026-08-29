@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Delivery;
 
+use App\Enums\CarrierEventType;
 use App\Enums\DeliveryConfirmationSource;
 use App\Http\Requests\Delivery\CarrierDeliveryWebhookRequest;
 use App\Http\Requests\Delivery\ConfirmDeliveryRequest;
@@ -9,11 +10,11 @@ use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Models\ShipmentLeg;
 use App\Models\User;
+use App\Services\Carrier\CarrierOperationsService;
 use App\Services\Catalog\CatalogAccess;
 use App\Services\Fulfillment\DeliveryConfirmationService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
-use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 final class DeliveryConfirmationController
 {
@@ -62,39 +63,30 @@ final class DeliveryConfirmationController
 
     public function carrier(
         CarrierDeliveryWebhookRequest $request,
-        DeliveryConfirmationService $deliveries,
+        CarrierOperationsService $operations,
     ): JsonResponse {
-        $secret = (string) config('rosta.settlement.carrier_webhook_secret', '');
-        $provided = trim((string) $request->header('X-Rosta-Carrier-Signature', ''));
-        $expected = $secret === '' ? '' : hash_hmac('sha256', $request->getContent(), $secret);
-        if ($secret === '' || $provided === '' || ! hash_equals($expected, $provided)) {
-            throw new AccessDeniedHttpException('Invalid carrier webhook signature.');
-        }
-
         $validated = $request->validated();
-        $leg = ShipmentLeg::query()
-            ->where('carrier', $validated['carrier'])
-            ->where('tracking_code', $validated['tracking_code'])
-            ->orderByDesc('sequence')
-            ->firstOrFail();
-
-        $order = $deliveries->confirm(
-            null,
-            $leg,
-            DeliveryConfirmationSource::Carrier,
-            [
-                'idempotency_key' => $validated['idempotency_key'],
-                'proof_type' => $validated['proof_type'],
-                'proof_payload' => $validated['proof_payload'] ?? null,
-            ],
-            $request,
-        );
+        $proof = $validated['proof_payload'] ?? [];
+        $eventId = (string) $request->attributes->get('carrier_event_id');
+        $result = $operations->ingest([
+            'carrier' => $validated['carrier'],
+            'tracking_code' => $validated['tracking_code'],
+            'event_type' => CarrierEventType::Delivered->value,
+            'occurred_at' => isset($proof['occurred_at'])
+                ? (string) $proof['occurred_at']
+                : now()->toIso8601String(),
+            'evidence_reference' => isset($proof['reference'])
+                ? (string) $proof['reference']
+                : null,
+        ], $eventId, $request->getContent(), $request);
 
         return ApiResponse::success([
-            'order_id' => $order->id,
-            'sub_order_id' => $leg->sub_order_id,
-            'shipment_leg_id' => $leg->id,
+            'event_id' => $result['receipt']->event_id,
+            'order_id' => $result['shipment_leg']->order_id,
+            'sub_order_id' => $result['shipment_leg']->sub_order_id,
+            'shipment_leg_id' => $result['shipment_leg']->id,
             'status' => 'delivery_confirmed',
+            'replayed' => $result['replayed'],
         ]);
     }
 }

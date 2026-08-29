@@ -9,7 +9,7 @@ Route::post(
     '/webhooks/carriers/deliveries',
     [DeliveryConfirmationController::class, 'carrier'],
 )
-    ->middleware('throttle:fulfillment-transition')
+    ->middleware(['rosta.carrier.webhook', 'throttle:carrier-webhook'])
     ->name('api.v1.webhooks.carriers.deliveries');
 
 Route::middleware(['auth:sanctum', 'rosta.session'])->group(function (): void {
