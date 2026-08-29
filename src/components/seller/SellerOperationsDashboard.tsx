@@ -1974,10 +1974,13 @@ function SellerSettlementsWorkspace({ roastery }: { roastery: SellerRoastery }) 
   );
 }
 
-function settlementBatchStatusLabel(status: "pending" | "processing" | "paid" | "failed") {
+function settlementBatchStatusLabel(
+  status: "pending" | "processing" | "requires_review" | "paid" | "failed",
+) {
   return {
     pending: "در انتظار پردازش",
     processing: "در حال پرداخت",
+    requires_review: "نیازمند بررسی مالی",
     paid: "پرداخت‌شده",
     failed: "ناموفق؛ قابل تلاش مجدد",
   }[status];
