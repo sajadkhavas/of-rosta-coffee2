@@ -38,18 +38,19 @@ final class PS5DWorkspaceKpiTest extends TestCase
             ->assertJsonPath('data.items.0.kpis.pending_acceptance', 0)
             ->assertJsonPath('data.items.0.kpis.active_fulfillment', 0)
             ->assertJsonPath('data.items.0.kpis.active_shipping', 0)
-            ->assertJsonPath('data.items.0.kpis.open_incidents', 0);
+            ->assertJsonPath('data.items.0.kpis.open_incidents', 0)
+            ->assertJsonMissing(['id' => $other->id]);
 
-        $payload = $response->json('data');
-        $this->assertNotSame($other->id, $payload['items'][0]['roastery']['id']);
-        $this->assertArrayNotHasKey('gross_total', $payload['items'][0]);
-        $this->assertArrayNotHasKey('net_total', $payload['items'][0]);
-        $this->assertArrayNotHasKey('commission_total', $payload['items'][0]);
+        $content = $response->getContent();
+        $this->assertIsString($content);
+        $this->assertStringNotContainsString('gross_total', $content);
+        $this->assertStringNotContainsString('net_total', $content);
+        $this->assertStringNotContainsString('commission_total', $content);
     }
 
     public function test_admin_workspace_reports_authoritative_counts_and_is_role_guarded(): void
     {
-        $pending = $this->roastery('ps5d-pending', RoasteryStatus::Pending);
+        $this->roastery('ps5d-pending', RoasteryStatus::Pending);
         $this->roastery('ps5d-verified', RoasteryStatus::Verified);
 
         $customer = User::factory()->create();
@@ -66,9 +67,10 @@ final class PS5DWorkspaceKpiTest extends TestCase
             ->assertJsonPath('data.kpis.failed_notifications', 0)
             ->assertJsonPath('data.kpis.open_financial_reconciliation', 0);
 
-        $this->assertNotEmpty($pending->id);
-        $this->assertArrayNotHasKey('revenue', $response->json('data.kpis'));
-        $this->assertArrayNotHasKey('gmv', $response->json('data.kpis'));
+        $content = $response->getContent();
+        $this->assertIsString($content);
+        $this->assertStringNotContainsString('"revenue"', $content);
+        $this->assertStringNotContainsString('"gmv"', $content);
     }
 
     private function roastery(string $slug, RoasteryStatus $status): Roastery
