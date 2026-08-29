@@ -1,10 +1,12 @@
 # PS5.4 — Seller/Admin Workspaces & KPI Composition
 
-Status: acceptance candidate. Final acceptance requires all repository gates to pass on one exact user-authored head and reviewed merge into `integration/rosta-release-candidate`.
+Status: verified acceptance candidate. The implementation head `aa0fb37b49cfd0c73e6199646bd51146b2fc4d24` passed every required repository workflow on the exact same SHA. Final acceptance is recorded only after this evidence-registration head also passes the same gates and the PR is merged into `integration/rosta-release-candidate`.
 
 Baseline: `integration/rosta-release-candidate@9c49324b1e0cb4a39a32ac55bd3faf5661935a06`.
 
 Branch: `phase/rosta-ps5d-workspaces-kpi`.
+
+PR: `#90 — PS5.4: Seller/Admin workspaces and KPI composition`.
 
 ## Scope
 
@@ -61,9 +63,25 @@ The financial entry is a count of reconciliation cases only. No GMV, revenue, ta
 
 A missing permanent API is a blocker. PS5.4 may add only composition/read contracts that aggregate already accepted domain truth. It must not create a mock, browser-only business rule, new financial rate, carrier behavior, refund behavior or fulfillment state transition.
 
-## Acceptance rerun note
+## Acceptance repair history
 
-A compatibility correction for the accepted settlement `requires_review` state was applied on this phase branch. The immediately following workflow-authored commit produced `action_required` runs with no jobs, so it was not accepted as CI evidence. This normal user-authored documentation commit intentionally establishes a fresh acceptance head and re-triggers the full required workflow set. No merge is allowed unless every required workflow passes on the same exact final head.
+A compatibility correction for the accepted settlement `requires_review` state was applied on this phase branch. A later immutable staging rehearsal exposed six Prettier violations in the new seller/admin workspace UI that the earlier candidate had not closed. Those formatting defects were corrected without weakening linting or bypassing the package rehearsal. The implementation head below then passed the full seven-workflow acceptance set.
+
+## Verified implementation evidence
+
+Exact implementation head: `aa0fb37b49cfd0c73e6199646bd51146b2fc4d24`.
+
+| Required workflow | Run | Result |
+|---|---:|---|
+| CI | 848 | PASS |
+| Backend CI | 558 | PASS |
+| PS1 Backend Wrapper CI | 100 | PASS |
+| Full-stack Integration CI | 403 | PASS |
+| Browser Acceptance CI | 391 | PASS |
+| R3 Final Gate | 373 | PASS |
+| R4 Staging Package CI | 353 | PASS |
+
+The R3 final gate passed its complete backend gate, complete frontend gate and integrated runtime/browser path. The R4 staging package workflow passed the immutable hosted rehearsal after the workspace formatting repair. No failing workflow remains on the verified implementation head.
 
 ## Acceptance gates
 
