@@ -8,6 +8,7 @@ use App\Models\AuditLog;
 use App\Models\NotificationOutbox;
 use App\Models\User;
 use App\Services\Catalog\CatalogAccess;
+use App\Services\Workspace\WorkspaceKpiService;
 use App\Support\ApiResponse;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
@@ -16,6 +17,21 @@ use Illuminate\Support\Str;
 
 final class AdminOperationsController extends Controller
 {
+    public function workspace(
+        Request $request,
+        CatalogAccess $access,
+        WorkspaceKpiService $workspaceKpis,
+    ): JsonResponse {
+        /** @var User $user */
+        $user = $request->user();
+        $access->assertAdministrator($user);
+
+        return ApiResponse::success([
+            'kpis' => $workspaceKpis->admin(),
+            'generated_at' => now()->toImmutable()->toIso8601String(),
+        ]);
+    }
+
     public function audits(Request $request, CatalogAccess $access): JsonResponse
     {
         /** @var User $user */
