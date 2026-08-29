@@ -838,7 +838,7 @@ const sellerSettlementSchema = z
             z
               .object({
                 id: identifier,
-                status: z.enum(["pending", "processing", "paid", "failed"]),
+                status: z.enum(["pending", "processing", "requires_review", "paid", "failed"]),
                 net_total: z.number().int().positive(),
                 allocation_count: z.number().int().positive(),
                 currency: z.literal("IRR"),
