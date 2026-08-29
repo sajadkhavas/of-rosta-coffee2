@@ -88,7 +88,7 @@ final class CarrierOperationsService
                 ->lockForUpdate()
                 ->first();
             if ($existing instanceof CarrierWebhookReceipt) {
-                if (! hash_equals($existing->payload_hash, $payloadHash)) {
+                if (hash_equals($existing->payload_hash, $payloadHash) === false) {
                     throw new ApiDomainException(
                         'carrier.webhook_replay_conflict',
                         'شناسه رویداد قبلاً با محتوای دیگری دریافت شده است.',
@@ -136,6 +136,12 @@ final class CarrierOperationsService
             }
 
             if ($eventType === CarrierEventType::Delivered) {
+                $evidenceReference = null;
+                if (isset($input['evidence_reference'])) {
+                    $candidateReference = trim((string) $input['evidence_reference']);
+                    $evidenceReference = $candidateReference === '' ? null : $candidateReference;
+                }
+
                 $this->deliveries->confirm(
                     null,
                     $leg,
@@ -144,9 +150,7 @@ final class CarrierOperationsService
                         'idempotency_key' => 'carrier-event:'.$eventId,
                         'proof_type' => 'carrier_scan',
                         'proof_payload' => [
-                            'reference' => isset($input['evidence_reference'])
-                                ? trim((string) $input['evidence_reference']) ?: null
-                                : null,
+                            'reference' => $evidenceReference,
                             'occurred_at' => $occurredAt->toIso8601String(),
                         ],
                     ],
@@ -220,7 +224,7 @@ final class CarrierOperationsService
         }
 
         $allowed = $webhook ? $this->webhookTransitions($from) : $this->manualTransitions($from);
-        if (! in_array($target, $allowed, true)) {
+        if (in_array($target, $allowed, true) === false) {
             throw new ApiDomainException(
                 'carrier.invalid_transition',
                 "تغییر وضعیت ارسال از {$from->value} به {$target->value} مجاز نیست.",
