@@ -1,0 +1,141 @@
+openapi: 3.1.0
+info:
+  title: Rosta Carrier and Non-financial Operations API
+  version: 2026-08-29-ps5c
+  description: >-
+    Provider-neutral carrier events, manual shipment operations and controlled failed-job
+    operations. This contract does not claim a native carrier API integration.
+servers:
+  - url: https://api-staging.rosta.shop/api/v1
+paths:
+  /webhooks/carriers/events:
+    post:
+      operationId: ingestCarrierEvent
+      security: []
+      description: >-
+        Requires X-Rosta-Carrier-Timestamp, X-Rosta-Carrier-Event-Id and
+        X-Rosta-Carrier-Signature. Signature format is v1=<hex HMAC-SHA256> over
+        v1:{timestamp}:{eventId}:{rawBody}. Event IDs are replay-protected.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CarrierEvent'
+      responses:
+        '200': { description: Event accepted or exact replay returned idempotently }
+        '403': { description: Missing, invalid or expired signature }
+        '409': { description: Replay conflict, ambiguous tracking or invalid state transition }
+  /webhooks/carriers/deliveries:
+    post:
+      operationId: ingestLegacyCarrierDelivery
+      security: []
+      description: Compatibility route; uses the same timestamped v1 HMAC envelope.
+      responses:
+        '200': { description: Delivery evidence accepted or replayed }
+        '403': { description: Missing, invalid or expired signature }
+  /admin/shipment-legs/{shipmentLegId}/carrier:
+    patch:
+      operationId: manageShipmentLegCarrier
+      security: [{ sanctumSession: [] }]
+      parameters:
+        - name: shipmentLegId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [carrier, tracking_code, status, reason]
+              properties:
+                carrier: { type: string, maxLength: 120 }
+                tracking_code: { type: string, maxLength: 200 }
+                status:
+                  type: string
+                  enum: [awaiting_pickup, picked_up, in_transit, pickup_failed, delivery_failed, lost, damaged, requires_review]
+                reason: { type: string, minLength: 10, maxLength: 1000 }
+      responses:
+        '200': { description: Manual provider state transition recorded and audited }
+        '403': { description: Administrator role required }
+        '409': { description: Invalid transition; delivered must use delivery evidence route }
+  /admin/operations/failed-jobs:
+    get:
+      operationId: listFailedJobsSafely
+      security: [{ sanctumSession: [] }]
+      description: Returns safe metadata only; serialized payloads and exception traces are never returned.
+      responses:
+        '200': { description: Sanitized failed-job page }
+  /admin/operations/failed-jobs/{uuid}/retry:
+    post:
+      operationId: retryFailedJob
+      security: [{ sanctumSession: [] }]
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Reason' }
+      responses:
+        '200': { description: One exact failed job submitted through Laravel queue retry semantics }
+        '404': { description: Failed job not found }
+  /admin/operations/failed-jobs/{uuid}/forget-requests:
+    post:
+      operationId: requestFailedJobForget
+      security: [{ sanctumSession: [] }]
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Reason' }
+      responses:
+        '201': { description: Pending destructive-operation request created }
+  /admin/operations/failed-job-forget-requests/{operationId}/confirm:
+    post:
+      operationId: confirmFailedJobForget
+      security: [{ sanctumSession: [] }]
+      parameters:
+        - name: operationId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Different administrator confirmed and executed forget }
+        '409': { description: Dual-control or lifecycle violation }
+components:
+  securitySchemes:
+    sanctumSession:
+      type: apiKey
+      in: cookie
+      name: rosta_session
+  schemas:
+    CarrierEvent:
+      type: object
+      additionalProperties: false
+      required: [carrier, tracking_code, event_type, occurred_at]
+      properties:
+        carrier: { type: string, maxLength: 120 }
+        tracking_code: { type: string, maxLength: 200 }
+        event_type:
+          type: string
+          enum: [awaiting_pickup, picked_up, in_transit, delivered, pickup_failed, delivery_failed, lost, damaged, requires_review]
+        occurred_at: { type: string, format: date-time }
+        evidence_reference: { type: [string, 'null'], maxLength: 500 }
+    Reason:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 10, maxLength: 1000 }
