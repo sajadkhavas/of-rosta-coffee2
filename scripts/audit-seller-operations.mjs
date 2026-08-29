@@ -6,6 +6,11 @@ const paths = {
   route: "src/routes/panel.index.tsx",
   manageRoute: "src/routes/panel.manage.tsx",
   dashboard: "src/components/seller/SellerOperationsDashboard.tsx",
+  workspaceOverview: "src/components/workspace/SellerWorkspaceOverview.tsx",
+  workspaceClient: "src/lib/api/workspaces.ts",
+  workspaceService: "backend/app/Services/Workspace/WorkspaceKpiService.php",
+  workspaceController: "backend/app/Http/Controllers/Seller/SellerWorkspaceController.php",
+  sellerOrganizationRoutes: "backend/routes/seller-organization.php",
   client: "src/lib/api/seller-operations.ts",
   onboarding: "src/lib/api/seller-onboarding.ts",
   stock: "src/lib/api/seller-stock-ledger.ts",
@@ -50,6 +55,36 @@ gate(
     files.route.includes("AccountGuard") &&
     files.route.includes('content: "noindex,nofollow"'),
   "The seller workspace index must require an authenticated account and stay outside search indexing.",
+);
+
+gate(
+  "server_defined_workspace_kpis",
+  files.sellerOrganizationRoutes.includes("/seller/workspace") &&
+    files.workspaceController.includes("WorkspaceKpiService") &&
+    files.workspaceService.includes("pending_acceptance") &&
+    files.workspaceService.includes("active_fulfillment") &&
+    files.workspaceService.includes("active_shipping") &&
+    files.workspaceService.includes("open_incidents") &&
+    files.workspaceClient.includes('apiFetch<unknown>("/seller/workspace")') &&
+    files.workspaceOverview.includes("مرورگر فقط نتیجه authoritative را نمایش") &&
+    files.route.includes("SellerWorkspaceOverview"),
+  "PS5.4 KPIs must be composed by the backend and rendered as typed API truth, never reconstructed from browser queue lengths.",
+);
+
+gate(
+  "workspace_kpis_are_non_financial",
+  !/(gross_total|net_total|commission_total|gmv|revenue)/i.test(files.workspaceService) &&
+    !/(gross_total|net_total|commission_total|gmv|revenue)/i.test(files.workspaceClient),
+  "The seller workspace summary must not introduce client-side or duplicate financial truth.",
+);
+
+gate(
+  "workspace_accessible_states",
+  files.workspaceOverview.includes("Skeleton") &&
+    files.workspaceOverview.includes('variant="danger"') &&
+    files.workspaceOverview.includes('aria-live="polite"') &&
+    files.workspaceOverview.includes('aria-labelledby="seller-workspace-kpis"'),
+  "The PS5.4 workspace summary must have loading/error/success semantics and an accessible live KPI region.",
 );
 
 gate(
