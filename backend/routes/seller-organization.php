@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminSellerOrganizationController;
 use App\Http\Controllers\Seller\SellerOrganizationController;
+use App\Http\Controllers\Seller\SellerWorkspaceController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:sanctum', 'rosta.session'])->group(function (): void {
@@ -13,6 +14,8 @@ Route::middleware(['auth:sanctum', 'rosta.session'])->group(function (): void {
         ->where(['roasteryId' => '[A-Za-z0-9._:-]+'])
         ->middleware(['throttle:api', 'rosta.seller'])
         ->group(function (): void {
+            Route::get('/workspace', [SellerWorkspaceController::class, 'show'])
+                ->name('api.v1.seller.workspace.show');
             Route::get('/organization', [SellerOrganizationController::class, 'show'])
                 ->name('api.v1.seller.organization.show');
             Route::get('/members', [SellerOrganizationController::class, 'listMembers'])
