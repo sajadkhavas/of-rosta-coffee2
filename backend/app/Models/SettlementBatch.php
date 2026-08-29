@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $roastery_id
  * @property string|null $created_by_id
  * @property string|null $processed_by_id
+ * @property string|null $confirmed_by_id
  * @property SettlementBatchStatus $status
  * @property string $currency
  * @property int $gross_total
@@ -25,6 +26,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $allocation_count
  * @property string $idempotency_key
  * @property string|null $payout_reference
+ * @property string|null $payout_method
+ * @property string|null $payout_evidence_hash
+ * @property array<mixed>|null $payout_evidence
  * @property string|null $failure_code
  * @property string|null $failure_message
  * @property CarbonImmutable|null $scheduled_at
@@ -34,6 +38,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read Roastery|null $roastery
  * @property-read User|null $creator
  * @property-read User|null $processor
+ * @property-read User|null $confirmer
  * @property-read Collection<int, SettlementAllocation> $allocations
  * @property-read Collection<int, SettlementBatchAllocation> $memberships
  */
@@ -45,6 +50,7 @@ final class SettlementBatch extends Model
         'roastery_id',
         'created_by_id',
         'processed_by_id',
+        'confirmed_by_id',
         'status',
         'currency',
         'gross_total',
@@ -54,6 +60,9 @@ final class SettlementBatch extends Model
         'allocation_count',
         'idempotency_key',
         'payout_reference',
+        'payout_method',
+        'payout_evidence_hash',
+        'payout_evidence',
         'failure_code',
         'failure_message',
         'scheduled_at',
@@ -71,6 +80,7 @@ final class SettlementBatch extends Model
             'tax_total' => 'integer',
             'net_total' => 'integer',
             'allocation_count' => 'integer',
+            'payout_evidence' => 'encrypted:array',
             'scheduled_at' => 'immutable_datetime',
             'processing_at' => 'immutable_datetime',
             'paid_at' => 'immutable_datetime',
@@ -91,6 +101,11 @@ final class SettlementBatch extends Model
     public function processor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'processed_by_id');
+    }
+
+    public function confirmer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'confirmed_by_id');
     }
 
     public function allocations(): BelongsToMany

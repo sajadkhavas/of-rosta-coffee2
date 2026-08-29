@@ -8,6 +8,9 @@ use App\Models\FinancialReconciliationCase;
 use App\Models\Order;
 use App\Models\PaymentAttempt;
 use App\Models\RefundAttempt;
+use App\Models\SettlementAllocation;
+use App\Models\SettlementBatch;
+use App\Models\SettlementBatchAllocation;
 use App\Models\User;
 use App\Services\AuditRecorder;
 use Illuminate\Http\Request;
@@ -60,6 +63,48 @@ final class FinancialReconciliationService
             payment: $refund->paymentAttempt()->first(),
             refund: $refund,
         );
+    }
+
+    /**
+     * A settlement batch can span several orders. Open one deduplicated case per affected order
+     * so the existing reconciliation ownership/invariants stay intact.
+     *
+     * @param  array<string, mixed>  $details
+     * @return list<FinancialReconciliationCase>
+     */
+    public function openSettlementBatchReview(
+        SettlementBatch $batch,
+        string $kind,
+        string $summary,
+        array $details = [],
+        string $severity = 'critical',
+        ?User $actor = null,
+    ): array {
+        $allocationIds = SettlementBatchAllocation::query()
+            ->where('settlement_batch_id', $batch->id)
+            ->pluck('settlement_allocation_id');
+        $orderIds = SettlementAllocation::query()
+            ->whereIn('id', $allocationIds)
+            ->whereNotNull('order_id')
+            ->pluck('order_id')
+            ->unique()
+            ->values();
+
+        $cases = [];
+        foreach ($orderIds as $orderId) {
+            $order = Order::query()->findOrFail($orderId);
+            $cases[] = $this->open(
+                order: $order,
+                kind: $kind,
+                summary: $summary,
+                details: ['settlement_batch_id' => $batch->id, ...$details],
+                severity: $severity,
+                actor: $actor,
+                deduplicationSubject: 'settlement:'.$batch->id,
+            );
+        }
+
+        return $cases;
     }
 
     public function resolve(
@@ -122,17 +167,22 @@ final class FinancialReconciliationService
         ?User $actor = null,
         ?PaymentAttempt $payment = null,
         ?RefundAttempt $refund = null,
+        ?string $deduplicationSubject = null,
     ): FinancialReconciliationCase {
         $safeKind = mb_substr(trim($kind), 0, 80);
         if ($safeKind === '') {
             $safeKind = 'financial_review_required';
         }
-        $deduplicationKey = hash('sha256', implode('|', [
+        $parts = [
             $safeKind,
             $order->id,
             $payment instanceof PaymentAttempt ? $payment->id : '-',
             $refund instanceof RefundAttempt ? $refund->id : '-',
-        ]));
+        ];
+        if ($deduplicationSubject !== null) {
+            $parts[] = $deduplicationSubject;
+        }
+        $deduplicationKey = hash('sha256', implode('|', $parts));
 
         return FinancialReconciliationCase::query()->createOrFirst(
             ['deduplication_key' => $deduplicationKey],

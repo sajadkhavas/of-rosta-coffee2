@@ -118,7 +118,7 @@ $gate(
     'policy_dual_control_and_immutability',
     str_contains($files['policy_service'], 'finance.policy_dual_control')
         && str_contains($files['policy_service'], 'finance.policy_immutable')
-        && str_contains($files['policy_service'], "'checksum' => $checksum")
+        && str_contains($files['policy_service'], "'checksum' => \$checksum")
         && str_contains($files['policy_service'], 'finance.policy.published'),
     'Publishing requires a second administrator and produces an audited immutable checksum.',
 );

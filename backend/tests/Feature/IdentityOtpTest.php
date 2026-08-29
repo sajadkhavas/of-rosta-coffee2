@@ -26,6 +26,8 @@ final class IdentityOtpTest extends TestCase
 
     public function test_otp_request_and_verification_create_a_bounded_customer_session(): void
     {
+        $this->freezeTime();
+
         $request = $this->postJson('/api/v1/auth/otp/request', [
             'mobile' => '۰۹۱۲۳۴۵۶۷۸۹',
             'purpose' => 'register',

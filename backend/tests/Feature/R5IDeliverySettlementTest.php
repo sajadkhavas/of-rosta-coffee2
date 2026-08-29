@@ -9,6 +9,7 @@ use App\Models\CheckoutQuote;
 use App\Models\Order;
 use App\Models\Roastery;
 use App\Models\SettlementAllocation;
+use App\Models\SettlementBatch;
 use App\Models\Shipment;
 use App\Models\ShipmentLeg;
 use App\Models\SubOrder;
@@ -32,12 +33,14 @@ final class R5IDeliverySettlementTest extends TestCase
             'rosta.notifications.sms_provider' => 'disabled',
             'rosta.settlement.dispute_window_hours' => 72,
             'rosta.settlement.carrier_webhook_secret' => 'r5i-carrier-secret',
+            'rosta.settlement.require_payout_dual_control' => true,
         ]);
     }
 
     public function test_final_delivery_releases_only_roastery_money_and_pays_one_idempotent_batch(): void
     {
         [$customer, $administrator, $roastery, $order, $subOrder, $finalLeg] = $this->directFixture('direct');
+        $payoutConfirmer = User::factory()->create();
 
         $this->authenticateWithRole($customer, Role::Customer);
         $this->postJson(
@@ -104,15 +107,55 @@ final class R5IDeliverySettlementTest extends TestCase
 
         $this->postJson("/api/v1/admin/finance/settlement-batches/{$batchId}/resolve", [
             'action' => 'process',
-        ])->assertOk()->assertJsonPath('data.status', 'processing');
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'processing');
+
         $this->postJson("/api/v1/admin/finance/settlement-batches/{$batchId}/resolve", [
             'action' => 'paid',
-            'payout_reference' => 'BANK-R5I-0001',
+            'payout_reference' => 'BANK-R5I-SAME-ACTOR',
+            'payout_method' => 'manual_bank_transfer',
+            'payout_evidence' => [
+                'source' => 'bank_receipt',
+                'executed_at' => now()->toIso8601String(),
+                'amount' => 4_000_000,
+                'currency' => 'IRR',
+            ],
         ])
+            ->assertStatus(409)
+            ->assertJsonPath('error.code', 'settlement.payout_dual_control_required');
+
+        $this->authenticateWithRole($payoutConfirmer, Role::Administrator);
+        $paidPayload = [
+            'action' => 'paid',
+            'payout_reference' => 'BANK-R5I-0001',
+            'payout_method' => 'manual_bank_transfer',
+            'payout_evidence' => [
+                'source' => 'bank_receipt',
+                'executed_at' => '2026-08-28T12:00:00+00:00',
+                'amount' => 4_000_000,
+                'currency' => 'IRR',
+                'note' => 'PS4.2 acceptance evidence',
+            ],
+        ];
+
+        $this->postJson("/api/v1/admin/finance/settlement-batches/{$batchId}/resolve", $paidPayload)
             ->assertOk()
             ->assertJsonPath('data.status', 'paid')
             ->assertJsonPath('data.payout_reference', 'BANK-R5I-0001');
+        $this->postJson("/api/v1/admin/finance/settlement-batches/{$batchId}/resolve", $paidPayload)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'paid');
 
+        $this->assertDatabaseHas('settlement_batches', [
+            'id' => $batchId,
+            'processed_by_id' => $administrator->id,
+            'confirmed_by_id' => $payoutConfirmer->id,
+            'payout_method' => 'manual_bank_transfer',
+        ]);
+        $this->assertNotNull(
+            SettlementBatch::query()->findOrFail($batchId)->payout_evidence_hash,
+        );
         $this->assertDatabaseHas('settlement_allocations', [
             'sub_order_id' => $subOrder->id,
             'owner_type' => 'roastery',

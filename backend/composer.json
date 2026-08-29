@@ -3,12 +3,7 @@
   "name": "rosta/backend",
   "type": "project",
   "description": "Security-first Laravel API for the Rosta whole-bean coffee marketplace.",
-  "keywords": [
-    "laravel",
-    "rosta",
-    "marketplace",
-    "coffee"
-  ],
+  "keywords": ["laravel", "rosta", "marketplace", "coffee"],
   "license": "proprietary",
   "require": {
     "php": "^8.3",
@@ -26,35 +21,15 @@
     "phpunit/phpunit": "^12.5.12"
   },
   "autoload": {
-    "psr-4": {
-      "App\\": "app/",
-      "Database\\Factories\\": "database/factories/",
-      "Database\\Seeders\\": "database/seeders/"
-    }
+    "psr-4": {"App\\": "app/", "Database\\Factories\\": "database/factories/", "Database\\Seeders\\": "database/seeders/"}
   },
-  "autoload-dev": {
-    "psr-4": {
-      "Tests\\": "tests/"
-    }
-  },
+  "autoload-dev": {"psr-4": {"Tests\\": "tests/"}},
   "scripts": {
-    "post-autoload-dump": [
-      "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
-      "@php artisan package:discover --ansi"
-    ],
-    "post-update-cmd": [
-      "@php vendor:publish --tag=laravel-assets --ansi --force"
-    ],
-    "post-root-package-install": [
-      "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
-    ],
-    "post-create-project-cmd": [
-      "@php artisan key:generate --ansi",
-      "@php artisan storage:link --ansi"
-    ],
-    "pre-package-uninstall": [
-      "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
-    ],
+    "post-autoload-dump": ["Illuminate\\Foundation\\ComposerScripts::postAutoloadDump", "@php artisan package:discover --ansi"],
+    "post-update-cmd": ["@php vendor:publish --tag=laravel-assets --ansi --force"],
+    "post-root-package-install": ["@php -r \"file_exists('.env') || copy('.env.example', '.env');\""],
+    "post-create-project-cmd": ["@php artisan key:generate --ansi", "@php artisan storage:link --ansi"],
+    "pre-package-uninstall": ["Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"],
     "audit:business": "@php scripts/audit-business-contract.php",
     "audit:checkout": "@php scripts/audit-checkout-contract.php",
     "audit:seo": "@php scripts/audit-seo-content-contract.php",
@@ -77,13 +52,11 @@
     "audit:r5c": "@php scripts/audit-r5c-marketplace-checkout.php",
     "audit:ps2": "@php scripts/audit-ps2-otp-notifications.php",
     "audit:ps4a": "@php scripts/audit-ps4a-financial-truth.php",
+    "audit:ps4b": "@php scripts/audit-ps4b-refund-payout-reconciliation.php",
     "readiness": "@php artisan rosta:readiness --json",
     "acceptance:infrastructure": "@php artisan rosta:infrastructure-acceptance --json",
     "acceptance:fixtures": "@php artisan rosta:acceptance-fixtures --json",
-    "test": [
-      "@php artisan config:clear --ansi @no_additional_args",
-      "@php artisan test"
-    ],
+    "test": ["@php artisan config:clear --ansi @no_additional_args", "@php artisan test"],
     "analyse": "phpstan analyse --memory-limit=1G",
     "format": "pint --parallel",
     "check": [
@@ -111,6 +84,7 @@
       "@audit:r5c",
       "@audit:ps2",
       "@audit:ps4a",
+      "@audit:ps4b",
       "@audit:r5d",
       "@audit:r5e",
       "@audit:r5f",
@@ -134,12 +108,8 @@
     "optimize-autoloader": true,
     "preferred-install": "dist",
     "sort-packages": true,
-    "platform": {
-      "php": "8.3.0"
-    },
-    "allow-plugins": {
-      "php-http/discovery": true
-    }
+    "platform": {"php": "8.3.0"},
+    "allow-plugins": {"php-http/discovery": true}
   },
   "minimum-stability": "stable",
   "prefer-stable": true
