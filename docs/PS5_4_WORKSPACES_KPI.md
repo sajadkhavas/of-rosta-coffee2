@@ -1,6 +1,6 @@
 # PS5.4 — Seller/Admin Workspaces & KPI Composition
 
-Status: implementation candidate. Final acceptance requires all repository gates to pass on one exact head and reviewed merge into `integration/rosta-release-candidate`.
+Status: acceptance candidate. Final acceptance requires all repository gates to pass on one exact user-authored head and reviewed merge into `integration/rosta-release-candidate`.
 
 Baseline: `integration/rosta-release-candidate@9c49324b1e0cb4a39a32ac55bd3faf5661935a06`.
 
@@ -60,6 +60,10 @@ The financial entry is a count of reconciliation cases only. No GMV, revenue, ta
 ## API-gap policy
 
 A missing permanent API is a blocker. PS5.4 may add only composition/read contracts that aggregate already accepted domain truth. It must not create a mock, browser-only business rule, new financial rate, carrier behavior, refund behavior or fulfillment state transition.
+
+## Acceptance rerun note
+
+A compatibility correction for the accepted settlement `requires_review` state was applied on this phase branch. The immediately following workflow-authored commit produced `action_required` runs with no jobs, so it was not accepted as CI evidence. This normal user-authored documentation commit intentionally establishes a fresh acceptance head and re-triggers the full required workflow set. No merge is allowed unless every required workflow passes on the same exact final head.
 
 ## Acceptance gates
 
