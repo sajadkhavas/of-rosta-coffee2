@@ -11,7 +11,10 @@ final class VerifyCarrierWebhookSignature
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $secret = (string) config('rosta.carrier.webhook_secret', '');
+        $secret = (string) config(
+            'rosta.carrier.webhook_secret',
+            config('rosta.settlement.carrier_webhook_secret', ''),
+        );
         $timestamp = trim((string) $request->header('X-Rosta-Carrier-Timestamp', ''));
         $eventId = trim((string) $request->header('X-Rosta-Carrier-Event-Id', ''));
         $provided = strtolower(trim((string) $request->header('X-Rosta-Carrier-Signature', '')));
