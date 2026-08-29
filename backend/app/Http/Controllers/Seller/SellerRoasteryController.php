@@ -15,7 +15,6 @@ use App\Models\User;
 use App\Services\AuditRecorder;
 use App\Services\Catalog\CatalogAccess;
 use App\Services\Seller\SellerAccess;
-use App\Services\Workspace\WorkspaceKpiService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,11 +22,8 @@ use Illuminate\Support\Facades\DB;
 
 final class SellerRoasteryController
 {
-    public function index(
-        Request $request,
-        SellerAccess $sellerAccess,
-        WorkspaceKpiService $workspaceKpis,
-    ): JsonResponse {
+    public function index(Request $request, SellerAccess $sellerAccess): JsonResponse
+    {
         /** @var User $user */
         $user = $request->user();
         $administrator = $user->hasRole(Role::Administrator);
@@ -48,7 +44,6 @@ final class SellerRoasteryController
             $request,
             $administrator,
             $rolesByRoastery,
-            $workspaceKpis,
         ): array {
             $resource = (new RoasteryDetailResource($roastery))->resolve($request);
 
@@ -58,7 +53,6 @@ final class SellerRoasteryController
                 'access_roles' => $administrator
                     ? [Role::Administrator->value]
                     : ($rolesByRoastery->get($roastery->id) ?? []),
-                'workspace_kpis' => $workspaceKpis->seller($roastery),
             ];
         })->values()->all();
 
