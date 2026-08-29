@@ -75,7 +75,7 @@ final class CarrierOperationsService
     }
 
     /**
-     * @param array{carrier:string,tracking_code:string,event_type:string,occurred_at:string,evidence_reference?:string|null} $input
+     * @param  array{carrier:string,tracking_code:string,event_type:string,occurred_at:string,evidence_reference?:string|null}  $input
      * @return array{receipt:CarrierWebhookReceipt,shipment_leg:ShipmentLeg,replayed:bool}
      */
     public function ingest(array $input, string $eventId, string $rawBody, Request $request): array
