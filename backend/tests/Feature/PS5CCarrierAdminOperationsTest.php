@@ -2,8 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Enums\OrderStatus;
 use App\Enums\Role;
+use App\Models\CheckoutQuote;
+use App\Models\Order;
+use App\Models\Roastery;
 use App\Models\ShipmentLeg;
+use App\Models\SubOrder;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
@@ -28,7 +33,7 @@ final class PS5CCarrierAdminOperationsTest extends TestCase
 
     public function test_signed_carrier_event_is_timestamp_bounded_and_replay_safe(): void
     {
-        $leg = $this->shipmentLeg('picked_up', 'manual-post', 'PS5C-TRACK-1');
+        $leg = $this->shipmentLeg('picked_up', 'manual-post', 'PS5C-TRACK-1', 'signed');
         $payload = [
             'carrier' => 'manual-post',
             'tracking_code' => 'PS5C-TRACK-1',
@@ -65,7 +70,7 @@ final class PS5CCarrierAdminOperationsTest extends TestCase
     {
         $administrator = User::factory()->create();
         $this->authenticateWithRole($administrator, Role::Administrator);
-        $leg = $this->shipmentLeg('awaiting_pickup', null, null);
+        $leg = $this->shipmentLeg('awaiting_pickup', null, null, 'manual');
 
         $this->patchJson("/api/v1/admin/shipment-legs/{$leg->id}/carrier", [
             'carrier' => 'manual-post',
@@ -84,6 +89,8 @@ final class PS5CCarrierAdminOperationsTest extends TestCase
             'action' => 'carrier.shipment_leg_managed',
             'actor_id' => $administrator->id,
         ]);
+        $this->assertDatabaseCount('settlement_batches', 0);
+        $this->assertDatabaseCount('refund_attempts', 0);
     }
 
     public function test_failed_job_browser_output_is_redacted_and_forget_requires_second_admin(): void
@@ -98,7 +105,8 @@ final class PS5CCarrierAdminOperationsTest extends TestCase
         $this->authenticateWithRole($firstAdmin, Role::Administrator);
         $response = $this->getJson('/api/v1/admin/operations/failed-jobs')
             ->assertOk()
-            ->assertJsonPath('data.items.0.uuid', $forgetUuid);
+            ->assertJsonFragment(['uuid' => $retryUuid])
+            ->assertJsonFragment(['uuid' => $forgetUuid]);
         $this->assertStringNotContainsString('top-secret', $response->getContent());
         $this->assertStringNotContainsString('RuntimeException', $response->getContent());
 
@@ -157,24 +165,94 @@ final class PS5CCarrierAdminOperationsTest extends TestCase
         );
     }
 
-    private function shipmentLeg(string $status, ?string $carrier, ?string $trackingCode): ShipmentLeg
+    private function shipmentLeg(string $status, ?string $carrier, ?string $trackingCode, string $suffix): ShipmentLeg
     {
+        $customer = User::factory()->create();
+        $roastery = Roastery::query()->create([
+            'name' => 'روستری PS5C '.$suffix,
+            'slug' => 'ps5c-roastery-'.$suffix,
+            'description' => '',
+            'status' => 'verified',
+            'verified_at' => now(),
+        ]);
+        $quote = CheckoutQuote::query()->create([
+            'user_id' => $customer->id,
+            'purpose' => 'checkout',
+            'payload_hash' => hash('sha256', 'ps5c-'.$suffix),
+            'subtotal' => 1_000_000,
+            'shipping_total' => 100_000,
+            'discount_total' => 0,
+            'grand_total' => 1_100_000,
+            'currency' => 'IRR',
+            'address_snapshot' => [
+                'recipient_name' => 'مشتری PS5C',
+                'recipient_mobile' => '09120000000',
+                'province' => 'تهران',
+                'city' => 'تهران',
+                'address_line' => 'نشانی تست',
+                'postal_code' => '1234567890',
+            ],
+            'shipping_snapshot' => [],
+            'warnings' => [],
+            'expires_at' => now()->addMinutes(15),
+            'consumed_at' => now(),
+        ]);
+        $order = Order::query()->create([
+            'user_id' => $customer->id,
+            'roastery_id' => $roastery->id,
+            'quote_id' => $quote->id,
+            'order_number' => 'R-PS5C-'.strtoupper($suffix),
+            'status' => OrderStatus::Shipped,
+            'address_snapshot' => $quote->address_snapshot,
+            'subtotal' => 1_000_000,
+            'shipping_total' => 100_000,
+            'discount_total' => 0,
+            'grand_total' => 1_100_000,
+            'currency' => 'IRR',
+            'placed_at' => now()->subDay(),
+            'paid_at' => now()->subDay(),
+        ]);
+        $subOrder = SubOrder::query()->create([
+            'order_id' => $order->id,
+            'roastery_id' => $roastery->id,
+            'status' => 'shipped',
+            'acceptance_status' => 'accepted',
+            'subtotal' => 1_000_000,
+            'shipping_total' => 100_000,
+            'packaging_total' => 0,
+            'grinding_total' => 0,
+            'discount_total' => 0,
+            'tax_total' => 0,
+            'grand_total' => 1_100_000,
+            'commission_total' => 0,
+            'payable_total' => 1_100_000,
+            'currency' => 'IRR',
+            'accepted_at' => now()->subDay(),
+            'fulfillment_committed_at' => now()->subDay(),
+            'preparation_due_at' => now()->subHours(12),
+            'handoff_due_at' => now()->subHours(6),
+            'shipped_at' => now()->subHour(),
+            'sla_status' => 'handed_off',
+        ]);
+
         return ShipmentLeg::query()->create([
+            'order_id' => $order->id,
+            'sub_order_id' => $subOrder->id,
             'route_type' => 'roastery_to_customer',
             'sequence' => 1,
             'status' => $status,
             'carrier' => $carrier,
             'tracking_code' => $trackingCode,
             'charge_owner_type' => 'roastery',
-            'charge_owner_id' => null,
-            'gross_amount' => 0,
+            'charge_owner_id' => $roastery->id,
+            'gross_amount' => 100_000,
             'tax_amount' => 0,
-            'total_amount' => 0,
+            'total_amount' => 100_000,
             'currency' => 'IRR',
             'origin_snapshot' => ['city' => 'تهران'],
-            'destination_snapshot' => ['city' => 'کرج'],
-            'planned_at' => now()->subHour(),
-            'picked_up_at' => $status === 'picked_up' ? now()->subMinutes(30) : null,
+            'destination_snapshot' => ['city' => 'تهران'],
+            'planned_at' => now()->subHours(2),
+            'picked_up_at' => $status === 'picked_up' ? now()->subHour() : null,
         ]);
     }
 
