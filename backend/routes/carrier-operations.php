@@ -8,10 +8,6 @@ Route::post('/webhooks/carriers/events', [CarrierOperationsController::class, 'w
     ->middleware(['rosta.carrier.webhook', 'throttle:carrier-webhook'])
     ->name('api.v1.webhooks.carriers.events');
 
-Route::post('/webhooks/carriers/deliveries', [CarrierOperationsController::class, 'legacyDelivery'])
-    ->middleware(['rosta.carrier.webhook', 'throttle:carrier-webhook'])
-    ->name('api.v1.webhooks.carriers.deliveries');
-
 Route::middleware(['auth:sanctum', 'rosta.session', 'rosta.role:administrator'])
     ->group(function (): void {
         Route::patch('/admin/shipment-legs/{shipmentLegId}/carrier', [CarrierOperationsController::class, 'manage'])
