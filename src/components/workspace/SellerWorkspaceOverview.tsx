@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Alert, EmptyState, Skeleton } from "@/components/system";
+import { Alert, Skeleton } from "@/components/system";
 import { isApiError } from "@/lib/api/client";
 import { sellerWorkspaceQueryOptions } from "@/lib/api/workspaces";
 import { toFa } from "@/lib/persian";
@@ -42,10 +42,11 @@ export function SellerWorkspaceOverview() {
   return (
     <section className="mt-8 space-y-4" aria-labelledby="seller-workspace-kpis">
       <header>
-        <p className="text-xs font-bold tracking-[0.18em] text-[color:var(--roast)]">
-          SERVER KPI
-        </p>
-        <h2 id="seller-workspace-kpis" className="mt-2 text-2xl font-bold text-[color:var(--steam)]">
+        <p className="text-xs font-bold tracking-[0.18em] text-[color:var(--roast)]">SERVER KPI</p>
+        <h2
+          id="seller-workspace-kpis"
+          className="mt-2 text-2xl font-bold text-[color:var(--steam)]"
+        >
           نمای لحظه‌ای عملیات روستری
         </h2>
         <p className="mt-2 max-w-3xl text-sm leading-7 text-[color:var(--light)]">
