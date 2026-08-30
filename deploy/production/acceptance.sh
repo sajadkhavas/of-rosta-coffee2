@@ -62,7 +62,7 @@ api="https://${PRODUCTION_API_DOMAIN}"
 
 log "Checking public TLS edge and canonical endpoints"
 curl --fail --silent --show-error --max-time "${ROSTA_ACCEPTANCE_TIMEOUT_SECONDS:-240}" \
-  --dump-header "$REPORT_DIR/home.headers" "$site/" > "$REPORT_DIR/home.html" \
+  --dump-header "$REPORT_DIR/home.headers" "$site/" > "$REPORT_DIR/home.html"
 curl --fail --silent --show-error --max-time "${ROSTA_ACCEPTANCE_TIMEOUT_SECONDS:-240}" \
   --dump-header "$REPORT_DIR/robots.headers" "$site/robots.txt" > "$REPORT_DIR/robots.txt"
 curl --fail --silent --show-error --max-time "${ROSTA_ACCEPTANCE_TIMEOUT_SECONDS:-240}" \
