@@ -59,9 +59,17 @@ $contracts = [
 ];
 
 foreach ($contracts as $path => $needles) {
-    $source = @file_get_contents($root.'/'.$path);
-    if ($source === false) {
+    $file = $root.'/'.$path;
+    if (! is_file($file)) {
         $failures[] = 'Missing PS6B contract file: '.$path;
+
+        continue;
+    }
+
+    $source = file_get_contents($file);
+    if ($source === false) {
+        $failures[] = 'Unreadable PS6B contract file: '.$path;
+
         continue;
     }
 
@@ -72,14 +80,16 @@ foreach ($contracts as $path => $needles) {
     }
 }
 
-$health = @file_get_contents($root.'/app/Services/Observability/QueueRuntimeHealth.php') ?: '';
+$health = file_get_contents($root.'/app/Services/Observability/QueueRuntimeHealth.php');
+$health = $health === false ? '' : $health;
 foreach (['payload', 'exception'] as $forbidden) {
     if (preg_match('/[\'\"]'.$forbidden.'[\'\"]\s*=>/', $health) === 1) {
         $failures[] = 'Queue health snapshot must never expose '.$forbidden.'.';
     }
 }
 
-$telemetry = @file_get_contents($root.'/app/Services/Observability/QueueTelemetry.php') ?: '';
+$telemetry = file_get_contents($root.'/app/Services/Observability/QueueTelemetry.php');
+$telemetry = $telemetry === false ? '' : $telemetry;
 if (str_contains($telemetry, 'getRawBody') || str_contains($telemetry, 'getRawPayload')) {
     $failures[] = 'Queue telemetry must never read serialized job payloads.';
 }
@@ -89,6 +99,7 @@ if ($failures !== []) {
     foreach ($failures as $failure) {
         fwrite(STDERR, '- '.$failure."\n");
     }
+
     exit(1);
 }
 
