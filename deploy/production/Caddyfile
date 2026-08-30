@@ -1,0 +1,66 @@
+{
+  email {$ACME_EMAIL}
+  servers {
+    protocols h1 h2 h3
+  }
+  log {
+    output stdout
+    format json
+  }
+}
+
+(common_security_headers) {
+  header {
+    -Server
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "DENY"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+    Strict-Transport-Security "max-age=31536000"
+  }
+}
+
+{$PRODUCTION_SITE_DOMAIN} {
+  import common_security_headers
+  encode zstd gzip
+
+  header Content-Security-Policy "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self' https://{$PRODUCTION_API_DOMAIN} https://{$PRODUCTION_MEDIA_DOMAIN}; img-src 'self' data: blob: https://{$PRODUCTION_MEDIA_DOMAIN}; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; worker-src 'self' blob:; manifest-src 'self'"
+
+  @private_hub path /hub /hub/* /admin /admin/* /panel /panel/* /profile /profile/*
+  header @private_hub Cache-Control "private, no-store, max-age=0"
+  header @private_hub Pragma "no-cache"
+  header @private_hub X-Robots-Tag "noindex, nofollow, noarchive"
+
+  @immutable path /assets/* /_build/*
+  header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+  @edge_health path /_edge/health
+  respond @edge_health 200
+
+  reverse_proxy frontend:3000 {
+    health_uri /robots.txt
+    health_interval 15s
+    health_timeout 5s
+    header_up X-Forwarded-Proto https
+    header_up X-Forwarded-Host {host}
+  }
+}
+
+{$PRODUCTION_API_DOMAIN} {
+  import common_security_headers
+  encode zstd gzip
+  header X-Robots-Tag "noindex, nofollow, noarchive"
+  header Cache-Control "no-store"
+
+  request_body {
+    max_size 16MB
+  }
+
+  reverse_proxy api-web:8080 {
+    health_uri /api/v1/health/live
+    health_interval 15s
+    health_timeout 5s
+    header_up X-Forwarded-Proto https
+    header_up X-Forwarded-Host {host}
+  }
+}
