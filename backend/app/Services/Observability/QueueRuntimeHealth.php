@@ -46,9 +46,9 @@ final class QueueRuntimeHealth
         }
 
         [$backendAvailable, $queues] = $this->queueDepths($driver);
-        $maxFailedJobs = (int) config('rosta.observability.max_failed_jobs', 25);
-        $maxFailedAge = (int) config('rosta.observability.max_failed_job_age_seconds', 86_400);
-        $maxQueueDepth = (int) config('rosta.observability.max_queue_depth', 1_000);
+        $maxFailedJobs = (int) config('observability.max_failed_jobs', 25);
+        $maxFailedAge = (int) config('observability.max_failed_job_age_seconds', 86_400);
+        $maxQueueDepth = (int) config('observability.max_queue_depth', 1_000);
 
         $degraded = ($failedJobs !== null && $failedJobs > $maxFailedJobs)
             || ($oldestFailedAgeSeconds !== null && $oldestFailedAgeSeconds > $maxFailedAge)
@@ -73,7 +73,7 @@ final class QueueRuntimeHealth
     {
         $queueNames = array_values(array_unique(array_filter(array_map(
             static fn (mixed $queue): string => trim((string) $queue),
-            (array) config('rosta.observability.queues', ['default', 'notifications', 'media']),
+            (array) config('observability.queues', ['default', 'notifications', 'media']),
         ))));
         $depths = array_fill_keys($queueNames, null);
 
