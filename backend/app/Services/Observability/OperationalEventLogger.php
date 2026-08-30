@@ -29,14 +29,14 @@ final class OperationalEventLogger
     /** @param array<string, mixed> $context */
     public function info(string $event, array $context = []): void
     {
-        Log::channel((string) config('rosta.observability.log_channel', 'stack'))
+        Log::channel((string) config('observability.log_channel', 'stack'))
             ->info('rosta.operational_event', $this->envelope($event, $context));
     }
 
     /** @param array<string, mixed> $context */
     public function warning(string $event, array $context = []): void
     {
-        Log::channel((string) config('rosta.observability.log_channel', 'stack'))
+        Log::channel((string) config('observability.log_channel', 'stack'))
             ->warning('rosta.operational_event', $this->envelope($event, $context));
     }
 }
