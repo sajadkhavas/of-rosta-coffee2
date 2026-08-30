@@ -1,0 +1,224 @@
+name: ${COMPOSE_PROJECT_NAME:-rosta-production}
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: 20m
+    max-file: "10"
+
+x-backend-app: &backend-app
+  image: rosta-api:${ROSTA_IMAGE_TAG:?ROSTA_IMAGE_TAG must be the full release SHA}
+  build:
+    context: ../../backend
+    dockerfile: Dockerfile.production
+    target: app
+  env_file:
+    - ${ROSTA_BACKEND_ENV_FILE:?ROSTA_BACKEND_ENV_FILE is required}
+  environment:
+    APP_ENV: production
+    APP_DEBUG: "false"
+  restart: unless-stopped
+  depends_on:
+    mysql:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  volumes:
+    - app-storage:/var/www/html/storage
+  networks:
+    - backend
+    - egress
+  security_opt:
+    - no-new-privileges:true
+  logging: *default-logging
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:?DB_DATABASE is required}
+      MYSQL_USER: ${DB_USERNAME:?DB_USERNAME is required}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --transaction-isolation=READ-COMMITTED
+      - --binlog-expire-logs-seconds=1209600
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - backend
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+    logging: *default-logging
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --requirepass
+      - ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      - --maxmemory-policy
+      - noeviction
+    volumes:
+      - redis-data:/data
+    networks:
+      - backend
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD --no-auth-warning ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 30
+      start_period: 25s
+    logging: *default-logging
+
+  api:
+    <<: *backend-app
+    healthcheck:
+      test: ["CMD", "php-fpm", "-t"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 25s
+
+  worker:
+    <<: *backend-app
+    command:
+      - php
+      - artisan
+      - queue:work
+      - redis
+      - --queue=critical,media,default,notifications
+      - --sleep=1
+      - --tries=3
+      - --backoff=5
+      - --timeout=90
+      - --max-time=3600
+      - --memory=256
+    stop_grace_period: 2m
+
+  scheduler:
+    <<: *backend-app
+    command: ["php", "artisan", "schedule:work"]
+
+  api-web:
+    image: rosta-api-web:${ROSTA_IMAGE_TAG:?ROSTA_IMAGE_TAG must be the full release SHA}
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile.production
+      target: web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    volumes:
+      - app-storage:/var/www/html/storage:ro
+    networks:
+      - edge
+      - backend
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/api/v1/health/live || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 15
+      start_period: 35s
+    logging: *default-logging
+
+  frontend:
+    image: rosta-frontend:${ROSTA_IMAGE_TAG:?ROSTA_IMAGE_TAG must be the full release SHA}
+    build:
+      context: ../..
+      dockerfile: Dockerfile.staging
+      args:
+        VITE_SITE_URL: ${VITE_SITE_URL:?VITE_SITE_URL is required}
+        VITE_API_URL: ${VITE_API_URL:?VITE_API_URL is required}
+        VITE_PAYMENT_REDIRECT_HOSTS: ${VITE_PAYMENT_REDIRECT_HOSTS:?VITE_PAYMENT_REDIRECT_HOSTS is required}
+        VITE_ALLOW_INDEXING: "true"
+        VITE_PERFORMANCE_ENDPOINT: ${VITE_PERFORMANCE_ENDPOINT:-}
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      NODE_OPTIONS: --enable-source-maps --max-old-space-size=512
+      ROSTA_INTERNAL_API_URL: http://api-web:8080/api/v1
+    restart: unless-stopped
+    depends_on:
+      api-web:
+        condition: service_healthy
+    networks:
+      - edge
+      - backend
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/robots.txt').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 15
+      start_period: 35s
+    logging: *default-logging
+
+  edge:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    depends_on:
+      frontend:
+        condition: service_healthy
+      api-web:
+        condition: service_healthy
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL is required}
+      PRODUCTION_SITE_DOMAIN: ${PRODUCTION_SITE_DOMAIN:?PRODUCTION_SITE_DOMAIN is required}
+      PRODUCTION_API_DOMAIN: ${PRODUCTION_API_DOMAIN:?PRODUCTION_API_DOMAIN is required}
+      PRODUCTION_MEDIA_DOMAIN: ${PRODUCTION_MEDIA_DOMAIN:?PRODUCTION_MEDIA_DOMAIN is required}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - edge
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:2019/config/ || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    logging: *default-logging
+
+networks:
+  edge:
+  egress:
+  backend:
+    internal: true
+
+volumes:
+  mysql-data:
+  redis-data:
+  app-storage:
+  caddy-data:
+  caddy-config:
