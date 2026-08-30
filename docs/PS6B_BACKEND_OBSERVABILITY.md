@@ -1,10 +1,12 @@
 # PS6B — Backend Refactor, Queue Reliability & Observability
 
-Status: acceptance candidate. Final acceptance requires the permanent backend gate and every required repository workflow to pass on one exact phase head before merge.
+Status: **VERIFIED ACCEPTANCE CANDIDATE**. Implementation head `04157e3682a72957eff10184a59fd4143ab62c1d` passed the complete required repository workflow set. This evidence-registration head must pass the same set before PR #92 can be merged.
 
 Baseline: `integration/rosta-release-candidate@52714ea03e385ada601b308184cecb6bbc4f6009`.
 
 Branch: `phase/rosta-ps6b-backend-observability`.
+
+PR: `#92 — PS6B: Backend refactor, queue reliability and observability`.
 
 ## Scope and behavior-preserving boundary
 
@@ -97,17 +99,35 @@ PS7 also owns the real log/metric sink, retention, dashboards, alert routing, wo
 
 The script is registered in the permanent `composer check` chain and must not be removed or bypassed by later phases.
 
+## Verified implementation evidence
+
+Exact implementation head: `04157e3682a72957eff10184a59fd4143ab62c1d`.
+
+| Required workflow | Run | Result |
+|---|---:|---|
+| CI | 852 | PASS |
+| Backend CI | 561 | PASS |
+| PS1 Backend Wrapper CI | 103 | PASS |
+| Full-stack Integration CI | 406 | PASS |
+| Browser Acceptance CI | 394 | PASS |
+| R3 Final Gate | 376 | PASS |
+| R4 Staging Package CI | 356 | PASS |
+
+Backend CI independently passed clean MySQL migrations, strict readiness, Redis runtime contracts, every backend audit, all tests, PHPStan, Pint and the aggregate Composer gate. R3 passed complete backend/frontend gates and integrated browser journeys. R4 passed the immutable hosted staging-package rehearsal.
+
+The first candidate exposed a Pint-only style defect in the new PS6B audit script. The script was reformatted without weakening the audit; the implementation head above then passed the full workflow set.
+
 ## Final acceptance requirements
 
-1. `cd backend && composer check` passes.
-2. Clean MySQL migrations and Redis readiness/queue checks pass in CI.
-3. PS6B characterization and query-budget tests pass.
-4. Static analysis and Pint pass without suppressing findings.
-5. Permanent `audit:ps6b` passes independently and in the aggregate gate.
-6. No secret-bearing payload or exception body is exposed by queue health or telemetry.
-7. Existing business-state tests remain green.
-8. CI, Backend CI, PS1 Backend Wrapper CI, Full-stack Integration CI, Browser Acceptance CI, R3 Final Gate and R4 Staging Package CI pass on the exact same final head.
-9. The PR is merged with a normal merge commit; no rebase, amend, squash or force-push.
+1. `cd backend && composer check` — **PASS on implementation head**.
+2. Clean MySQL migrations and Redis readiness/queue checks — **PASS on implementation head**.
+3. PS6B characterization and query-budget tests — **PASS on implementation head**.
+4. Static analysis and Pint without suppressions — **PASS on implementation head**.
+5. Permanent `audit:ps6b` independently and in aggregate — **PASS on implementation head**.
+6. No secret-bearing payload or exception body exposed by queue health/telemetry — **PASS by characterization + audit**.
+7. Existing business-state tests remain green — **PASS on implementation head**.
+8. All seven repository workflows on one exact head — **PASS on implementation head; final registration head pending rerun**.
+9. Normal merge commit — **PENDING until this evidence-registration head is green**.
 
 ## Boundary to later phases
 
