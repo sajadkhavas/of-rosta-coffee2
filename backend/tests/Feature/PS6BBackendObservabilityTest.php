@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\ProcessMediaUpload;
+use App\Jobs\SendOtpCode;
 use App\Services\Observability\OperationalEventLogger;
 use App\Services\Observability\QueueRuntimeHealth;
 use App\Support\OperationalContextRedactor;
@@ -80,6 +82,20 @@ final class PS6BBackendObservabilityTest extends TestCase
         $this->assertStringNotContainsString('must-not-leak', $encoded);
         $this->assertStringNotContainsString('secret exception body', $encoded);
         $this->assertLessThanOrEqual(6, $queries, 'Queue health must stay within a bounded query budget.');
+    }
+
+    public function test_queue_retry_timeout_and_dead_letter_configuration_remains_fail_closed(): void
+    {
+        $otp = new SendOtpCode('challenge', '09120000000', 'login', 'encrypted');
+        $media = new ProcessMediaUpload('upload');
+
+        $this->assertSame('database-uuids', config('queue.failed.driver'));
+        $this->assertTrue((bool) config('queue.connections.redis.after_commit'));
+        $this->assertGreaterThan($otp->timeout, (int) config('queue.connections.redis.retry_after'));
+        $this->assertGreaterThan($media->timeout, (int) config('queue.connections.redis.retry_after'));
+        $this->assertSame(4, $otp->tries);
+        $this->assertSame(1, $media->tries);
+        $this->assertTrue($media->failOnTimeout);
     }
 
     public function test_sync_queue_is_fail_closed_when_application_environment_is_production(): void
