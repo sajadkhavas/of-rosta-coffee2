@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Contracts\OtpSender;
 use App\Services\Finance\FinancialPolicyResolver;
+use App\Services\Observability\QueueRuntimeHealth;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +18,7 @@ final class HealthController
     public function __construct(
         private readonly OtpSender $otp,
         private readonly FinancialPolicyResolver $financialPolicies,
+        private readonly QueueRuntimeHealth $queueHealth,
     ) {}
 
     public function live(): JsonResponse
@@ -34,6 +36,7 @@ final class HealthController
         $checks = [
             'database' => false,
             'redis' => false,
+            'queue_runtime' => false,
             'otp_delivery' => false,
             'financial_policies' => false,
         ];
@@ -57,6 +60,12 @@ final class HealthController
             $checks['redis'] = $ping === true || strtoupper((string) $ping) === 'PONG';
         } catch (Throwable) {
             // Readiness response below remains intentionally generic.
+        }
+
+        try {
+            $checks['queue_runtime'] = $this->queueHealth->snapshot()['ready'];
+        } catch (Throwable) {
+            // Public readiness never exposes queue payloads, exceptions or backend details.
         }
 
         $ready = ! in_array(false, $checks, true);
