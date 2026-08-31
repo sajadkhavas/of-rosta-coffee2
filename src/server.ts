@@ -71,12 +71,17 @@ function withSecurityHeaders(request: Request, response: Response): Response {
   if (isPrivatePath(url.pathname)) {
     headers.set("Cache-Control", "private, no-store, max-age=0");
     headers.set("Pragma", "no-cache");
+    headers.set("X-Robots-Tag", "noindex, follow");
   } else if (
     contentType.includes("text/html") ||
     url.pathname === "/sw.js" ||
     url.pathname === "/manifest.json"
   ) {
     headers.set("Cache-Control", "no-cache, max-age=0, must-revalidate");
+  }
+
+  if (response.status === 404) {
+    headers.set("X-Robots-Tag", "noindex, follow");
   }
 
   return new Response(response.body, {
