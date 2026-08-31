@@ -77,7 +77,7 @@ grep -q 'ROSTA_ACCEPTANCE_RELEASE_TAG' "$SCRIPT_DIR/acceptance.sh" \
   || fail "Acceptance must support an explicit runtime release target"
 grep -q "docker inspect --format '{{.Config.Image}}'" "$SCRIPT_DIR/acceptance.sh" \
   || fail "Acceptance must verify actual running image identity"
-grep -q 'ROSTA_ACCEPTANCE_RELEASE_TAG="$previous"' "$SCRIPT_DIR/rollback.sh" \
+grep -Fq "ROSTA_ACCEPTANCE_RELEASE_TAG=\"\$previous\"" "$SCRIPT_DIR/rollback.sh" \
   || fail "Rollback must accept the previous runtime release explicitly"
 
 if grep -R -nE 'image:[[:space:]]+[^#[:space:]]*:latest([[:space:]]|$)' "$SCRIPT_DIR" --include='*.yml' --include='*.yaml'; then
