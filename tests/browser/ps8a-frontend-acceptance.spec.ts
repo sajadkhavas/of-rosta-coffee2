@@ -27,7 +27,7 @@ async function attachEvidence(testInfo: TestInfo, name: string, evidence: unknow
 async function collectSeoEvidence(page: Page, route: string): Promise<SeoEvidence> {
   const response = await page.goto(route, { waitUntil: "networkidle" });
   expect(response, `${route} must return an HTTP response`).not.toBeNull();
-  const headers = response ? await response.allHeaders() : {};
+  const headers = response ? response.headers() : {};
 
   return {
     route,
