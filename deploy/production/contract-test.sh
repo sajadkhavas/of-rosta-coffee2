@@ -131,7 +131,7 @@ docker run --rm \
   caddy:2.10.2-alpine \
   caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
 
-"$SCRIPT_DIR/infrastructure-audit.sh"
+bash "$SCRIPT_DIR/infrastructure-audit.sh"
 
 git -C "$ROOT_DIR" diff --check
 printf 'PS7 production package contract passed.\n'
