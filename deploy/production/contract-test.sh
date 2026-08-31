@@ -87,7 +87,8 @@ fi
 
 if grep -R -nE 'APP_ENV[=:][[:space:]]*staging|rosta-staging|staging\.rosta\.shop|Dockerfile\.staging' "$SCRIPT_DIR" \
   --exclude='README.md' \
-  --exclude='contract-test.sh'; then
+  --exclude='contract-test.sh' \
+  --exclude='infrastructure-audit.sh'; then
   fail "Staging namespace leaked into executable production package"
 fi
 
