@@ -49,11 +49,13 @@ $requiredEvidence = [
     $backendRoot.'/tests/Feature/PS6BBackendObservabilityTest.php',
 ];
 
+$completeEvidence = count(array_filter(
+    $requiredEvidence,
+    static fn (string $path): bool => is_file($path),
+)) === count($requiredEvidence);
+
 $rules = [
-    'finance acceptance evidence set is complete' => array_all(
-        $requiredEvidence,
-        static fn (string $path): bool => is_file($path),
-    ),
+    'finance acceptance evidence set is complete' => $completeEvidence,
     'payment mutation is transactional and locked' => str_contains($files['payment_service'], 'DB::transaction')
         && str_contains($files['payment_service'], '->lockForUpdate()'),
     'payment idempotency conflicts fail closed' => str_contains(
