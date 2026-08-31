@@ -129,13 +129,15 @@ test("PS6A freezes public desktop quality without hydration, accessibility, over
   page,
 }, testInfo) => {
   const runtimeErrors: string[] = [];
-  page.on("pageerror", (error) => runtimeErrors.push(`pageerror:${error.message}`));
+  let activeRoute = "bootstrap";
+  page.on("pageerror", (error) => runtimeErrors.push(`${activeRoute}:pageerror:${error.message}`));
   page.on("console", (message) => {
-    if (message.type() === "error") runtimeErrors.push(`console:${message.text()}`);
+    if (message.type() === "error") runtimeErrors.push(`${activeRoute}:console:${message.text()}`);
   });
 
   const evidence: RuntimeEvidence[] = [];
   for (const route of publicRoutes) {
+    activeRoute = route;
     evidence.push(await collectEvidence(page, route, "1440x1000"));
   }
 
