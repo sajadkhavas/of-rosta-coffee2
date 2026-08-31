@@ -100,6 +100,11 @@ assert_provider_boundary() {
   fi
 }
 
+assert_current_auth_cutover_contract() {
+  [[ "${ROSTA_OTP_ENABLED:-false}" == "true" ]] \
+    || fail "Current production auth implementation requires ROSTA_OTP_ENABLED=true before cutover; do not deploy an unauthenticated runtime"
+}
+
 assert_production_environment_contract() {
   [[ "${APP_ENV:-}" == "production" ]] || fail "APP_ENV must be production"
   [[ "${APP_DEBUG:-}" == "false" ]] || fail "APP_DEBUG must be false"
@@ -153,6 +158,7 @@ assert_production_environment_contract() {
 
 assert_production_contract() {
   assert_production_environment_contract
+  assert_current_auth_cutover_contract
   assert_release_identity
 }
 
