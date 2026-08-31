@@ -174,7 +174,7 @@ jobs:
           source "$ENV_DIR/runtime.sh"
           source deploy/production/lib.sh
           load_production_environment
-          rosta_compose run --rm api php artisan migrate:fresh --force --no-interaction \
+          rosta_compose run --rm api php artisan migrate --force --no-interaction \
             2>&1 | tee "$EVIDENCE_DIR/mysql-migrations.log"
           rosta_compose run --rm api php artisan rosta:infrastructure-acceptance --json \
             2>&1 | tee "$EVIDENCE_DIR/laravel-infrastructure.json"
