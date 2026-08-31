@@ -32,6 +32,12 @@ require_secret() {
   [[ "$value" != "CHANGE_ME" ]] || fail "$name still contains CHANGE_ME"
 }
 
+assert_release_tag() {
+  local tag="${1:-}"
+  [[ "$tag" =~ ^[0-9a-f]{40}$ ]] \
+    || fail "Release identity must be an exact 40-character lowercase Git SHA"
+}
+
 load_production_environment() {
   require_file "$ROSTA_FRONTEND_ENV_FILE"
   require_file "$ROSTA_BACKEND_ENV_FILE"
@@ -52,8 +58,7 @@ load_production_environment() {
 }
 
 assert_release_identity() {
-  [[ "${ROSTA_IMAGE_TAG:-}" =~ ^[0-9a-f]{40}$ ]] \
-    || fail "ROSTA_IMAGE_TAG must be the exact 40-character lowercase Git SHA"
+  assert_release_tag "${ROSTA_IMAGE_TAG:-}"
 
   local head
   head="$(git -C "$ROSTA_ROOT_DIR" rev-parse HEAD 2>/dev/null || true)"
@@ -95,7 +100,7 @@ assert_provider_boundary() {
   fi
 }
 
-assert_production_contract() {
+assert_production_environment_contract() {
   [[ "${APP_ENV:-}" == "production" ]] || fail "APP_ENV must be production"
   [[ "${APP_DEBUG:-}" == "false" ]] || fail "APP_DEBUG must be false"
   [[ "${VITE_ALLOW_INDEXING:-}" == "true" ]] || fail "Production frontend indexing must be enabled"
@@ -143,8 +148,18 @@ assert_production_contract() {
     require_secret "$name"
   done
 
-  assert_release_identity
   assert_provider_boundary
+}
+
+assert_production_contract() {
+  assert_production_environment_contract
+  assert_release_identity
+}
+
+assert_production_runtime_contract() {
+  local tag="${1:-}"
+  assert_production_environment_contract
+  assert_release_tag "$tag"
 }
 
 rosta_compose() {
@@ -165,7 +180,7 @@ previous_release_tag() {
 
 record_release_tag() {
   local tag="$1"
-  [[ "$tag" =~ ^[0-9a-f]{40}$ ]] || fail "Release bookkeeping accepts only full Git SHAs"
+  assert_release_tag "$tag"
   local current
   current="$(current_release_tag)"
   if [[ -n "$current" && "$current" != "$tag" ]]; then
