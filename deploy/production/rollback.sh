@@ -13,12 +13,12 @@ for command in docker curl python3; do
 done
 
 load_production_environment
-assert_production_contract
+assert_production_environment_contract
 
 current="$(current_release_tag)"
 previous="$(previous_release_tag)"
-[[ "$current" =~ ^[0-9a-f]{40}$ ]] || fail "Current release state is missing or invalid"
-[[ "$previous" =~ ^[0-9a-f]{40}$ ]] || fail "Previous release state is missing or invalid"
+assert_release_tag "$current"
+assert_release_tag "$previous"
 [[ "$current" != "$previous" ]] || fail "Current and previous release SHAs must differ"
 
 for image in \
@@ -32,7 +32,7 @@ log "Rolling application images back to $previous; database migrations are never
 export ROSTA_IMAGE_TAG="$previous"
 rosta_compose up -d --no-build --wait api api-web worker scheduler frontend edge
 
-"$SCRIPT_DIR/acceptance.sh"
+ROSTA_ACCEPTANCE_RELEASE_TAG="$previous" "$SCRIPT_DIR/acceptance.sh"
 
 printf '%s\n' "$current" > "$ROSTA_STATE_DIR/previous"
 printf '%s\n' "$previous" > "$ROSTA_STATE_DIR/current"
