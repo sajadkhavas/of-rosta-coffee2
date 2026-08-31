@@ -1,0 +1,265 @@
+name: PS8A Frontend Acceptance
+
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "public/**"
+      - "backend/**"
+      - "tests/browser/**"
+      - "playwright.config.ts"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/ps8a-frontend-acceptance.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ps8a-frontend-acceptance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  production-frontend-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: rosta_test
+          MYSQL_USER: rosta
+          MYSQL_PASSWORD: rosta_test
+          MYSQL_ROOT_PASSWORD: root_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=20
+
+    env:
+      EVIDENCE_DIR: /tmp/rosta-ps8a-evidence/${{ github.run_id }}
+      APP_ENV: testing
+      APP_DEBUG: "false"
+      APP_URL: http://127.0.0.1:8000
+      LOG_CHANNEL: stack
+      LOG_STACK: single
+      FRONTEND_ALLOWED_ORIGINS: http://127.0.0.1:3000
+      SANCTUM_STATEFUL_DOMAINS: 127.0.0.1:3000
+      SESSION_DRIVER: redis
+      SESSION_SECURE_COOKIE: "false"
+      SESSION_SAME_SITE: lax
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: rosta_test
+      DB_USERNAME: rosta
+      DB_PASSWORD: rosta_test
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
+      SMS_DRIVER: acceptance
+      ROSTA_SMS_ENABLED: "false"
+      ROSTA_PAYMENT_ENABLED: "true"
+      PAYMENT_DRIVER: testing
+      PAYMENT_AMOUNT_MULTIPLIER: 1
+      PAYMENT_CALLBACK_URL: http://127.0.0.1:3000/checkout
+      ROSTA_ALLOWED_PAYMENT_REDIRECT_HOSTS: 127.0.0.1
+      ROSTA_REFUND_ENABLED: "false"
+      ROSTA_MEDIA_UPLOADS_ENABLED: "false"
+      VITE_SITE_URL: https://rosta.shop
+      VITE_API_URL: http://127.0.0.1:8000/api/v1
+      VITE_PAYMENT_REDIRECT_HOSTS: 127.0.0.1:8000,rosta.shop
+      VITE_ALLOW_INDEXING: "true"
+      ROSTA_INTERNAL_API_URL: http://127.0.0.1:8000/api/v1
+      R3C_FRONTEND_BASE: http://127.0.0.1:3000
+
+    steps:
+      - name: Checkout exact PS8A candidate
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.22
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: bcmath, ctype, curl, dom, fileinfo, imagick, intl, json, mbstring, openssl, pcntl, pdo_mysql, posix, redis, simplexml, sockets, tokenizer, xml, xmlwriter, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Install AVIF encoder delegate
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libheif-plugin-aomenc
+
+      - name: Freeze immutable acceptance snapshot
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$EVIDENCE_DIR" test-results
+          test -z "$(git status --porcelain --untracked-files=all)"
+          test -s bun.lock
+          test -s backend/composer.lock
+          echo "APP_KEY=base64:$(php -r 'echo base64_encode(random_bytes(32));')" >> "$GITHUB_ENV"
+          {
+            echo "head=$(git rev-parse HEAD)"
+            echo "tree=$(git rev-parse 'HEAD^{tree}')"
+            echo "node=$(node --version)"
+            echo "bun=$(bun --version)"
+            echo "php=$(php --version | head -n 1)"
+            echo "vite_site_url=$VITE_SITE_URL"
+            echo "vite_allow_indexing=$VITE_ALLOW_INDEXING"
+          } | tee "$EVIDENCE_DIR/identity.txt"
+          sha256sum package.json bun.lock backend/composer.json backend/composer.lock | tee "$EVIDENCE_DIR/dependencies-before.sha256"
+
+      - name: Install frozen dependencies
+        shell: bash
+        run: |
+          set -o pipefail
+          bun install --frozen-lockfile 2>&1 | tee "$EVIDENCE_DIR/bun-install.log"
+          cd backend
+          composer install --no-interaction --prefer-dist --no-progress 2>&1 | tee "$EVIDENCE_DIR/composer-install.log"
+
+      - name: Install Chromium
+        run: bunx playwright install --with-deps chromium 2>&1 | tee "$EVIDENCE_DIR/playwright-install.log"
+
+      - name: Run frontend permanent gate
+        shell: bash
+        run: |
+          set -o pipefail
+          bun run check 2>&1 | tee "$EVIDENCE_DIR/frontend-check.log"
+
+      - name: Prepare integrated acceptance database
+        working-directory: backend
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cp .env.example .env
+          mkdir -p bootstrap/cache storage/app/private storage/app/public storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
+          php artisan migrate:fresh --force 2>&1 | tee "$EVIDENCE_DIR/mysql-migrations.log"
+          php artisan rosta:readiness --strict --json 2>&1 | tee "$EVIDENCE_DIR/backend-readiness.json"
+          php artisan rosta:acceptance-fixtures --json > "$EVIDENCE_DIR/acceptance-fixtures.json"
+          grep -q 'ROSTA_R3A_ACCEPTANCE_FIXTURES_COMPLETE' "$EVIDENCE_DIR/acceptance-fixtures.json"
+
+      - name: Build production-indexable SSR
+        shell: bash
+        env:
+          NODE_ENV: production
+          NITRO_PRESET: node-server
+        run: |
+          set -o pipefail
+          bun run build 2>&1 | tee "$EVIDENCE_DIR/frontend-build.log"
+          test -s .output/server/index.mjs
+          git diff -- src/routeTree.gen.ts | tee "$EVIDENCE_DIR/route-tree.diff"
+          cp src/routeTree.gen.ts "$EVIDENCE_DIR/routeTree.gen.ts"
+
+      - name: Boot integrated backend and production SSR
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          (
+            cd backend
+            php artisan serve --host=127.0.0.1 --port=8000
+          ) > "$EVIDENCE_DIR/laravel-runtime.log" 2>&1 &
+          echo $! > "$EVIDENCE_DIR/laravel.pid"
+          NODE_ENV=production HOST=127.0.0.1 PORT=3000 \
+            node .output/server/index.mjs > "$EVIDENCE_DIR/frontend-runtime.log" 2>&1 &
+          echo $! > "$EVIDENCE_DIR/frontend.pid"
+          for attempt in $(seq 1 50); do
+            if curl --fail --silent http://127.0.0.1:8000/api/v1/health/live > /dev/null \
+              && curl --fail --silent http://127.0.0.1:3000/robots.txt > "$EVIDENCE_DIR/robots.txt"; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$EVIDENCE_DIR/laravel-runtime.log"
+          cat "$EVIDENCE_DIR/frontend-runtime.log"
+          exit 1
+
+      - name: Reproduce PS6A and run independent PS8A browser acceptance
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          export R3C_JUNIT_PATH="$EVIDENCE_DIR/ps8a-junit.xml"
+          bunx playwright test \
+            tests/browser/ps6a-frontend-quality-freeze.spec.ts \
+            tests/browser/ps8a-frontend-acceptance.spec.ts \
+            --config=playwright.config.ts 2>&1 | tee "$EVIDENCE_DIR/browser.log"
+          grep -q 'failures="0"' "$EVIDENCE_DIR/ps8a-junit.xml"
+          kill -0 "$(cat "$EVIDENCE_DIR/laravel.pid")"
+          kill -0 "$(cat "$EVIDENCE_DIR/frontend.pid")"
+
+      - name: Seal secret-safe PS8A evidence
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rm -f backend/.env backend/*-audit.json
+          rm -rf backend/storage/framework/cache/phpstan backend/storage/framework/testing test-results
+          sha256sum package.json bun.lock backend/composer.json backend/composer.lock | tee "$EVIDENCE_DIR/dependencies-after.sha256"
+          cmp "$EVIDENCE_DIR/dependencies-before.sha256" "$EVIDENCE_DIR/dependencies-after.sha256"
+          if grep -R -E 'APP_KEY=|DB_PASSWORD=|MYSQL_ROOT_PASSWORD|PAYMENT_MERCHANT_ID|KAVENEGAR_API_KEY|Local OTP delivery|"code"[[:space:]]*:[[:space:]]*"[0-9]{6}"' "$EVIDENCE_DIR"; then
+            echo "Sensitive material entered PS8A evidence." >&2
+            exit 1
+          fi
+          git diff --check
+          unexpected_status="$(
+            git status --porcelain --untracked-files=all |
+              grep -vE '^ M src/routeTree\.gen\.ts$' || true
+          )"
+          test -z "$unexpected_status"
+          if ! git diff --quiet -- src/routeTree.gen.ts; then
+            test -s "$EVIDENCE_DIR/route-tree.diff"
+            git checkout -- src/routeTree.gen.ts
+          fi
+          test -z "$(git status --porcelain --untracked-files=all)"
+          {
+            echo "ROSTA_PS8A_FRONTEND_ACCEPTANCE_COMPLETE"
+            echo "candidate=$(git rev-parse HEAD)"
+            echo "production_indexing=true"
+            echo "ps6a_reproduced=true"
+          } | tee "$EVIDENCE_DIR/result.txt"
+
+      - name: Upload PS8A acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rosta-ps8a-frontend-${{ github.run_id }}
+          path: /tmp/rosta-ps8a-evidence/${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Stop PS8A runtime
+        if: always()
+        shell: bash
+        run: |
+          for pid_file in "$EVIDENCE_DIR/frontend.pid" "$EVIDENCE_DIR/laravel.pid"; do
+            if test -s "$pid_file"; then
+              kill "$(cat "$pid_file")" 2>/dev/null || true
+            fi
+          done
