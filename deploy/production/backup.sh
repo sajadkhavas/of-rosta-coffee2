@@ -10,5 +10,10 @@ for command in docker gzip sha256sum; do
 done
 
 load_production_environment
-assert_production_contract
+assert_production_environment_contract
+
+if ! rosta_compose ps --status running mysql | grep -q mysql; then
+  fail "MySQL must be running before a production backup"
+fi
+
 backup_database "${1:-manual}"
