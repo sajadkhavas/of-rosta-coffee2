@@ -46,6 +46,8 @@ sudoedit /etc/rosta/production/frontend.env
 sudoedit /etc/rosta/production/backend.env
 ```
 
+The checked-in backend example is intentionally **not deployable**: external rails, including OTP, are disabled so no fake provider approval or credential is implied. The current production authentication implementation requires OTP to be enabled and configured before cutover, so preflight fails before any deployment mutation while `ROSTA_OTP_ENABLED=false`. If a different production authentication mechanism is introduced later, its accepted contract must replace this guard explicitly rather than silently bypassing readiness.
+
 Never paste real secrets into GitHub issues, pull requests, shell history, screenshots or acceptance reports.
 
 ## Candidate materialization
@@ -86,6 +88,7 @@ Preflight fails closed when:
 
 - the checkout SHA and `ROSTA_IMAGE_TAG` differ;
 - production environment/domain/session/provider contracts are invalid;
+- the current production authentication contract is not deployable;
 - required lockfiles or deployment files are missing;
 - the Git working tree is dirty;
 - Docker Compose cannot render the production topology;
@@ -101,7 +104,7 @@ ROSTA_CONFIRM_PRODUCTION_DEPLOY=yes bash deploy/production/deploy.sh
 
 The deployment sequence is:
 
-1. validate source identity and environment contract;
+1. validate source identity, authentication and environment contracts;
 2. run preflight;
 3. take a pre-deploy database backup when MySQL is already running;
 4. build SHA-tagged application images;
