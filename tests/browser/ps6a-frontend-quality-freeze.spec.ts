@@ -56,7 +56,11 @@ async function seriousAccessibilityViolations(page: Page): Promise<AxeViolation[
   });
 }
 
-async function collectEvidence(page: Page, route: string, viewport: string): Promise<RuntimeEvidence> {
+async function collectEvidence(
+  page: Page,
+  route: string,
+  viewport: string,
+): Promise<RuntimeEvidence> {
   const response = await page.goto(route, { waitUntil: "networkidle" });
   expect(response, `${route} must return an HTTP response`).not.toBeNull();
   expect(response?.status(), `${route} must render successfully`).toBe(200);
@@ -90,7 +94,9 @@ async function collectEvidence(page: Page, route: string, viewport: string): Pro
     runtime.innerWidth + 1,
   );
   expect(runtime.ttfbMs, `${route} local integrated TTFB regression`).toBeLessThan(5_000);
-  expect(runtime.domContentLoadedMs, `${route} local integrated DCL regression`).toBeLessThan(15_000);
+  expect(runtime.domContentLoadedMs, `${route} local integrated DCL regression`).toBeLessThan(
+    15_000,
+  );
   expect(runtime.loadMs, `${route} local integrated load regression`).toBeLessThan(20_000);
 
   expect(runtime.bodyText).not.toMatch(/Bearer\s+[A-Za-z0-9._~+/=-]{12,}/i);
