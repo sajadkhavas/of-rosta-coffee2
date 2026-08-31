@@ -3,9 +3,6 @@
 $backendRoot = dirname(__DIR__);
 $repoRoot = dirname($backendRoot);
 
-/**
- * @return string
- */
 function requiredFile(string $path): string
 {
     if (! is_file($path)) {
