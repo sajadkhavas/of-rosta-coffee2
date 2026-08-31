@@ -19,7 +19,10 @@ for command in docker gzip sha256sum; do
 done
 
 load_production_environment
-assert_production_contract
+assert_production_environment_contract
+runtime_release="$(current_release_tag)"
+assert_release_tag "$runtime_release"
+
 sha256sum -c "$backup_file.sha256"
 gzip -t "$backup_file"
 
@@ -36,6 +39,7 @@ gzip -dc "$backup_file" | rosta_compose exec -T -e MYSQL_PWD="$MYSQL_ROOT_PASSWO
   mysql --user=root "$DB_DATABASE"
 
 log "Starting application against restored data"
-rosta_compose up -d --wait api api-web worker scheduler frontend edge
-"$SCRIPT_DIR/acceptance.sh"
-log "Verified production restore completed"
+export ROSTA_IMAGE_TAG="$runtime_release"
+rosta_compose up -d --no-build --wait api api-web worker scheduler frontend edge
+ROSTA_ACCEPTANCE_RELEASE_TAG="$runtime_release" "$SCRIPT_DIR/acceptance.sh"
+log "Verified production restore completed for runtime release $runtime_release"
