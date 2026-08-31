@@ -43,48 +43,47 @@ async function collectSeoEvidence(page: Page, route: string): Promise<SeoEvidenc
 
 test.describe.configure({ mode: "serial" });
 
-test(
-  "PS8A proves production-indexable public SSR metadata and canonical policy",
-  async ({ page }, testInfo) => {
-    const runtimeErrors: string[] = [];
-    page.on("pageerror", (error) => runtimeErrors.push(`pageerror:${error.message}`));
-    page.on("console", (message) => {
-      if (message.type() === "error") runtimeErrors.push(`console:${message.text()}`);
-    });
+test("PS8A proves production-indexable public SSR metadata and canonical policy", async ({
+  page,
+}, testInfo) => {
+  const runtimeErrors: string[] = [];
+  page.on("pageerror", (error) => runtimeErrors.push(`pageerror:${error.message}`));
+  page.on("console", (message) => {
+    if (message.type() === "error") runtimeErrors.push(`console:${message.text()}`);
+  });
 
-    const evidence: SeoEvidence[] = [];
-    for (const expected of publicSeoRoutes) {
-      const actual = await collectSeoEvidence(page, expected.route);
-      expect(actual.status, `${expected.route} must render successfully`).toBe(200);
-      expect(
-        actual.title.trim().length,
-        `${expected.route} must expose a meaningful title`,
-      ).toBeGreaterThan(8);
-      expect(
-        actual.description?.trim().length ?? 0,
-        `${expected.route} must expose a meaningful meta description`,
-      ).toBeGreaterThan(40);
-      expect(actual.canonical, `${expected.route} canonical must target the production origin`).toBe(
-        expected.canonical,
-      );
-      expect(actual.robots ?? "", `${expected.route} must remain indexable`).not.toContain("noindex");
-      expect(
-        actual.xRobotsTag ?? "",
-        `${expected.route} must not receive an HTTP noindex policy`,
-      ).not.toContain("noindex");
-      await expect(page.locator("html")).toHaveAttribute("lang", "fa");
-      await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-      evidence.push(actual);
-    }
-
+  const evidence: SeoEvidence[] = [];
+  for (const expected of publicSeoRoutes) {
+    const actual = await collectSeoEvidence(page, expected.route);
+    expect(actual.status, `${expected.route} must render successfully`).toBe(200);
     expect(
-      runtimeErrors.filter((message) => /hydration|uncaught|unhandled|error/i.test(message)),
-      "PS8A public SEO surfaces must not emit hydration/page/runtime errors",
-    ).toEqual([]);
+      actual.title.trim().length,
+      `${expected.route} must expose a meaningful title`,
+    ).toBeGreaterThan(8);
+    expect(
+      actual.description?.trim().length ?? 0,
+      `${expected.route} must expose a meaningful meta description`,
+    ).toBeGreaterThan(40);
+    expect(actual.canonical, `${expected.route} canonical must target the production origin`).toBe(
+      expected.canonical,
+    );
+    expect(actual.robots ?? "", `${expected.route} must remain indexable`).not.toContain("noindex");
+    expect(
+      actual.xRobotsTag ?? "",
+      `${expected.route} must not receive an HTTP noindex policy`,
+    ).not.toContain("noindex");
+    await expect(page.locator("html")).toHaveAttribute("lang", "fa");
+    await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+    evidence.push(actual);
+  }
 
-    await attachEvidence(testInfo, "ps8a-public-seo-evidence.json", evidence);
-  },
-);
+  expect(
+    runtimeErrors.filter((message) => /hydration|uncaught|unhandled|error/i.test(message)),
+    "PS8A public SEO surfaces must not emit hydration/page/runtime errors",
+  ).toEqual([]);
+
+  await attachEvidence(testInfo, "ps8a-public-seo-evidence.json", evidence);
+});
 
 test("PS8A proves filtered catalog and private surfaces remain fail-closed to indexing", async ({
   page,
