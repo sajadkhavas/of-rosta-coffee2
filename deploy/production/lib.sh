@@ -177,11 +177,17 @@ rosta_compose() {
 }
 
 current_release_tag() {
-  [[ -f "$ROSTA_STATE_DIR/current" ]] && cat "$ROSTA_STATE_DIR/current" || true
+  if [[ -f "$ROSTA_STATE_DIR/current" ]]; then
+    cat "$ROSTA_STATE_DIR/current"
+  fi
+  return 0
 }
 
 previous_release_tag() {
-  [[ -f "$ROSTA_STATE_DIR/previous" ]] && cat "$ROSTA_STATE_DIR/previous" || true
+  if [[ -f "$ROSTA_STATE_DIR/previous" ]]; then
+    cat "$ROSTA_STATE_DIR/previous"
+  fi
+  return 0
 }
 
 record_release_tag() {
