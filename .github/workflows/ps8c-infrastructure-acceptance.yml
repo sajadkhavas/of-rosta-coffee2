@@ -303,7 +303,6 @@ jobs:
           rm -rf "$ENV_DIR" "$STATE_DIR"
 
       - name: Seal secret-safe PS8C evidence
-        if: always()
         shell: bash
         run: |
           set -Eeuo pipefail
