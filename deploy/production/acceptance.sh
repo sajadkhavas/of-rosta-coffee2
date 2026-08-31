@@ -10,7 +10,20 @@ for command in docker curl python3 grep; do
 done
 
 load_production_environment
-assert_production_contract
+
+TARGET_RELEASE="${ROSTA_ACCEPTANCE_RELEASE_TAG:-}"
+if [[ -z "$TARGET_RELEASE" ]]; then
+  TARGET_RELEASE="$(current_release_tag)"
+fi
+if [[ -z "$TARGET_RELEASE" ]]; then
+  TARGET_RELEASE="${ROSTA_IMAGE_TAG:-}"
+fi
+assert_production_runtime_contract "$TARGET_RELEASE"
+
+# Compose interpolation must describe the runtime release being inspected. Runtime
+# acceptance deliberately does not require the host Git checkout to equal this
+# tag, because an image rollback keeps the newer source checkout intact.
+export ROSTA_IMAGE_TAG="$TARGET_RELEASE"
 
 REPORT_DIR="$ROSTA_STATE_DIR/reports"
 REPORT_FILE="$REPORT_DIR/latest.json"
@@ -20,7 +33,7 @@ chmod 700 "$REPORT_DIR"
 
 fail_with_report() {
   local reason="$1"
-  python3 - "$TMP_REPORT" "$ROSTA_IMAGE_TAG" "$reason" <<'PY'
+  python3 - "$TMP_REPORT" "$TARGET_RELEASE" "$reason" <<'PY'
 import json, sys, datetime
 path, sha, reason = sys.argv[1:]
 payload = {
@@ -44,6 +57,24 @@ for service in mysql redis api api-web worker scheduler frontend edge; do
     fail_with_report "service_not_running:$service"
   fi
 done
+
+assert_service_image() {
+  local service="$1"
+  local expected="$2"
+  local container_id actual
+  container_id="$(rosta_compose ps -q "$service")"
+  [[ -n "$container_id" ]] || fail_with_report "container_missing:$service"
+  actual="$(docker inspect --format '{{.Config.Image}}' "$container_id")"
+  [[ "$actual" == "$expected" ]] \
+    || fail_with_report "release_image_mismatch:$service"
+}
+
+log "Verifying immutable application image identity"
+for service in api worker scheduler; do
+  assert_service_image "$service" "rosta-api:$TARGET_RELEASE"
+done
+assert_service_image api-web "rosta-api-web:$TARGET_RELEASE"
+assert_service_image frontend "rosta-frontend:$TARGET_RELEASE"
 
 log "Checking strict application readiness"
 if ! rosta_compose exec -T api php artisan rosta:readiness --strict --json > "$REPORT_DIR/readiness.json"; then
@@ -87,7 +118,7 @@ if grep -R -E 'APP_KEY=|DB_PASSWORD=|MYSQL_ROOT_PASSWORD=|REDIS_PASSWORD=|KAVENE
   fail_with_report "secret_shaped_material_in_acceptance_evidence"
 fi
 
-python3 - "$TMP_REPORT" "$ROSTA_IMAGE_TAG" <<'PY'
+python3 - "$TMP_REPORT" "$TARGET_RELEASE" <<'PY'
 import json, sys, datetime
 path, sha = sys.argv[1:]
 payload = {
@@ -96,6 +127,7 @@ payload = {
     "checked_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
     "checks": {
         "services_running": True,
+        "release_images_match": True,
         "strict_readiness": True,
         "public_tls_edge": True,
         "security_headers": True,
@@ -110,4 +142,4 @@ with open(path, "w", encoding="utf-8") as handle:
 PY
 chmod 600 "$TMP_REPORT"
 mv "$TMP_REPORT" "$REPORT_FILE"
-log "Production acceptance passed for $ROSTA_IMAGE_TAG"
+log "Production runtime acceptance passed for $TARGET_RELEASE"
