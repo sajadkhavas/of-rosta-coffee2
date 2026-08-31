@@ -85,7 +85,8 @@ if grep -R -nE 'image:[[:space:]]+[^#[:space:]]*:latest([[:space:]]|$)' "$SCRIPT
 fi
 
 if grep -R -nE 'APP_ENV[=:][[:space:]]*staging|rosta-staging|staging\.rosta\.shop|Dockerfile\.staging' "$SCRIPT_DIR" \
-  --exclude='README.md'; then
+  --exclude='README.md' \
+  --exclude='contract-test.sh'; then
   fail "Staging namespace leaked into executable production package"
 fi
 
@@ -125,7 +126,7 @@ docker run --rm \
 docker run --rm \
   -v "$SCRIPT_DIR/Caddyfile.rehearsal:/etc/caddy/Caddyfile:ro" \
   caddy:2.10.2-alpine \
-  caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
+  caddy validate --config /etc/caddy/Caddyfile.rehearsal --adapter caddyfile >/dev/null
 
 git -C "$ROOT_DIR" diff --check
 printf 'PS7 production package contract passed.\n'
