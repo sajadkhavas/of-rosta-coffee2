@@ -90,7 +90,8 @@ if grep -R -nE 'APP_ENV[=:][[:space:]]*staging|rosta-staging|staging\.rosta\.sho
   fail "Staging namespace leaked into executable production package"
 fi
 
-if grep -R -nE '(sk-proj-|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----)' "$SCRIPT_DIR"; then
+if grep -R -nE '(sk-proj-|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----)' "$SCRIPT_DIR" \
+  --exclude='contract-test.sh'; then
   fail "Secret material detected in production package"
 fi
 
