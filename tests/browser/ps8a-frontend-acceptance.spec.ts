@@ -24,6 +24,17 @@ async function attachEvidence(testInfo: TestInfo, name: string, evidence: unknow
   });
 }
 
+async function optionalAttribute(
+  page: Page,
+  selector: string,
+  attribute: string,
+): Promise<string | null> {
+  const locator = page.locator(selector).first();
+  if ((await locator.count()) === 0) return null;
+
+  return locator.getAttribute(attribute);
+}
+
 async function collectSeoEvidence(page: Page, route: string): Promise<SeoEvidence> {
   const response = await page.goto(route, { waitUntil: "networkidle" });
   expect(response, `${route} must return an HTTP response`).not.toBeNull();
@@ -33,9 +44,9 @@ async function collectSeoEvidence(page: Page, route: string): Promise<SeoEvidenc
     route,
     status: response?.status() ?? 0,
     title: await page.title(),
-    description: await page.locator('meta[name="description"]').getAttribute("content"),
-    canonical: await page.locator('link[rel="canonical"]').getAttribute("href"),
-    robots: await page.locator('meta[name="robots"]').getAttribute("content"),
+    description: await optionalAttribute(page, 'meta[name="description"]', "content"),
+    canonical: await optionalAttribute(page, 'link[rel="canonical"]', "href"),
+    robots: await optionalAttribute(page, 'meta[name="robots"]', "content"),
     xRobotsTag: headers["x-robots-tag"] ?? null,
     cacheControl: headers["cache-control"] ?? null,
   };
