@@ -1,0 +1,77 @@
+name: Production Package CI
+
+on:
+  pull_request:
+    paths:
+      - "deploy/production/**"
+      - "Dockerfile.production"
+      - "backend/Dockerfile.production"
+      - "backend/docker/entrypoint.sh"
+      - ".github/workflows/production-package-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "deploy/production/**"
+      - "Dockerfile.production"
+      - "backend/Dockerfile.production"
+      - "backend/docker/entrypoint.sh"
+      - ".github/workflows/production-package-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-package-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout immutable candidate
+        uses: actions/checkout@v4
+
+      - name: Install shell contract tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends shellcheck
+
+      - name: Validate production package contract
+        run: bash deploy/production/contract-test.sh
+
+      - name: Run isolated production edge rehearsal
+        env:
+          ROSTA_ALLOW_REHEARSAL: "true"
+        run: bash deploy/production/rehearsal.sh
+
+      - name: Build production frontend image
+        run: |
+          docker build \
+            --file Dockerfile.production \
+            --build-arg VITE_SITE_URL=https://rosta.shop \
+            --build-arg VITE_API_URL=https://api.rosta.shop/api/v1 \
+            --build-arg VITE_PAYMENT_REDIRECT_HOSTS=rosta.shop,api.rosta.shop,zarinpal.com,www.zarinpal.com \
+            --build-arg VITE_ALLOW_INDEXING=true \
+            --tag rosta-frontend:ps7-ci \
+            .
+
+      - name: Build production backend images
+        run: |
+          docker build \
+            --file backend/Dockerfile.production \
+            --target app \
+            --tag rosta-api:ps7-ci \
+            backend
+          docker build \
+            --file backend/Dockerfile.production \
+            --target web \
+            --tag rosta-api-web:ps7-ci \
+            backend
+
+      - name: Verify built image identities
+        run: |
+          docker image inspect rosta-frontend:ps7-ci >/dev/null
+          docker image inspect rosta-api:ps7-ci >/dev/null
+          docker image inspect rosta-api-web:ps7-ci >/dev/null
