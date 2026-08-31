@@ -3,6 +3,8 @@ set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+PACKAGE_WORKFLOW="$ROOT_DIR/.github/workflows/production-package-ci.yml"
+PS8C_WORKFLOW="$ROOT_DIR/.github/workflows/ps8c-infrastructure-acceptance.yml"
 
 fail() {
   printf '[ps8c-infrastructure] ERROR: %s\n' "$*" >&2
@@ -29,6 +31,8 @@ required=(
   "$ROOT_DIR/Dockerfile.production"
   "$ROOT_DIR/backend/Dockerfile.production"
   "$ROOT_DIR/.dockerignore"
+  "$PACKAGE_WORKFLOW"
+  "$PS8C_WORKFLOW"
 )
 for path in "${required[@]}"; do
   [[ -f "$path" ]] || fail "Missing infrastructure acceptance input: $path"
@@ -236,6 +240,13 @@ grep -q 'ROSTA_CONFIRM_PRODUCTION_ROLLBACK' "$SCRIPT_DIR/rollback.sh" \
   || fail "Rollback must require explicit operator confirmation"
 grep -q 'ROSTA_CONFIRM_PRODUCTION_DEPLOY' "$SCRIPT_DIR/deploy.sh" \
   || fail "Deploy must require explicit operator confirmation"
+
+for input in 'src/**' 'public/**' 'backend/**' 'deploy/production/**' '.dockerignore' 'package.json' 'bun.lock'; do
+  grep -Fq -- "- \"$input\"" "$PACKAGE_WORKFLOW" \
+    || fail "Production Package CI does not watch build input: $input"
+  grep -Fq -- "- \"$input\"" "$PS8C_WORKFLOW" \
+    || fail "PS8C workflow does not watch build input: $input"
+done
 
 if grep -R -nE '(^|[^A-Za-z])(:latest|latest:)' "$SCRIPT_DIR" --include='*.yml' --include='*.yaml' --include='Caddyfile' >/dev/null 2>&1; then
   fail "Mutable latest image reference detected in executable production topology"
