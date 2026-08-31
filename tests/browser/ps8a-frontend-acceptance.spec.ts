@@ -17,11 +17,21 @@ const publicSeoRoutes = [
   { route: "/about", canonical: "https://rosta.shop/about" },
 ];
 
+const isProductionIndexingAcceptance =
+  process.env.VITE_ALLOW_INDEXING === "true" && process.env.VITE_SITE_URL === "https://rosta.shop";
+
 async function attachEvidence(testInfo: TestInfo, name: string, evidence: unknown): Promise<void> {
   await testInfo.attach(name, {
     body: Buffer.from(`${JSON.stringify(evidence, null, 2)}\n`, "utf8"),
     contentType: "application/json",
   });
+}
+
+function requireProductionIndexingAcceptance(): void {
+  test.skip(
+    !isProductionIndexingAcceptance,
+    "PS8A production-indexing acceptance requires the production-indexable fixture",
+  );
 }
 
 async function optionalAttribute(
@@ -57,6 +67,8 @@ test.describe.configure({ mode: "serial" });
 test("PS8A proves production-indexable public SSR metadata and canonical policy", async ({
   page,
 }, testInfo) => {
+  requireProductionIndexingAcceptance();
+
   const runtimeErrors: string[] = [];
   page.on("pageerror", (error) => runtimeErrors.push(`pageerror:${error.message}`));
   page.on("console", (message) => {
@@ -99,6 +111,8 @@ test("PS8A proves production-indexable public SSR metadata and canonical policy"
 test("PS8A proves filtered catalog and private surfaces remain fail-closed to indexing", async ({
   page,
 }, testInfo) => {
+  requireProductionIndexingAcceptance();
+
   const evidence: SeoEvidence[] = [];
 
   const filteredCatalog = await collectSeoEvidence(page, "/products?q=espresso");
@@ -121,6 +135,8 @@ test("PS8A proves filtered catalog and private surfaces remain fail-closed to in
 test("PS8A proves robots, manifest, security headers and 404 crawl safety on production SSR", async ({
   page,
 }, testInfo) => {
+  requireProductionIndexingAcceptance();
+
   const robotsResponse = await page.request.get("/robots.txt");
   expect(robotsResponse.status()).toBe(200);
   expect(robotsResponse.headers()["content-type"]).toContain("text/plain");
