@@ -1,0 +1,210 @@
+name: PS8B Backend Finance Acceptance
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "docs/openapi/**"
+      - "docs/PS4_2_REFUND_PAYOUT_RECONCILIATION.md"
+      - "docs/PS8B_BACKEND_FINANCE_ACCEPTANCE.md"
+      - ".github/workflows/ps8b-backend-finance-acceptance.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ps8b-backend-finance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-finance-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: rosta_test
+          MYSQL_USER: rosta
+          MYSQL_PASSWORD: rosta_test
+          MYSQL_ROOT_PASSWORD: root_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+      redis:
+        image: redis:7.4-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=20
+
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      EVIDENCE_DIR: /tmp/rosta-ps8b-evidence/${{ github.run_id }}
+      APP_ENV: testing
+      APP_DEBUG: "false"
+      APP_URL: http://localhost:8000
+      LOG_CHANNEL: stack
+      LOG_STACK: single
+      FRONTEND_ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+      SANCTUM_STATEFUL_DOMAINS: localhost:5173,127.0.0.1:5173
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: rosta_test
+      DB_USERNAME: rosta
+      DB_PASSWORD: rosta_test
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      ROSTA_PAYMENT_ENABLED: "false"
+      ROSTA_REFUND_ENABLED: "false"
+      ROSTA_SMS_ENABLED: "false"
+      ROSTA_MEDIA_UPLOADS_ENABLED: "false"
+      COMPOSER_NO_INTERACTION: "1"
+      COMPOSER_PROCESS_TIMEOUT: "900"
+
+    steps:
+      - name: Checkout exact PS8B candidate
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: bcmath, ctype, curl, dom, fileinfo, imagick, intl, json, mbstring, openssl, pcntl, pdo_mysql, posix, redis, simplexml, sockets, tokenizer, xml, xmlwriter, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Install AVIF encoder delegate
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libheif-plugin-aomenc
+
+      - name: Freeze immutable backend finance snapshot
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          test -s composer.lock
+          php -r 'exit(PHP_MAJOR_VERSION === 8 && PHP_MINOR_VERSION === 3 ? 0 : 1);'
+          echo "APP_KEY=base64:$(php -r 'echo base64_encode(random_bytes(32));')" >> "$GITHUB_ENV"
+          {
+            echo "head=$(git rev-parse HEAD)"
+            echo "tree=$(git rev-parse 'HEAD^{tree}')"
+            echo "php=$(php --version | head -n 1)"
+            echo "composer=$(composer --version 2>&1 | head -n 1)"
+            echo "payment_enabled=$ROSTA_PAYMENT_ENABLED"
+            echo "refund_enabled=$ROSTA_REFUND_ENABLED"
+          } | tee "$EVIDENCE_DIR/identity.txt"
+          sha256sum composer.json composer.lock | tee "$EVIDENCE_DIR/composer-before.sha256"
+
+      - name: Install locked dependencies
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          composer install --no-interaction --prefer-dist --no-progress 2>&1 | tee "$EVIDENCE_DIR/composer-install.log"
+
+      - name: Prepare isolated Laravel environment
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cp .env.example .env
+          mkdir -p bootstrap/cache storage/app/private storage/app/public storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
+
+      - name: Migrate clean MySQL and prove strict readiness
+        shell: bash
+        run: |
+          set -o pipefail
+          php artisan migrate:fresh --force 2>&1 | tee "$EVIDENCE_DIR/mysql-migrations.log"
+          php artisan rosta:readiness --strict --json 2>&1 | tee "$EVIDENCE_DIR/backend-readiness.json"
+
+      - name: Exercise Redis infrastructure contract
+        shell: bash
+        run: |
+          set -o pipefail
+          composer acceptance:infrastructure 2>&1 | tee "$EVIDENCE_DIR/infrastructure-acceptance.json"
+          grep -q 'ROSTA_R2C_INFRASTRUCTURE_COMPLETE' "$EVIDENCE_DIR/infrastructure-acceptance.json"
+
+      - name: Run independent finance and contract audits
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          composer validate --strict 2>&1 | tee "$EVIDENCE_DIR/composer-validate.log"
+          composer audit --locked 2>&1 | tee "$EVIDENCE_DIR/composer-audit.log"
+          for gate in finance ps4a ps4b r5i ps6b openapi validation ps8b; do
+            composer "audit:$gate" 2>&1 | tee "$EVIDENCE_DIR/audit-$gate.log"
+          done
+          grep -q 'ROSTA_PS8B_BACKEND_FINANCE_ACCEPTANCE_CLEAN' "$EVIDENCE_DIR/audit-ps8b.log"
+
+      - name: Run targeted financial lifecycle tests
+        shell: bash
+        run: |
+          set -o pipefail
+          php artisan test \
+            tests/Feature/CheckoutFinancialBoundariesTest.php \
+            tests/Feature/FinancialTruthPolicyTest.php \
+            tests/Feature/PaymentLifecycleTest.php \
+            tests/Feature/RefundWorkflowTest.php \
+            tests/Feature/R5IDeliverySettlementTest.php \
+            tests/Feature/TransactionalCheckoutTest.php \
+            tests/Feature/PS6BBackendObservabilityTest.php \
+            2>&1 | tee "$EVIDENCE_DIR/finance-tests.log"
+
+      - name: Reproduce complete backend gate
+        shell: bash
+        run: |
+          set -o pipefail
+          composer check 2>&1 | tee "$EVIDENCE_DIR/composer-check.log"
+
+      - name: Seal secret-safe PS8B evidence
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cp ps8b-backend-finance-acceptance-audit.json "$EVIDENCE_DIR/" 2>/dev/null || true
+          cp storage/logs/*.log "$EVIDENCE_DIR/" 2>/dev/null || true
+          rm -f .env *-audit.json
+          rm -rf storage/framework/testing storage/framework/cache/phpstan
+          sha256sum composer.json composer.lock | tee "$EVIDENCE_DIR/composer-after.sha256"
+          cmp "$EVIDENCE_DIR/composer-before.sha256" "$EVIDENCE_DIR/composer-after.sha256"
+          if grep -R -E 'APP_KEY=|DB_PASSWORD=|MYSQL_ROOT_PASSWORD|PAYMENT_MERCHANT_ID|KAVENEGAR_API_KEY|Local OTP delivery|"code"[[:space:]]*:[[:space:]]*"[0-9]{6}"' "$EVIDENCE_DIR"; then
+            echo "Sensitive material entered PS8B evidence." >&2
+            exit 1
+          fi
+          git diff --check
+          git status --short --untracked-files=all | tee "$EVIDENCE_DIR/git-status-final.txt"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          {
+            echo "ROSTA_PS8B_BACKEND_FINANCE_ACCEPTANCE_COMPLETE"
+            echo "candidate=$(git rev-parse HEAD)"
+            echo "payment_runtime_activation_claimed=false"
+            echo "refund_runtime_activation_claimed=false"
+            echo "automated_payout_entitlement_claimed=false"
+          } | tee "$EVIDENCE_DIR/result.txt"
+
+      - name: Upload PS8B acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rosta-ps8b-backend-finance-${{ github.run_id }}
+          path: /tmp/rosta-ps8b-evidence/${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 30
