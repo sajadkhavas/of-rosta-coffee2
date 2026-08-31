@@ -36,6 +36,8 @@ required=(
 for file in "${required[@]}"; do
   [[ -f "$SCRIPT_DIR/$file" ]] || fail "Missing production package file: $file"
 done
+[[ -f "$ROOT_DIR/Dockerfile.production" ]] || fail "Missing dedicated root Dockerfile.production"
+[[ -f "$ROOT_DIR/backend/Dockerfile.production" ]] || fail "Missing backend Dockerfile.production"
 
 for script in "$SCRIPT_DIR"/*.sh; do
   bash -n "$script"
@@ -57,6 +59,11 @@ grep -q '^ROSTA_MEDIA_UPLOADS_ENABLED=false$' "$SCRIPT_DIR/backend.env.example" 
   || fail "Media provider activation must be fail-closed in the source example"
 grep -q 'ROSTA_IMAGE_TAG must be the full release SHA' "$SCRIPT_DIR/docker-compose.yml" \
   || fail "Production images must be keyed by immutable release SHA"
+grep -q 'dockerfile: Dockerfile.production' "$SCRIPT_DIR/docker-compose.yml" \
+  || fail "Production topology must use production Dockerfiles"
+if grep -q 'Dockerfile.staging' "$SCRIPT_DIR/docker-compose.yml"; then
+  fail "Production topology must not build from Dockerfile.staging"
+fi
 grep -q 'VITE_ALLOW_INDEXING: "true"' "$SCRIPT_DIR/docker-compose.yml" \
   || fail "Production image build must be indexable"
 grep -q 'Cache-Control "private, no-store' "$SCRIPT_DIR/Caddyfile" \
@@ -64,16 +71,27 @@ grep -q 'Cache-Control "private, no-store' "$SCRIPT_DIR/Caddyfile" \
 grep -q 'X-Robots-Tag "noindex' "$SCRIPT_DIR/Caddyfile" \
   || fail "Private workspaces require noindex edge policy"
 
+grep -q 'assert_production_runtime_contract' "$SCRIPT_DIR/lib.sh" \
+  || fail "Runtime acceptance contract must be separate from source identity"
+grep -q 'ROSTA_ACCEPTANCE_RELEASE_TAG' "$SCRIPT_DIR/acceptance.sh" \
+  || fail "Acceptance must support an explicit runtime release target"
+grep -q "docker inspect --format '{{.Config.Image}}'" "$SCRIPT_DIR/acceptance.sh" \
+  || fail "Acceptance must verify actual running image identity"
+grep -Fq "ROSTA_ACCEPTANCE_RELEASE_TAG=\"\$previous\"" "$SCRIPT_DIR/rollback.sh" \
+  || fail "Rollback must accept the previous runtime release explicitly"
+
 if grep -R -nE 'image:[[:space:]]+[^#[:space:]]*:latest([[:space:]]|$)' "$SCRIPT_DIR" --include='*.yml' --include='*.yaml'; then
   fail "Mutable latest image tag is forbidden"
 fi
 
-if grep -R -nE 'APP_ENV[=:][[:space:]]*staging|rosta-staging|staging\.rosta\.shop' "$SCRIPT_DIR" \
-  --exclude='README.md'; then
+if grep -R -nE 'APP_ENV[=:][[:space:]]*staging|rosta-staging|staging\.rosta\.shop|Dockerfile\.staging' "$SCRIPT_DIR" \
+  --exclude='README.md' \
+  --exclude='contract-test.sh'; then
   fail "Staging namespace leaked into executable production package"
 fi
 
-if grep -R -nE '(sk-proj-|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----)' "$SCRIPT_DIR"; then
+if grep -R -nE '(sk-proj-|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----)' "$SCRIPT_DIR" \
+  --exclude='contract-test.sh'; then
   fail "Secret material detected in production package"
 fi
 
@@ -92,12 +110,22 @@ docker compose \
   -f "$SCRIPT_DIR/docker-compose.yml" \
   config --quiet
 
+docker compose \
+  --project-name rosta-ps7-rehearsal-contract \
+  -f "$SCRIPT_DIR/docker-compose.rehearsal.yml" \
+  config --quiet
+
 docker run --rm \
   -e ACME_EMAIL=contract@example.com \
   -e PRODUCTION_SITE_DOMAIN=rosta.shop \
   -e PRODUCTION_API_DOMAIN=api.rosta.shop \
   -e PRODUCTION_MEDIA_DOMAIN=media.rosta.shop \
   -v "$SCRIPT_DIR/Caddyfile:/etc/caddy/Caddyfile:ro" \
+  caddy:2.10.2-alpine \
+  caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
+
+docker run --rm \
+  -v "$SCRIPT_DIR/Caddyfile.rehearsal:/etc/caddy/Caddyfile:ro" \
   caddy:2.10.2-alpine \
   caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
 

@@ -46,8 +46,8 @@ rosta_compose run --rm api php artisan migrate --force --no-interaction
 log "Activating application services"
 rosta_compose up -d --wait api api-web worker scheduler frontend edge
 
-log "Running fail-closed production acceptance"
-"$SCRIPT_DIR/acceptance.sh"
+log "Running fail-closed production acceptance for candidate $ROSTA_IMAGE_TAG"
+ROSTA_ACCEPTANCE_RELEASE_TAG="$ROSTA_IMAGE_TAG" "$SCRIPT_DIR/acceptance.sh"
 
 record_release_tag "$ROSTA_IMAGE_TAG"
 log "Production release accepted and recorded: $ROSTA_IMAGE_TAG"
