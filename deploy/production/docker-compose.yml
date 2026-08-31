@@ -147,7 +147,7 @@ services:
     image: rosta-frontend:${ROSTA_IMAGE_TAG:?ROSTA_IMAGE_TAG must be the full release SHA}
     build:
       context: ../..
-      dockerfile: Dockerfile.staging
+      dockerfile: Dockerfile.production
       args:
         VITE_SITE_URL: ${VITE_SITE_URL:?VITE_SITE_URL is required}
         VITE_API_URL: ${VITE_API_URL:?VITE_API_URL is required}
