@@ -2,7 +2,7 @@
 
 Status: canonical current execution status for the PS path
 
-Last synchronized baseline: `integration/rosta-release-candidate@6631c68dda8036c3e5da95fe1da3035b72d07f81`
+Last synchronized baseline: `integration/rosta-release-candidate@40154b452d78e473d4f0da1e620e63bc7ffbbacc`
 
 This file tracks the current PS0-PS9 execution path. Older planning documents may preserve historical phase names and should not override the accepted/integrated state recorded here and in phase-specific acceptance records.
 
@@ -25,9 +25,22 @@ This file tracks the current PS0-PS9 execution path. Older planning documents ma
 - PS8B — Backend & Finance Acceptance Audit: INTEGRATED (`75c6b6771608a7e31c3ea93ef1e998d23b8b5e62`)
 - PS8C — Infrastructure Acceptance Audit: INTEGRATED (`6631c68dda8036c3e5da95fe1da3035b72d07f81`)
 
+## Pre-PS9 blocker closure
+
+The independent PS9 audit identified a current-source API/provider contract blocker before freeze. PR #107 corrected the production Zarinpal request/verify/StartPay defaults, restored exactly one baseline `throttle:api` across all versioned API registrars, aligned affected OpenAPI contracts and added regression coverage.
+
+PR #107 final head `340a5c6660e90f19fdabc7efa99097f630d4018d` passed all eleven applicable workflows on the same exact SHA: CI #893, Backend CI #571, Full-stack Integration CI #428, Browser Acceptance CI #418, R3 Final Gate #413, R4 Staging Package CI #378, Production Package CI #19, PS8A Frontend Acceptance #15, PS8B Backend Finance Acceptance #9, PS8C Infrastructure Acceptance #14 and PS1 Backend Wrapper CI #113. It was then normally merged as `40154b452d78e473d4f0da1e620e63bc7ffbbacc`.
+
+Stale direct-to-release-candidate PRs #81, #83, #86 and #87 were explicitly dispositioned and closed rather than being allowed to enter the freeze from obsolete baselines.
+
 ## Active acceptance sequence
 
-- PS9 — Final Integration, Tag & Pre-server Freeze: NEXT
+- PS9 — Final Integration, Tag & Pre-server Freeze: ACTIVE from baseline `40154b452d78e473d4f0da1e620e63bc7ffbbacc`.
+- Canonical acceptance contract: `docs/pre-server/FINAL_PRE_SERVER_ACCEPTANCE.md`.
+- Canonical release notes: `docs/pre-server/PS9_RELEASE_NOTES.md`.
+- Canonical freeze tag: `rosta-pre-server-2026-09-01`.
+
+PS9 becomes **PRE-SERVER GO** only when the canonical freeze tag resolves to the exact final `integration/rosta-release-candidate` commit whose `PS9 Final Pre-server Freeze` workflow is successful and whose release evidence reports `PRE-SERVER GO`. Before that proof exists, PS9 is not complete.
 
 ## PS8 closure evidence
 
