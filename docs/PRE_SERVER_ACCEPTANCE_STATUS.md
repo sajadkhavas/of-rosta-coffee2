@@ -33,14 +33,21 @@ PR #107 final head `340a5c6660e90f19fdabc7efa99097f630d4018d` passed all eleven 
 
 Stale direct-to-release-candidate PRs #81, #83, #86 and #87 were explicitly dispositioned and closed rather than being allowed to enter the freeze from obsolete baselines.
 
-## Active acceptance sequence
+## PS9 final state — mechanically derived
 
-- PS9 — Final Integration, Tag & Pre-server Freeze: ACTIVE from baseline `40154b452d78e473d4f0da1e620e63bc7ffbbacc`.
+- PS9 — Final Integration, Tag & Pre-server Freeze: the authoritative state is derived from the immutable proof below, not from a manually edited status word.
 - Canonical acceptance contract: `docs/pre-server/FINAL_PRE_SERVER_ACCEPTANCE.md`.
 - Canonical release notes: `docs/pre-server/PS9_RELEASE_NOTES.md`.
 - Canonical freeze tag: `rosta-pre-server-2026-09-01`.
 
-PS9 becomes **PRE-SERVER GO** only when the canonical freeze tag resolves to the exact final `integration/rosta-release-candidate` commit whose `PS9 Final Pre-server Freeze` workflow is successful and whose release evidence reports `PRE-SERVER GO`. Before that proof exists, PS9 is not complete.
+The PS9 state is **PRE-SERVER GO** exactly when all of the following are true:
+
+1. tag `rosta-pre-server-2026-09-01` exists and resolves to a commit on `integration/rosta-release-candidate`;
+2. that exact commit's `PS9 Final Pre-server Freeze` push workflow completed successfully;
+3. its release evidence reports literal verdict `PRE-SERVER GO` and the same candidate SHA/tree;
+4. the GitHub Release for the canonical tag exists with the final manifest, SPDX SBOM, checksums and freeze proof attached.
+
+If any of those facts is absent or disagrees, PS9 is **NOT YET PRE-SERVER GO**. This derived rule keeps the status record truthful both before finalization and after the immutable tag/release is created, without adding a post-freeze source commit.
 
 ## PS8 closure evidence
 
