@@ -2,7 +2,7 @@
 
 Status: canonical current execution status for the PS path
 
-Last synchronized baseline: `integration/rosta-release-candidate@e5953d77ae44fe21e435335ecb23a8bf1b235705`
+Last synchronized baseline: `integration/rosta-release-candidate@6631c68dda8036c3e5da95fe1da3035b72d07f81`
 
 This file tracks the current PS0-PS9 execution path. Older planning documents may preserve historical phase names and should not override the accepted/integrated state recorded here and in phase-specific acceptance records.
 
@@ -21,13 +21,17 @@ This file tracks the current PS0-PS9 execution path. Older planning documents ma
 - PS6B — Backend Refactor, Queue Reliability & Observability: INTEGRATED
 - PS6A — Frontend Quality Freeze: INTEGRATED
 - PS7 — Production Deployment Package / Rehearsal: INTEGRATED
+- PS8A — Frontend Acceptance Audit: INTEGRATED (`5d6035244012679106008799051c7863c7f2ffce`)
+- PS8B — Backend & Finance Acceptance Audit: INTEGRATED (`75c6b6771608a7e31c3ea93ef1e998d23b8b5e62`)
+- PS8C — Infrastructure Acceptance Audit: INTEGRATED (`6631c68dda8036c3e5da95fe1da3035b72d07f81`)
 
 ## Active acceptance sequence
 
-- PS8A — Frontend Acceptance Audit: IN_PROGRESS
-- PS8B — Backend & Finance Acceptance Audit: NOT_STARTED
-- PS8C — Infrastructure Acceptance Audit: NOT_STARTED
-- PS9 — Final Integration, Tag & Pre-server Freeze: NOT_STARTED
+- PS9 — Final Integration, Tag & Pre-server Freeze: NEXT
+
+## PS8 closure evidence
+
+PS8C final candidate `6f29b602b8612eab975267e77f90b4c98a9f987a` passed every applicable pull-request workflow on the same exact SHA, including CI #890, Backend CI #569, Full-stack Integration CI #426, Browser Acceptance CI #416, R3 Final Gate #411, R4 Staging Package CI #376, Production Package CI #17, PS8A Frontend Acceptance #13, PS8B Backend Finance Acceptance #7, PS8C Infrastructure Acceptance #11 and PS1 Backend Wrapper CI #111. PR #102 was then merged normally into the release candidate as merge commit `6631c68dda8036c3e5da95fe1da3035b72d07f81`.
 
 ## Server boundary
 
