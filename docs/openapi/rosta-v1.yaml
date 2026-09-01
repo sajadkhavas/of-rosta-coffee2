@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
   title: Rosta API
-  version: 1.0.0-draft
+  version: 1.0.0-arch-0.4
   description: |
-    قرارداد میان فرانت TanStack Start و بک‌اند Laravel 11.
+    قرارداد میان فرانت TanStack Start و بک‌اند Laravel 13.
     قیمت‌ها ریال، زمان‌ها ISO 8601 و تمام محصولات فقط دانه کامل هستند.
 servers:
   - url: https://api.rosta.shop/api/v1
@@ -279,7 +279,7 @@ paths:
     post:
       tags: [Cart]
       operationId: validateCart
-      summary: اعتبارسنجی موجودی، قیمت و تک‌روستری‌بودن
+      summary: اعتبارسنجی موجودی و قیمت توسط backend authoritative
       requestBody:
         required: true
         content:
@@ -360,12 +360,24 @@ paths:
         '200': { $ref: '#/components/responses/OrderResource' }
         '404': { $ref: '#/components/responses/NotFound' }
 
+  /orders/{orderId}/cancel:
+    post:
+      tags: [Orders]
+      operationId: cancelOrder
+      security: [{ sanctumCookie: [] }]
+      parameters:
+        - { name: orderId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { $ref: '#/components/responses/OrderResource' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
   /payments/request:
     post:
       tags: [Payments]
       operationId: requestPayment
       security: [{ sanctumCookie: [] }]
-      summary: ایجاد تراکنش Split Payment
+      summary: ایجاد تلاش پرداخت برای مبلغ authoritative سفارش
       requestBody:
         required: true
         content:
@@ -377,8 +389,8 @@ paths:
                 order_id: { type: string }
                 idempotency_key: { type: string, minLength: 16 }
       responses:
-        '201':
-          description: Payment created
+        '200':
+          description: Existing idempotent payment attempt replayed
           content:
             application/json:
               schema:
@@ -386,19 +398,41 @@ paths:
                 properties:
                   data:
                     type: object
+                    required: [payment_id, redirect_url]
+                    properties:
+                      payment_id: { type: string }
+                      redirect_url: { type: string, format: uri }
+        '201':
+          description: Payment attempt created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    required: [payment_id, redirect_url]
                     properties:
                       payment_id: { type: string }
                       redirect_url: { type: string, format: uri }
         '409': { $ref: '#/components/responses/Conflict' }
+        '503': { $ref: '#/components/responses/PaymentServiceUnavailable' }
 
-  /payments/callback:
-    post:
+  /payments/zarinpal/callback/{paymentId}:
+    get:
       tags: [Payments]
-      operationId: paymentCallback
-      summary: Callback امضاشده و Idempotent درگاه
+      operationId: zarinpalPaymentReturn
+      summary: بازگشت مرورگر از زرین‌پال؛ موفقیت فقط پس از تطبیق Authority و Verify قطعی است
+      security: []
+      parameters:
+        - { name: paymentId, in: path, required: true, schema: { type: string } }
+        - { name: Authority, in: query, required: true, schema: { type: string } }
+        - { name: Status, in: query, required: true, schema: { type: string, enum: [OK, NOK] } }
       responses:
-        '200': { description: Callback accepted }
-        '400': { description: Invalid callback }
+        '302': { description: Result is redirected to the configured and allowlisted frontend callback }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '503': { $ref: '#/components/responses/PaymentServiceUnavailable' }
 
   /payments/{paymentId}/verify:
     post:
@@ -409,7 +443,7 @@ paths:
         - { name: paymentId, in: path, required: true, schema: { type: string } }
       responses:
         '200':
-          description: Verified payment
+          description: Current owned payment result
           content:
             application/json:
               schema:
@@ -417,16 +451,25 @@ paths:
                 properties:
                   data:
                     type: object
+                    required: [payment_id, status, order_id, order_status, amount, currency]
                     properties:
+                      payment_id: { type: string }
                       status: { type: string, enum: [pending, paid, failed, cancelled, refunded] }
                       order_id: { type: string }
+                      order_status: { $ref: '#/components/schemas/OrderStatus' }
+                      amount: { type: integer, minimum: 0 }
+                      currency: { type: string, const: IRR }
+                      verified_at: { type: [string, 'null'], format: date-time }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/PaymentServiceUnavailable' }
 
 components:
   securitySchemes:
     sanctumCookie:
       type: apiKey
       in: cookie
-      name: laravel_session
+      name: rosta-session
+      description: Browser session cookie. Deployments may override the cookie name via SESSION_COOKIE; unsafe SPA requests also use Sanctum CSRF bootstrap and X-XSRF-TOKEN.
   parameters:
     Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
     PerPage: { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 24 } }
@@ -469,7 +512,8 @@ components:
     ValidationError: { description: Invalid input, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
     RateLimited: { description: Too many requests, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
     ServiceUnavailable: { description: OTP delivery is disabled, misconfigured, or temporarily unavailable, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
-    Conflict: { description: Price, stock or idempotency conflict, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
+    PaymentServiceUnavailable: { description: Payment capability or provider is disabled, misconfigured, or temporarily unavailable, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
+    Conflict: { description: Resource state, idempotency, payment, price, or stock conflict, content: { application/json: { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } } }
   schemas:
     IranMobile: { type: string, pattern: '^09\d{9}$', example: '09123456789' }
     RoastLevel: { type: string, enum: [light, medium, dark] }
