@@ -55,10 +55,10 @@ jobs:
       ROSTA_ALLOWED_PAYMENT_REDIRECT_HOSTS: 127.0.0.1
       ROSTA_REFUND_ENABLED: "false"
       ROSTA_MEDIA_UPLOADS_ENABLED: "false"
-      VITE_SITE_URL: https://rosta.shop
+      VITE_SITE_URL: http://127.0.0.1:3000
       VITE_API_URL: http://127.0.0.1:8000/api/v1
-      VITE_PAYMENT_REDIRECT_HOSTS: 127.0.0.1:8000,rosta.shop
-      VITE_ALLOW_INDEXING: "true"
+      VITE_PAYMENT_REDIRECT_HOSTS: 127.0.0.1:8000,127.0.0.1:3000
+      VITE_ALLOW_INDEXING: "false"
       ROSTA_INTERNAL_API_URL: http://127.0.0.1:8000/api/v1
       R3C_FRONTEND_BASE: http://127.0.0.1:3000
     services:
