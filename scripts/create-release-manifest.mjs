@@ -4,8 +4,9 @@ import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const separatorIndex = process.argv.indexOf("--");
-const cliArgs =
+const rawCliArgs =
   separatorIndex >= 0 ? process.argv.slice(separatorIndex + 1) : process.argv.slice(2);
+const cliArgs = rawCliArgs.length > 2 ? rawCliArgs.slice(-2) : rawCliArgs;
 const artifactDir = path.resolve(cliArgs[0] ?? ".output");
 const outputPath = path.resolve(cliArgs[1] ?? "release-manifest.json");
 const forbiddenNames = [
