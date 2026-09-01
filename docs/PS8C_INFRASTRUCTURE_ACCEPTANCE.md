@@ -1,10 +1,14 @@
 # PS8C — Infrastructure Acceptance Audit
 
-Status: **candidate acceptance** until the exact final PR candidate passes every applicable GitHub gate and is merged normally into `integration/rosta-release-candidate`.
+Status: **ACCEPTED / INTEGRATED** on `integration/rosta-release-candidate@6631c68dda8036c3e5da95fe1da3035b72d07f81`.
 
 Baseline: `integration/rosta-release-candidate@75c6b6771608a7e31c3ea93ef1e998d23b8b5e62`.
 
 Branch: `phase/rosta-ps8c-infrastructure-acceptance`.
+
+Final accepted candidate: `6f29b602b8612eab975267e77f90b4c98a9f987a`.
+
+Final merge commit: `6631c68dda8036c3e5da95fe1da3035b72d07f81`.
 
 ## Purpose
 
@@ -67,6 +71,15 @@ The existing isolated Caddy rehearsal remains mandatory and proves routing, secu
 
 The production env example intentionally keeps payment, refund, OTP/SMS and media rails disabled. PS8C verifies that this example does **not** accidentally report strict production readiness. Passing PS8C therefore cannot be mistaken for provider activation or a live public cutover.
 
+## Defects closed during exact-head acceptance
+
+The exact-head runtime gate exposed and closed four real acceptance/runtime defects without weakening safeguards:
+
+1. encrypted Redis sessions were verified semantically through Laravel instead of incorrectly requiring plaintext in Redis;
+2. fail-closed readiness evidence was normalized without treating cache-warmup output as JSON;
+3. production Nginx FastCGI was corrected to route to the actual Compose application service `api:9000`, allowing `api-web` to become healthy before public cutover;
+4. catalog roast-date SSR was made deterministic with the canonical `Asia/Tehran` timezone, closing React hydration error #418 and adding a local-day-boundary regression test.
+
 ## Infrastructure invariants
 
 1. Only the edge service may bind public host ports.
@@ -93,6 +106,25 @@ PS8C records `external_image_digest_pinning_claimed=false` rather than overstati
 - Docker build best practices — multi-stage builds, non-`latest` versioning and immutable digest pinning for full reproducibility.
 - Docker image pull/reference documentation — digest-addressed images as immutable identifiers.
 - Caddy automatic HTTPS documentation — public DNS requirements, ports 80/443 and persistent certificate storage.
+- React hydration diagnostics — deterministic server/client text rendering and hydration mismatch causes.
+
+## Final acceptance evidence
+
+Every applicable pull-request workflow completed successfully on the same exact final candidate `6f29b602b8612eab975267e77f90b4c98a9f987a`:
+
+- CI #890 — PASS
+- Backend CI #569 — PASS
+- Full-stack Integration CI #426 — PASS
+- Browser Acceptance CI #416 — PASS
+- R3 Final Gate #411 — PASS
+- R4 Staging Package CI #376 — PASS
+- Production Package CI #17 — PASS
+- PS8A Frontend Acceptance #13 — PASS
+- PS8B Backend Finance Acceptance #7 — PASS
+- PS8C Infrastructure Acceptance #11 — PASS
+- PS1 Backend Wrapper CI #111 — PASS
+
+The stacked defect-closure chain was merged only with normal merge commits: PR #105 into #104, #104 into #103, #103 into #102, then PR #102 into `integration/rosta-release-candidate` as `6631c68dda8036c3e5da95fe1da3035b72d07f81`. No squash, rebase, amend, force-push or direct integration mutation was used.
 
 ## Production boundary
 
@@ -112,6 +144,6 @@ Those facts require controlled server/runtime acceptance after the source candid
 
 ## Exit gate
 
-PS8C may be accepted only when every applicable workflow is successful on the same final PR candidate, including `PS8C Infrastructure Acceptance` and `Production Package CI`. The PR must then be merged with a normal merge commit. Rebase, squash, amend, force-push and direct writes to `integration/rosta-release-candidate` are outside this phase.
+**PASS.** Every applicable workflow succeeded on the same exact final candidate and PR #102 was merged with a normal merge commit.
 
-After PS8C, the release candidate is ready for the next controlled freeze/server-runtime acceptance stage; no production cutover is implied by this document alone.
+PS8C is closed. The next canonical phase is **PS9 — Final Integration, Tag & Pre-server Freeze**. No production cutover is implied by PS8C closure alone.
