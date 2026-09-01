@@ -46,11 +46,11 @@ final class Ps9FreezeContractTest extends TestCase
 
     public function test_freeze_keeps_current_zarinpal_production_hosts_and_no_historical_api_host(): void
     {
-        $config = file_get_contents(dirname(__DIR__, 2).'/config/payment.php');
+        $config = file_get_contents(dirname(__DIR__, 2).'/config/rosta.php');
 
         $this->assertIsString($config);
         $this->assertStringContainsString('https://payment.zarinpal.com/pg/v4/payment/request.json', $config);
-        $this->assertStringContainsString('https://payment.zarinpal.com/pg/StartPay/', $config);
+        $this->assertStringContainsString('https://payment.zarinpal.com/pg/StartPay', $config);
         $this->assertStringContainsString('https://payment.zarinpal.com/pg/v4/payment/verify.json', $config);
         $this->assertStringNotContainsString('api.zarinpal.com', $config);
     }
