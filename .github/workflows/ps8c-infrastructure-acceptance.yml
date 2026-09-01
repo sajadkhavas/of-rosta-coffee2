@@ -252,17 +252,42 @@ jobs:
           source "$ENV_DIR/runtime.sh"
           source deploy/production/lib.sh
           load_production_environment
+          raw_output="$EVIDENCE_DIR/production-readiness-fail-closed.log"
+          normalized_json="$EVIDENCE_DIR/production-readiness-fail-closed.json"
           set +e
           rosta_compose run --rm api php artisan rosta:readiness --strict --json \
-            > "$EVIDENCE_DIR/production-readiness-fail-closed.json" 2>&1
+            > "$raw_output" 2>&1
           status=$?
           set -e
           test "$status" -ne 0
-          python3 - "$EVIDENCE_DIR/production-readiness-fail-closed.json" <<'PY'
-          import json, sys
-          payload = json.load(open(sys.argv[1], encoding='utf-8'))
-          if payload.get('ready') is not False:
-              raise SystemExit('fail-closed production example unexpectedly reported ready=true')
+          python3 - "$raw_output" "$normalized_json" <<'PY'
+          import json
+          import sys
+
+          source_path, output_path = sys.argv[1:3]
+          text = open(source_path, encoding="utf-8").read()
+          decoder = json.JSONDecoder()
+          payload = None
+
+          for index, char in enumerate(text):
+              if char != "{":
+                  continue
+              try:
+                  candidate, _ = decoder.raw_decode(text[index:])
+              except json.JSONDecodeError:
+                  continue
+              if isinstance(candidate, dict) and "ready" in candidate:
+                  payload = candidate
+                  break
+
+          if payload is None:
+              raise SystemExit("readiness JSON payload not found")
+          if payload.get("ready") is not False:
+              raise SystemExit("fail-closed production example unexpectedly reported ready=true")
+
+          with open(output_path, "w", encoding="utf-8") as handle:
+              json.dump(payload, handle, ensure_ascii=False, separators=(",", ":"))
+              handle.write("\n")
           PY
           echo 'production_example_fail_closed=pass' | tee "$EVIDENCE_DIR/fail-closed.txt"
 
