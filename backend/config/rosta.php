@@ -45,9 +45,9 @@ return [
         'zarinpal' => [
             'merchant_id' => env('PAYMENT_MERCHANT_ID'),
             'sandbox' => $zarinpalSandbox,
-            'request_url' => env('ZARINPAL_REQUEST_URL', $zarinpalSandbox ? 'https://sandbox.zarinpal.com/pg/v4/payment/request.json' : 'https://api.zarinpal.com/pg/v4/payment/request.json'),
-            'verify_url' => env('ZARINPAL_VERIFY_URL', $zarinpalSandbox ? 'https://sandbox.zarinpal.com/pg/v4/payment/verify.json' : 'https://api.zarinpal.com/pg/v4/payment/verify.json'),
-            'start_pay_url' => env('ZARINPAL_START_PAY_URL', $zarinpalSandbox ? 'https://sandbox.zarinpal.com/pg/StartPay' : 'https://www.zarinpal.com/pg/StartPay'),
+            'request_url' => env('ZARINPAL_REQUEST_URL', $zarinpalSandbox ? 'https://sandbox.zarinpal.com/pg/v4/payment/request.json' : 'https://payment.zarinpal.com/pg/v4/payment/request.json'),
+            'verify_url' => env('ZARINPAL_VERIFY_URL', $zarinpalSandbox ? 'https://sandbox.zarinpal.com/pg/v4/payment/verify.json' : 'https://payment.zarinpal.com/pg/v4/payment/verify.json'),
+            'start_pay_url' => env('ZARINPAL_START_PAY_URL', $zarinpalSandbox ? 'https://sandbox.zarinpal.com/pg/StartPay' : 'https://payment.zarinpal.com/pg/StartPay'),
         ],
     ],
     'fulfillment' => [
