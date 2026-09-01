@@ -12,7 +12,9 @@ final class QuizReviewServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
-        Route::prefix('api/v1')->middleware('api')->group(base_path('routes/quiz-reviews.php'));
+        Route::prefix('api/v1')
+            ->middleware(['api', 'throttle:api'])
+            ->group(base_path('routes/quiz-reviews.php'));
 
         RateLimiter::for('quiz-submit', function (Request $request): array {
             $token = (string) $request->input('guest_token');
