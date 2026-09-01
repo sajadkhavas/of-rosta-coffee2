@@ -28,6 +28,7 @@ required=(
   restore-backup.sh
   rollback.sh
   rehearsal.sh
+  infrastructure-audit.sh
   docker-compose.rehearsal.yml
   Caddyfile.rehearsal
   generate-sbom.sh
@@ -86,7 +87,8 @@ fi
 
 if grep -R -nE 'APP_ENV[=:][[:space:]]*staging|rosta-staging|staging\.rosta\.shop|Dockerfile\.staging' "$SCRIPT_DIR" \
   --exclude='README.md' \
-  --exclude='contract-test.sh'; then
+  --exclude='contract-test.sh' \
+  --exclude='infrastructure-audit.sh'; then
   fail "Staging namespace leaked into executable production package"
 fi
 
@@ -128,6 +130,8 @@ docker run --rm \
   -v "$SCRIPT_DIR/Caddyfile.rehearsal:/etc/caddy/Caddyfile:ro" \
   caddy:2.10.2-alpine \
   caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null
+
+bash "$SCRIPT_DIR/infrastructure-audit.sh"
 
 git -C "$ROOT_DIR" diff --check
 printf 'PS7 production package contract passed.\n'

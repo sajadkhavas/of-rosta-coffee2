@@ -66,21 +66,49 @@ final class InfrastructureAcceptance extends Command
         $sessionId = substr(hash('sha256', 'rosta:r2c:session:'.$token), 0, 40);
         try {
             $session = Session::driver();
+            if ($session->isStarted()) {
+                $session->save();
+            }
+
             $session->setId($sessionId);
             $session->start();
             $session->put('rosta_r2c_probe', $token);
             $session->save();
 
             $stored = $session->getHandler()->read($sessionId);
+
+            $session->setId($sessionId);
+            $session->start();
+            $observed = $session->get('rosta_r2c_probe');
+            $session->save();
+
             $session->getHandler()->destroy($sessionId);
+            $deleted = $session->getHandler()->read($sessionId);
+
+            $roundTrip = is_string($observed) && hash_equals($token, $observed);
+            $backingStorePersisted = is_string($stored) && $stored !== '';
+            $encryptedPayloadDoesNotLeakToken = config('session.encrypt') !== true || ! str_contains($stored, $token);
+            $destroyed = $deleted === '';
+
             $this->check(
                 $checks,
                 'redis_session_round_trip',
-                is_string($stored) && str_contains($stored, $token),
-                'Redis session handler persists and removes an isolated session',
+                $roundTrip && $backingStorePersisted && $encryptedPayloadDoesNotLeakToken && $destroyed,
+                'Laravel Redis session round-trips through framework encryption and removes its isolated backing value',
             );
         } catch (Throwable) {
-            $this->check($checks, 'redis_session_round_trip', false, 'Redis session handler persists and removes an isolated session');
+            try {
+                Session::driver()->getHandler()->destroy($sessionId);
+            } catch (Throwable) {
+                // Best-effort cleanup; the failed probe below remains authoritative.
+            }
+
+            $this->check(
+                $checks,
+                'redis_session_round_trip',
+                false,
+                'Laravel Redis session round-trips through framework encryption and removes its isolated backing value',
+            );
         }
 
         $queueName = 'rosta-r2c-probe-'.$token;

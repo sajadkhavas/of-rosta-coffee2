@@ -3,18 +3,30 @@ name: Production Package CI
 on:
   pull_request:
     paths:
+      - "src/**"
+      - "public/**"
+      - "backend/**"
       - "deploy/production/**"
       - "Dockerfile.production"
-      - "backend/Dockerfile.production"
-      - "backend/docker/entrypoint.sh"
+      - ".dockerignore"
+      - "package.json"
+      - "bun.lock"
+      - "vite.config.*"
+      - "tsconfig*.json"
       - ".github/workflows/production-package-ci.yml"
   push:
     branches: [main]
     paths:
+      - "src/**"
+      - "public/**"
+      - "backend/**"
       - "deploy/production/**"
       - "Dockerfile.production"
-      - "backend/Dockerfile.production"
-      - "backend/docker/entrypoint.sh"
+      - ".dockerignore"
+      - "package.json"
+      - "bun.lock"
+      - "vite.config.*"
+      - "tsconfig*.json"
       - ".github/workflows/production-package-ci.yml"
   workflow_dispatch:
 
