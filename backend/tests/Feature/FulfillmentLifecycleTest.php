@@ -122,6 +122,45 @@ final class FulfillmentLifecycleTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_dispatch_fails_closed_without_policy_and_rejects_stale_roast_batch(): void
+    {
+        [$seller, , $roastery, $order] = $this->fixture('freshness-guard');
+        $this->authenticateWithRole($seller, Role::RoasteryOwner, 'roastery', $roastery->id);
+        $endpoint = "/api/v1/seller/roasteries/{$roastery->id}/orders/{$order->id}/fulfillment";
+        $shipmentPayload = [
+            'status' => 'shipped',
+            'carrier' => 'پست جمهوری اسلامی',
+            'tracking_code' => 'FRESHNESS-TRACK-001',
+        ];
+
+        $this->patchJson($endpoint, ['status' => 'preparing'])->assertOk();
+        $this->patchJson($endpoint, ['status' => 'ready_to_ship'])->assertOk();
+
+        config(['freshness.max_dispatch_roast_age_days' => null]);
+        $this->patchJson($endpoint, $shipmentPayload)
+            ->assertStatus(503)
+            ->assertJsonPath('error.code', 'freshness.policy_unconfigured');
+
+        $item = OrderItem::query()
+            ->where('sub_order_id', $order->subOrder->id)
+            ->firstOrFail();
+        $batch = RoastBatch::query()->findOrFail($item->roast_batch_id);
+        $batch->forceFill(['roasted_at' => now()->subDays(31)])->save();
+        config(['freshness.max_dispatch_roast_age_days' => 30]);
+
+        $this->patchJson($endpoint, $shipmentPayload)
+            ->assertConflict()
+            ->assertJsonPath('error.code', 'freshness.roast_batch_too_old');
+
+        $this->assertDatabaseMissing('shipments', [
+            'sub_order_id' => $order->subOrder->id,
+        ]);
+        $this->assertDatabaseHas('sub_orders', [
+            'id' => $order->subOrder->id,
+            'status' => 'ready_to_ship',
+        ]);
+    }
+
     public function test_incident_pauses_transitions_without_rejecting_or_mutating_inventory(): void
     {
         [$seller, , $roastery, $order, $variant] = $this->fixture('incident');
