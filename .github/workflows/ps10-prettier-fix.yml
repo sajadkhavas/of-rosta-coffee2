@@ -1,0 +1,70 @@
+name: PS10 Scoped Prettier Fix
+
+on:
+  push:
+    branches:
+      - phase/rosta-ps10-launch-capability-closure
+    paths:
+      - .github/workflows/ps10-prettier-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout PS10 branch
+        uses: actions/checkout@v4
+        with:
+          ref: phase/rosta-ps10-launch-capability-closure
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.22
+
+      - name: Install frozen dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Format only PS10 frontend files
+        run: |
+          bunx prettier --write \
+            src/lib/api/settlement-profiles.ts \
+            src/routes/admin.settlement-profiles.tsx \
+            'src/routes/order-help.$id.tsx' \
+            src/routes/panel.settlement-profile.tsx
+
+      - name: Verify scoped formatting and lint
+        run: |
+          bunx prettier --check \
+            src/lib/api/settlement-profiles.ts \
+            src/routes/admin.settlement-profiles.tsx \
+            'src/routes/order-help.$id.tsx' \
+            src/routes/panel.settlement-profile.tsx
+          bun run lint
+
+      - name: Commit formatter output only
+        run: |
+          test -n "$(git status --porcelain -- \
+            src/lib/api/settlement-profiles.ts \
+            src/routes/admin.settlement-profiles.tsx \
+            'src/routes/order-help.$id.tsx' \
+            src/routes/panel.settlement-profile.tsx)"
+          unexpected="$(git status --porcelain -- . \
+            ':!src/lib/api/settlement-profiles.ts' \
+            ':!src/routes/admin.settlement-profiles.tsx' \
+            ':!src/routes/order-help.$id.tsx' \
+            ':!src/routes/panel.settlement-profile.tsx' \
+            ':!.github/workflows/ps10-prettier-fix.yml')"
+          test -z "$unexpected"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            src/lib/api/settlement-profiles.ts \
+            src/routes/admin.settlement-profiles.tsx \
+            'src/routes/order-help.$id.tsx' \
+            src/routes/panel.settlement-profile.tsx
+          git commit -m 'style(ps10): format launch closure frontend surfaces'
+          git push origin HEAD:phase/rosta-ps10-launch-capability-closure
