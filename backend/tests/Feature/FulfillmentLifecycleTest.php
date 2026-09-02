@@ -10,6 +10,7 @@ use App\Models\OrderItem;
 use App\Models\Origin;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\RoastBatch;
 use App\Models\Roastery;
 use App\Models\SubOrder;
 use App\Models\SubOrderStatusHistory;
@@ -31,6 +32,7 @@ final class FulfillmentLifecycleTest extends TestCase
         config([
             'rosta.notifications.enabled' => false,
             'rosta.notifications.sms_provider' => 'disabled',
+            'freshness.max_dispatch_roast_age_days' => 30,
         ]);
     }
 
@@ -224,6 +226,13 @@ final class FulfillmentLifecycleTest extends TestCase
             'status' => 'published',
             'published_at' => now(),
         ]);
+        $roastBatch = RoastBatch::query()->create([
+            'product_id' => $product->id,
+            'batch_code' => 'FULFILL-BATCH-'.strtoupper($suffix),
+            'roasted_at' => now()->subDays(2),
+            'available_from' => now()->subDay(),
+            'is_active' => true,
+        ]);
         $variant = ProductVariant::query()->create([
             'product_id' => $product->id,
             'sku' => 'FULFILL-'.strtoupper($suffix),
@@ -300,7 +309,7 @@ final class FulfillmentLifecycleTest extends TestCase
             'sub_order_id' => $subOrder->id,
             'product_id' => $product->id,
             'variant_id' => $variant->id,
-            'roast_batch_id' => null,
+            'roast_batch_id' => $roastBatch->id,
             'quantity' => 2,
             'unit_price' => 2_000_000,
             'line_total' => 4_000_000,
@@ -317,7 +326,11 @@ final class FulfillmentLifecycleTest extends TestCase
                 'price' => 2_000_000,
                 'currency' => 'IRR',
             ],
-            'roast_batch_snapshot' => null,
+            'roast_batch_snapshot' => [
+                'id' => $roastBatch->id,
+                'batch_code' => $roastBatch->batch_code,
+                'roasted_at' => $roastBatch->roasted_at->toIso8601String(),
+            ],
         ]);
 
         return [$seller, $foreignSeller, $roastery, $order->fresh('subOrder'), $variant];
