@@ -103,7 +103,7 @@ function ResolutionContent({ user }: { user: AuthUser }) {
         items={[
           { label: "خانه", to: "/" },
           { label: "سفارش‌های من", to: "/orders" },
-          { label: `#${order.orderNumber}`, to: "/orders/$id", params: { id: order.id } },
+          { label: `#${order.orderNumber}` },
           { label: "لغو یا پیگیری" },
         ]}
       />
