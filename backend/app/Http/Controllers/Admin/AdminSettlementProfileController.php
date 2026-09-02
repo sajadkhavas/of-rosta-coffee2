@@ -78,7 +78,7 @@ final class AdminSettlementProfileController
             'id' => $profile->id,
             'roastery' => [
                 'id' => $profile->roastery_id,
-                'name' => $profile->roastery?->name,
+                'name' => $profile->roastery->name,
             ],
             'entity_type' => $profile->entity_type,
             'legal_name' => $profile->legal_name,
