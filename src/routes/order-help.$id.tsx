@@ -109,21 +109,27 @@ function ResolutionContent({ user }: { user: AuthUser }) {
       />
 
       <header className="rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5">
-        <p className="text-xs font-bold tracking-[0.18em] text-[color:var(--roast)]">ORDER RESOLUTION</p>
+        <p className="text-xs font-bold tracking-[0.18em] text-[color:var(--roast)]">
+          ORDER RESOLUTION
+        </p>
         <h1 className="mt-2 text-3xl font-bold">لغو یا اعلام مشکل سفارش</h1>
         <p className="mt-3 text-sm leading-7 text-[color:var(--light)]">
-          سفارش #{order.orderNumber}. لغو مستقیم فقط تا زمانی ممکن است که سفارش هنوز در انتظار پرداخت
-          باشد. بعد از پرداخت، هر مشکل از مسیر پشتیبانی ثبت می‌شود تا وضعیت ارسال، بازپرداخت یا تسویه
-          بدون دورزدن قرارداد مالی بررسی شود.
+          سفارش #{order.orderNumber}. لغو مستقیم فقط تا زمانی ممکن است که سفارش هنوز در انتظار
+          پرداخت باشد. بعد از پرداخت، هر مشکل از مسیر پشتیبانی ثبت می‌شود تا وضعیت ارسال، بازپرداخت
+          یا تسویه بدون دورزدن قرارداد مالی بررسی شود.
         </p>
       </header>
 
-      <form onSubmit={submitCancel} className="rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5">
+      <form
+        onSubmit={submitCancel}
+        className="rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5"
+      >
         <h2 className="text-xl font-bold">لغو مستقیم</h2>
         {canCancel ? (
           <>
             <p className="mt-2 text-sm text-[color:var(--light)]">
-              این سفارش هنوز پرداخت نشده است؛ لغو، رزرو موجودی و رزرو کوپن را در Backend آزاد می‌کند.
+              این سفارش هنوز پرداخت نشده است؛ لغو، رزرو موجودی و رزرو کوپن را در Backend آزاد
+              می‌کند.
             </p>
             <div className="mt-4">
               <TextareaField
@@ -134,7 +140,12 @@ function ResolutionContent({ user }: { user: AuthUser }) {
                 onChange={(event) => setCancelReason(event.target.value)}
               />
             </div>
-            <Button className="mt-4" type="submit" variant="outline" loading={cancellation.isPending}>
+            <Button
+              className="mt-4"
+              type="submit"
+              variant="outline"
+              loading={cancellation.isPending}
+            >
               لغو سفارش
             </Button>
           </>
@@ -158,7 +169,10 @@ function ResolutionContent({ user }: { user: AuthUser }) {
         ) : null}
       </form>
 
-      <form onSubmit={submitIssue} className="rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5">
+      <form
+        onSubmit={submitIssue}
+        className="rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5"
+      >
         <h2 className="text-xl font-bold">اعلام مشکل سفارش</h2>
         <p className="mt-2 text-sm leading-7 text-[color:var(--light)]">
           شماره سفارش و حساب شما به درخواست متصل می‌شود. اطلاعات تماس و متن درخواست طبق قرارداد
@@ -186,7 +200,10 @@ function ResolutionContent({ user }: { user: AuthUser }) {
         {referenceId ? (
           <div className="mt-4">
             <Alert variant="success" title="درخواست ثبت شد">
-              کد پیگیری: <span dir="ltr" className="font-mono">{referenceId}</span>
+              کد پیگیری:{" "}
+              <span dir="ltr" className="font-mono">
+                {referenceId}
+              </span>
             </Alert>
           </div>
         ) : null}
@@ -199,7 +216,11 @@ function ResolutionContent({ user }: { user: AuthUser }) {
         ) : null}
       </form>
 
-      <Link to="/orders/$id" params={{ id: order.id }} className="inline-flex text-sm font-bold text-[color:var(--roast)] underline">
+      <Link
+        to="/orders/$id"
+        params={{ id: order.id }}
+        className="inline-flex text-sm font-bold text-[color:var(--roast)] underline"
+      >
         بازگشت به جزئیات سفارش
       </Link>
     </section>
