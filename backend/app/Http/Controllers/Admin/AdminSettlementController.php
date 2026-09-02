@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\SettlementBatchStatus;
+use App\Exceptions\ApiDomainException;
 use App\Http\Requests\Settlement\CreateSettlementBatchRequest;
 use App\Http\Requests\Settlement\ResolveSettlementBatchRequest;
 use App\Http\Requests\Settlement\SetSettlementHoldRequest;
 use App\Models\Roastery;
+use App\Models\RoasterySettlementProfile;
 use App\Models\SettlementBatch;
 use App\Models\SubOrder;
 use App\Models\User;
@@ -56,9 +58,23 @@ final class AdminSettlementController
         $user = $request->user();
         $access->assertAdministrator($user);
         $validated = $request->validated();
+        $roastery = Roastery::query()->findOrFail($validated['roastery_id']);
+        $profile = RoasterySettlementProfile::query()
+            ->where('roastery_id', $roastery->id)
+            ->first();
+
+        if (! $profile instanceof RoasterySettlementProfile || ! $profile->isVerified()) {
+            throw new ApiDomainException(
+                'settlement.profile_not_verified',
+                'پروفایل مقصد تسویه این روستری هنوز توسط ادمین تأیید نشده است.',
+                409,
+                ['roastery_id' => [$roastery->id]],
+            );
+        }
+
         $batch = $batches->create(
             $user,
-            Roastery::query()->findOrFail($validated['roastery_id']),
+            $roastery,
             (string) ($validated['currency'] ?? 'IRR'),
             (string) $validated['idempotency_key'],
             $request,
