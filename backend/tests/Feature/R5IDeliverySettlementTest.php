@@ -8,6 +8,7 @@ use App\Enums\SettlementAllocationStatus;
 use App\Models\CheckoutQuote;
 use App\Models\Order;
 use App\Models\Roastery;
+use App\Models\RoasterySettlementProfile;
 use App\Models\SettlementAllocation;
 use App\Models\SettlementBatch;
 use App\Models\Shipment;
@@ -236,6 +237,19 @@ final class R5IDeliverySettlementTest extends TestCase
             'description' => '',
             'status' => 'verified',
             'verified_at' => now(),
+        ]);
+        RoasterySettlementProfile::query()->create([
+            'roastery_id' => $roastery->id,
+            'entity_type' => 'company',
+            'legal_name' => 'روستری R5I '.$suffix,
+            'account_holder_name' => 'روستری R5I '.$suffix,
+            'iban' => 'IR000000000000000000000001',
+            'iban_last4' => '0001',
+            'status' => 'verified',
+            'submitted_by_id' => $administrator->id,
+            'submitted_at' => now()->subDay(),
+            'reviewed_by_id' => $administrator->id,
+            'reviewed_at' => now()->subHours(12),
         ]);
         $quote = CheckoutQuote::query()->create([
             'user_id' => $customer->id,
