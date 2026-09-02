@@ -28,6 +28,12 @@ function SellerPanelPage() {
               اعضا، دسترسی و ساعات
             </Link>
             <Link
+              to="/panel/settlement-profile"
+              className="inline-flex min-h-11 items-center rounded-xl border border-[color:var(--roast)] px-4 text-sm font-bold text-[color:var(--roast)] transition hover:bg-[color:var(--roast)] hover:text-[color:var(--night)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--roast)]"
+            >
+              مقصد تسویه
+            </Link>
+            <Link
               to="/panel/grinding"
               className="inline-flex min-h-11 items-center rounded-xl border border-[color:var(--roast)] px-4 text-sm font-bold text-[color:var(--roast)] transition hover:bg-[color:var(--roast)] hover:text-[color:var(--night)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--roast)]"
             >

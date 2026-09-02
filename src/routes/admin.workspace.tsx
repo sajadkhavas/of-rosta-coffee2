@@ -22,6 +22,7 @@ export const Route = createFileRoute("/admin/workspace")({
 const workspaceLinks = [
   { to: "/admin/operations", label: "عملیات و نظارت" },
   { to: "/admin/finance", label: "مالی و تطبیق" },
+  { to: "/admin/settlement-profiles", label: "بررسی مقصدهای تسویه" },
   { to: "/admin/content", label: "محتوا" },
   { to: "/admin/quiz-reviews", label: "Quiz و نظرات" },
 ] as const;
@@ -94,7 +95,7 @@ function AdminWorkspace() {
         </dl>
       ) : null}
 
-      <nav aria-label="بخش‌های مدیریت" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <nav aria-label="بخش‌های مدیریت" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {workspaceLinks.map((item) => (
           <Link
             key={item.to}

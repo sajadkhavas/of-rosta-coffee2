@@ -288,3 +288,16 @@ export async function confirmOrderDelivery(input: {
   );
   return mapOrderDetail(response.data);
 }
+
+export async function cancelOrder(orderId: string, reason?: string): Promise<OrderDetail> {
+  const raw = await apiFetch(`/orders/${encodeURIComponent(orderId)}/cancel`, {
+    method: "POST",
+    body: { reason: reason?.trim() || null },
+  });
+  const response = parseContract(
+    resourceSchema(authoritativeOrderDetailWireSchema),
+    raw,
+    "لغو سفارش",
+  );
+  return mapOrderDetail(response.data);
+}

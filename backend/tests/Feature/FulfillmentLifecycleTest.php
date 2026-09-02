@@ -10,6 +10,7 @@ use App\Models\OrderItem;
 use App\Models\Origin;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\RoastBatch;
 use App\Models\Roastery;
 use App\Models\SubOrder;
 use App\Models\SubOrderStatusHistory;
@@ -31,6 +32,7 @@ final class FulfillmentLifecycleTest extends TestCase
         config([
             'rosta.notifications.enabled' => false,
             'rosta.notifications.sms_provider' => 'disabled',
+            'freshness.max_dispatch_roast_age_days' => 30,
         ]);
     }
 
@@ -118,6 +120,45 @@ final class FulfillmentLifecycleTest extends TestCase
         );
         $this->patchJson($endpoint, ['status' => 'preparing'])
             ->assertNotFound();
+    }
+
+    public function test_dispatch_fails_closed_without_policy_and_rejects_stale_roast_batch(): void
+    {
+        [$seller, , $roastery, $order] = $this->fixture('freshness-guard');
+        $this->authenticateWithRole($seller, Role::RoasteryOwner, 'roastery', $roastery->id);
+        $endpoint = "/api/v1/seller/roasteries/{$roastery->id}/orders/{$order->id}/fulfillment";
+        $shipmentPayload = [
+            'status' => 'shipped',
+            'carrier' => 'پست جمهوری اسلامی',
+            'tracking_code' => 'FRESHNESS-TRACK-001',
+        ];
+
+        $this->patchJson($endpoint, ['status' => 'preparing'])->assertOk();
+        $this->patchJson($endpoint, ['status' => 'ready_to_ship'])->assertOk();
+
+        config(['freshness.max_dispatch_roast_age_days' => null]);
+        $this->patchJson($endpoint, $shipmentPayload)
+            ->assertStatus(503)
+            ->assertJsonPath('error.code', 'freshness.policy_unconfigured');
+
+        $item = OrderItem::query()
+            ->where('sub_order_id', $order->subOrder->id)
+            ->firstOrFail();
+        $batch = RoastBatch::query()->findOrFail($item->roast_batch_id);
+        $batch->forceFill(['roasted_at' => now()->subDays(31)])->save();
+        config(['freshness.max_dispatch_roast_age_days' => 30]);
+
+        $this->patchJson($endpoint, $shipmentPayload)
+            ->assertConflict()
+            ->assertJsonPath('error.code', 'freshness.roast_batch_too_old');
+
+        $this->assertDatabaseMissing('shipments', [
+            'sub_order_id' => $order->subOrder->id,
+        ]);
+        $this->assertDatabaseHas('sub_orders', [
+            'id' => $order->subOrder->id,
+            'status' => 'ready_to_ship',
+        ]);
     }
 
     public function test_incident_pauses_transitions_without_rejecting_or_mutating_inventory(): void
@@ -224,6 +265,13 @@ final class FulfillmentLifecycleTest extends TestCase
             'status' => 'published',
             'published_at' => now(),
         ]);
+        $roastBatch = RoastBatch::query()->create([
+            'product_id' => $product->id,
+            'batch_code' => 'FULFILL-BATCH-'.strtoupper($suffix),
+            'roasted_at' => now()->subDays(2),
+            'available_from' => now()->subDay(),
+            'is_active' => true,
+        ]);
         $variant = ProductVariant::query()->create([
             'product_id' => $product->id,
             'sku' => 'FULFILL-'.strtoupper($suffix),
@@ -300,7 +348,7 @@ final class FulfillmentLifecycleTest extends TestCase
             'sub_order_id' => $subOrder->id,
             'product_id' => $product->id,
             'variant_id' => $variant->id,
-            'roast_batch_id' => null,
+            'roast_batch_id' => $roastBatch->id,
             'quantity' => 2,
             'unit_price' => 2_000_000,
             'line_total' => 4_000_000,
@@ -317,7 +365,11 @@ final class FulfillmentLifecycleTest extends TestCase
                 'price' => 2_000_000,
                 'currency' => 'IRR',
             ],
-            'roast_batch_snapshot' => null,
+            'roast_batch_snapshot' => [
+                'id' => $roastBatch->id,
+                'batch_code' => $roastBatch->batch_code,
+                'roasted_at' => $roastBatch->roasted_at->toIso8601String(),
+            ],
         ]);
 
         return [$seller, $foreignSeller, $roastery, $order->fresh('subOrder'), $variant];

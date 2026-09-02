@@ -4,7 +4,9 @@ use App\Http\Controllers\Admin\AdminDispatchRefundController;
 use App\Http\Controllers\Admin\AdminFinanceController;
 use App\Http\Controllers\Admin\AdminFinancialPolicyController;
 use App\Http\Controllers\Admin\AdminSettlementController;
+use App\Http\Controllers\Admin\AdminSettlementProfileController;
 use App\Http\Controllers\Seller\SellerSettlementController;
+use App\Http\Controllers\Seller\SellerSettlementProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware([
@@ -35,6 +37,12 @@ Route::middleware([
         ->where('policyId', '[A-Za-z0-9._:-]+')->name('api.v1.admin.finance.commission_policies.submit');
     Route::post('/admin/finance/commission-policies/{policyId}/publish', [AdminFinancialPolicyController::class, 'publishCommission'])
         ->where('policyId', '[A-Za-z0-9._:-]+')->name('api.v1.admin.finance.commission_policies.publish');
+
+    Route::get('/admin/finance/settlement-profiles', [AdminSettlementProfileController::class, 'index'])
+        ->name('api.v1.admin.finance.settlement_profiles.index');
+    Route::patch('/admin/finance/settlement-profiles/{profileId}', [AdminSettlementProfileController::class, 'review'])
+        ->where('profileId', '[A-Za-z0-9._:-]+')
+        ->name('api.v1.admin.finance.settlement_profiles.review');
 
     Route::get('/admin/finance/settlement-batches', [AdminSettlementController::class, 'index'])
         ->name('api.v1.admin.finance.settlement_batches.index');
@@ -74,8 +82,22 @@ Route::middleware([
     'rosta.role:roastery_owner,roastery_manager,roastery_staff,administrator',
     'rosta.seller',
     'throttle:admin-operations',
-])->get(
-    '/seller/roasteries/{roasteryId}/settlements',
-    [SellerSettlementController::class, 'index'],
-)->where('roasteryId', '[A-Za-z0-9._:-]+')
-    ->name('api.v1.seller.settlements.index');
+])->group(function (): void {
+    Route::get(
+        '/seller/roasteries/{roasteryId}/settlements',
+        [SellerSettlementController::class, 'index'],
+    )->where('roasteryId', '[A-Za-z0-9._:-]+')
+        ->name('api.v1.seller.settlements.index');
+
+    Route::get(
+        '/seller/roasteries/{roasteryId}/settlement-profile',
+        [SellerSettlementProfileController::class, 'show'],
+    )->where('roasteryId', '[A-Za-z0-9._:-]+')
+        ->name('api.v1.seller.settlement_profile.show');
+
+    Route::put(
+        '/seller/roasteries/{roasteryId}/settlement-profile',
+        [SellerSettlementProfileController::class, 'update'],
+    )->where('roasteryId', '[A-Za-z0-9._:-]+')
+        ->name('api.v1.seller.settlement_profile.update');
+});

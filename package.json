@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "vite build",
+    "build": "bun run routes:generate && vite build",
     "start": "node .output/server/index.mjs",
     "preview": "node .output/server/index.mjs",
     "routes:generate": "tsr generate",
