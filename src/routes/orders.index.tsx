@@ -154,11 +154,7 @@ function OrdersContent() {
               .join("، ");
             return (
               <li key={order.id}>
-                <Link
-                  to="/orders/$id"
-                  params={{ id: order.id }}
-                  className="block rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5 transition hover:-translate-y-0.5 hover:border-[color:var(--roast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--roast)]"
-                >
+                <article className="rounded-2xl border border-[color:var(--mid)] bg-[color:var(--dark)] p-5">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                       <h2 className="font-bold">سفارش #{order.orderNumber}</h2>
@@ -184,7 +180,23 @@ function OrdersContent() {
                       {formatIrr(order.grandTotal)}
                     </span>
                   </div>
-                </Link>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <Link
+                      to="/orders/$id"
+                      params={{ id: order.id }}
+                      className="inline-flex min-h-11 items-center rounded-xl bg-[color:var(--roast)] px-4 text-sm font-bold text-[color:var(--night)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--roast)]"
+                    >
+                      جزئیات و رهگیری
+                    </Link>
+                    <Link
+                      to="/order-help/$id"
+                      params={{ id: order.id }}
+                      className="inline-flex min-h-11 items-center rounded-xl border border-[color:var(--mid)] px-4 text-sm font-bold text-[color:var(--steam)] transition hover:border-[color:var(--roast)] hover:text-[color:var(--roast)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--roast)]"
+                    >
+                      لغو یا اعلام مشکل
+                    </Link>
+                  </div>
+                </article>
               </li>
             );
           })}
