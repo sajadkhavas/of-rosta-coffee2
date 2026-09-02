@@ -79,7 +79,7 @@ final class FreshnessDispatchGuard
                     409,
                     [
                         'roast_batch_id' => [$batch->id],
-                        'max_dispatch_roast_age_days' => [$maxAgeDays],
+                        'max_dispatch_roast_age_days' => [(string) $maxAgeDays],
                     ],
                 );
             }
