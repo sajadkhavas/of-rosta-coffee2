@@ -1,0 +1,53 @@
+name: PS10 CommonMark Lock Refresh
+
+on:
+  push:
+    branches:
+      - phase/rosta-ps10-launch-capability-closure
+    paths:
+      - .github/workflows/ps10-commonmark-lock-refresh.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-lock:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout PS10 branch
+        uses: actions/checkout@v4
+        with:
+          ref: phase/rosta-ps10-launch-capability-closure
+          fetch-depth: 0
+
+      - name: Setup PHP 8.3 and Composer
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+          coverage: none
+
+      - name: Verify current advisory state
+        working-directory: backend
+        run: composer audit --locked || true
+
+      - name: Update only CommonMark security dependency
+        working-directory: backend
+        run: composer update league/commonmark --with-dependencies --minimal-changes --no-interaction --no-progress
+
+      - name: Verify patched lock
+        working-directory: backend
+        run: |
+          composer validate --strict
+          composer audit --locked
+          composer show --locked league/commonmark
+
+      - name: Commit generated lock only
+        run: |
+          test -n "$(git status --porcelain -- backend/composer.lock)"
+          test -z "$(git status --porcelain -- . ':!backend/composer.lock')"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add backend/composer.lock
+          git commit -m 'fix(ps10): update commonmark security lock to 2.10.0'
+          git push origin HEAD:phase/rosta-ps10-launch-capability-closure
