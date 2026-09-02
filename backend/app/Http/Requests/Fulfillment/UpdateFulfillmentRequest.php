@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Fulfillment;
 
 use App\Http\Requests\Concerns\RejectsUnexpectedInput;
+use App\Models\SubOrder;
+use App\Services\Fulfillment\FreshnessDispatchGuard;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -49,5 +51,23 @@ final class UpdateFulfillmentRequest extends FormRequest
             ],
             'internal_note' => ['nullable', 'string', 'max:2000'],
         ];
+    }
+
+    protected function passedValidation(): void
+    {
+        if ($this->validated('status') !== 'shipped') {
+            return;
+        }
+
+        $orderId = (string) $this->route('orderId');
+        $roasteryId = $this->route('roasteryId');
+
+        $query = SubOrder::query()->where('order_id', $orderId);
+        if (is_string($roasteryId) && $roasteryId !== '') {
+            $query->where('roastery_id', $roasteryId);
+        }
+
+        $subOrder = $query->orderBy('created_at')->firstOrFail();
+        app(FreshnessDispatchGuard::class)->assertDispatchable($subOrder);
     }
 }
