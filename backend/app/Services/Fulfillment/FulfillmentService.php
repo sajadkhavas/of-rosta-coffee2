@@ -29,6 +29,7 @@ final class FulfillmentService
         private readonly NotificationOutboxService $outbox,
         private readonly AuditRecorder $audit,
         private readonly DeliveryConfirmationService $deliveries,
+        private readonly FreshnessDispatchGuard $freshness,
     ) {}
 
     /**
@@ -68,6 +69,10 @@ final class FulfillmentService
             $this->assertNoOpenIncident($subOrder);
             $from = $subOrder->status;
             $this->assertTransitionAllowed($order, $from, $target, $allowDelivery);
+
+            if ($target === SubOrderStatus::Shipped) {
+                $this->freshness->assertDispatchable($subOrder);
+            }
 
             match ($target) {
                 SubOrderStatus::Preparing => $this->prepare($order, $subOrder, $actor),
