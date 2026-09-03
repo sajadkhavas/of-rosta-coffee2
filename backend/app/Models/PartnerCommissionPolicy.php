@@ -27,7 +27,9 @@ final class PartnerCommissionPolicy extends Model
     use HasUlids;
 
     public const STATUS_DRAFT = 'draft';
+
     public const STATUS_PUBLISHED = 'published';
+
     public const STATUS_RETIRED = 'retired';
 
     public const BASIS_PLATFORM_REVENUE = 'platform_revenue';
@@ -48,13 +50,13 @@ final class PartnerCommissionPolicy extends Model
 
     protected static function booted(): void
     {
-        static::updating(function (self $policy): void {
+        self::updating(function (self $policy): void {
             if ($policy->getOriginal('status') !== self::STATUS_DRAFT) {
                 throw new LogicException('Published partner commission policies are immutable.');
             }
         });
 
-        static::deleting(function (self $policy): void {
+        self::deleting(function (self $policy): void {
             if ($policy->status !== self::STATUS_DRAFT) {
                 throw new LogicException('Published partner commission policies cannot be deleted.');
             }
