@@ -250,7 +250,7 @@ final class GrowthLeadService
     private function assertNotSelfReferral(GrowthPartner $partner, ?string $mobile, ?string $email): void
     {
         $partnerUser = $partner->user;
-        if ($partnerUser === null) {
+        if (! $partnerUser instanceof User) {
             return;
         }
 
