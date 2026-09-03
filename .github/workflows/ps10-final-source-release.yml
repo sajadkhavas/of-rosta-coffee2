@@ -19,6 +19,7 @@ env:
   ROSTA_PS9_TAG: rosta-pre-server-2026-09-01
   ROSTA_PS9_ACCEPTED_SHA: ab96dd2280f9e1870455cadc10297ee0fa20a308
   ROSTA_PS10_TAG: rosta-pre-server-2026-09-02
+  ROSTA_PS10_ACCEPTED_SHA: 8dd13dda3a1e8a9b240112a659586f6eac52cdb3
   ROSTA_PS10_PRE_RELEASE_MERGE_SHA: fd55c99e80d8be3b130bde5ce172f5b3066a28bd
   ROSTA_PS10_ORIGINAL_SOURCE_HEAD: 9d466b787ac5b602d0417a6d124cbd438a12557d
 
@@ -29,6 +30,7 @@ jobs:
     timeout-minutes: 20
     outputs:
       source_head: ${{ steps.identity.outputs.source_head }}
+      release_needed: ${{ steps.identity.outputs.release_needed }}
     env:
       GH_TOKEN: ${{ github.token }}
       CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -54,6 +56,32 @@ jobs:
           git fetch --force --tags origin
           test "$(git rev-parse "$ROSTA_PS9_TAG^{commit}")" = "$ROSTA_PS9_ACCEPTED_SHA"
           test "$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$ROSTA_PS9_TAG" --jq .tag_name)" = "$ROSTA_PS9_TAG"
+
+          if git rev-parse --verify "$ROSTA_PS10_TAG^{commit}" >/dev/null 2>&1; then
+            existing_ps10="$(git rev-parse "$ROSTA_PS10_TAG^{commit}")"
+            test "$existing_ps10" = "$ROSTA_PS10_ACCEPTED_SHA" || {
+              echo "Frozen PS10 tag moved from accepted source identity: $existing_ps10" >&2
+              exit 1
+            }
+            test "$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$ROSTA_PS10_TAG" --jq .tag_name)" = "$ROSTA_PS10_TAG"
+            git merge-base --is-ancestor "$ROSTA_PS10_ACCEPTED_SHA" "$CANDIDATE_SHA"
+
+            source_head="$ROSTA_PS10_ACCEPTED_SHA"
+            echo "source_head=$source_head" >> "$GITHUB_OUTPUT"
+            echo "release_needed=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "mode=frozen-verification"
+              echo "event=${{ github.event_name }}"
+              echo "candidate=$CANDIDATE_SHA"
+              echo "source_head=$source_head"
+              echo "candidate_tree=$(git rev-parse "$CANDIDATE_SHA^{tree}")"
+              echo "ps9_tag=$ROSTA_PS9_TAG"
+              echo "ps9_accepted_sha=$ROSTA_PS9_ACCEPTED_SHA"
+              echo "ps10_tag=$ROSTA_PS10_TAG"
+              echo "ps10_accepted_sha=$ROSTA_PS10_ACCEPTED_SHA"
+            } | tee "$EVIDENCE_DIR/identity.txt"
+            exit 0
+          fi
 
           read -r -a pre_release_parents <<< "$(git rev-list --parents -n 1 "$ROSTA_PS10_PRE_RELEASE_MERGE_SHA")"
           test "${#pre_release_parents[@]}" -eq 3
@@ -122,7 +150,9 @@ jobs:
           fi
 
           echo "source_head=$source_head" >> "$GITHUB_OUTPUT"
+          echo "release_needed=true" >> "$GITHUB_OUTPUT"
           {
+            echo "mode=release-candidate"
             echo "event=${{ github.event_name }}"
             echo "candidate=$CANDIDATE_SHA"
             echo "source_head=$source_head"
@@ -145,7 +175,7 @@ jobs:
 
   publish-release:
     name: publish-new-immutable-source-identity
-    if: github.event_name == 'push' && github.ref == 'refs/heads/integration/rosta-release-candidate'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/integration/rosta-release-candidate' && needs.validate-source.outputs.release_needed == 'true'
     needs: [validate-source]
     runs-on: ubuntu-latest
     timeout-minutes: 50
