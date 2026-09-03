@@ -13,8 +13,8 @@ use App\Models\RefundAttempt;
 use App\Models\User;
 use App\Services\AuditRecorder;
 use App\Services\Finance\MoneyMath;
+use Carbon\CarbonInterface;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 final class PartnerCommissionService
@@ -78,9 +78,7 @@ final class PartnerCommissionService
                     );
                 }
 
-                $financialSnapshot = is_array($lockedOrder->financial_snapshot)
-                    ? $lockedOrder->financial_snapshot
-                    : [];
+                $financialSnapshot = $lockedOrder->financial_snapshot;
                 if (($financialSnapshot['status'] ?? null) !== 'authoritative') {
                     throw new ApiDomainException(
                         'growth.financial_truth_required',
@@ -335,7 +333,7 @@ final class PartnerCommissionService
             ->first();
     }
 
-    private function resolvePolicy(Carbon $at): PartnerCommissionPolicy
+    private function resolvePolicy(CarbonInterface $at): PartnerCommissionPolicy
     {
         $policy = PartnerCommissionPolicy::query()
             ->where('status', PartnerCommissionPolicy::STATUS_PUBLISHED)
@@ -357,8 +355,6 @@ final class PartnerCommissionService
 
         if (
             $policy->basis !== PartnerCommissionPolicy::BASIS_PLATFORM_REVENUE
-            || ! is_int($policy->basis_points)
-            || $policy->basis_points < 0
             || $policy->basis_points > MoneyMath::BASIS_POINTS
             || ! in_array($policy->rounding_mode, ['floor', 'half_up'], true)
             || ! is_string($policy->checksum)
@@ -384,7 +380,7 @@ final class PartnerCommissionService
             'basis' => (string) $policy->basis,
             'basis_points' => (int) $policy->basis_points,
             'rounding_mode' => (string) $policy->rounding_mode,
-            'effective_from' => $policy->effective_from?->toIso8601String(),
+            'effective_from' => $policy->effective_from->toIso8601String(),
             'effective_to' => $policy->effective_to?->toIso8601String(),
         ];
     }
