@@ -2,12 +2,26 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use LogicException;
 
+/**
+ * @property string $id
+ * @property string $version
+ * @property string $status
+ * @property string $basis
+ * @property int $basis_points
+ * @property string|null $rounding_mode
+ * @property CarbonImmutable $effective_from
+ * @property CarbonImmutable|null $effective_to
+ * @property string|null $checksum
+ * @property string|null $notes
+ * @property string|null $created_by_id
+ */
 final class PartnerCommissionPolicy extends Model
 {
     use HasUlids;
