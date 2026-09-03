@@ -11,13 +11,19 @@ final class GrowthLead extends Model
     use HasUlids;
 
     public const TYPE_CUSTOMER = 'customer';
+
     public const TYPE_ROASTERY = 'roastery';
+
     public const TYPE_B2B = 'b2b';
 
     public const STATUS_LEAD = 'lead';
+
     public const STATUS_CONTACTED = 'contacted';
+
     public const STATUS_QUALIFIED = 'qualified';
+
     public const STATUS_CONVERTED = 'converted';
+
     public const STATUS_LOST = 'lost';
 
     protected $fillable = [
