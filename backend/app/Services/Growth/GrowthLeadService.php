@@ -33,7 +33,7 @@ final class GrowthLeadService
      */
     public function claim(GrowthPartner $partner, array $payload, ?User $actor = null): GrowthLead
     {
-        $type = trim((string) ($payload['type'] ?? ''));
+        $type = trim((string) $payload['type']);
         if (! in_array($type, GrowthLead::types(), true)) {
             throw new ApiDomainException(
                 'growth.lead_type_invalid',
