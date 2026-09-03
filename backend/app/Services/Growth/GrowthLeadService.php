@@ -110,8 +110,6 @@ final class GrowthLeadService
                 return $lead;
             });
         } catch (QueryException $exception) {
-            // The unique DB constraint is the final concurrency boundary. Re-read
-            // outside the failed transaction so this works on PostgreSQL as well.
             $existing = GrowthLead::query()->where('dedupe_hash', $dedupeHash)->first();
             if (! $existing instanceof GrowthLead) {
                 throw $exception;
@@ -121,9 +119,7 @@ final class GrowthLeadService
         }
     }
 
-    /**
-     * @param array<string,mixed> $context
-     */
+    /** @param array<string,mixed> $context */
     public function attribute(
         GrowthPartner $partner,
         string $subjectType,
@@ -158,6 +154,14 @@ final class GrowthLeadService
                     throw new ApiDomainException(
                         'growth.partner_not_active',
                         'همکار رشد برای انتساب فعال نیست.',
+                        409,
+                    );
+                }
+
+                if ($subjectType === 'user' && hash_equals((string) $lockedPartner->user_id, $subjectId)) {
+                    throw new ApiDomainException(
+                        'growth.self_referral_forbidden',
+                        'انتساب مستقیم حساب خود همکار رشد مجاز نیست.',
                         409,
                     );
                 }
@@ -344,7 +348,7 @@ final class GrowthLeadService
         return $trimmed === '' ? null : $trimmed;
     }
 
-    /** @return array<string,scalar|null> */
+    /** @return array<string, scalar> */
     private function safeLeadMeta(mixed $meta): array
     {
         if (! is_array($meta)) {
@@ -353,16 +357,18 @@ final class GrowthLeadService
 
         $safe = [];
         foreach (['campaign', 'medium', 'placement', 'landing_path'] as $key) {
-            $value = $meta[$key] ?? null;
-            if (is_scalar($value) || $value === null) {
-                $safe[$key] = is_string($value) ? mb_substr(trim($value), 0, 191) : $value;
+            if (! array_key_exists($key, $meta) || $meta[$key] === null || ! is_scalar($meta[$key])) {
+                continue;
             }
+
+            $value = $meta[$key];
+            $safe[$key] = is_string($value) ? mb_substr(trim($value), 0, 191) : $value;
         }
 
         return $safe;
     }
 
-    /** @param array<string,mixed> $context @return array<string,scalar|null> */
+    /** @param array<string,mixed> $context @return array<string, scalar> */
     private function safeAttributionContext(array $context): array
     {
         return $this->safeLeadMeta($context);
