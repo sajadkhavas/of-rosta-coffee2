@@ -44,6 +44,8 @@ final class PartnerCommissionLifecycleTest extends TestCase
             'rosta.notifications.enabled' => false,
             'rosta.notifications.sms_provider' => 'disabled',
         ]);
+
+        $this->publishFinancialTruthPolicies();
     }
 
     public function test_missing_policy_blocks_commission_event_without_rolling_back_paid_order(): void
@@ -194,6 +196,59 @@ final class PartnerCommissionLifecycleTest extends TestCase
             ->count());
         $this->assertDatabaseCount('partner_commission_entries', 2);
         self::assertSame(1, RefundAttempt::query()->whereKey($refund['id'])->count());
+    }
+
+    private function publishFinancialTruthPolicies(): void
+    {
+        $author = User::factory()->create();
+        $approver = User::factory()->create();
+        $this->authenticateWithRole($author, Role::Administrator);
+
+        $tax = $this->postJson('/api/v1/admin/finance/tax-policies', [
+            'currency' => 'IRR',
+            'rounding_mode' => 'half_up',
+            'effective_from' => now()->subMinute()->toIso8601String(),
+            'effective_to' => now()->addYear()->toIso8601String(),
+            'change_reason' => 'PS11 lifecycle fixture Financial Truth tax policy.',
+            'rules' => [[
+                'code' => 'ps11.fixture.product.tax',
+                'component' => 'product',
+                'jurisdiction' => 'fixture-only',
+                'rate_basis_points' => 1_000,
+                'priority' => 10,
+                'applicability' => null,
+            ]],
+        ])->assertCreated()->assertJsonPath('data.status', 'draft')->json('data');
+        $this->postJson('/api/v1/admin/finance/tax-policies/'.$tax['id'].'/submit')
+            ->assertOk()
+            ->assertJsonPath('data.status', 'pending_approval');
+
+        $commission = $this->postJson('/api/v1/admin/finance/commission-policies', [
+            'currency' => 'IRR',
+            'rounding_mode' => 'half_up',
+            'effective_from' => now()->subMinute()->toIso8601String(),
+            'effective_to' => now()->addYear()->toIso8601String(),
+            'change_reason' => 'PS11 lifecycle fixture Financial Truth commission policy.',
+            'rules' => [[
+                'code' => 'ps11.fixture.product.commission',
+                'component' => 'product',
+                'owner_type' => 'roastery',
+                'rate_basis_points' => 500,
+                'priority' => 10,
+                'applicability' => null,
+            ]],
+        ])->assertCreated()->assertJsonPath('data.status', 'draft')->json('data');
+        $this->postJson('/api/v1/admin/finance/commission-policies/'.$commission['id'].'/submit')
+            ->assertOk()
+            ->assertJsonPath('data.status', 'pending_approval');
+
+        $this->authenticateWithRole($approver, Role::Administrator);
+        $this->postJson('/api/v1/admin/finance/tax-policies/'.$tax['id'].'/publish')
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published');
+        $this->postJson('/api/v1/admin/finance/commission-policies/'.$commission['id'].'/publish')
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published');
     }
 
     private function attributeOrder(string $orderId, string $suffix): GrowthPartner
