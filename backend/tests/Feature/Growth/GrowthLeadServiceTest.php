@@ -45,6 +45,46 @@ final class GrowthLeadServiceTest extends TestCase
         $this->assertSame((string) $lead->id, $audit->metadata['lead_id']);
     }
 
+    public function test_b2b_lead_contract_preserves_type_and_company_while_pii_is_encrypted_at_rest(): void
+    {
+        $partner = $this->activePartner('09120000007', 'partner-7@example.test', 'partner-seven');
+
+        $lead = $this->service()->claim($partner, [
+            'type' => GrowthLead::TYPE_B2B,
+            'name' => 'مسئول خرید',
+            'mobile' => '+989121234572',
+            'email' => 'BUYER@wholesale.example.test',
+            'company_name' => 'Wholesale Coffee Co',
+            'meta' => [
+                'campaign' => 'b2b-launch',
+                'placement' => 'wholesale-landing',
+            ],
+        ], $partner->user);
+
+        $lead->refresh();
+
+        $this->assertSame(GrowthLead::TYPE_B2B, $lead->type);
+        $this->assertSame('مسئول خرید', $lead->name);
+        $this->assertSame('09121234572', $lead->mobile);
+        $this->assertSame('buyer@wholesale.example.test', $lead->email);
+        $this->assertSame('Wholesale Coffee Co', $lead->company_name);
+        $this->assertSame([
+            'campaign' => 'b2b-launch',
+            'placement' => 'wholesale-landing',
+        ], $lead->meta);
+
+        $this->assertNotSame('مسئول خرید', $lead->getRawOriginal('name'));
+        $this->assertNotSame('09121234572', $lead->getRawOriginal('mobile'));
+        $this->assertNotSame('buyer@wholesale.example.test', $lead->getRawOriginal('email'));
+        $this->assertNotSame('Wholesale Coffee Co', $lead->getRawOriginal('company_name'));
+
+        $audit = AuditLog::query()->where('action', 'growth.lead.claimed')->latest('id')->firstOrFail();
+        $auditPayload = json_encode($audit->metadata, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
+        $this->assertStringNotContainsString('Wholesale Coffee Co', $auditPayload);
+        $this->assertStringNotContainsString('buyer@wholesale.example.test', $auditPayload);
+        $this->assertStringNotContainsString('09121234572', $auditPayload);
+    }
+
     public function test_same_partner_duplicate_claim_is_idempotent(): void
     {
         $partner = $this->activePartner('09120000002', 'partner-2@example.test', 'partner-two');
