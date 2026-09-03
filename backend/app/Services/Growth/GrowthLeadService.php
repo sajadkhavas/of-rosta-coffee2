@@ -16,9 +16,7 @@ use Illuminate\Support\Facades\DB;
 
 final class GrowthLeadService
 {
-    public function __construct(private readonly AuditRecorder $auditRecorder)
-    {
-    }
+    public function __construct(private readonly AuditRecorder $auditRecorder) {}
 
     /**
      * @param array{
@@ -34,7 +32,7 @@ final class GrowthLeadService
     public function claim(GrowthPartner $partner, array $payload, ?User $actor = null): GrowthLead
     {
         $type = trim((string) $payload['type']);
-        if (! in_array($type, GrowthLead::types(), true)) {
+        if (in_array($type, GrowthLead::types(), true) === false) {
             throw new ApiDomainException(
                 'growth.lead_type_invalid',
                 'نوع سرنخ معتبر نیست.',
@@ -63,7 +61,7 @@ final class GrowthLeadService
                     ->lockForUpdate()
                     ->find($partner->id);
 
-                if (! $lockedPartner instanceof GrowthPartner || ! $lockedPartner->isActive()) {
+                if ($lockedPartner === null || $lockedPartner->isActive() === false) {
                     throw new ApiDomainException(
                         'growth.partner_not_active',
                         'همکار رشد برای ثبت سرنخ فعال نیست.',
@@ -111,7 +109,7 @@ final class GrowthLeadService
             });
         } catch (QueryException $exception) {
             $existing = GrowthLead::query()->where('dedupe_hash', $dedupeHash)->first();
-            if (! $existing instanceof GrowthLead) {
+            if ($existing === null) {
                 throw $exception;
             }
 
@@ -131,7 +129,7 @@ final class GrowthLeadService
         $subjectType = trim($subjectType);
         $subjectId = trim($subjectId);
 
-        if (! in_array($subjectType, ['user', 'roastery', 'order'], true) || $subjectId === '') {
+        if (in_array($subjectType, ['user', 'roastery', 'order'], true) === false || $subjectId === '') {
             throw new ApiDomainException(
                 'growth.attribution_subject_invalid',
                 'موضوع انتساب معتبر نیست.',
@@ -139,7 +137,7 @@ final class GrowthLeadService
             );
         }
 
-        if (! $this->subjectExists($subjectType, $subjectId)) {
+        if ($this->subjectExists($subjectType, $subjectId) === false) {
             throw new ApiDomainException(
                 'growth.attribution_subject_not_found',
                 'موضوع انتساب پیدا نشد.',
@@ -150,7 +148,7 @@ final class GrowthLeadService
         try {
             return DB::transaction(function () use ($partner, $subjectType, $subjectId, $lead, $actor, $context): PartnerAttribution {
                 $lockedPartner = GrowthPartner::query()->lockForUpdate()->find($partner->id);
-                if (! $lockedPartner instanceof GrowthPartner || ! $lockedPartner->isActive()) {
+                if ($lockedPartner === null || $lockedPartner->isActive() === false) {
                     throw new ApiDomainException(
                         'growth.partner_not_active',
                         'همکار رشد برای انتساب فعال نیست.',
@@ -215,7 +213,7 @@ final class GrowthLeadService
                 ->where('subject_id', $subjectId)
                 ->first();
 
-            if (! $existing instanceof PartnerAttribution) {
+            if ($existing === null) {
                 throw $exception;
             }
 
@@ -252,7 +250,7 @@ final class GrowthLeadService
     private function assertNotSelfReferral(GrowthPartner $partner, ?string $mobile, ?string $email): void
     {
         $partnerUser = $partner->user;
-        if (! $partnerUser instanceof User) {
+        if ($partnerUser === null) {
             return;
         }
 
@@ -283,7 +281,7 @@ final class GrowthLeadService
         }
 
         $normalized = IranMobile::normalize($raw);
-        if (! IranMobile::isValid($normalized)) {
+        if (IranMobile::isValid($normalized) === false) {
             throw new ApiDomainException(
                 'growth.lead_mobile_invalid',
                 'شماره موبایل سرنخ معتبر نیست.',
@@ -351,13 +349,13 @@ final class GrowthLeadService
     /** @return array<string, scalar> */
     private function safeLeadMeta(mixed $meta): array
     {
-        if (! is_array($meta)) {
+        if (is_array($meta) === false) {
             return [];
         }
 
         $safe = [];
         foreach (['campaign', 'medium', 'placement', 'landing_path'] as $key) {
-            if (! array_key_exists($key, $meta) || $meta[$key] === null || ! is_scalar($meta[$key])) {
+            if (array_key_exists($key, $meta) === false || $meta[$key] === null || is_scalar($meta[$key]) === false) {
                 continue;
             }
 
