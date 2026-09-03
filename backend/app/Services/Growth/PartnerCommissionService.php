@@ -79,7 +79,22 @@ final class PartnerCommissionService
                 }
 
                 $financialSnapshot = $lockedOrder->financial_snapshot;
-                if (($financialSnapshot['status'] ?? null) !== 'authoritative') {
+                $financialGroups = $financialSnapshot['groups'] ?? null;
+                $hasAuthoritativeTruth = ($financialSnapshot['version'] ?? null) === 'ps4a-financial-truth-v1'
+                    && is_array($financialGroups)
+                    && $financialGroups !== [];
+                if ($hasAuthoritativeTruth) {
+                    foreach ($financialGroups as $financialGroup) {
+                        if (
+                            ! is_array($financialGroup)
+                            || (($financialGroup['snapshot']['status'] ?? null) !== 'authoritative')
+                        ) {
+                            $hasAuthoritativeTruth = false;
+                            break;
+                        }
+                    }
+                }
+                if (! $hasAuthoritativeTruth) {
                     throw new ApiDomainException(
                         'growth.financial_truth_required',
                         'کمیسیون فقط از Financial Truth قطعی قابل محاسبه است.',
