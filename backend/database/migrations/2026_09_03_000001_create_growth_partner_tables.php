@@ -87,21 +87,26 @@ return new class extends Migration
             $table->foreignUlid('attribution_id')->nullable()->constrained('partner_attributions')->nullOnDelete();
             $table->foreignUlid('policy_id')->constrained('partner_commission_policies')->restrictOnDelete();
             $table->foreignUlid('order_id')->constrained('orders')->cascadeOnDelete();
+            $table->string('entry_type', 24)->default('accrual')->index();
+            $table->foreignUlid('reversal_of_id')->nullable()->constrained('partner_commission_entries')->restrictOnDelete();
             $table->string('status', 24)->default('pending')->index();
             $table->unsignedBigInteger('attributed_gmv_amount')->default(0);
             $table->unsignedBigInteger('platform_revenue_amount')->default(0);
-            $table->unsignedBigInteger('commission_amount')->default(0);
+            $table->bigInteger('commission_amount');
             $table->string('currency', 8)->default('IRR');
             $table->string('idempotency_key', 191)->unique();
+            $table->string('source_type', 64);
+            $table->string('source_id', 191);
             $table->json('financial_snapshot');
             $table->timestamp('earned_at')->nullable();
             $table->timestamp('approved_at')->nullable();
             $table->timestamp('paid_at')->nullable();
-            $table->timestamp('reversed_at')->nullable();
-            $table->text('reversal_reason')->nullable();
+            $table->timestamp('recorded_at');
+            $table->text('reason')->nullable();
             $table->timestamps();
 
-            $table->unique(['partner_id', 'order_id'], 'partner_commission_order_unique');
+            $table->unique(['source_type', 'source_id'], 'partner_commission_source_unique');
+            $table->index(['partner_id', 'order_id']);
             $table->index(['partner_id', 'status']);
         });
     }
