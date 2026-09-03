@@ -19,12 +19,14 @@ env:
   ROSTA_PS9_TAG: rosta-pre-server-2026-09-01
   ROSTA_PS9_ACCEPTED_SHA: ab96dd2280f9e1870455cadc10297ee0fa20a308
   ROSTA_PS10_TAG: rosta-pre-server-2026-09-02
+  ROSTA_PS10_PRE_RELEASE_MERGE_SHA: fd55c99e80d8be3b130bde5ce172f5b3066a28bd
+  ROSTA_PS10_ORIGINAL_SOURCE_HEAD: 9d466b787ac5b602d0417a6d124cbd438a12557d
 
 jobs:
   validate-source:
     name: validate-source-lineage-and-gates
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     outputs:
       source_head: ${{ steps.identity.outputs.source_head }}
     env:
@@ -38,7 +40,7 @@ jobs:
           ref: ${{ env.CANDIDATE_SHA }}
           fetch-depth: 0
 
-      - name: Verify immutable PS9 lineage
+      - name: Verify immutable source lineage
         id: identity
         shell: bash
         run: |
@@ -47,16 +49,24 @@ jobs:
           test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
           test -s docs/pre-server/PS10_FINAL_ACCEPTANCE.md
           test -s docs/pre-server/PS10_RELEASE_NOTES.md
+          test -s docs/pre-server/PS10_RELEASE_RECOVERY.md
+
           git fetch --force --tags origin
           test "$(git rev-parse "$ROSTA_PS9_TAG^{commit}")" = "$ROSTA_PS9_ACCEPTED_SHA"
           test "$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$ROSTA_PS9_TAG" --jq .tag_name)" = "$ROSTA_PS9_TAG"
+
+          read -r -a pre_release_parents <<< "$(git rev-list --parents -n 1 "$ROSTA_PS10_PRE_RELEASE_MERGE_SHA")"
+          test "${#pre_release_parents[@]}" -eq 3
+          test "${pre_release_parents[1]}" = "$ROSTA_PS9_ACCEPTED_SHA"
+          test "${pre_release_parents[2]}" = "$ROSTA_PS10_ORIGINAL_SOURCE_HEAD"
+          test "$(git rev-parse "$ROSTA_PS10_PRE_RELEASE_MERGE_SHA^{tree}")" = "$(git rev-parse "$ROSTA_PS10_ORIGINAL_SOURCE_HEAD^{tree}")"
 
           if [[ "${{ github.event_name }}" == "push" ]]; then
             read -r -a parents <<< "$(git rev-list --parents -n 1 "$CANDIDATE_SHA")"
             test "${#parents[@]}" -eq 3
             base_parent="${parents[1]}"
             source_head="${parents[2]}"
-            test "$base_parent" = "$ROSTA_PS9_ACCEPTED_SHA"
+            test "$base_parent" = "$ROSTA_PS10_PRE_RELEASE_MERGE_SHA"
             test "$(git rev-parse "$CANDIDATE_SHA^{tree}")" = "$(git rev-parse "$source_head^{tree}")"
             git diff --check "$base_parent...$source_head"
 
@@ -97,15 +107,18 @@ jobs:
             done
           else
             source_head="$CANDIDATE_SHA"
-            git merge-base --is-ancestor "$ROSTA_PS9_ACCEPTED_SHA" "$source_head"
-            git diff --check "$ROSTA_PS9_ACCEPTED_SHA...$source_head"
-            if git rev-parse --verify "$ROSTA_PS10_TAG^{commit}" >/dev/null 2>&1; then
-              existing_ps10="$(git rev-parse "$ROSTA_PS10_TAG^{commit}")"
-              test "$existing_ps10" = "$source_head" || {
-                echo "PS10 tag already protects a different source identity: $existing_ps10" >&2
-                exit 1
-              }
-            fi
+            git merge-base --is-ancestor "$ROSTA_PS10_PRE_RELEASE_MERGE_SHA" "$source_head"
+            git diff --check "$ROSTA_PS10_PRE_RELEASE_MERGE_SHA...$source_head"
+          fi
+
+          if git rev-parse --verify "$ROSTA_PS10_TAG^{commit}" >/dev/null 2>&1; then
+            existing_ps10="$(git rev-parse "$ROSTA_PS10_TAG^{commit}")"
+            expected_identity="$source_head"
+            if [[ "${{ github.event_name }}" == "push" ]]; then expected_identity="$CANDIDATE_SHA"; fi
+            test "$existing_ps10" = "$expected_identity" || {
+              echo "PS10 tag already protects a different source identity: $existing_ps10" >&2
+              exit 1
+            }
           fi
 
           echo "source_head=$source_head" >> "$GITHUB_OUTPUT"
@@ -116,6 +129,8 @@ jobs:
             echo "candidate_tree=$(git rev-parse "$CANDIDATE_SHA^{tree}")"
             echo "ps9_tag=$ROSTA_PS9_TAG"
             echo "ps9_accepted_sha=$ROSTA_PS9_ACCEPTED_SHA"
+            echo "ps10_pre_release_merge=$ROSTA_PS10_PRE_RELEASE_MERGE_SHA"
+            echo "ps10_original_source=$ROSTA_PS10_ORIGINAL_SOURCE_HEAD"
             echo "ps10_tag=$ROSTA_PS10_TAG"
           } | tee "$EVIDENCE_DIR/identity.txt"
 
@@ -133,7 +148,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/integration/rosta-release-candidate'
     needs: [validate-source]
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 50
     permissions:
       contents: write
       actions: read
@@ -183,6 +198,19 @@ jobs:
           GITHUB_SHA="$CANDIDATE_SHA" bun run release:manifest -- .output "$EVIDENCE_DIR/frontend-release-manifest.json"
           mv ps10-sbom.spdx.json "$EVIDENCE_DIR/rosta-$CANDIDATE_SHA.spdx.json"
 
+          workspace_status="$(git status --porcelain --untracked-files=all)"
+          printf '%s\n' "$workspace_status" > "$EVIDENCE_DIR/workspace-after-build.txt"
+          if [[ -n "$workspace_status" ]]; then
+            unexpected="$(printf '%s\n' "$workspace_status" | grep -vE '^ M src/routeTree\.gen\.ts$' || true)"
+            if [[ -n "$unexpected" ]]; then
+              echo "Unexpected build workspace mutation:" >&2
+              printf '%s\n' "$unexpected" >&2
+              exit 1
+            fi
+            git checkout -- src/routeTree.gen.ts
+          fi
+          test -z "$(git status --porcelain --untracked-files=all)"
+
       - name: Seal PS10 release evidence
         shell: bash
         run: |
@@ -204,17 +232,19 @@ jobs:
 
           cat > "$EVIDENCE_DIR/ps10-final-acceptance.json" <<JSON
           {
-            "schema": "rosta.ps10-final-acceptance.v1",
+            "schema": "rosta.ps10-final-acceptance.v2",
             "verdict": "PRE-SERVER GO",
             "merge_sha": "$CANDIDATE_SHA",
             "source_head_sha": "$SOURCE_HEAD",
             "tree_sha": "$tree",
             "previous_release_sha": "$ROSTA_PS9_ACCEPTED_SHA",
             "previous_release_tag": "$ROSTA_PS9_TAG",
+            "pre_release_merge_sha": "$ROSTA_PS10_PRE_RELEASE_MERGE_SHA",
             "release_tag": "$ROSTA_PS10_TAG",
             "workflow_run": "https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID",
             "source_tree_equals_merge_tree": true,
             "exact_head_workflow_matrix": "PASS",
+            "publication_recovery": true,
             "real_server_activated": false,
             "external_provider_activation_claimed": false
           }
@@ -225,9 +255,10 @@ jobs:
 
           - Verdict: PRE-SERVER GO
           - Merge SHA: \`$CANDIDATE_SHA\`
-          - Exact tested source head: \`$SOURCE_HEAD\`
+          - Exact tested corrective source head: \`$SOURCE_HEAD\`
           - Tree SHA: \`$tree\`
           - Historical PS9 tag: \`$ROSTA_PS9_TAG\` -> \`$ROSTA_PS9_ACCEPTED_SHA\`
+          - Pre-release PS10 merge (publication failed before tag): \`$ROSTA_PS10_PRE_RELEASE_MERGE_SHA\`
           - New PS10 tag: \`$ROSTA_PS10_TAG\`
           - Workflow: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
           - Real server activated: no
@@ -240,15 +271,17 @@ jobs:
             deploy/production/docker-compose.yml deploy/production/Caddyfile \
             docs/pre-server/PS10_FINAL_ACCEPTANCE.md \
             docs/pre-server/PS10_RELEASE_NOTES.md \
+            docs/pre-server/PS10_RELEASE_RECOVERY.md \
             "$EVIDENCE_DIR/frontend-release-manifest.json" \
             "$EVIDENCE_DIR/rosta-$CANDIDATE_SHA.spdx.json" \
+            "$EVIDENCE_DIR/workspace-after-build.txt" \
             "$EVIDENCE_DIR/ps10-exact-head-workflows.json" \
             "$EVIDENCE_DIR/ps10-final-acceptance.json" \
             > "$EVIDENCE_DIR/ps10-checksums.sha256"
 
           cat > "$EVIDENCE_DIR/freeze-proof.json" <<JSON
           {
-            "schema": "rosta.ps10-freeze-proof.v1",
+            "schema": "rosta.ps10-freeze-proof.v2",
             "verdict": "PRE-SERVER GO",
             "tag": "$ROSTA_PS10_TAG",
             "merge_commit": "$CANDIDATE_SHA",
@@ -256,6 +289,7 @@ jobs:
             "tree": "$tree",
             "previous_tag": "$ROSTA_PS9_TAG",
             "previous_commit": "$ROSTA_PS9_ACCEPTED_SHA",
+            "pre_release_merge": "$ROSTA_PS10_PRE_RELEASE_MERGE_SHA",
             "workflow_run": "https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID",
             "real_server_activated": false
           }
@@ -312,10 +346,11 @@ jobs:
             gh release upload "$ROSTA_PS10_TAG" --repo "$GITHUB_REPOSITORY" "$EVIDENCE_DIR"/*
             gh release edit "$ROSTA_PS10_TAG" --repo "$GITHUB_REPOSITORY" --draft=false
           fi
+
           release_json="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$ROSTA_PS10_TAG")"
           test "$(jq -r .draft <<< "$release_json")" = "false"
           test "$(jq -r .tag_name <<< "$release_json")" = "$ROSTA_PS10_TAG"
-          for asset in freeze-proof.json ps10-final-acceptance.json ps10-exact-head-workflows.json ps10-checksums.sha256 ps10-release-assets.sha256 PS10_FINAL_EVIDENCE.md frontend-release-manifest.json; do
+          for asset in freeze-proof.json ps10-final-acceptance.json ps10-exact-head-workflows.json ps10-checksums.sha256 ps10-release-assets.sha256 PS10_FINAL_EVIDENCE.md frontend-release-manifest.json workspace-after-build.txt "rosta-$CANDIDATE_SHA.spdx.json"; do
             jq -e --arg asset "$asset" '.assets[] | select(.name == $asset)' <<< "$release_json" >/dev/null
           done
 
