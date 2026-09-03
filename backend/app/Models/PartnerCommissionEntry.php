@@ -12,11 +12,15 @@ final class PartnerCommissionEntry extends Model
     use HasUlids;
 
     public const TYPE_ACCRUAL = 'accrual';
+
     public const TYPE_REVERSAL = 'reversal';
 
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_APPROVED = 'approved';
+
     public const STATUS_PAID = 'paid';
+
     public const STATUS_REVERSED = 'reversed';
 
     protected $fillable = [
