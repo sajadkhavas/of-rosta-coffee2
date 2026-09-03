@@ -5,6 +5,7 @@ use App\Models\CheckoutQuote;
 use App\Models\OrderIdempotencyKey;
 use App\Services\Checkout\ReservationExpiryService;
 use App\Services\Fulfillment\FulfillmentSlaMonitorService;
+use App\Services\Growth\PartnerCommissionEventService;
 use App\Services\Settlement\SettlementReleaseService;
 use Illuminate\Support\Facades\Schedule;
 
@@ -27,6 +28,13 @@ Schedule::call(static function (): void {
 })
     ->name('rosta.settlement.release-eligible')
     ->everyTenMinutes()
+    ->withoutOverlapping();
+
+Schedule::call(static function (): void {
+    app(PartnerCommissionEventService::class)->processDue();
+})
+    ->name('rosta.growth.partner-commission-events')
+    ->everyMinute()
     ->withoutOverlapping();
 
 Schedule::command('notifications:dispatch --limit=100')
