@@ -12,8 +12,11 @@ final class GrowthPartner extends Model
     use HasUlids;
 
     public const STATUS_PENDING = 'pending';
+
     public const STATUS_ACTIVE = 'active';
+
     public const STATUS_SUSPENDED = 'suspended';
+
     public const STATUS_REJECTED = 'rejected';
 
     protected $fillable = [
