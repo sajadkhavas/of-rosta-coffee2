@@ -10,6 +10,16 @@ final class GrowthLead extends Model
 {
     use HasUlids;
 
+    public const TYPE_CUSTOMER = 'customer';
+    public const TYPE_ROASTERY = 'roastery';
+    public const TYPE_B2B = 'b2b';
+
+    public const STATUS_LEAD = 'lead';
+    public const STATUS_CONTACTED = 'contacted';
+    public const STATUS_QUALIFIED = 'qualified';
+    public const STATUS_CONVERTED = 'converted';
+    public const STATUS_LOST = 'lost';
+
     protected $fillable = [
         'partner_id',
         'type',
@@ -46,6 +56,12 @@ final class GrowthLead extends Model
             'lost_at' => 'immutable_datetime',
             'meta' => 'array',
         ];
+    }
+
+    /** @return list<string> */
+    public static function types(): array
+    {
+        return [self::TYPE_CUSTOMER, self::TYPE_ROASTERY, self::TYPE_B2B];
     }
 
     public function partner(): BelongsTo
