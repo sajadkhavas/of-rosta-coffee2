@@ -20,13 +20,13 @@ use Illuminate\Support\Facades\DB;
 final class PartnerCommissionService
 {
     private const SOURCE_ORDER_PAYMENT = 'order_payment';
+
     private const SOURCE_REFUND_ATTEMPT = 'refund_attempt';
 
     public function __construct(
         private readonly MoneyMath $money,
         private readonly AuditRecorder $auditRecorder,
-    ) {
-    }
+    ) {}
 
     public function accrueForPaidOrder(Order $order, ?User $actor = null): ?PartnerCommissionEntry
     {
