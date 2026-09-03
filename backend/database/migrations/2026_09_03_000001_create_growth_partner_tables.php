@@ -109,10 +109,31 @@ return new class extends Migration
             $table->index(['partner_id', 'order_id']);
             $table->index(['partner_id', 'status']);
         });
+
+        Schema::create('partner_commission_events', function (Blueprint $table): void {
+            $table->ulid('id')->primary();
+            $table->string('event_type', 32);
+            $table->string('source_id', 64);
+            $table->foreignUlid('order_id')->constrained('orders')->cascadeOnDelete();
+            $table->foreignUlid('refund_attempt_id')->nullable()->constrained('refund_attempts')->nullOnDelete();
+            $table->string('status', 32)->default('pending');
+            $table->unsignedInteger('attempts')->default(0);
+            $table->timestamp('available_at')->nullable();
+            $table->timestamp('claimed_at')->nullable();
+            $table->timestamp('processed_at')->nullable();
+            $table->string('last_error_code', 128)->nullable();
+            $table->timestamp('last_error_at')->nullable();
+            $table->timestamps();
+
+            $table->unique(['event_type', 'source_id'], 'partner_commission_events_source_unique');
+            $table->index(['status', 'available_at'], 'partner_commission_events_due_idx');
+            $table->index('claimed_at');
+        });
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('partner_commission_events');
         Schema::dropIfExists('partner_commission_entries');
         Schema::dropIfExists('partner_commission_policies');
         Schema::dropIfExists('partner_attributions');
