@@ -141,6 +141,6 @@ return [
         'reservation_ttl_minutes' => max(5, min(120, (int) env('ROSTA_RESERVATION_TTL_MINUTES', 20))),
         'idempotency_ttl_hours' => max(1, min(168, (int) env('ROSTA_ORDER_IDEMPOTENCY_TTL_HOURS', 24))),
         'max_lines' => 100,
-        'max_quantity_per_line' => 20,
+        'max_quantity_per_line' => 1000,
     ],
 ];

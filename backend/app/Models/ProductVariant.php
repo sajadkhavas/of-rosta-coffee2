@@ -80,6 +80,11 @@ final class ProductVariant extends Model
         return $this->hasMany(OrderItem::class, 'variant_id');
     }
 
+    public function wholesaleTiers(): HasMany
+    {
+        return $this->hasMany(WholesalePriceTier::class, 'product_variant_id')->orderBy('min_weight_grams');
+    }
+
     /** @return HasMany<InventoryReservation, $this> */
     public function reservations(): HasMany
     {

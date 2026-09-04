@@ -29,7 +29,7 @@ final class CheckoutQuoteRequest extends FormRequest
         return [
             'items' => ['required', 'array', 'min:1', 'max:100'],
             'items.*.variant_id' => ['required', 'string', 'max:200', 'distinct:strict'],
-            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:20'],
+            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:'.(int) config('rosta.checkout.max_quantity_per_line', 1000)],
             'items.*.grinding_profile_id' => ['nullable', 'string', 'max:200'],
             'address_id' => ['required', 'string', 'max:200'],
             'coupon_code' => ['nullable', 'string', 'max:100'],

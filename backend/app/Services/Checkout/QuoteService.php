@@ -17,6 +17,7 @@ use App\Models\ProductVariant;
 use App\Models\RoastBatch;
 use App\Models\Roastery;
 use App\Models\User;
+use App\Services\B2B\WholesalePricingService;
 use App\Services\Catalog\ProductPackagingPolicy;
 use App\Services\Finance\FinancialTruthEngine;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -35,6 +36,7 @@ final class QuoteService
         private readonly ProductPackagingPolicy $packaging,
         private readonly RoasteryGrindingSelection $grinding,
         private readonly FinancialTruthEngine $financialTruth,
+        private readonly WholesalePricingService $wholesalePricing,
     ) {}
 
     /**
@@ -110,6 +112,9 @@ final class QuoteService
                 'product.variants' => static fn ($query) => $query
                     ->where('is_active', true)
                     ->orderBy('weight_grams'),
+                'wholesaleTiers' => static fn ($query) => $query
+                    ->where('is_active', true)
+                    ->orderBy('min_weight_grams'),
             ])
             ->whereIn('id', $normalizedItems->pluck('variant_id'))
             ->get()
@@ -191,7 +196,9 @@ final class QuoteService
                 );
             }
 
-            $lineTotal = $this->multiplyMoney($variant->price, $quantity);
+            $pricing = $this->wholesalePricing->resolve($user, $variant, $quantity);
+            $unitPrice = $pricing['unit_price'];
+            $lineTotal = $this->multiplyMoney($unitPrice, $quantity);
             $grinding = $this->grinding->resolve(
                 $product->roastery,
                 $variant,
@@ -252,6 +259,8 @@ final class QuoteService
                 'variant' => $variant,
                 'batch' => $product->latestRoastBatch,
                 'quantity' => $quantity,
+                'unit_price' => $unitPrice,
+                'pricing_snapshot' => $pricing['snapshot'],
                 'line_total' => $lineTotal,
                 'unit_packaging_fee' => $unitPackagingFee,
                 'line_packaging_total' => $linePackagingTotal,
@@ -526,7 +535,7 @@ final class QuoteService
                         'variant_id' => $variant->id,
                         'roast_batch_id' => $batch?->id,
                         'quantity' => $resolved['quantity'],
-                        'unit_price' => $variant->price,
+                        'unit_price' => $resolved['unit_price'],
                         'compare_at_price' => $variant->compare_at_price,
                         'line_total' => $resolved['line_total'],
                         'discount_amount' => $resolved['financial']['product']['discount_amount'],
@@ -535,7 +544,10 @@ final class QuoteService
                         'net_amount' => $resolved['financial']['product']['payable_amount'],
                         'financial_snapshot' => $resolved['financial']['product'],
                         'product_snapshot' => $this->productSnapshot($product),
-                        'variant_snapshot' => $this->variantSnapshot($variant),
+                        'variant_snapshot' => [
+                            ...$this->variantSnapshot($variant),
+                            'pricing' => $resolved['pricing_snapshot'],
+                        ],
                         'roast_batch_snapshot' => $batch === null
                             ? null
                             : $this->batchSnapshot($batch),
