@@ -20,6 +20,26 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: 1.2.22
+      - name: Normalize both frontend quantity contracts
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          schema = Path('src/lib/api/schemas.ts')
+          old = '    quantity: z.number().int().min(1).max(20),\n'
+          new = '    quantity: z.number().int().min(1).max(1000),\n'
+          content = schema.read_text(encoding='utf-8')
+          if content.count(old) != 2:
+              raise SystemExit(f'expected two quantity contracts, found {content.count(old)}')
+          schema.write_text(content.replace(old, new), encoding='utf-8')
+
+          script = Path('scripts/ps12-ui-bootstrap.py')
+          statement = "replace_once('src/lib/api/schemas.ts', \"    quantity: z.number().int().min(1).max(20),\\n\", \"    quantity: z.number().int().min(1).max(1000),\\n\")\n"
+          source = script.read_text(encoding='utf-8')
+          if source.count(statement) != 1:
+              raise SystemExit('quantity replacement statement not found exactly once')
+          script.write_text(source.replace(statement, ''), encoding='utf-8')
+          PY
       - name: Generate PS12 UI and contract updates
         run: python3 scripts/ps12-ui-bootstrap.py
       - name: Validate generated source
