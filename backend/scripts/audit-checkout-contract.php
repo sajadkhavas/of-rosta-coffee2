@@ -86,8 +86,33 @@ $requireContains(
 );
 $requireContains(
     'app/Services/Checkout/QuoteService.php',
-    "'unit_price' => \$variant->price",
-    'Quote unit prices must come from Laravel.',
+    'use App\\Services\\B2B\\WholesalePricingService;',
+    'Quote pricing must depend on the server-side wholesale pricing resolver.',
+);
+$requireContains(
+    'app/Services/Checkout/QuoteService.php',
+    'private readonly WholesalePricingService $wholesalePricing',
+    'Quote pricing must inject the authoritative wholesale pricing service.',
+);
+$requireContains(
+    'app/Services/Checkout/QuoteService.php',
+    '$pricing = $this->wholesalePricing->resolve($user, $variant, $quantity);',
+    'Quote unit prices must be resolved server-side from cafe eligibility and persisted Variant weight.',
+);
+$requireContains(
+    'app/Services/Checkout/QuoteService.php',
+    "$unitPrice = \$pricing['unit_price'];",
+    'Quote line math must use the server-resolved unit price.',
+);
+$requireContains(
+    'app/Services/Checkout/QuoteService.php',
+    "'unit_price' => \$unitPrice",
+    'Quote items must persist the server-resolved unit price.',
+);
+$requireContains(
+    'app/Services/Checkout/QuoteService.php',
+    "'pricing_snapshot' => \$pricing['snapshot']",
+    'Quote items must persist the wholesale pricing decision snapshot.',
 );
 foreach (['product_snapshot', 'variant_snapshot', 'roast_batch_snapshot'] as $snapshot) {
     $requireContains(
