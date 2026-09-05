@@ -98,7 +98,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           bun install --frozen-lockfile
-          mapfile -t FRONTEND_CHANGED < <(git diff --name-only --diff-filter=ACM | grep -E '\.(ts|tsx|js|jsx|mjs|cjs|json|md|css)$' || true)
+          mapfile -t FRONTEND_CHANGED < <(git status --porcelain=v1 --untracked-files=all | sed -E 's/^.. //' | grep -E '\.(ts|tsx|js|jsx|mjs|cjs|json|md|css)$' || true)
           if (( ${#FRONTEND_CHANGED[@]} > 0 )); then
             bunx prettier --write "${FRONTEND_CHANGED[@]}"
           fi
