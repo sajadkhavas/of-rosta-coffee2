@@ -170,6 +170,7 @@ final class PublicCatalogService
                 'roastery.logo',
                 'roastery.cover',
                 'variants' => static fn ($variants) => $variants->where('is_active', true)->orderBy('weight_grams'),
+                'variants.wholesaleTiers' => static fn ($tiers) => $tiers->where('is_active', true)->orderBy('min_weight_grams'),
             ]);
     }
 }

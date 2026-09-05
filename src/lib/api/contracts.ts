@@ -67,6 +67,21 @@ export interface RoasterySummary {
   rating?: { value: number; count: number } | null;
 }
 
+export interface WholesalePriceTier {
+  minWeightGrams: 5000 | 10000 | 20000 | 50000;
+  unitPrice: number;
+}
+
+export interface ProductVariantPricing {
+  version: "ps12-wholesale-tier-v1";
+  mode: "retail" | "wholesale";
+  retailUnitPrice: number;
+  appliedUnitPrice: number;
+  totalWeightGrams: number;
+  cafeId?: string | null;
+  tierMinWeightGrams?: number | null;
+}
+
 export interface ProductVariant {
   id: string;
   sku: string;
@@ -76,6 +91,8 @@ export interface ProductVariant {
   currency: CurrencyCode;
   isAvailable: boolean;
   availableQuantity?: number | null;
+  wholesaleTiers?: WholesalePriceTier[];
+  pricing?: ProductVariantPricing | null;
 }
 
 export interface RoastBatchSummary {

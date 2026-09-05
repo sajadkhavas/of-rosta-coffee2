@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BlogRouteImport } from './routes/blog'
+import { Route as CafesRouteImport } from './routes/cafes'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as ContactRouteImport } from './routes/contact'
@@ -29,27 +30,41 @@ import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as AdminCafesRouteImport } from './routes/admin.cafes'
 import { Route as AdminContentRouteImport } from './routes/admin.content'
 import { Route as AdminContentLinksRouteImport } from './routes/admin.content-links'
 import { Route as AdminFinanceRouteImport } from './routes/admin.finance'
 import { Route as AdminOperationsRouteImport } from './routes/admin.operations'
+import { Route as AdminQuizReviewsRouteImport } from './routes/admin.quiz-reviews'
+import { Route as AdminSettlementProfilesRouteImport } from './routes/admin.settlement-profiles'
+import { Route as AdminWorkspaceRouteImport } from './routes/admin.workspace'
 import { Route as AuthIndexRouteImport } from './routes/auth.index'
 import { Route as AuthVerifyRouteImport } from './routes/auth.verify'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as BrewSlugRouteImport } from './routes/brew.$slug'
+import { Route as CafesIndexRouteImport } from './routes/cafes.index'
+import { Route as CafesSlugRouteImport } from './routes/cafes.$slug'
+import { Route as CafesApplyRouteImport } from './routes/cafes.apply'
+import { Route as CafesPortalRouteImport } from './routes/cafes.portal'
 import { Route as CollectionsSlugRouteImport } from './routes/collections.$slug'
 import { Route as CompareSlugRouteImport } from './routes/compare.$slug'
 import { Route as GuidesSlugRouteImport } from './routes/guides.$slug'
 import { Route as HubOperationsRouteImport } from './routes/hub.operations'
+import { Route as OrderHelpIdRouteImport } from './routes/order-help.$id'
 import { Route as OrdersIndexRouteImport } from './routes/orders.index'
 import { Route as OrdersIdRouteImport } from './routes/orders.$id'
 import { Route as OriginsSlugRouteImport } from './routes/origins.$slug'
 import { Route as PanelIndexRouteImport } from './routes/panel.index'
 import { Route as PanelGrindingRouteImport } from './routes/panel.grinding'
 import { Route as PanelManageRouteImport } from './routes/panel.manage'
+import { Route as PanelOrganizationRouteImport } from './routes/panel.organization'
+import { Route as PanelReviewsRouteImport } from './routes/panel.reviews'
+import { Route as PanelSettlementProfileRouteImport } from './routes/panel.settlement-profile'
+import { Route as PanelWholesaleRouteImport } from './routes/panel.wholesale'
 import { Route as ProductsIndexRouteImport } from './routes/products.index'
 import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
+import { Route as ProfileQuizRouteImport } from './routes/profile.quiz'
 import { Route as RoasteriesIndexRouteImport } from './routes/roasteries.index'
 import { Route as RoasteriesSlugRouteImport } from './routes/roasteries.$slug'
 import { Route as SitemapsContentDotxmlRouteImport } from './routes/sitemaps.content[.]xml'
@@ -77,6 +92,11 @@ const AuthRoute = AuthRouteImport.update({
 const BlogRoute = BlogRouteImport.update({
   id: '/blog',
   path: '/blog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CafesRoute = CafesRouteImport.update({
+  id: '/cafes',
+  path: '/cafes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CartRoute = CartRouteImport.update({
@@ -159,6 +179,11 @@ const TermsRoute = TermsRouteImport.update({
   path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminCafesRoute = AdminCafesRouteImport.update({
+  id: '/admin/cafes',
+  path: '/admin/cafes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminContentRoute = AdminContentRouteImport.update({
   id: '/admin/content',
   path: '/admin/content',
@@ -177,6 +202,21 @@ const AdminFinanceRoute = AdminFinanceRouteImport.update({
 const AdminOperationsRoute = AdminOperationsRouteImport.update({
   id: '/admin/operations',
   path: '/admin/operations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminQuizReviewsRoute = AdminQuizReviewsRouteImport.update({
+  id: '/admin/quiz-reviews',
+  path: '/admin/quiz-reviews',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSettlementProfilesRoute = AdminSettlementProfilesRouteImport.update({
+  id: '/admin/settlement-profiles',
+  path: '/admin/settlement-profiles',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminWorkspaceRoute = AdminWorkspaceRouteImport.update({
+  id: '/admin/workspace',
+  path: '/admin/workspace',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthIndexRoute = AuthIndexRouteImport.update({
@@ -204,6 +244,26 @@ const BrewSlugRoute = BrewSlugRouteImport.update({
   path: '/brew/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CafesIndexRoute = CafesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CafesRoute,
+} as any)
+const CafesSlugRoute = CafesSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => CafesRoute,
+} as any)
+const CafesApplyRoute = CafesApplyRouteImport.update({
+  id: '/apply',
+  path: '/apply',
+  getParentRoute: () => CafesRoute,
+} as any)
+const CafesPortalRoute = CafesPortalRouteImport.update({
+  id: '/portal',
+  path: '/portal',
+  getParentRoute: () => CafesRoute,
+} as any)
 const CollectionsSlugRoute = CollectionsSlugRouteImport.update({
   id: '/collections/$slug',
   path: '/collections/$slug',
@@ -222,6 +282,11 @@ const GuidesSlugRoute = GuidesSlugRouteImport.update({
 const HubOperationsRoute = HubOperationsRouteImport.update({
   id: '/hub/operations',
   path: '/hub/operations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrderHelpIdRoute = OrderHelpIdRouteImport.update({
+  id: '/order-help/$id',
+  path: '/order-help/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OrdersIndexRoute = OrdersIndexRouteImport.update({
@@ -254,6 +319,26 @@ const PanelManageRoute = PanelManageRouteImport.update({
   path: '/manage',
   getParentRoute: () => PanelRoute,
 } as any)
+const PanelOrganizationRoute = PanelOrganizationRouteImport.update({
+  id: '/organization',
+  path: '/organization',
+  getParentRoute: () => PanelRoute,
+} as any)
+const PanelReviewsRoute = PanelReviewsRouteImport.update({
+  id: '/reviews',
+  path: '/reviews',
+  getParentRoute: () => PanelRoute,
+} as any)
+const PanelSettlementProfileRoute = PanelSettlementProfileRouteImport.update({
+  id: '/settlement-profile',
+  path: '/settlement-profile',
+  getParentRoute: () => PanelRoute,
+} as any)
+const PanelWholesaleRoute = PanelWholesaleRouteImport.update({
+  id: '/wholesale',
+  path: '/wholesale',
+  getParentRoute: () => PanelRoute,
+} as any)
 const ProductsIndexRoute = ProductsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -263,6 +348,11 @@ const ProductsSlugRoute = ProductsSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
   getParentRoute: () => ProductsRoute,
+} as any)
+const ProfileQuizRoute = ProfileQuizRouteImport.update({
+  id: '/quiz',
+  path: '/quiz',
+  getParentRoute: () => ProfileRoute,
 } as any)
 const RoasteriesIndexRoute = RoasteriesIndexRouteImport.update({
   id: '/',
@@ -311,6 +401,7 @@ export interface FileRoutesByFullPath {
   '/about': typeof AboutRoute
   '/auth': typeof AuthRouteWithChildren
   '/blog': typeof BlogRouteWithChildren
+  '/cafes': typeof CafesRouteWithChildren
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
@@ -320,29 +411,42 @@ export interface FileRoutesByFullPath {
   '/panel': typeof PanelRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/products': typeof ProductsRouteWithChildren
-  '/profile': typeof ProfileRoute
+  '/profile': typeof ProfileRouteWithChildren
   '/quiz': typeof QuizRoute
   '/roasteries': typeof RoasteriesRouteWithChildren
   '/robots.txt': typeof RobotsDottxtRoute
   '/search': typeof SearchRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/admin/cafes': typeof AdminCafesRoute
   '/admin/content': typeof AdminContentRoute
   '/admin/content-links': typeof AdminContentLinksRoute
   '/admin/finance': typeof AdminFinanceRoute
   '/admin/operations': typeof AdminOperationsRoute
+  '/admin/quiz-reviews': typeof AdminQuizReviewsRoute
+  '/admin/settlement-profiles': typeof AdminSettlementProfilesRoute
+  '/admin/workspace': typeof AdminWorkspaceRoute
   '/auth/verify': typeof AuthVerifyRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/brew/$slug': typeof BrewSlugRoute
+  '/cafes/$slug': typeof CafesSlugRoute
+  '/cafes/apply': typeof CafesApplyRoute
+  '/cafes/portal': typeof CafesPortalRoute
   '/collections/$slug': typeof CollectionsSlugRoute
   '/compare/$slug': typeof CompareSlugRoute
   '/guides/$slug': typeof GuidesSlugRoute
   '/hub/operations': typeof HubOperationsRoute
+  '/order-help/$id': typeof OrderHelpIdRoute
   '/orders/$id': typeof OrdersIdRoute
   '/origins/$slug': typeof OriginsSlugRoute
   '/panel/grinding': typeof PanelGrindingRoute
   '/panel/manage': typeof PanelManageRoute
+  '/panel/organization': typeof PanelOrganizationRoute
+  '/panel/reviews': typeof PanelReviewsRoute
+  '/panel/settlement-profile': typeof PanelSettlementProfileRoute
+  '/panel/wholesale': typeof PanelWholesaleRoute
   '/products/$slug': typeof ProductsSlugRoute
+  '/profile/quiz': typeof ProfileQuizRoute
   '/roasteries/$slug': typeof RoasteriesSlugRoute
   '/sitemaps/content.xml': typeof SitemapsContentDotxmlRoute
   '/sitemaps/products.xml': typeof SitemapsProductsDotxmlRoute
@@ -351,6 +455,7 @@ export interface FileRoutesByFullPath {
   '/tastes/$slug': typeof TastesSlugRoute
   '/auth/': typeof AuthIndexRoute
   '/blog/': typeof BlogIndexRoute
+  '/cafes/': typeof CafesIndexRoute
   '/orders/': typeof OrdersIndexRoute
   '/panel/': typeof PanelIndexRoute
   '/products/': typeof ProductsIndexRoute
@@ -366,28 +471,41 @@ export interface FileRoutesByTo {
   '/design-system': typeof DesignSystemRoute
   '/forbidden': typeof ForbiddenRoute
   '/privacy': typeof PrivacyRoute
-  '/profile': typeof ProfileRoute
+  '/profile': typeof ProfileRouteWithChildren
   '/quiz': typeof QuizRoute
   '/robots.txt': typeof RobotsDottxtRoute
   '/search': typeof SearchRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/admin/cafes': typeof AdminCafesRoute
   '/admin/content': typeof AdminContentRoute
   '/admin/content-links': typeof AdminContentLinksRoute
   '/admin/finance': typeof AdminFinanceRoute
   '/admin/operations': typeof AdminOperationsRoute
+  '/admin/quiz-reviews': typeof AdminQuizReviewsRoute
+  '/admin/settlement-profiles': typeof AdminSettlementProfilesRoute
+  '/admin/workspace': typeof AdminWorkspaceRoute
   '/auth/verify': typeof AuthVerifyRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/brew/$slug': typeof BrewSlugRoute
+  '/cafes/$slug': typeof CafesSlugRoute
+  '/cafes/apply': typeof CafesApplyRoute
+  '/cafes/portal': typeof CafesPortalRoute
   '/collections/$slug': typeof CollectionsSlugRoute
   '/compare/$slug': typeof CompareSlugRoute
   '/guides/$slug': typeof GuidesSlugRoute
   '/hub/operations': typeof HubOperationsRoute
+  '/order-help/$id': typeof OrderHelpIdRoute
   '/orders/$id': typeof OrdersIdRoute
   '/origins/$slug': typeof OriginsSlugRoute
   '/panel/grinding': typeof PanelGrindingRoute
   '/panel/manage': typeof PanelManageRoute
+  '/panel/organization': typeof PanelOrganizationRoute
+  '/panel/reviews': typeof PanelReviewsRoute
+  '/panel/settlement-profile': typeof PanelSettlementProfileRoute
+  '/panel/wholesale': typeof PanelWholesaleRoute
   '/products/$slug': typeof ProductsSlugRoute
+  '/profile/quiz': typeof ProfileQuizRoute
   '/roasteries/$slug': typeof RoasteriesSlugRoute
   '/sitemaps/content.xml': typeof SitemapsContentDotxmlRoute
   '/sitemaps/products.xml': typeof SitemapsProductsDotxmlRoute
@@ -396,6 +514,7 @@ export interface FileRoutesByTo {
   '/tastes/$slug': typeof TastesSlugRoute
   '/auth': typeof AuthIndexRoute
   '/blog': typeof BlogIndexRoute
+  '/cafes': typeof CafesIndexRoute
   '/orders': typeof OrdersIndexRoute
   '/panel': typeof PanelIndexRoute
   '/products': typeof ProductsIndexRoute
@@ -408,6 +527,7 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/auth': typeof AuthRouteWithChildren
   '/blog': typeof BlogRouteWithChildren
+  '/cafes': typeof CafesRouteWithChildren
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
@@ -417,29 +537,42 @@ export interface FileRoutesById {
   '/panel': typeof PanelRouteWithChildren
   '/privacy': typeof PrivacyRoute
   '/products': typeof ProductsRouteWithChildren
-  '/profile': typeof ProfileRoute
+  '/profile': typeof ProfileRouteWithChildren
   '/quiz': typeof QuizRoute
   '/roasteries': typeof RoasteriesRouteWithChildren
   '/robots.txt': typeof RobotsDottxtRoute
   '/search': typeof SearchRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/admin/cafes': typeof AdminCafesRoute
   '/admin/content': typeof AdminContentRoute
   '/admin/content-links': typeof AdminContentLinksRoute
   '/admin/finance': typeof AdminFinanceRoute
   '/admin/operations': typeof AdminOperationsRoute
+  '/admin/quiz-reviews': typeof AdminQuizReviewsRoute
+  '/admin/settlement-profiles': typeof AdminSettlementProfilesRoute
+  '/admin/workspace': typeof AdminWorkspaceRoute
   '/auth/verify': typeof AuthVerifyRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/brew/$slug': typeof BrewSlugRoute
+  '/cafes/$slug': typeof CafesSlugRoute
+  '/cafes/apply': typeof CafesApplyRoute
+  '/cafes/portal': typeof CafesPortalRoute
   '/collections/$slug': typeof CollectionsSlugRoute
   '/compare/$slug': typeof CompareSlugRoute
   '/guides/$slug': typeof GuidesSlugRoute
   '/hub/operations': typeof HubOperationsRoute
+  '/order-help/$id': typeof OrderHelpIdRoute
   '/orders/$id': typeof OrdersIdRoute
   '/origins/$slug': typeof OriginsSlugRoute
   '/panel/grinding': typeof PanelGrindingRoute
   '/panel/manage': typeof PanelManageRoute
+  '/panel/organization': typeof PanelOrganizationRoute
+  '/panel/reviews': typeof PanelReviewsRoute
+  '/panel/settlement-profile': typeof PanelSettlementProfileRoute
+  '/panel/wholesale': typeof PanelWholesaleRoute
   '/products/$slug': typeof ProductsSlugRoute
+  '/profile/quiz': typeof ProfileQuizRoute
   '/roasteries/$slug': typeof RoasteriesSlugRoute
   '/sitemaps/content.xml': typeof SitemapsContentDotxmlRoute
   '/sitemaps/products.xml': typeof SitemapsProductsDotxmlRoute
@@ -448,6 +581,7 @@ export interface FileRoutesById {
   '/tastes/$slug': typeof TastesSlugRoute
   '/auth/': typeof AuthIndexRoute
   '/blog/': typeof BlogIndexRoute
+  '/cafes/': typeof CafesIndexRoute
   '/orders/': typeof OrdersIndexRoute
   '/panel/': typeof PanelIndexRoute
   '/products/': typeof ProductsIndexRoute
@@ -461,6 +595,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/auth'
     | '/blog'
+    | '/cafes'
     | '/cart'
     | '/checkout'
     | '/contact'
@@ -477,22 +612,35 @@ export interface FileRouteTypes {
     | '/search'
     | '/sitemap.xml'
     | '/terms'
+    | '/admin/cafes'
     | '/admin/content'
     | '/admin/content-links'
     | '/admin/finance'
     | '/admin/operations'
+    | '/admin/quiz-reviews'
+    | '/admin/settlement-profiles'
+    | '/admin/workspace'
     | '/auth/verify'
     | '/blog/$slug'
     | '/brew/$slug'
+    | '/cafes/$slug'
+    | '/cafes/apply'
+    | '/cafes/portal'
     | '/collections/$slug'
     | '/compare/$slug'
     | '/guides/$slug'
     | '/hub/operations'
+    | '/order-help/$id'
     | '/orders/$id'
     | '/origins/$slug'
     | '/panel/grinding'
     | '/panel/manage'
+    | '/panel/organization'
+    | '/panel/reviews'
+    | '/panel/settlement-profile'
+    | '/panel/wholesale'
     | '/products/$slug'
+    | '/profile/quiz'
     | '/roasteries/$slug'
     | '/sitemaps/content.xml'
     | '/sitemaps/products.xml'
@@ -501,6 +649,7 @@ export interface FileRouteTypes {
     | '/tastes/$slug'
     | '/auth/'
     | '/blog/'
+    | '/cafes/'
     | '/orders/'
     | '/panel/'
     | '/products/'
@@ -522,22 +671,35 @@ export interface FileRouteTypes {
     | '/search'
     | '/sitemap.xml'
     | '/terms'
+    | '/admin/cafes'
     | '/admin/content'
     | '/admin/content-links'
     | '/admin/finance'
     | '/admin/operations'
+    | '/admin/quiz-reviews'
+    | '/admin/settlement-profiles'
+    | '/admin/workspace'
     | '/auth/verify'
     | '/blog/$slug'
     | '/brew/$slug'
+    | '/cafes/$slug'
+    | '/cafes/apply'
+    | '/cafes/portal'
     | '/collections/$slug'
     | '/compare/$slug'
     | '/guides/$slug'
     | '/hub/operations'
+    | '/order-help/$id'
     | '/orders/$id'
     | '/origins/$slug'
     | '/panel/grinding'
     | '/panel/manage'
+    | '/panel/organization'
+    | '/panel/reviews'
+    | '/panel/settlement-profile'
+    | '/panel/wholesale'
     | '/products/$slug'
+    | '/profile/quiz'
     | '/roasteries/$slug'
     | '/sitemaps/content.xml'
     | '/sitemaps/products.xml'
@@ -546,6 +708,7 @@ export interface FileRouteTypes {
     | '/tastes/$slug'
     | '/auth'
     | '/blog'
+    | '/cafes'
     | '/orders'
     | '/panel'
     | '/products'
@@ -557,6 +720,7 @@ export interface FileRouteTypes {
     | '/about'
     | '/auth'
     | '/blog'
+    | '/cafes'
     | '/cart'
     | '/checkout'
     | '/contact'
@@ -573,22 +737,35 @@ export interface FileRouteTypes {
     | '/search'
     | '/sitemap.xml'
     | '/terms'
+    | '/admin/cafes'
     | '/admin/content'
     | '/admin/content-links'
     | '/admin/finance'
     | '/admin/operations'
+    | '/admin/quiz-reviews'
+    | '/admin/settlement-profiles'
+    | '/admin/workspace'
     | '/auth/verify'
     | '/blog/$slug'
     | '/brew/$slug'
+    | '/cafes/$slug'
+    | '/cafes/apply'
+    | '/cafes/portal'
     | '/collections/$slug'
     | '/compare/$slug'
     | '/guides/$slug'
     | '/hub/operations'
+    | '/order-help/$id'
     | '/orders/$id'
     | '/origins/$slug'
     | '/panel/grinding'
     | '/panel/manage'
+    | '/panel/organization'
+    | '/panel/reviews'
+    | '/panel/settlement-profile'
+    | '/panel/wholesale'
     | '/products/$slug'
+    | '/profile/quiz'
     | '/roasteries/$slug'
     | '/sitemaps/content.xml'
     | '/sitemaps/products.xml'
@@ -597,6 +774,7 @@ export interface FileRouteTypes {
     | '/tastes/$slug'
     | '/auth/'
     | '/blog/'
+    | '/cafes/'
     | '/orders/'
     | '/panel/'
     | '/products/'
@@ -609,6 +787,7 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   AuthRoute: typeof AuthRouteWithChildren
   BlogRoute: typeof BlogRouteWithChildren
+  CafesRoute: typeof CafesRouteWithChildren
   CartRoute: typeof CartRoute
   CheckoutRoute: typeof CheckoutRoute
   ContactRoute: typeof ContactRoute
@@ -618,22 +797,27 @@ export interface RootRouteChildren {
   PanelRoute: typeof PanelRouteWithChildren
   PrivacyRoute: typeof PrivacyRoute
   ProductsRoute: typeof ProductsRouteWithChildren
-  ProfileRoute: typeof ProfileRoute
+  ProfileRoute: typeof ProfileRouteWithChildren
   QuizRoute: typeof QuizRoute
   RoasteriesRoute: typeof RoasteriesRouteWithChildren
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SearchRoute: typeof SearchRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
+  AdminCafesRoute: typeof AdminCafesRoute
   AdminContentRoute: typeof AdminContentRoute
   AdminContentLinksRoute: typeof AdminContentLinksRoute
   AdminFinanceRoute: typeof AdminFinanceRoute
   AdminOperationsRoute: typeof AdminOperationsRoute
+  AdminQuizReviewsRoute: typeof AdminQuizReviewsRoute
+  AdminSettlementProfilesRoute: typeof AdminSettlementProfilesRoute
+  AdminWorkspaceRoute: typeof AdminWorkspaceRoute
   BrewSlugRoute: typeof BrewSlugRoute
   CollectionsSlugRoute: typeof CollectionsSlugRoute
   CompareSlugRoute: typeof CompareSlugRoute
   GuidesSlugRoute: typeof GuidesSlugRoute
   HubOperationsRoute: typeof HubOperationsRoute
+  OrderHelpIdRoute: typeof OrderHelpIdRoute
   OriginsSlugRoute: typeof OriginsSlugRoute
   SitemapsContentDotxmlRoute: typeof SitemapsContentDotxmlRoute
   SitemapsProductsDotxmlRoute: typeof SitemapsProductsDotxmlRoute
@@ -671,6 +855,13 @@ declare module '@tanstack/react-router' {
       path: '/blog'
       fullPath: '/blog'
       preLoaderRoute: typeof BlogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cafes': {
+      id: '/cafes'
+      path: '/cafes'
+      fullPath: '/cafes'
+      preLoaderRoute: typeof CafesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cart': {
@@ -785,6 +976,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/cafes': {
+      id: '/admin/cafes'
+      path: '/admin/cafes'
+      fullPath: '/admin/cafes'
+      preLoaderRoute: typeof AdminCafesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/content': {
       id: '/admin/content'
       path: '/admin/content'
@@ -811,6 +1009,27 @@ declare module '@tanstack/react-router' {
       path: '/admin/operations'
       fullPath: '/admin/operations'
       preLoaderRoute: typeof AdminOperationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/quiz-reviews': {
+      id: '/admin/quiz-reviews'
+      path: '/admin/quiz-reviews'
+      fullPath: '/admin/quiz-reviews'
+      preLoaderRoute: typeof AdminQuizReviewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/settlement-profiles': {
+      id: '/admin/settlement-profiles'
+      path: '/admin/settlement-profiles'
+      fullPath: '/admin/settlement-profiles'
+      preLoaderRoute: typeof AdminSettlementProfilesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/workspace': {
+      id: '/admin/workspace'
+      path: '/admin/workspace'
+      fullPath: '/admin/workspace'
+      preLoaderRoute: typeof AdminWorkspaceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/': {
@@ -848,6 +1067,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BrewSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cafes/': {
+      id: '/cafes/'
+      path: '/'
+      fullPath: '/cafes/'
+      preLoaderRoute: typeof CafesIndexRouteImport
+      parentRoute: typeof CafesRoute
+    }
+    '/cafes/$slug': {
+      id: '/cafes/$slug'
+      path: '/$slug'
+      fullPath: '/cafes/$slug'
+      preLoaderRoute: typeof CafesSlugRouteImport
+      parentRoute: typeof CafesRoute
+    }
+    '/cafes/apply': {
+      id: '/cafes/apply'
+      path: '/apply'
+      fullPath: '/cafes/apply'
+      preLoaderRoute: typeof CafesApplyRouteImport
+      parentRoute: typeof CafesRoute
+    }
+    '/cafes/portal': {
+      id: '/cafes/portal'
+      path: '/portal'
+      fullPath: '/cafes/portal'
+      preLoaderRoute: typeof CafesPortalRouteImport
+      parentRoute: typeof CafesRoute
+    }
     '/collections/$slug': {
       id: '/collections/$slug'
       path: '/collections/$slug'
@@ -874,6 +1121,13 @@ declare module '@tanstack/react-router' {
       path: '/hub/operations'
       fullPath: '/hub/operations'
       preLoaderRoute: typeof HubOperationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/order-help/$id': {
+      id: '/order-help/$id'
+      path: '/order-help/$id'
+      fullPath: '/order-help/$id'
+      preLoaderRoute: typeof OrderHelpIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/orders/': {
@@ -918,6 +1172,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PanelManageRouteImport
       parentRoute: typeof PanelRoute
     }
+    '/panel/organization': {
+      id: '/panel/organization'
+      path: '/organization'
+      fullPath: '/panel/organization'
+      preLoaderRoute: typeof PanelOrganizationRouteImport
+      parentRoute: typeof PanelRoute
+    }
+    '/panel/reviews': {
+      id: '/panel/reviews'
+      path: '/reviews'
+      fullPath: '/panel/reviews'
+      preLoaderRoute: typeof PanelReviewsRouteImport
+      parentRoute: typeof PanelRoute
+    }
+    '/panel/settlement-profile': {
+      id: '/panel/settlement-profile'
+      path: '/settlement-profile'
+      fullPath: '/panel/settlement-profile'
+      preLoaderRoute: typeof PanelSettlementProfileRouteImport
+      parentRoute: typeof PanelRoute
+    }
+    '/panel/wholesale': {
+      id: '/panel/wholesale'
+      path: '/wholesale'
+      fullPath: '/panel/wholesale'
+      preLoaderRoute: typeof PanelWholesaleRouteImport
+      parentRoute: typeof PanelRoute
+    }
     '/products/': {
       id: '/products/'
       path: '/'
@@ -931,6 +1213,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/products/$slug'
       preLoaderRoute: typeof ProductsSlugRouteImport
       parentRoute: typeof ProductsRoute
+    }
+    '/profile/quiz': {
+      id: '/profile/quiz'
+      path: '/quiz'
+      fullPath: '/profile/quiz'
+      preLoaderRoute: typeof ProfileQuizRouteImport
+      parentRoute: typeof ProfileRoute
     }
     '/roasteries/': {
       id: '/roasteries/'
@@ -1015,6 +1304,22 @@ const BlogRouteChildren: BlogRouteChildren = {
 
 const BlogRouteWithChildren = BlogRoute._addFileChildren(BlogRouteChildren)
 
+interface CafesRouteChildren {
+  CafesSlugRoute: typeof CafesSlugRoute
+  CafesApplyRoute: typeof CafesApplyRoute
+  CafesPortalRoute: typeof CafesPortalRoute
+  CafesIndexRoute: typeof CafesIndexRoute
+}
+
+const CafesRouteChildren: CafesRouteChildren = {
+  CafesSlugRoute: CafesSlugRoute,
+  CafesApplyRoute: CafesApplyRoute,
+  CafesPortalRoute: CafesPortalRoute,
+  CafesIndexRoute: CafesIndexRoute,
+}
+
+const CafesRouteWithChildren = CafesRoute._addFileChildren(CafesRouteChildren)
+
 interface OrdersRouteChildren {
   OrdersIdRoute: typeof OrdersIdRoute
   OrdersIndexRoute: typeof OrdersIndexRoute
@@ -1031,12 +1336,20 @@ const OrdersRouteWithChildren =
 interface PanelRouteChildren {
   PanelGrindingRoute: typeof PanelGrindingRoute
   PanelManageRoute: typeof PanelManageRoute
+  PanelOrganizationRoute: typeof PanelOrganizationRoute
+  PanelReviewsRoute: typeof PanelReviewsRoute
+  PanelSettlementProfileRoute: typeof PanelSettlementProfileRoute
+  PanelWholesaleRoute: typeof PanelWholesaleRoute
   PanelIndexRoute: typeof PanelIndexRoute
 }
 
 const PanelRouteChildren: PanelRouteChildren = {
   PanelGrindingRoute: PanelGrindingRoute,
   PanelManageRoute: PanelManageRoute,
+  PanelOrganizationRoute: PanelOrganizationRoute,
+  PanelReviewsRoute: PanelReviewsRoute,
+  PanelSettlementProfileRoute: PanelSettlementProfileRoute,
+  PanelWholesaleRoute: PanelWholesaleRoute,
   PanelIndexRoute: PanelIndexRoute,
 }
 
@@ -1055,6 +1368,17 @@ const ProductsRouteChildren: ProductsRouteChildren = {
 const ProductsRouteWithChildren = ProductsRoute._addFileChildren(
   ProductsRouteChildren,
 )
+
+interface ProfileRouteChildren {
+  ProfileQuizRoute: typeof ProfileQuizRoute
+}
+
+const ProfileRouteChildren: ProfileRouteChildren = {
+  ProfileQuizRoute: ProfileQuizRoute,
+}
+
+const ProfileRouteWithChildren =
+  ProfileRoute._addFileChildren(ProfileRouteChildren)
 
 interface RoasteriesRouteChildren {
   RoasteriesSlugRoute: typeof RoasteriesSlugRoute
@@ -1075,6 +1399,7 @@ const rootRouteChildren: RootRouteChildren = {
   AboutRoute: AboutRoute,
   AuthRoute: AuthRouteWithChildren,
   BlogRoute: BlogRouteWithChildren,
+  CafesRoute: CafesRouteWithChildren,
   CartRoute: CartRoute,
   CheckoutRoute: CheckoutRoute,
   ContactRoute: ContactRoute,
@@ -1084,22 +1409,27 @@ const rootRouteChildren: RootRouteChildren = {
   PanelRoute: PanelRouteWithChildren,
   PrivacyRoute: PrivacyRoute,
   ProductsRoute: ProductsRouteWithChildren,
-  ProfileRoute: ProfileRoute,
+  ProfileRoute: ProfileRouteWithChildren,
   QuizRoute: QuizRoute,
   RoasteriesRoute: RoasteriesRouteWithChildren,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SearchRoute: SearchRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
+  AdminCafesRoute: AdminCafesRoute,
   AdminContentRoute: AdminContentRoute,
   AdminContentLinksRoute: AdminContentLinksRoute,
   AdminFinanceRoute: AdminFinanceRoute,
   AdminOperationsRoute: AdminOperationsRoute,
+  AdminQuizReviewsRoute: AdminQuizReviewsRoute,
+  AdminSettlementProfilesRoute: AdminSettlementProfilesRoute,
+  AdminWorkspaceRoute: AdminWorkspaceRoute,
   BrewSlugRoute: BrewSlugRoute,
   CollectionsSlugRoute: CollectionsSlugRoute,
   CompareSlugRoute: CompareSlugRoute,
   GuidesSlugRoute: GuidesSlugRoute,
   HubOperationsRoute: HubOperationsRoute,
+  OrderHelpIdRoute: OrderHelpIdRoute,
   OriginsSlugRoute: OriginsSlugRoute,
   SitemapsContentDotxmlRoute: SitemapsContentDotxmlRoute,
   SitemapsProductsDotxmlRoute: SitemapsProductsDotxmlRoute,

@@ -81,6 +81,22 @@ function mapVariant(value: ProductVariantWire): ProductVariant {
     currency: value.currency,
     isAvailable: value.is_available,
     availableQuantity: value.available_quantity ?? null,
+    wholesaleTiers:
+      value.wholesale_tiers?.map((tier) => ({
+        minWeightGrams: tier.min_weight_grams,
+        unitPrice: tier.unit_price,
+      })) ?? [],
+    pricing: value.pricing
+      ? {
+          version: value.pricing.version,
+          mode: value.pricing.mode,
+          retailUnitPrice: value.pricing.retail_unit_price,
+          appliedUnitPrice: value.pricing.applied_unit_price,
+          totalWeightGrams: value.pricing.total_weight_grams,
+          cafeId: value.pricing.cafe_id,
+          tierMinWeightGrams: value.pricing.tier_min_weight_grams,
+        }
+      : null,
   };
 }
 
