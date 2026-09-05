@@ -58,7 +58,10 @@ final class PS12CafeWholesaleTest extends TestCase
             'address_id' => $address->id,
         ])->assertOk()->json('data');
 
-        self::assertSame(900_000, $quote['items'][0]['unit_price']);
+        self::assertSame(4_500_000, $quote['groups'][0]['items'][0]['line_total']);
+        self::assertSame(900_000, $quote['groups'][0]['items'][0]['variant']['pricing']['applied_unit_price']);
+        self::assertSame('ps12-wholesale-tier-v1', $quote['groups'][0]['items'][0]['variant']['pricing']['version']);
+        self::assertSame('wholesale', $quote['groups'][0]['items'][0]['variant']['pricing']['mode']);
         $this->assertDatabaseHas('checkout_quote_items', ['quote_id' => $quote['id'], 'variant_id' => $variant->id, 'unit_price' => 900_000, 'line_total' => 4_500_000]);
         $stored = \App\Models\CheckoutQuoteItem::query()->where('quote_id', $quote['id'])->firstOrFail();
         self::assertSame('ps12-wholesale-tier-v1', $stored->variant_snapshot['pricing']['version']);
