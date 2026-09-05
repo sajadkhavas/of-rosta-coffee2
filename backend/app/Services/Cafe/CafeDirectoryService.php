@@ -4,12 +4,11 @@ namespace App\Services\Cafe;
 
 use App\Enums\CafeStatus;
 use App\Models\Cafe;
-use Illuminate\Support\Collection;
 
 final class CafeDirectoryService
 {
-    /** @return Collection<int,array{cafe:Cafe,distance_km:float|null}> */
-    public function search(?string $city, ?float $latitude, ?float $longitude, float $radiusKm = 10.0): Collection
+    /** @return list<array{cafe:Cafe,distance_km:float|null}> */
+    public function search(?string $city, ?float $latitude, ?float $longitude, float $radiusKm = 10.0): array
     {
         $query = Cafe::query()
             ->where('status', CafeStatus::Verified->value)
@@ -45,10 +44,7 @@ final class CafeDirectoryService
             static fn (array $left, array $right): int => ($left['distance_km'] ?? PHP_FLOAT_MAX) <=> ($right['distance_km'] ?? PHP_FLOAT_MAX),
         );
 
-        /** @var Collection<int,array{cafe:Cafe,distance_km:float|null}> $result */
-        $result = collect($entries);
-
-        return $result;
+        return $entries;
     }
 
     private function distanceKm(float $lat1, float $lon1, float $lat2, float $lon2): float

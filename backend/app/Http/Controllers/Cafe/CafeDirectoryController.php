@@ -21,17 +21,20 @@ final class CafeDirectoryController
             'radius_km' => ['nullable', 'numeric', 'min:0.1', 'max:50'],
         ])->validate();
 
-        $items = $directory->search(
-            isset($data['city']) ? (string) $data['city'] : null,
-            isset($data['lat']) ? (float) $data['lat'] : null,
-            isset($data['lng']) ? (float) $data['lng'] : null,
-            isset($data['radius_km']) ? (float) $data['radius_km'] : 10.0,
-        )->map(function (array $entry) use ($request): array {
-            return [
-                ...(new CafeResource($entry['cafe']))->resolve($request),
-                'distance_km' => $entry['distance_km'],
-            ];
-        })->all();
+        $items = array_map(
+            function (array $entry) use ($request): array {
+                return [
+                    ...(new CafeResource($entry['cafe']))->resolve($request),
+                    'distance_km' => $entry['distance_km'],
+                ];
+            },
+            $directory->search(
+                isset($data['city']) ? (string) $data['city'] : null,
+                isset($data['lat']) ? (float) $data['lat'] : null,
+                isset($data['lng']) ? (float) $data['lng'] : null,
+                isset($data['radius_km']) ? (float) $data['radius_km'] : 10.0,
+            ),
+        );
 
         return ApiResponse::success(['items' => $items]);
     }
