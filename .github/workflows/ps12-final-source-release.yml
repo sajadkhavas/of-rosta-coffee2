@@ -1,0 +1,290 @@
+name: PS12 Final Source Release
+
+on:
+  pull_request:
+    branches: [integration/rosta-release-candidate]
+  push:
+    branches: [integration/rosta-release-candidate]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: ps12-final-source-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  ROSTA_PS11_TAG: rosta-pre-server-2026-09-03
+  ROSTA_PS11_ACCEPTED_SHA: af7a871d48ca4865a9509b8271b66ed380c57d24
+  ROSTA_PS12_TAG: rosta-pre-server-2026-09-05
+
+jobs:
+  validate-source:
+    name: validate-ps12-source-lineage-and-gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      source_head: ${{ steps.identity.outputs.source_head }}
+      release_needed: ${{ steps.identity.outputs.release_needed }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      EVIDENCE_DIR: /tmp/rosta-ps12-validation/${{ github.run_id }}
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+
+      - name: Verify PS12 source identity
+        id: identity
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          test -s docs/pre-server/PS12_FINAL_ACCEPTANCE.md
+          test -s docs/pre-server/PS12_RELEASE_NOTES.md
+          test -s docs/pre-server/PS12_RELEASE_RECOVERY.md
+          test -s docs/pre-server/PS12_PHASE_REGISTER.md
+          git diff --check
+
+          git fetch --force --tags origin
+          test "$(git rev-parse "$ROSTA_PS11_TAG^{commit}")" = "$ROSTA_PS11_ACCEPTED_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$ROSTA_PS11_TAG" --jq .tag_name)" = "$ROSTA_PS11_TAG"
+
+          if git rev-parse --verify "$ROSTA_PS12_TAG^{commit}" >/dev/null 2>&1; then
+            frozen="$(git rev-parse "$ROSTA_PS12_TAG^{commit}")"
+            test "$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$ROSTA_PS12_TAG" --jq .tag_name)" = "$ROSTA_PS12_TAG"
+            git merge-base --is-ancestor "$frozen" "$CANDIDATE_SHA"
+            echo "source_head=$frozen" >> "$GITHUB_OUTPUT"
+            echo "release_needed=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "mode=frozen-verification"
+              echo "candidate=$CANDIDATE_SHA"
+              echo "ps11=$ROSTA_PS11_ACCEPTED_SHA"
+              echo "ps12=$frozen"
+            } | tee "$EVIDENCE_DIR/identity.txt"
+            exit 0
+          fi
+
+          git merge-base --is-ancestor "$ROSTA_PS11_ACCEPTED_SHA" "$CANDIDATE_SHA"
+
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            read -r -a parents <<< "$(git rev-list --parents -n 1 "$CANDIDATE_SHA")"
+            test "${#parents[@]}" -eq 3
+            base_parent="${parents[1]}"
+            source_head="${parents[2]}"
+            git merge-base --is-ancestor "$ROSTA_PS11_ACCEPTED_SHA" "$base_parent"
+            test "$(git rev-parse "$CANDIDATE_SHA^{tree}")" = "$(git rev-parse "$source_head^{tree}")"
+            git diff --check "$base_parent...$source_head"
+
+            gh api -X GET "repos/$GITHUB_REPOSITORY/actions/runs" \
+              -f head_sha="$source_head" \
+              -f event=pull_request \
+              -f per_page=100 \
+              > "$EVIDENCE_DIR/source-head-workflow-runs.json"
+
+            required=(
+              "CI"
+              "Backend CI"
+              "Full-stack Integration CI"
+              "Browser Acceptance CI"
+              "R3 Final Gate"
+              "R4 Staging Package CI"
+              "Production Package CI"
+              "PS8A Frontend Acceptance"
+              "PS8B Backend Finance Acceptance"
+              "PS8C Infrastructure Acceptance"
+              "PS1 Backend Wrapper CI"
+              "PS9 Final Pre-server Freeze"
+              "PS10 Final Source Release"
+              "PS11 Final Source Release"
+              "PS12 Final Source Release"
+            )
+
+            : > "$EVIDENCE_DIR/required-workflow-matrix.txt"
+            for workflow in "${required[@]}"; do
+              success_count="$(jq --arg workflow "$workflow" --arg source_head "$source_head" '[.workflow_runs[] | select(.name == $workflow and .head_sha == $source_head and .status == "completed" and .conclusion == "success")] | length' "$EVIDENCE_DIR/source-head-workflow-runs.json")"
+              test "$success_count" -ge 1 || {
+                echo "Missing successful exact-head workflow: $workflow" >&2
+                exit 1
+              }
+              echo "$workflow=PASS" >> "$EVIDENCE_DIR/required-workflow-matrix.txt"
+            done
+          else
+            source_head="$CANDIDATE_SHA"
+            git diff --check "$ROSTA_PS11_ACCEPTED_SHA...$source_head"
+          fi
+
+          echo "source_head=$source_head" >> "$GITHUB_OUTPUT"
+          echo "release_needed=true" >> "$GITHUB_OUTPUT"
+          {
+            echo "mode=release-candidate"
+            echo "event=${{ github.event_name }}"
+            echo "candidate=$CANDIDATE_SHA"
+            echo "source_head=$source_head"
+            echo "ps11=$ROSTA_PS11_ACCEPTED_SHA"
+            echo "ps12_tag=$ROSTA_PS12_TAG"
+          } | tee "$EVIDENCE_DIR/identity.txt"
+
+      - name: Upload validation evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: rosta-ps12-validation-${{ github.run_id }}
+          path: /tmp/rosta-ps12-validation/${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 90
+
+  publish-release:
+    name: publish-immutable-ps12-source-identity
+    if: github.event_name == 'push' && github.ref == 'refs/heads/integration/rosta-release-candidate' && needs.validate-source.outputs.release_needed == 'true'
+    needs: [validate-source]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CANDIDATE_SHA: ${{ github.sha }}
+      SOURCE_HEAD: ${{ needs.validate-source.outputs.source_head }}
+      EVIDENCE_DIR: /tmp/rosta-ps12-release/${{ github.run_id }}
+    steps:
+      - name: Checkout accepted merge
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ env.CANDIDATE_SHA }}
+          fetch-depth: 0
+
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610
+        with:
+          path: .
+          format: spdx-json
+          output-file: ps12-sbom.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Seal release evidence
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          test "$(git rev-parse HEAD)" = "$CANDIDATE_SHA"
+          test "$(git rev-parse "$CANDIDATE_SHA^{tree}")" = "$(git rev-parse "$SOURCE_HEAD^{tree}")"
+          git fetch --force --tags origin
+          test "$(git rev-parse "$ROSTA_PS11_TAG^{commit}")" = "$ROSTA_PS11_ACCEPTED_SHA"
+          test "$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$ROSTA_PS11_TAG" --jq .tag_name)" = "$ROSTA_PS11_TAG"
+
+          gh api -X GET "repos/$GITHUB_REPOSITORY/actions/runs" \
+            -f head_sha="$SOURCE_HEAD" \
+            -f event=pull_request \
+            -f per_page=100 \
+            > "$EVIDENCE_DIR/ps12-exact-head-workflows.json"
+
+          tree="$(git rev-parse 'HEAD^{tree}')"
+          mv ps12-sbom.spdx.json "$EVIDENCE_DIR/rosta-$CANDIDATE_SHA.spdx.json"
+          cat > "$EVIDENCE_DIR/ps12-final-acceptance.json" <<JSON
+          {
+            "schema": "rosta.ps12-final-acceptance.v1",
+            "verdict": "SOURCE GO",
+            "merge_sha": "$CANDIDATE_SHA",
+            "source_head_sha": "$SOURCE_HEAD",
+            "tree_sha": "$tree",
+            "previous_release_tag": "$ROSTA_PS11_TAG",
+            "previous_release_sha": "$ROSTA_PS11_ACCEPTED_SHA",
+            "release_tag": "$ROSTA_PS12_TAG",
+            "workflow_run": "https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID",
+            "exact_head_workflow_matrix": "PASS",
+            "real_server_activated": false,
+            "external_provider_activation_claimed": false,
+            "trade_credit_claimed": false,
+            "continuous_location_tracking_claimed": false
+          }
+          JSON
+
+          cat > "$EVIDENCE_DIR/PS12_FINAL_EVIDENCE.md" <<EOF
+          # PS12 Final Evidence
+
+          - Verdict: SOURCE GO
+          - Merge SHA: \`$CANDIDATE_SHA\`
+          - Exact tested source head: \`$SOURCE_HEAD\`
+          - Tree SHA: \`$tree\`
+          - Previous immutable release: \`$ROSTA_PS11_TAG\` -> \`$ROSTA_PS11_ACCEPTED_SHA\`
+          - New release tag: \`$ROSTA_PS12_TAG\`
+          - Workflow: https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+          - Real server activated: no
+          - External provider activation claimed: no
+          - Trade credit/net terms claimed: no
+          - Continuous user location tracking claimed: no
+          EOF
+
+          sha256sum \
+            docs/pre-server/PS12_FINAL_ACCEPTANCE.md \
+            docs/pre-server/PS12_RELEASE_NOTES.md \
+            docs/pre-server/PS12_RELEASE_RECOVERY.md \
+            docs/pre-server/PS12_PHASE_REGISTER.md \
+            "$EVIDENCE_DIR/ps12-final-acceptance.json" \
+            "$EVIDENCE_DIR/ps12-exact-head-workflows.json" \
+            "$EVIDENCE_DIR/rosta-$CANDIDATE_SHA.spdx.json" \
+            > "$EVIDENCE_DIR/ps12-checksums.sha256"
+
+          if grep -R -E 'APP_KEY=|DB_PASSWORD=|MYSQL_ROOT_PASSWORD=|S3_SECRET_ACCESS_KEY=|PAYMENT_MERCHANT_ID=|KAVENEGAR_API_KEY=|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|\bsk-(proj-)?[A-Za-z0-9_-]{20,}' "$EVIDENCE_DIR"; then
+            echo "Sensitive material entered PS12 release evidence." >&2
+            exit 1
+          fi
+          git diff --check
+          test -z "$(git status --porcelain --untracked-files=all)"
+
+      - name: Create or verify PS12 tag
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git fetch --force --tags origin
+          if git rev-parse --verify "$ROSTA_PS12_TAG^{commit}" >/dev/null 2>&1; then
+            existing="$(git rev-parse "$ROSTA_PS12_TAG^{commit}")"
+            test "$existing" = "$CANDIDATE_SHA" || {
+              echo "PS12 tag already protects a different SHA: $existing" >&2
+              exit 1
+            }
+          else
+            git config user.name github-actions[bot]
+            git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+            git tag -a "$ROSTA_PS12_TAG" "$CANDIDATE_SHA" -m "ROSTA PS12 SOURCE GO — cafe B2B wholesale marketplace"
+            git push origin "refs/tags/$ROSTA_PS12_TAG"
+          fi
+          test "$(git rev-parse "$ROSTA_PS12_TAG^{commit}")" = "$CANDIDATE_SHA"
+          test "$(git rev-parse "$ROSTA_PS11_TAG^{commit}")" = "$ROSTA_PS11_ACCEPTED_SHA"
+
+      - name: Publish or verify PS12 release
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if gh release view "$ROSTA_PS12_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            test "$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$ROSTA_PS12_TAG" --jq .tag_name)" = "$ROSTA_PS12_TAG"
+            test "$(git rev-parse "$ROSTA_PS12_TAG^{commit}")" = "$CANDIDATE_SHA"
+          else
+            gh release create "$ROSTA_PS12_TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --verify-tag \
+              --title "ROSTA Pre-server Source Release — 2026-09-05 (PS12)" \
+              --notes-file docs/pre-server/PS12_RELEASE_NOTES.md \
+              "$EVIDENCE_DIR"/*
+          fi
+          release_json="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$ROSTA_PS12_TAG")"
+          test "$(jq -r .draft <<< "$release_json")" = "false"
+          test "$(jq -r .tag_name <<< "$release_json")" = "$ROSTA_PS12_TAG"
+
+      - name: Upload PS12 release evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: rosta-ps12-release-evidence-${{ github.run_id }}
+          path: /tmp/rosta-ps12-release/${{ github.run_id }}
+          if-no-files-found: warn
+          retention-days: 90
