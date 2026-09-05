@@ -20,11 +20,12 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
           bun-version: 1.2.22
-      - name: Normalize both frontend quantity contracts
+      - name: Normalize generator against current source contracts
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
+
           schema = Path('src/lib/api/schemas.ts')
           old = '    quantity: z.number().int().min(1).max(20),\n'
           new = '    quantity: z.number().int().min(1).max(1000),\n'
@@ -34,11 +35,20 @@ jobs:
           schema.write_text(content.replace(old, new), encoding='utf-8')
 
           script = Path('scripts/ps12-ui-bootstrap.py')
-          statement = "replace_once('src/lib/api/schemas.ts', \"    quantity: z.number().int().min(1).max(20),\\n\", \"    quantity: z.number().int().min(1).max(1000),\\n\")\n"
           source = script.read_text(encoding='utf-8')
-          if source.count(statement) != 1:
+
+          quantity_statement = "replace_once('src/lib/api/schemas.ts', \"    quantity: z.number().int().min(1).max(20),\\n\", \"    quantity: z.number().int().min(1).max(1000),\\n\")\n"
+          if source.count(quantity_statement) != 1:
               raise SystemExit('quantity replacement statement not found exactly once')
-          script.write_text(source.replace(statement, ''), encoding='utf-8')
+          source = source.replace(quantity_statement, '')
+
+          old_panel_anchor = "    '          <Link to=\"/panel/organization\"',\n"
+          new_panel_anchor = "    '            <Link\\n              to=\"/panel/organization\"',\n"
+          if source.count(old_panel_anchor) != 1:
+              raise SystemExit('panel organization anchor not found exactly once')
+          source = source.replace(old_panel_anchor, new_panel_anchor, 1)
+
+          script.write_text(source, encoding='utf-8')
           PY
       - name: Generate PS12 UI and contract updates
         run: python3 scripts/ps12-ui-bootstrap.py
