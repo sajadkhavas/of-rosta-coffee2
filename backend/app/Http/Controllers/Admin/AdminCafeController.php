@@ -36,7 +36,7 @@ final class AdminCafeController
         $user = $request->user();
         if (! $user->hasRole(Role::Administrator)) { abort(403); }
         $cafe = Cafe::query()->findOrFail($cafeId);
-        $updated = $service->setStatus($cafe, CafeStatus::from((string) $request->validated('status')), $user, $request->validated('review_note'), $request);
+        $updated = $service->setStatus($cafe, CafeStatus::from((string) $request->validated('status')), $user, $request->input('review_note'), $request);
         return ApiResponse::success((new CafeResource($updated))->resolve($request));
     }
 }

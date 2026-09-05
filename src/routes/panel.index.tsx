@@ -22,6 +22,12 @@ function SellerPanelPage() {
           <Breadcrumb items={[{ label: "خانه", to: "/" }, { label: "پنل روستری" }]} />
           <div className="flex flex-wrap gap-3">
             <Link
+              to="/panel/wholesale"
+              className="rounded-xl border border-[color:var(--mid)] px-4 py-3 text-sm font-bold text-[color:var(--steam)] hover:border-[color:var(--roast)]"
+            >
+              قیمت عمده کافه‌ها
+            </Link>
+            <Link
               to="/panel/organization"
               className="inline-flex min-h-11 items-center rounded-xl border border-[color:var(--roast)] px-4 text-sm font-bold text-[color:var(--roast)] transition hover:bg-[color:var(--roast)] hover:text-[color:var(--night)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--roast)]"
             >

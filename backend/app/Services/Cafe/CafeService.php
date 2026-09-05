@@ -10,7 +10,6 @@ use App\Models\CafeMembership;
 use App\Models\User;
 use App\Models\UserRole;
 use App\Services\AuditRecorder;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;

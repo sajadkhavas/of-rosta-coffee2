@@ -40,7 +40,7 @@ final class SellerProductController
                 'latestRoastBatch',
                 'roastery.logo',
                 'roastery.cover',
-                'variants',
+                'variants.wholesaleTiers' => static fn ($query) => $query->orderBy('min_weight_grams'),
             ])
             ->where('roastery_id', $roastery->id)
             ->orderByDesc('updated_at')
@@ -244,7 +244,7 @@ final class SellerProductController
             'latestRoastBatch',
             'roastery.logo',
             'roastery.cover',
-            'variants',
+            'variants.wholesaleTiers' => static fn ($query) => $query->orderBy('min_weight_grams'),
         ]);
     }
 }
