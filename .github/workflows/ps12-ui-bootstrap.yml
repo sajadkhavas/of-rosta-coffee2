@@ -59,6 +59,34 @@ jobs:
           PY
       - name: Generate PS12 UI and contract updates
         run: python3 scripts/ps12-ui-bootstrap.py
+      - name: Normalize generated strict frontend contracts
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          cafes = Path('src/lib/api/cafes.ts')
+          source = cafes.read_text(encoding='utf-8')
+          replacements = {
+              '  opening_hours: z.record(z.string(), z.unknown()).or(z.array(z.unknown())).default([]),\n': '  opening_hours: z.record(z.string(), z.unknown()).or(z.array(z.unknown())),\n',
+              '  amenities: z.array(z.string()).max(50).default([]),\n': '  amenities: z.array(z.string()).max(50),\n',
+          }
+          for old, new in replacements.items():
+              if source.count(old) != 1:
+                  raise SystemExit(f'cafes contract anchor mismatch: {old!r}')
+              source = source.replace(old, new, 1)
+          cafes.write_text(source, encoding='utf-8')
+
+          persian = Path('src/lib/persian.ts')
+          source = persian.read_text(encoding='utf-8')
+          if 'export function formatIrr(' in source:
+              raise SystemExit('formatIrr unexpectedly already exists')
+          anchor = 'export function formatToman(n: number): string {\n  return `${n.toLocaleString("fa-IR")} تومان`;\n}\n'
+          if source.count(anchor) != 1:
+              raise SystemExit('formatToman anchor mismatch')
+          addition = anchor + '\nexport function formatIrr(n: number): string {\n  return `${n.toLocaleString("fa-IR")} ریال`;\n}\n'
+          persian.write_text(source.replace(anchor, addition, 1), encoding='utf-8')
+          PY
       - name: Install locked backend dependencies for contract audit
         shell: bash
         run: |
