@@ -12,7 +12,7 @@ final class WholesaleTierService
     public const array DEFAULT_THRESHOLDS = [5_000, 10_000, 20_000, 50_000];
 
     /**
-     * @param list<array{min_weight_grams:int,unit_price:int,is_active?:bool}> $tiers
+     * @param  list<array{min_weight_grams:int,unit_price:int,is_active?:bool}>  $tiers
      */
     public function replace(ProductVariant $variant, array $tiers): ProductVariant
     {

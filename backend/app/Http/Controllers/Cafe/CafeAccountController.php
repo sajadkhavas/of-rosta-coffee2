@@ -19,6 +19,7 @@ final class CafeAccountController
         /** @var User $user */
         $user = $request->user();
         $memberships = CafeMembership::query()->with('cafe')->where('user_id', $user->id)->where('is_active', true)->get();
+
         return ApiResponse::success(['items' => $memberships->map(fn (CafeMembership $membership): array => [
             ...(new CafeResource($membership->cafe))->resolve($request),
             'membership_role' => $membership->role,
@@ -31,6 +32,7 @@ final class CafeAccountController
         $user = $request->user();
         $cafe = Cafe::query()->findOrFail($cafeId);
         $updated = $service->updateForMember($cafe, $user, $request->validated(), $request);
+
         return ApiResponse::success((new CafeResource($updated))->resolve($request));
     }
 }

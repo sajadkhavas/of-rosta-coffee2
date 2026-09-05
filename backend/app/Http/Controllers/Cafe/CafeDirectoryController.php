@@ -42,6 +42,7 @@ final class CafeDirectoryController
     public function show(Request $request, string $slug): JsonResponse
     {
         $cafe = Cafe::query()->where('slug', $slug)->where('status', 'verified')->whereNotNull('verified_at')->firstOrFail();
+
         return ApiResponse::success((new CafeResource($cafe))->resolve($request));
     }
 }

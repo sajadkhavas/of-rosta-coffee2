@@ -14,7 +14,10 @@ final class ApplyCafeRequest extends FormRequest
         $this->rejectUnexpected(['name', 'slug', 'city', 'address', 'latitude', 'longitude', 'phone', 'website_url', 'instagram_handle', 'description', 'opening_hours', 'amenities']);
     }
 
-    public function authorize(): bool { return true; }
+    public function authorize(): bool
+    {
+        return true;
+    }
 
     public function rules(): array
     {

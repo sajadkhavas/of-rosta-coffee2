@@ -17,7 +17,10 @@ final class ReplaceWholesaleTiersRequest extends FormRequest
         $this->rejectUnexpectedNested(is_array($this->input('tiers')) ? $this->input('tiers') : [], ['min_weight_grams', 'unit_price', 'is_active'], 'tiers');
     }
 
-    public function authorize(): bool { return true; }
+    public function authorize(): bool
+    {
+        return true;
+    }
 
     public function rules(): array
     {

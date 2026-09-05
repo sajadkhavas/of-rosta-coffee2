@@ -54,6 +54,7 @@ final class CafeDirectoryService
         $lonDelta = deg2rad($lon2 - $lon1);
         $a = sin($latDelta / 2) ** 2
             + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($lonDelta / 2) ** 2;
+
         return round($earthRadius * 2 * atan2(sqrt($a), sqrt(1 - $a)), 3);
     }
 }

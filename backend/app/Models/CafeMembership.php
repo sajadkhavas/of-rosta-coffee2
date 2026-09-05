@@ -25,6 +25,7 @@ final class CafeMembership extends Model
     use HasUlids;
 
     public const ROLE_OWNER = 'owner';
+
     public const ROLE_MANAGER = 'manager';
 
     protected $fillable = [

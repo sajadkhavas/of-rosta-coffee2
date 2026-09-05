@@ -16,6 +16,7 @@ final class CafeApplicationController
         /** @var User $user */
         $user = $request->user();
         $cafe = $service->apply($user, $request->validated(), $request);
+
         return ApiResponse::success((new CafeResource($cafe))->resolve($request), 201);
     }
 }

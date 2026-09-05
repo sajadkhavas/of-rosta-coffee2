@@ -21,6 +21,7 @@ final class SellerWholesaleTierController
     public function index(Request $request, string $roasteryId, string $productId, string $variantId, CatalogAccess $access): JsonResponse
     {
         [, $variant] = $this->context($request, $roasteryId, $productId, $variantId, $access);
+
         return ApiResponse::success(['items' => $this->tiers($variant->load('wholesaleTiers'))]);
     }
 
@@ -29,6 +30,7 @@ final class SellerWholesaleTierController
         [$user, $variant] = $this->context($request, $roasteryId, $productId, $variantId, $access);
         $updated = $tiers->replace($variant, $request->validated('tiers'));
         $audit->record('catalog.wholesale_tiers.replaced', actor: $user, auditable: $updated, metadata: ['thresholds' => $updated->wholesaleTiers->pluck('min_weight_grams')->all()], request: $request);
+
         return ApiResponse::success(['items' => $this->tiers($updated)]);
     }
 
@@ -41,6 +43,7 @@ final class SellerWholesaleTierController
         $access->assertRoasteryAccess($user, $roastery, [Role::RoasteryOwner, Role::RoasteryManager]);
         $product = Product::query()->where('roastery_id', $roastery->id)->findOrFail($productId);
         $variant = ProductVariant::query()->where('product_id', $product->id)->findOrFail($variantId);
+
         return [$user, $variant];
     }
 

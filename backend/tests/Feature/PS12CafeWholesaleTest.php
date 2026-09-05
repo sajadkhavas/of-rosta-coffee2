@@ -7,6 +7,7 @@ use App\Enums\Role;
 use App\Models\Address;
 use App\Models\Cafe;
 use App\Models\CafeMembership;
+use App\Models\CheckoutQuoteItem;
 use App\Models\Origin;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -63,7 +64,7 @@ final class PS12CafeWholesaleTest extends TestCase
         self::assertSame('ps12-wholesale-tier-v1', $quote['groups'][0]['items'][0]['variant']['pricing']['version']);
         self::assertSame('wholesale', $quote['groups'][0]['items'][0]['variant']['pricing']['mode']);
         $this->assertDatabaseHas('checkout_quote_items', ['quote_id' => $quote['id'], 'variant_id' => $variant->id, 'unit_price' => 900_000, 'line_total' => 4_500_000]);
-        $stored = \App\Models\CheckoutQuoteItem::query()->where('quote_id', $quote['id'])->firstOrFail();
+        $stored = CheckoutQuoteItem::query()->where('quote_id', $quote['id'])->firstOrFail();
         self::assertSame('ps12-wholesale-tier-v1', $stored->variant_snapshot['pricing']['version']);
         self::assertSame('wholesale', $stored->variant_snapshot['pricing']['mode']);
     }
@@ -104,6 +105,7 @@ final class PS12CafeWholesaleTest extends TestCase
         $origin = Origin::query()->create(['name' => 'برزیل B2B', 'slug' => 'b2b-origin-'.substr((string) $user->id, -6), 'country_code' => 'BRA']);
         $product = Product::query()->create(['roastery_id' => $roastery->id, 'origin_id' => $origin->id, 'name' => 'قهوه B2B', 'slug' => 'b2b-product-'.substr((string) $user->id, -6), 'description' => '', 'processing_method' => 'washed', 'roast_level' => 'medium', 'arabica_percentage' => 100, 'tasting_notes' => [], 'brewing_suggestions' => [], 'status' => 'published', 'published_at' => now()]);
         $variant = ProductVariant::query()->create(['product_id' => $product->id, 'sku' => 'B2B-'.substr((string) $user->id, -8), 'weight_grams' => 1000, 'price' => 1_000_000, 'currency' => 'IRR', 'is_active' => true, 'stock_on_hand' => 1000, 'stock_reserved' => 0]);
+
         return [$user, $address, $roastery, $variant];
     }
 }

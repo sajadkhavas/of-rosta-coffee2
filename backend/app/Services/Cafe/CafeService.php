@@ -143,6 +143,7 @@ final class CafeService
     private function nullableTrim(mixed $value): ?string
     {
         $trimmed = trim((string) ($value ?? ''));
+
         return $trimmed === '' ? null : $trimmed;
     }
 }

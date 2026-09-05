@@ -11,8 +11,15 @@ final class SetCafeStatusRequest extends FormRequest
 {
     use RejectsUnexpectedInput;
 
-    protected function prepareForValidation(): void { $this->rejectUnexpected(['status', 'review_note']); }
-    public function authorize(): bool { return true; }
+    protected function prepareForValidation(): void
+    {
+        $this->rejectUnexpected(['status', 'review_note']);
+    }
+
+    public function authorize(): bool
+    {
+        return true;
+    }
 
     public function rules(): array
     {

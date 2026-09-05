@@ -196,9 +196,7 @@ final class OrderService
 
                     $product = $variant->product;
                     $pricing = $this->wholesalePricing->resolve($user, $variant, (int) $quoteItem->quantity);
-                    $quotedPricing = is_array($quoteItem->variant_snapshot)
-                        ? ($quoteItem->variant_snapshot['pricing'] ?? null)
-                        : null;
+                    $quotedPricing = $quoteItem->variant_snapshot['pricing'] ?? null;
                     $pricingChanged = $pricing['unit_price'] !== (int) $quoteItem->unit_price
                         || ! is_array($quotedPricing)
                         || ! $this->wholesalePricing->snapshotMatches($pricing['snapshot'], $quotedPricing);
