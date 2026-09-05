@@ -27,17 +27,28 @@ final class CafeDirectoryService
                 ->whereBetween('longitude', [$longitude - $lngDelta, $longitude + $lngDelta]);
         }
 
-        return $query->orderBy('name')->limit(200)->get()
-            ->map(function (Cafe $cafe) use ($latitude, $longitude): array {
-                $distance = null;
-                if ($latitude !== null && $longitude !== null && $cafe->latitude !== null && $cafe->longitude !== null) {
-                    $distance = $this->distanceKm($latitude, $longitude, (float) $cafe->latitude, (float) $cafe->longitude);
-                }
-                return ['cafe' => $cafe, 'distance_km' => $distance];
-            })
-            ->filter(static fn (array $entry): bool => $entry['distance_km'] === null || $entry['distance_km'] <= $radiusKm)
-            ->sortBy(static fn (array $entry): float => $entry['distance_km'] ?? PHP_FLOAT_MAX)
-            ->values();
+        /** @var list<array{cafe:Cafe,distance_km:float|null}> $entries */
+        $entries = [];
+        foreach ($query->orderBy('name')->limit(200)->get() as $cafe) {
+            $distance = null;
+            if ($latitude !== null && $longitude !== null && $cafe->latitude !== null && $cafe->longitude !== null) {
+                $distance = $this->distanceKm($latitude, $longitude, $cafe->latitude, $cafe->longitude);
+            }
+
+            if ($distance === null || $distance <= $radiusKm) {
+                $entries[] = ['cafe' => $cafe, 'distance_km' => $distance];
+            }
+        }
+
+        usort(
+            $entries,
+            static fn (array $left, array $right): int => ($left['distance_km'] ?? PHP_FLOAT_MAX) <=> ($right['distance_km'] ?? PHP_FLOAT_MAX),
+        );
+
+        /** @var Collection<int,array{cafe:Cafe,distance_km:float|null}> $result */
+        $result = collect($entries);
+
+        return $result;
     }
 
     private function distanceKm(float $lat1, float $lon1, float $lat2, float $lon2): float

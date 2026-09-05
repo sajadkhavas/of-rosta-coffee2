@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Roastery;
 use App\Models\User;
+use App\Models\WholesalePriceTier;
 use App\Services\AuditRecorder;
 use App\Services\B2B\WholesaleTierService;
 use App\Services\Catalog\CatalogAccess;
@@ -31,6 +32,7 @@ final class SellerWholesaleTierController
         return ApiResponse::success(['items' => $this->tiers($updated)]);
     }
 
+    /** @return array{User,ProductVariant} */
     private function context(Request $request, string $roasteryId, string $productId, string $variantId, CatalogAccess $access): array
     {
         /** @var User $user */
@@ -42,13 +44,18 @@ final class SellerWholesaleTierController
         return [$user, $variant];
     }
 
+    /** @return list<array{id:string,min_weight_grams:int,unit_price:int,is_active:bool}> */
     private function tiers(ProductVariant $variant): array
     {
-        return $variant->wholesaleTiers->sortBy('min_weight_grams')->values()->map(static fn ($tier): array => [
-            'id' => $tier->id,
-            'min_weight_grams' => $tier->min_weight_grams,
-            'unit_price' => $tier->unit_price,
-            'is_active' => $tier->is_active,
-        ])->all();
+        return $variant->wholesaleTiers
+            ->sortBy('min_weight_grams')
+            ->values()
+            ->map(static fn (WholesalePriceTier $tier): array => [
+                'id' => $tier->id,
+                'min_weight_grams' => $tier->min_weight_grams,
+                'unit_price' => $tier->unit_price,
+                'is_active' => $tier->is_active,
+            ])
+            ->all();
     }
 }

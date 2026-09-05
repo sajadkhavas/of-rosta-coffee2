@@ -26,6 +26,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property-read Collection<int, StockLedgerEntry> $stockLedgerEntries
  * @property-read Collection<int, CheckoutQuoteItem> $quoteItems
  * @property-read Collection<int, OrderItem> $orderItems
+ * @property-read Collection<int, WholesalePriceTier> $wholesaleTiers
  * @property-read Collection<int, InventoryReservation> $reservations
  */
 final class ProductVariant extends Model
@@ -80,6 +81,7 @@ final class ProductVariant extends Model
         return $this->hasMany(OrderItem::class, 'variant_id');
     }
 
+    /** @return HasMany<WholesalePriceTier, $this> */
     public function wholesaleTiers(): HasMany
     {
         return $this->hasMany(WholesalePriceTier::class, 'product_variant_id')->orderBy('min_weight_grams');
