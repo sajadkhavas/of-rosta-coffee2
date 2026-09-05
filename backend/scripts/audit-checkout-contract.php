@@ -101,7 +101,7 @@ $requireContains(
 );
 $requireContains(
     'app/Services/Checkout/QuoteService.php',
-    "$unitPrice = \$pricing['unit_price'];",
+    "\$unitPrice = \$pricing['unit_price'];",
     'Quote line math must use the server-resolved unit price.',
 );
 $requireContains(
