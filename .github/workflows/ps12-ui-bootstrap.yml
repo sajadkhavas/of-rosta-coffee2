@@ -97,10 +97,14 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
+          bun install --frozen-lockfile
+          mapfile -t FRONTEND_CHANGED < <(git diff --name-only --diff-filter=ACM | grep -E '\.(ts|tsx|js|jsx|mjs|cjs|json|md|css)$' || true)
+          if (( ${#FRONTEND_CHANGED[@]} > 0 )); then
+            bunx prettier --write "${FRONTEND_CHANGED[@]}"
+          fi
           git diff --check
           while IFS= read -r file; do php -l "$file"; done < <(git diff --name-only --diff-filter=ACM | grep '^backend/.*\.php$' || true)
           php backend/scripts/audit-business-contract.php
-          bun install --frozen-lockfile
           bun run check
       - name: Commit generated implementation
         shell: bash
