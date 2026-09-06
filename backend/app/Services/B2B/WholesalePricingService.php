@@ -77,6 +77,32 @@ final class WholesalePricingService
     /** @param array<string,mixed> $actual */
     public function snapshotMatches(array $expected, array $actual): bool
     {
-        return $expected === $actual;
+        return $this->normalizeSnapshot($expected) === $this->normalizeSnapshot($actual);
+    }
+
+    /**
+     * Normalize JSON-object key ordering while preserving JSON-list ordering.
+     *
+     * MySQL does not guarantee object-key order for values read from JSON columns,
+     * so snapshot equality must be semantic rather than dependent on PHP array order.
+     *
+     * @param  array<array-key, mixed>  $snapshot
+     * @return array<array-key, mixed>
+     */
+    private function normalizeSnapshot(array $snapshot): array
+    {
+        $normalized = [];
+
+        foreach ($snapshot as $key => $value) {
+            $normalized[$key] = is_array($value)
+                ? $this->normalizeSnapshot($value)
+                : $value;
+        }
+
+        if (! array_is_list($normalized)) {
+            ksort($normalized);
+        }
+
+        return $normalized;
     }
 }
