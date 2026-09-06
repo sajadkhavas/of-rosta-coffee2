@@ -236,6 +236,37 @@ export const productVariantWireSchema = z
     currency: currencySchema,
     is_available: z.boolean(),
     available_quantity: z.number().int().nonnegative().max(1_000_000).nullable().optional(),
+    wholesale_tiers: z
+      .array(
+        z
+          .object({
+            min_weight_grams: z.union([
+              z.literal(5000),
+              z.literal(10000),
+              z.literal(20000),
+              z.literal(50000),
+            ]),
+            unit_price: moneySchema,
+          })
+          .strict(),
+      )
+      .max(4)
+      .optional(),
+    pricing: z
+      .object({
+        version: z.literal("ps12-wholesale-tier-v1"),
+        mode: z.enum(["retail", "wholesale"]),
+        retail_unit_price: moneySchema,
+        applied_unit_price: moneySchema,
+        variant_weight_grams: z.number().int().positive().max(1000),
+        quantity: z.number().int().min(1).max(1000),
+        total_weight_grams: z.number().int().positive().max(10_000_000),
+        cafe_id: identifierSchema.nullable(),
+        tier_id: identifierSchema.nullable(),
+        tier_min_weight_grams: z.number().int().positive().nullable(),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -395,7 +426,7 @@ export const cartLineWireSchema = z
     id: identifierSchema,
     product: productSummaryWireSchema,
     variant: productVariantWireSchema,
-    quantity: z.number().int().min(1).max(20),
+    quantity: z.number().int().min(1).max(1000),
     line_total: moneySchema,
     services: z.array(commerceServiceWireSchema).max(20),
   })
@@ -613,7 +644,7 @@ const orderLineWireSchema = z
         currency: currencySchema,
       })
       .strict(),
-    quantity: z.number().int().min(1).max(20),
+    quantity: z.number().int().min(1).max(1000),
     line_total: moneySchema,
     services: z.array(orderItemServiceWireSchema).max(20),
   })

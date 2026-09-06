@@ -6,6 +6,10 @@ export function formatToman(n: number): string {
   return `${n.toLocaleString("fa-IR")} تومان`;
 }
 
+export function formatIrr(n: number): string {
+  return `${n.toLocaleString("fa-IR")} ریال`;
+}
+
 export function formatWeight(g: number): string {
   if (g >= 1000) return `${toFa(g / 1000)} کیلوگرم`;
   return `${toFa(g)} گرم`;

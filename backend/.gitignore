@@ -13,6 +13,7 @@
 /public/storage
 /storage/*.key
 /storage/framework/cache/
+/storage/framework/testing/
 /vendor
 Homestead.json
 Homestead.yaml

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminCafeController;
 use App\Http\Controllers\Admin\AdminContentAuthorController;
 use App\Http\Controllers\Admin\AdminContentController;
 use App\Http\Controllers\Admin\AdminContentLinkReportController;
@@ -11,6 +12,9 @@ use App\Http\Controllers\Admin\AdminSeoRedirectController;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Controllers\Auth\RequestOtpController;
 use App\Http\Controllers\Auth\VerifyOtpController;
+use App\Http\Controllers\Cafe\CafeAccountController;
+use App\Http\Controllers\Cafe\CafeApplicationController;
+use App\Http\Controllers\Cafe\CafeDirectoryController;
 use App\Http\Controllers\Catalog\ProductController;
 use App\Http\Controllers\Catalog\RoasteryController;
 use App\Http\Controllers\Catalog\SearchController;
@@ -30,6 +34,7 @@ use App\Http\Controllers\Seller\SellerProductController;
 use App\Http\Controllers\Seller\SellerRoastBatchController;
 use App\Http\Controllers\Seller\SellerRoasteryController;
 use App\Http\Controllers\Seller\SellerVariantController;
+use App\Http\Controllers\Seller\SellerWholesaleTierController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
@@ -42,6 +47,8 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
     Route::get('/products/{slug}/related', [ProductController::class, 'related'])->where('slug', '[A-Za-z0-9\p{Arabic}_-]+')->name('api.v1.products.related');
     Route::get('/roasteries', [RoasteryController::class, 'index'])->name('api.v1.roasteries.index');
     Route::get('/roasteries/{slug}', [RoasteryController::class, 'show'])->where('slug', '[A-Za-z0-9\p{Arabic}_-]+')->name('api.v1.roasteries.show');
+    Route::get('/cafes', [CafeDirectoryController::class, 'index'])->name('api.v1.cafes.index');
+    Route::get('/cafes/{slug}', [CafeDirectoryController::class, 'show'])->where('slug', '[a-z0-9-]+')->name('api.v1.cafes.show');
     Route::get('/search', SearchController::class)->name('api.v1.search');
     Route::get('/content', [ContentController::class, 'index'])->name('api.v1.content.index');
     Route::get('/content/resolve', [ContentController::class, 'resolve'])->name('api.v1.content.resolve');
@@ -58,6 +65,9 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
         Route::post('/me/addresses', [AddressController::class, 'store'])->name('api.v1.addresses.store');
         Route::patch('/me/addresses/{addressId}', [AddressController::class, 'update'])->where('addressId', '[A-Za-z0-9._:-]+')->name('api.v1.addresses.update');
         Route::delete('/me/addresses/{addressId}', [AddressController::class, 'destroy'])->where('addressId', '[A-Za-z0-9._:-]+')->name('api.v1.addresses.destroy');
+        Route::post('/cafes/apply', [CafeApplicationController::class, 'store'])->name('api.v1.cafes.apply');
+        Route::get('/me/cafes', [CafeAccountController::class, 'index'])->name('api.v1.me.cafes.index');
+        Route::patch('/me/cafes/{cafeId}', [CafeAccountController::class, 'update'])->where('cafeId', '[A-Za-z0-9._:-]+')->name('api.v1.me.cafes.update');
         Route::post('/checkout/quote', CheckoutQuoteController::class)->middleware('throttle:checkout-quote')->name('api.v1.checkout.quote');
         Route::get('/orders', [OrderController::class, 'index'])->name('api.v1.orders.index');
         Route::post('/orders', [OrderController::class, 'store'])->middleware('throttle:order-create')->name('api.v1.orders.store');
@@ -83,6 +93,8 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
                 Route::patch('/products/{productId}', [SellerProductController::class, 'update'])->where('productId', '[A-Za-z0-9._:-]+')->name('api.v1.seller.products.update');
                 Route::post('/products/{productId}/variants', [SellerVariantController::class, 'store'])->where('productId', '[A-Za-z0-9._:-]+')->name('api.v1.seller.variants.store');
                 Route::patch('/products/{productId}/variants/{variantId}', [SellerVariantController::class, 'update'])->where(['productId' => '[A-Za-z0-9._:-]+', 'variantId' => '[A-Za-z0-9._:-]+'])->name('api.v1.seller.variants.update');
+                Route::get('/products/{productId}/variants/{variantId}/wholesale-tiers', [SellerWholesaleTierController::class, 'index'])->where(['productId' => '[A-Za-z0-9._:-]+', 'variantId' => '[A-Za-z0-9._:-]+'])->name('api.v1.seller.wholesale_tiers.index');
+                Route::put('/products/{productId}/variants/{variantId}/wholesale-tiers', [SellerWholesaleTierController::class, 'replace'])->where(['productId' => '[A-Za-z0-9._:-]+', 'variantId' => '[A-Za-z0-9._:-]+'])->name('api.v1.seller.wholesale_tiers.replace');
                 Route::get('/products/{productId}/roast-batches', [SellerRoastBatchController::class, 'index'])->where('productId', '[A-Za-z0-9._:-]+')->name('api.v1.seller.roast_batches.index');
                 Route::post('/products/{productId}/roast-batches', [SellerRoastBatchController::class, 'store'])->where('productId', '[A-Za-z0-9._:-]+')->name('api.v1.seller.roast_batches.store');
                 Route::get('/variants/{variantId}/stock-ledger', [SellerInventoryController::class, 'index'])->where('variantId', '[A-Za-z0-9._:-]+')->name('api.v1.seller.inventory.index');
@@ -97,6 +109,8 @@ Route::prefix('v1')->middleware('throttle:api')->group(function (): void {
             Route::patch('/origins/{originId}', [AdminOriginController::class, 'update'])->where('originId', '[A-Za-z0-9._:-]+')->name('api.v1.admin.origins.update');
             Route::get('/roasteries', [AdminRoasteryController::class, 'index'])->name('api.v1.admin.roasteries.index');
             Route::patch('/roasteries/{roasteryId}/status', [AdminRoasteryController::class, 'setStatus'])->where('roasteryId', '[A-Za-z0-9._:-]+')->name('api.v1.admin.roasteries.status');
+            Route::get('/cafes', [AdminCafeController::class, 'index'])->name('api.v1.admin.cafes.index');
+            Route::patch('/cafes/{cafeId}/status', [AdminCafeController::class, 'setStatus'])->where('cafeId', '[A-Za-z0-9._:-]+')->name('api.v1.admin.cafes.status');
             Route::get('/products', [AdminProductController::class, 'index'])->name('api.v1.admin.products.index');
             Route::patch('/products/{productId}/status', [AdminProductController::class, 'setStatus'])->where('productId', '[A-Za-z0-9._:-]+')->name('api.v1.admin.products.status');
             Route::get('/orders', [AdminOrderController::class, 'index'])->name('api.v1.admin.orders.index');

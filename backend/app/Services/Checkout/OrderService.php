@@ -29,6 +29,7 @@ use App\Models\ShipmentLeg;
 use App\Models\SubOrder;
 use App\Models\User;
 use App\Services\AuditRecorder;
+use App\Services\B2B\WholesalePricingService;
 use App\Services\Hub\RostaHubOperationsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -42,6 +43,7 @@ final class OrderService
         private readonly AuditRecorder $audit,
         private readonly RoasteryGrindingSelection $grinding,
         private readonly RostaHubOperationsService $hubOperations,
+        private readonly WholesalePricingService $wholesalePricing,
     ) {}
 
     public function create(
@@ -158,7 +160,7 @@ final class OrderService
                 ->values();
 
             $variants = ProductVariant::query()
-                ->with(['product.roastery', 'product.latestRoastBatch'])
+                ->with(['product.roastery', 'product.latestRoastBatch', 'wholesaleTiers' => static fn ($query) => $query->where('is_active', true)->orderBy('min_weight_grams')])
                 ->whereIn('id', $variantIds)
                 ->orderBy('id')
                 ->lockForUpdate()
@@ -193,9 +195,14 @@ final class OrderService
                     }
 
                     $product = $variant->product;
+                    $pricing = $this->wholesalePricing->resolve($user, $variant, (int) $quoteItem->quantity);
+                    $quotedPricing = $quoteItem->variant_snapshot['pricing'] ?? null;
+                    $pricingChanged = $pricing['unit_price'] !== (int) $quoteItem->unit_price
+                        || ! is_array($quotedPricing)
+                        || ! $this->wholesalePricing->snapshotMatches($pricing['snapshot'], $quotedPricing);
                     if (
                         ! $variant->is_active
-                        || $variant->price !== $quoteItem->unit_price
+                        || $pricingChanged
                         || $product->status !== ProductStatus::Published
                         || $product->published_at === null
                         || $product->roastery_id !== $group->roastery_id

@@ -304,6 +304,59 @@ function ProductPage() {
                 ))}
               </div>
             </section>
+            {selectedVariant?.wholesaleTiers?.length ? (
+              <section
+                className="mt-6 rounded-2xl border border-[color:var(--roast)]/40 bg-[color:var(--dark)] p-4"
+                aria-labelledby="wholesale-pricing-title"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 id="wholesale-pricing-title" className="text-sm font-bold">
+                      قیمت همکاری کافه‌ها
+                    </h2>
+                    <p className="mt-1 text-xs leading-6 text-[color:var(--light)]">
+                      این جدول قیمت‌های تعریف‌شده روستری را نشان می‌دهد. اعمال قیمت همکاری فقط برای
+                      کافه تأییدشده و بر اساس وزن واقعی همین Variant در Quote سمت سرور انجام می‌شود.
+                    </p>
+                  </div>
+                  <Link
+                    to="/cafes/apply"
+                    className="rounded-lg border border-[color:var(--roast)] px-3 py-2 text-xs font-bold text-[color:var(--roast)]"
+                  >
+                    درخواست حساب کافه
+                  </Link>
+                </div>
+                <div className="mt-4 overflow-x-auto">
+                  <table className="w-full min-w-[28rem] text-sm">
+                    <thead className="text-xs text-[color:var(--light)]">
+                      <tr className="border-b border-[color:var(--mid)]">
+                        <th className="px-3 py-2 text-start">حداقل وزن سفارش</th>
+                        <th className="px-3 py-2 text-start">قیمت واحد این بسته</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedVariant.wholesaleTiers.map((tier) => (
+                        <tr
+                          key={tier.minWeightGrams}
+                          className="border-b border-[color:var(--mid)]/60 last:border-0"
+                        >
+                          <td className="px-3 py-3 font-bold">
+                            {(tier.minWeightGrams / 1000).toLocaleString("fa-IR")} کیلو
+                          </td>
+                          <td className="px-3 py-3 font-mono text-[color:var(--roast)]">
+                            {formatIrr(tier.unitPrice)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="mt-3 text-[11px] leading-6 text-[color:var(--light)]">
+                  مبلغ نهایی، موجودی و صلاحیت B2B هنگام ساخت Quote دوباره توسط سرور رستا بررسی
+                  می‌شود؛ نمایش این جدول به‌تنهایی حق دریافت قیمت همکاری ایجاد نمی‌کند.
+                </p>
+              </section>
+            ) : null}
             <div className="mt-6 grid gap-3 rounded-xl border border-[color:var(--roast)]/40 bg-[color:var(--night)] p-4 text-xs leading-7 text-[color:var(--light)]">
               <p>رستا فقط دانه کامل می‌فروشد. قیمت نهایی در سبد توسط سرور تأیید می‌شود.</p>
               <div className="flex items-center justify-between gap-3 border-t border-[color:var(--mid)] pt-3">

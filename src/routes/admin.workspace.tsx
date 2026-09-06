@@ -25,6 +25,7 @@ const workspaceLinks = [
   { to: "/admin/settlement-profiles", label: "بررسی مقصدهای تسویه" },
   { to: "/admin/content", label: "محتوا" },
   { to: "/admin/quiz-reviews", label: "Quiz و نظرات" },
+  { to: "/admin/cafes", label: "بررسی کافه‌ها" },
 ] as const;
 
 function AdminWorkspacePage() {
