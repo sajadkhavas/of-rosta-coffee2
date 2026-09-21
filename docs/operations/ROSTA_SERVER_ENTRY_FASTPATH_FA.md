@@ -1,6 +1,6 @@
 # ROSTA — Server Entry Fast Path
 
-Status: PRE-SERVER PREPARATION / NOT DEPLOYED  
+Status: PRE-SERVER PREPARATION / NOT DEPLOYED
 Ops branch: `ops/rosta-server-entry-fastpath-20260921`
 
 Historical frozen PS12 source:
