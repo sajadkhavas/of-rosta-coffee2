@@ -77,6 +77,11 @@ source "$SCRIPT_DIR/lib.sh"
 load_staging_environment
 assert_staging_contract
 
+# The frozen staging examples contain bootstrap image tags. The fast path always
+# re-locks Compose to the exact frozen release after loading the environment.
+export ROSTA_IMAGE_TAG="$ROSTA_RELEASE_SHA"
+export ROSTA_RELEASE_TAG="$ROSTA_RELEASE_SHA"
+
 log "Validating frozen compose contract without building"
 rosta_compose config --quiet
 
