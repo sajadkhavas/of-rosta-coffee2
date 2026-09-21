@@ -40,7 +40,9 @@ grep -Fq 'docker push "$API_IMAGE"' "$WORKFLOW"
 grep -Fq 'docker push "$API_WEB_IMAGE"' "$WORKFLOW"
 grep -Fq 'docker push "$FRONTEND_IMAGE"' "$WORKFLOW"
 
-if grep -R -E   '(^|[^A-Z_])(ghp_|github_pat_|sk-[A-Za-z0-9]|AKIA[A-Z0-9]{16})'   "$FAST_DIR" "$WORKFLOW"; then
+credential_pattern='(^|[^A-Z_])(ghp_|github_pat_|sk-[A-Za-z0-9]|AKIA[A-Z0-9]{16})'
+if grep -R -E --exclude='contract-test.sh' "$credential_pattern" "$FAST_DIR" \
+  || grep -E "$credential_pattern" "$WORKFLOW"; then
   echo "Credential-shaped material found in server fast-path source." >&2
   exit 1
 fi
