@@ -50,7 +50,7 @@ jobs:
           media_domain="media.$site_domain"
           site_url="https://$site_domain"
           api_url="https://$api_domain/api/v1"
-          payment_redirect_hosts="$site_domain"
+          payment_redirect_hosts="$site_domain,$api_domain,sandbox.zarinpal.com"
 
           config_id="$(
             printf '%s\n'               "site=$site_url"               "api=$api_url"               "media=https://$media_domain"               "payment_redirect_hosts=$payment_redirect_hosts"               "indexing=false"               | sha256sum | awk '{print substr($1,1,12)}'
