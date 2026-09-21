@@ -93,8 +93,8 @@ ROSTA_API_WEB_DIGEST=ghcr.io/sajadkhavas/rosta-api-web@sha256:bbbbbbbbbbbbbbbbbb
 ROSTA_FRONTEND_DIGEST=ghcr.io/sajadkhavas/rosta-frontend@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 EOF
 
-  "$FAST_DIR/apply-image-manifest.sh" "$tmp_dir/manifest.env" "$tmp_dir" >/dev/null
-  "$FAST_DIR/verify-server-bundle.sh" "$tmp_dir" >/dev/null
+  bash "$FAST_DIR/apply-image-manifest.sh" "$tmp_dir/manifest.env" "$tmp_dir" >/dev/null
+  bash "$FAST_DIR/verify-server-bundle.sh" "$tmp_dir" >/dev/null
 
   grep -Fxq "ROSTA_RELEASE_SHA=$head_sha" "$tmp_dir/server-entry.env"
   grep -Fxq "ROSTA_RELEASE_TAG=$tmp_tag" "$tmp_dir/server-entry.env"
