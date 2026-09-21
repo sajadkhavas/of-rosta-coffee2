@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-EXPECTED_RELEASE_SHA="4a54780d504b91527a86777e7f04368022354686"
-EXPECTED_RELEASE_TAG="rosta-pre-server-2026-09-05"
+HISTORICAL_PS12_SHA="4a54780d504b91527a86777e7f04368022354686"
 
 CONFIG_FILE="${1:-/etc/rosta/staging/server-entry.env}"
-ROOT_DIR="${ROSTA_ROOT_DIR:-/srv/rosta}"
 
 fail() {
   printf '[rosta-fastpath] ERROR: %s\n' "$*" >&2
@@ -21,30 +19,37 @@ for command in docker git curl python3 sha256sum; do
 done
 
 [[ -f "$CONFIG_FILE" ]] || fail "Missing server-entry config: $CONFIG_FILE"
+
 # shellcheck disable=SC1090
 set -a
 source "$CONFIG_FILE"
 set +a
 
 : "${ROSTA_RELEASE_SHA:?ROSTA_RELEASE_SHA is required}"
+: "${ROSTA_RELEASE_TAG:?ROSTA_RELEASE_TAG is required}"
 : "${ROSTA_API_REMOTE_IMAGE:?ROSTA_API_REMOTE_IMAGE is required}"
 : "${ROSTA_API_WEB_REMOTE_IMAGE:?ROSTA_API_WEB_REMOTE_IMAGE is required}"
 : "${ROSTA_FRONTEND_REMOTE_IMAGE:?ROSTA_FRONTEND_REMOTE_IMAGE is required}"
 
-test "$ROSTA_RELEASE_SHA" = "$EXPECTED_RELEASE_SHA"   || fail "Only frozen PS12 SHA $EXPECTED_RELEASE_SHA is accepted by this fast path"
+[[ "$ROSTA_RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]   || fail "ROSTA_RELEASE_SHA must be an exact 40-character lowercase commit SHA"
 
+[[ "$ROSTA_RELEASE_TAG" =~ ^rosta-server-ready-[0-9]{4}-[0-9]{2}-[0-9]{2}([._-][a-zA-Z0-9._-]+)?$ ]]   || fail "ROSTA_RELEASE_TAG must be an immutable rosta-server-ready-* tag"
+
+ROOT_DIR="${ROSTA_ROOT_DIR:-/srv/rosta}"
 [[ -d "$ROOT_DIR/.git" ]] || fail "Expected git repository at $ROOT_DIR"
 
 log "Fetching immutable release identity"
 git -C "$ROOT_DIR" fetch --force --tags origin
-test "$(git -C "$ROOT_DIR" rev-list -n 1 "$EXPECTED_RELEASE_TAG")" = "$EXPECTED_RELEASE_SHA"   || fail "Frozen tag no longer resolves to expected release SHA"
 
-git -C "$ROOT_DIR" checkout --detach "$EXPECTED_RELEASE_SHA"
-test "$(git -C "$ROOT_DIR" rev-parse HEAD)" = "$EXPECTED_RELEASE_SHA"
+test "$(git -C "$ROOT_DIR" rev-list -n 1 "$ROSTA_RELEASE_TAG")" = "$ROSTA_RELEASE_SHA"   || fail "Server-ready tag does not resolve to the requested exact SHA"
+
+git -C "$ROOT_DIR" merge-base --is-ancestor "$HISTORICAL_PS12_SHA" "$ROSTA_RELEASE_SHA"   || fail "Server-ready release is not a descendant of the frozen PS12 source"
+
+git -C "$ROOT_DIR" checkout --detach "$ROSTA_RELEASE_SHA"
+test "$(git -C "$ROOT_DIR" rev-parse HEAD)" = "$ROSTA_RELEASE_SHA"
 test -z "$(git -C "$ROOT_DIR" status --porcelain --untracked-files=all)"   || fail "Server release worktree is not clean"
 
 export ROSTA_ROOT_DIR="$ROOT_DIR"
-export ROSTA_RELEASE_TAG="$ROSTA_RELEASE_SHA"
 export ROSTA_IMAGE_TAG="$ROSTA_RELEASE_SHA"
 export ROSTA_FRONTEND_ENV_PATH="${ROSTA_FRONTEND_ENV_PATH:-/etc/rosta/staging/frontend.env}"
 export ROSTA_BACKEND_ENV_PATH="${ROSTA_BACKEND_ENV_PATH:-/etc/rosta/staging/backend.env}"
@@ -61,12 +66,12 @@ docker pull "$ROSTA_API_REMOTE_IMAGE"
 docker pull "$ROSTA_API_WEB_REMOTE_IMAGE"
 docker pull "$ROSTA_FRONTEND_REMOTE_IMAGE"
 
-log "Tagging remote images to the frozen local compose identity"
+log "Tagging remote images to the exact local compose identity"
 docker tag "$ROSTA_API_REMOTE_IMAGE" "rosta-api:$ROSTA_IMAGE_TAG"
 docker tag "$ROSTA_API_WEB_REMOTE_IMAGE" "rosta-api-web:$ROSTA_IMAGE_TAG"
 docker tag "$ROSTA_FRONTEND_REMOTE_IMAGE" "rosta-frontend:$ROSTA_IMAGE_TAG"
 
-log "Pulling pinned runtime dependencies used by the frozen compose contract"
+log "Pulling pinned runtime dependencies used by the staging compose contract"
 docker pull mysql:8.4
 docker pull redis:7.4-alpine
 docker pull caddy:2-alpine
@@ -77,20 +82,20 @@ source "$SCRIPT_DIR/lib.sh"
 load_staging_environment
 assert_staging_contract
 
-# The frozen staging examples contain bootstrap image tags. The fast path always
-# re-locks Compose to the exact frozen release after loading the environment.
+# Frozen staging examples contain bootstrap image tags. After loading env files,
+# Compose is re-locked to the exact locally accepted server-ready release.
 export ROSTA_IMAGE_TAG="$ROSTA_RELEASE_SHA"
-export ROSTA_RELEASE_TAG="$ROSTA_RELEASE_SHA"
 
-log "Validating frozen compose contract without building"
+log "Validating staging compose contract without building"
 rosta_compose config --quiet
 
 mkdir -p "$ROSTA_STATE_DIR/reports/fastpath"
 chmod 700 "$ROSTA_STATE_DIR/reports/fastpath"
 
 {
-  echo "release=$ROSTA_RELEASE_SHA"
-  echo "tag=$EXPECTED_RELEASE_TAG"
+  echo "release_sha=$ROSTA_RELEASE_SHA"
+  echo "release_tag=$ROSTA_RELEASE_TAG"
+  echo "historical_ps12_ancestor=$HISTORICAL_PS12_SHA"
   echo "api_remote=$ROSTA_API_REMOTE_IMAGE"
   echo "api_web_remote=$ROSTA_API_WEB_REMOTE_IMAGE"
   echo "frontend_remote=$ROSTA_FRONTEND_REMOTE_IMAGE"
