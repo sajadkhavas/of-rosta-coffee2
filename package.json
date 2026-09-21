@@ -3,6 +3,10 @@
   "private": true,
   "sideEffects": false,
   "type": "module",
+  "overrides": {
+    "sharp": "0.35.4",
+    "js-yaml": "4.3.2"
+  },
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "bun run routes:generate && vite build",
