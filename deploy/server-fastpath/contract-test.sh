@@ -38,6 +38,8 @@ grep -Fq 'server_ready_bundle=valid' "$FAST_DIR/verify-server-bundle.sh"
 grep -Fq 'image_manifest_applied=ready' "$FAST_DIR/apply-image-manifest.sh"
 
 grep -Fq 'packages: write' "$WORKFLOW"
+grep -Fq 'actions/checkout@11d5960a326750d5838078e36cf38b85af677262' "$WORKFLOW"
+grep -Fq 'actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02' "$WORKFLOW"
 grep -Fq 'docker login "$REGISTRY"' "$WORKFLOW"
 grep -Fq 'docker push "$API_IMAGE"' "$WORKFLOW"
 grep -Fq 'docker push "$API_WEB_IMAGE"' "$WORKFLOW"
@@ -50,36 +52,36 @@ grep -Fq 'docker push "$FRONTEND_IMAGE"' "$WORKFLOW"
 ! grep -Fq 'EXPECTED_RELEASE_SHA:' "$WORKFLOW"
 
 credential_pattern='(^|[^A-Z_])(ghp_|github_pat_|sk-[A-Za-z0-9]|AKIA[A-Z0-9]{16})'
-if grep -R -E --exclude='contract-test.sh' "$credential_pattern" "$FAST_DIR"   || grep -E "$credential_pattern" "$WORKFLOW"; then
+credential_hit="$(
+  find "$FAST_DIR" -type f ! -name 'contract-test.sh'     -exec grep -H -E "$credential_pattern" {} + 2>/dev/null || true
+)"
+if [[ -n "$credential_hit" ]] || grep -E "$credential_pattern" "$WORKFLOW"; then
   echo "Credential-shaped material found in server fast-path source." >&2
+  [[ -z "$credential_hit" ]] || printf '%s\n' "$credential_hit" >&2
   exit 1
 fi
 
+# Full executable bundle generation needs Git ancestry/tag verification. The
+# normal CI host has Git and must execute this path. Minimal Alpine production
+# build stages intentionally do not install Git; they still execute all static
+# and shell-contract assertions above.
+if command -v git >/dev/null 2>&1   && git -C "$ROOT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 
-tmp_dir="$(mktemp -d)"
-tmp_tag="rosta-server-ready-2099-01-01-ci"
-cleanup() {
-  rm -rf "$tmp_dir"
-  git -C "$ROOT_DIR" tag -d "$tmp_tag" >/dev/null 2>&1 || true
-}
-trap cleanup EXIT
+  tmp_dir="$(mktemp -d)"
+  tmp_tag="rosta-server-ready-2099-01-01-ci"
 
-head_sha="$(git -C "$ROOT_DIR" rev-parse HEAD)"
-git -C "$ROOT_DIR" tag -f "$tmp_tag" "$head_sha" >/dev/null
+  cleanup() {
+    rm -rf "$tmp_dir"
+    git -C "$ROOT_DIR" tag -d "$tmp_tag" >/dev/null 2>&1 || true
+  }
+  trap cleanup EXIT
 
-S3_ACCESS_KEY_ID=ci_access_key \
-S3_SECRET_ACCESS_KEY=ci_secret_key \
-S3_BUCKET=rosta-ci-bucket \
-S3_ENDPOINT=https://example.r2.cloudflarestorage.com \
-ROSTA_SERVER_READY_DIR="$tmp_dir" \
-  "$FAST_DIR/prepare-server-bundle.sh" \
-    "$head_sha" \
-    "$tmp_tag" \
-    staging.rosta.shop \
-    ci@example.invalid \
-    >/dev/null
+  head_sha="$(git -C "$ROOT_DIR" rev-parse HEAD)"
+  git -C "$ROOT_DIR" tag -f "$tmp_tag" "$head_sha" >/dev/null
 
-cat > "$tmp_dir/manifest.env" <<EOF
+  S3_ACCESS_KEY_ID=ci_access_key   S3_SECRET_ACCESS_KEY=ci_secret_key   S3_BUCKET=rosta-ci-bucket   S3_ENDPOINT=https://example.r2.cloudflarestorage.com   ROSTA_SERVER_READY_DIR="$tmp_dir"     "$FAST_DIR/prepare-server-bundle.sh"       "$head_sha"       "$tmp_tag"       staging.rosta.shop       ci@example.invalid       >/dev/null
+
+  cat > "$tmp_dir/manifest.env" <<EOF
 ROSTA_RELEASE_SHA=$head_sha
 ROSTA_RELEASE_TAG=$tmp_tag
 ROSTA_CONFIG_ID=$(awk -F= '$1=="ROSTA_CONFIG_ID"{print $2}' "$tmp_dir/server-entry.env")
@@ -91,15 +93,16 @@ ROSTA_API_WEB_DIGEST=ghcr.io/sajadkhavas/rosta-api-web@sha256:bbbbbbbbbbbbbbbbbb
 ROSTA_FRONTEND_DIGEST=ghcr.io/sajadkhavas/rosta-frontend@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 EOF
 
-"$FAST_DIR/apply-image-manifest.sh" "$tmp_dir/manifest.env" "$tmp_dir" >/dev/null
-"$FAST_DIR/verify-server-bundle.sh" "$tmp_dir" >/dev/null
+  "$FAST_DIR/apply-image-manifest.sh" "$tmp_dir/manifest.env" "$tmp_dir" >/dev/null
+  "$FAST_DIR/verify-server-bundle.sh" "$tmp_dir" >/dev/null
 
-grep -Fxq "ROSTA_RELEASE_SHA=$head_sha" "$tmp_dir/server-entry.env"
-grep -Fxq "ROSTA_RELEASE_TAG=$tmp_tag" "$tmp_dir/server-entry.env"
-grep -Fxq 'ROSTA_PAYMENT_ENABLED=false' "$tmp_dir/backend.env"
-grep -Fxq 'ROSTA_REFUND_ENABLED=false' "$tmp_dir/backend.env"
-grep -Fxq 'ROSTA_SMS_ENABLED=false' "$tmp_dir/backend.env"
-grep -Fxq 'ROSTA_MEDIA_UPLOADS_ENABLED=true' "$tmp_dir/backend.env"
-grep -Fxq 'VITE_ALLOW_INDEXING=false' "$tmp_dir/frontend.env"
+  grep -Fxq "ROSTA_RELEASE_SHA=$head_sha" "$tmp_dir/server-entry.env"
+  grep -Fxq "ROSTA_RELEASE_TAG=$tmp_tag" "$tmp_dir/server-entry.env"
+  grep -Fxq 'ROSTA_PAYMENT_ENABLED=false' "$tmp_dir/backend.env"
+  grep -Fxq 'ROSTA_REFUND_ENABLED=false' "$tmp_dir/backend.env"
+  grep -Fxq 'ROSTA_SMS_ENABLED=false' "$tmp_dir/backend.env"
+  grep -Fxq 'ROSTA_MEDIA_UPLOADS_ENABLED=true' "$tmp_dir/backend.env"
+  grep -Fxq 'VITE_ALLOW_INDEXING=false' "$tmp_dir/frontend.env"
+fi
 
 printf 'ROSTA server fast-path contract passed.\n'
