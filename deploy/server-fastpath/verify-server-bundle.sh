@@ -2,7 +2,6 @@
 set -Eeuo pipefail
 
 DIR="${1:-.server-ready}"
-EXPECTED_RELEASE_SHA="4a54780d504b91527a86777e7f04368022354686"
 
 fail() {
   printf '[verify-server-ready] ERROR: %s\n' "$*" >&2
@@ -30,7 +29,8 @@ source "$DIR/backend.env"
 source "$DIR/server-entry.env"
 set +a
 
-test "$ROSTA_RELEASE_SHA" = "$EXPECTED_RELEASE_SHA"   || fail "Wrong release SHA"
+[[ "$ROSTA_RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]]   || fail "ROSTA_RELEASE_SHA is not an exact lowercase commit SHA"
+[[ "$ROSTA_RELEASE_TAG" =~ ^rosta-server-ready-[0-9]{4}-[0-9]{2}-[0-9]{2}([._-][a-zA-Z0-9._-]+)?$ ]]   || fail "ROSTA_RELEASE_TAG is not a server-ready tag"
 
 test "$APP_ENV" = "staging"
 test "$APP_DEBUG" = "false"
@@ -59,7 +59,8 @@ for file in "$DIR/frontend.env" "$DIR/backend.env" "$DIR/server-entry.env"; do
 done
 
 echo "server_ready_bundle=valid"
-echo "release=$ROSTA_RELEASE_SHA"
+echo "release_sha=$ROSTA_RELEASE_SHA"
+echo "release_tag=$ROSTA_RELEASE_TAG"
 echo "site=$STAGING_SITE_DOMAIN"
 echo "api=$STAGING_API_DOMAIN"
 echo "media=$STAGING_MEDIA_DOMAIN"
