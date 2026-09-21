@@ -122,7 +122,7 @@ Build outputs:
 
 Frontend `config_id` از site/API/media/payment-redirect/indexing contract hash می‌شود تا image با domain/config اشتباه قابل اشتباه گرفتن نباشد.
 
-Server هیچ‌کدام از این application imageها را rebuild نمی‌کند.
+Server هیچ‌کدام از این application imageها را rebuild نمی‌کند. Bundle نهایی نیز باید tag referenceهای موقت را با digest referenceهای `ghcr.io/...@sha256:...` حاصل از manifest جایگزین کند؛ `verify-server-bundle.sh` بدون digest immutable موفق نمی‌شود.
 
 ## Gate D — Inputs prepared before SSH
 
@@ -215,7 +215,8 @@ Fast Path فقط وقتی READY است که:
 - server-ready tag ساخته شده؛
 - prebuilt image workflow سبز؛
 - image digests/manifest ثبت؛
-- server-ready bundle بدون placeholder و verify شده؛
+- manifest با `apply-image-manifest.sh` روی bundle اعمال شده؛
+- server-ready bundle بدون placeholder، با digest immutable و verify شده؛
 - DNS/R2 آماده؛
 - one-command no-build deploy contract تست شده.
 
