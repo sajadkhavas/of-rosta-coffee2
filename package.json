@@ -20,6 +20,8 @@
     "test:browser": "playwright test",
     "test:staging-shell-contract": "bash deploy/staging/contract-test.sh",
     "test:server-fastpath-contract": "bash deploy/server-fastpath/contract-test.sh",
+    "local:browser-accept": "bash deploy/server-fastpath/local-browser-acceptance.sh",
+    "local:accept": "bash deploy/server-fastpath/local-acceptance.sh",
     "audit:dependencies": "node scripts/audit-dependencies.mjs",
     "audit:phase6": "node scripts/audit-phase6-security.mjs",
     "audit:seo": "node scripts/audit-seo-content.mjs",
