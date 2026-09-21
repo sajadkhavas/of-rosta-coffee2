@@ -35,6 +35,17 @@ grep -Fq 'payment_redirect_hosts="$site_domain,$api_domain,sandbox.zarinpal.com"
 grep -Fq 'export ROSTA_IMAGE_TAG="$ROSTA_RELEASE_SHA"' "$FAST_DIR/deploy-prebuilt.sh"
 grep -Fq 'staging_runtime_accepted=ready' "$FAST_DIR/deploy-prebuilt.sh"
 grep -Fq 'server_ready_bundle=valid' "$FAST_DIR/verify-server-bundle.sh"
+
+grep -Fq '"local:browser-accept": "bash deploy/server-fastpath/local-browser-acceptance.sh"' "$ROOT_DIR/package.json"
+grep -Fq '"local:accept": "bash deploy/server-fastpath/local-acceptance.sh"' "$ROOT_DIR/package.json"
+grep -Fq 'local_browser_acceptance=ready' "$FAST_DIR/local-browser-acceptance.sh"
+grep -Fq 'local_workstation_accepted=ready' "$FAST_DIR/local-acceptance.sh"
+grep -Fq 'manual_ui_smoke=required_before_server_ready_tag' "$FAST_DIR/local-acceptance.sh"
+grep -Fq '127.0.0.1:13306:3306' "$FAST_DIR/docker-compose.local-browser.yml"
+grep -Fq '127.0.0.1:16379:6379' "$FAST_DIR/docker-compose.local-browser.yml"
+grep -Fq 'tmpfs:' "$FAST_DIR/docker-compose.local-browser.yml"
+grep -Fq 'rosta-local-browser' "$FAST_DIR/docker-compose.local-browser.yml"
+docker compose -f "$FAST_DIR/docker-compose.local-browser.yml" config --quiet
 grep -Fq 'image_manifest_applied=ready' "$FAST_DIR/apply-image-manifest.sh"
 
 grep -Fq 'packages: write' "$WORKFLOW"
