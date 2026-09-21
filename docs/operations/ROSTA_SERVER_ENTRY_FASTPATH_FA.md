@@ -1,28 +1,33 @@
 # ROSTA — Server Entry Fast Path
 
-Status: PRE-SERVER PREPARATION / NOT DEPLOYED
+Status: PRE-SERVER PREPARATION / NOT DEPLOYED  
 Ops branch: `ops/rosta-server-entry-fastpath-20260921`
-Frozen application payload: `rosta-pre-server-2026-09-05`
-Frozen commit: `4a54780d504b91527a86777e7f04368022354686`
-Post-PS12 planning ancestry: `0c840c0159b3c79f743d332a0dc51c4a002727f5`
+
+Historical frozen PS12 source:
+- tag: `rosta-pre-server-2026-09-05`
+- commit: `4a54780d504b91527a86777e7f04368022354686`
+
+The historical PS12 tag is immutable and remains the ancestry anchor. It is **not automatically the final VPS deploy identity anymore** because the pre-server recertification on 2026-09-21 discovered newly published High dependency advisories. The final deploy identity must be a later exact descendant SHA that passes the full Local/VSCode acceptance and is then tagged `rosta-server-ready-YYYY-MM-DD[...]`.
 
 ## هدف
 
-ورود به VPS نباید محل build، dependency resolution، طراحی معماری یا debug اولیه باشد. قبل از ورود به سرور باید:
+ورود به VPS نباید محل build، dependency resolution، کشف bug یا تصمیم معماری باشد. قبل از SSH عملیاتی باید:
 
-1. exact frozen source در VSCode/WSL کامل پذیرفته شود؛
-2. dependency lockها بدون تغییر پاس شوند؛
-3. Frontend/Backend quality gates پاس شوند؛
+1. exact candidate source در VSCode/WSL کامل پذیرفته شود؛
+2. dependency lockها و security audit سبز باشند؛
+3. Frontend/Backend/browser/full-stack gates پاس شوند؛
 4. Docker staging rehearsal محلی پاس شود؛
-5. imageهای Linux/amd64 از exact frozen SHA ساخته و در GHCR منتشر شوند؛
-6. DNS/R2/env values از قبل آماده باشند؛
-7. سرور فقط bootstrap محدود، pull، migration، start، acceptance و evidence را انجام دهد.
+5. همان exact locally accepted SHA یک tag immutable از نوع `rosta-server-ready-*` بگیرد؛
+6. imageهای Linux/amd64 از همان SHA و tag در GitHub Actions ساخته و در GHCR منتشر شوند؛
+7. image digests و manifest ثبت شوند؛
+8. DNS/R2/env bundle قبل از SSH آماده و verify شود؛
+9. VPS فقط preflight، pull، migration، start، acceptance، backup/restore/restart/rollback evidence را اجرا کند.
 
-## اصل Source of Truth
+## Source of Truth
 
-برای تصمیم فنی، ابتدا مستند رسمی vendor/runtime بررسی می‌شود. Blog، Stack Overflow و پاسخ انجمنی نباید مبنای قرارداد deployment باشند مگر صرفاً برای سرنخ و با تأیید دوباره از مرجع رسمی.
+برای تصمیم فنی، ابتدا مستند رسمی vendor/runtime بررسی می‌شود. Blog، Stack Overflow یا پاسخ انجمنی مبنای قرارداد production نیست مگر فقط برای سرنخ و بعد از تأیید با مرجع اصلی.
 
-منابع فنی مرجع این Fast Path:
+منابع مرجع:
 
 - Docker Engine on Ubuntu: https://docs.docker.com/engine/install/ubuntu/
 - Docker Compose up / no-build: https://docs.docker.com/reference/cli/docker/compose/up/
@@ -34,9 +39,9 @@ Post-PS12 planning ancestry: `0c840c0159b3c79f743d332a0dc51c4a002727f5`
 - Ubuntu firewall: https://documentation.ubuntu.com/server/how-to/security/firewalls/
 - Ubuntu security guidance: https://ubuntu.com/server/docs/explanation/security/security_suggestions/
 - Laravel deployment: https://laravel.com/framework/docs/deployment
-- Bun reproducible install: https://bun.sh/docs/pm/cli/install
+- Bun install/lock behavior: https://bun.sh/docs/pm/cli/install
 - TanStack Start production checklist: https://tanstack.com/start/latest/docs/framework/react/guide/production-checklist
-- TanStack Start hosting / Node runtime: https://tanstack.com/start/latest/docs/framework/react/guide/hosting
+- TanStack Start hosting: https://tanstack.com/start/latest/docs/framework/react/guide/hosting
 - MySQL 8.4 container deployment: https://dev.mysql.com/doc/refman/8.4/en/linux-installation-docker.html
 - Redis persistence: https://redis.io/docs/latest/operate/oss_and_stack/management/persistence/
 - Caddy automatic HTTPS: https://caddyserver.com/docs/automatic-https
@@ -44,125 +49,174 @@ Post-PS12 planning ancestry: `0c840c0159b3c79f743d332a0dc51c4a002727f5`
 - Cloudflare R2 S3 compatibility: https://developers.cloudflare.com/r2/api/s3/api/
 - Cloudflare R2 CORS: https://developers.cloudflare.com/r2/buckets/cors/
 - Cloudflare R2 public/custom domains: https://developers.cloudflare.com/r2/buckets/public-buckets/
+- MinIO official container examples use Quay for the isolated S3-compatible rehearsal image. MinIO is rehearsal-only; real staging media remains Cloudflare R2.
 
-هر تصمیم حقوقی، مالیاتی، پرداخت، پیامک تجاری، حریم خصوصی یا شرایط سرویس باید جداگانه از متن رسمی قانون/نهاد دولتی یا مستند رسمی Provider در زمان فعال‌سازی بررسی شود. این سند هیچ ادعای حقوقی ایجاد نمی‌کند.
+هر تصمیم حقوقی، مالیاتی، پرداخت، پیامک تجاری، حریم خصوصی یا Terms باید در زمان فعال‌سازی از متن رسمی قانون/نهاد دولتی یا Provider رسمی بررسی شود. این سند به‌تنهایی هیچ ادعای حقوقی ایجاد نمی‌کند.
+
+## Security refresh rule
+
+اگر بعد از freeze قبلی advisory جدید High/Critical منتشر شود:
+
+- هیچ allowlist دائمی برای عبور دادن audit ساخته نمی‌شود مگر با مستند threat assessment و approval مستقل؛
+- patch رسمی/upstream یا یک override محدود و مستند انتخاب می‌شود؛
+- lockfile دوباره تولید می‌شود؛
+- تمام CI/browser/staging gates دوباره اجرا می‌شوند؛
+- tag تاریخی جابه‌جا نمی‌شود؛
+- بعد از Local Acceptance یک server-ready tag جدید ساخته می‌شود.
+
+در refresh مورخ 2026-09-21:
+- `sharp` به `0.35.4` قفل شد؛
+- `js-yaml` به `4.3.2` قفل شد؛
+- old PS12 tag بدون تغییر باقی ماند.
 
 ## Gate A — Local/VSCode acceptance
 
 این Gate قبل از هر VPS mutation اجباری است.
 
-- exact frozen SHA ثبت و worktree تمیز باشد؛
-- `bun ci` یا `bun install --frozen-lockfile` بدون تغییر lockfile پاس شود؛
-- `composer install` فقط از `composer.lock` انجام شود؛
-- `bun run check:all` پاس شود؛
-- MySQL + Redis + Laravel API + worker + scheduler محلی healthy باشند؛
-- Production frontend build + Node SSR اجرا شود؛
-- Playwright browser acceptance روی runtime واقعی محلی پاس شود؛
-- `ROSTA_ALLOW_REHEARSAL=true bash deploy/staging/rehearsal.sh` پاس شود؛
-- backup/restore/rollback داخل rehearsal پاس شود؛
-- Buyer/Seller/Admin/Cafe-B2B manual smoke بدون console/network error حل‌نشده انجام شود.
+- candidate SHA دقیق و worktree تمیز؛
+- `bun install --frozen-lockfile` بدون تغییر lockfile؛
+- `composer install` فقط از `composer.lock`؛
+- dependency security audit سبز؛
+- `bun run check:all` سبز؛
+- MySQL + Redis + Laravel API + worker + scheduler healthy؛
+- Production frontend build + Node SSR healthy؛
+- Playwright browser acceptance سبز؛
+- `ROSTA_ALLOW_REHEARSAL=true bash deploy/staging/rehearsal.sh` سبز؛
+- backup/restore/rollback rehearsal سبز؛
+- Buyer/Seller/Admin/Cafe-B2B manual smoke؛
+- console/network بدون application error حل‌نشده؛
+- هیچ تغییر ناخواسته در lock/source بعد از اجرای Gate باقی نماند.
 
-Exit marker:
+Local exit marker:
 
 `local_workstation_accepted=ready`
 
-## Gate B — Prebuilt immutable images
+## Gate B — Create immutable server-ready release identity
 
-بعد از Local GO، workflow `.github/workflows/ps12-prebuilt-images.yml` اجرا می‌شود.
+فقط بعد از Gate A:
 
-قواعد:
+1. exact accepted commit SHA ثبت می‌شود؛
+2. یک tag جدید مانند `rosta-server-ready-2026-09-21` دقیقاً روی همان SHA ساخته می‌شود؛
+3. tag باید descendant از `4a54780...` باشد؛
+4. tag و SHA دیگر در زمان deploy تغییر نمی‌کنند.
 
-- فقط exact release SHA `4a54780d504b91527a86777e7f04368022354686`;
-- backend app image از `backend/Dockerfile.production --target app`;
-- backend web image از `--target web`;
-- frontend image از `Dockerfile.staging`;
-- frontend configuration identity از staging domain inputs hash می‌شود؛
-- imageها به GHCR push می‌شوند؛
-- server نباید این imageها را rebuild کند؛
-- manifest و image digests باید evidence شوند.
+## Gate C — Prebuilt immutable images
 
-برای GHCR خصوصی، VPS فقط read-only package token نیاز دارد. Token نباید در repo یا command history ثبت شود.
+workflow `.github/workflows/ps12-prebuilt-images.yml` سه input می‌گیرد:
 
-## Gate C — Inputs prepared before SSH
+- exact `release_sha`;
+- exact `release_tag`;
+- staging site domain.
 
-قبل از ورود عملیاتی به VPS این مقادیر باید قطعی باشند:
+Workflow فقط زمانی build می‌کند که:
+- SHA دقیق 40 کاراکتری باشد؛
+- tag از الگوی server-ready پیروی کند؛
+- tag دقیقاً به همان SHA resolve شود؛
+- SHA descendant از frozen PS12 باشد؛
+- worktree clean باشد.
 
-- staging site domain، مثال: `staging.rosta.shop`;
-- API domain: `api.<staging-domain>`;
-- media domain: `media.<staging-domain>`;
+Build outputs:
+- `rosta-api:<release_sha>`
+- `rosta-api-web:<release_sha>`
+- `rosta-frontend:<release_sha>-<config_id>`
+
+Frontend `config_id` از site/API/media/payment-redirect/indexing contract hash می‌شود تا image با domain/config اشتباه قابل اشتباه گرفتن نباشد.
+
+Server هیچ‌کدام از این application imageها را rebuild نمی‌کند.
+
+## Gate D — Inputs prepared before SSH
+
+قبل از ورود عملیاتی به VPS باید قطعی باشند:
+
+- server-ready SHA/tag؛
+- staging site domain؛
+- API domain؛
+- media domain؛
 - ACME email؛
-- R2 bucket؛
+- Cloudflare R2 bucket؛
 - R2 S3 endpoint؛
 - R2 access key / secret key؛
 - staging APP_KEY؛
 - MySQL database/user/password/root password؛
 - Redis password؛
 - session cookie/domain؛
-- GHCR read credential اگر package خصوصی است.
+- GHCR read credential در صورت private بودن package.
 
-Secretها فقط در فایل‌های سرور با permission محدود قرار می‌گیرند. هیچ secret واقعی در GitHub commit نمی‌شود.
+`prepare-server-bundle.sh` APP_KEY/DB/Redis secretها را محلی می‌سازد. Secret واقعی در Git commit نمی‌شود و generated bundle در `.server-ready/` gitignored است.
 
-## Gate D — DNS/R2 prepared before deploy
+## Gate E — DNS/R2 before server start
 
 قبل از start:
 
-- site/API A/AAAA رکوردها باید به VPS هدف اشاره کنند؛
+- site/API A/AAAA به VPS هدف اشاره کنند؛
 - ports 80/443 برای Caddy reachable باشند؛
-- R2 custom domain باید در همان Cloudflare account مربوطه فعال باشد؛
-- CORS باید Origin دقیق staging frontend را مجاز کند؛
-- `r2.dev` جای custom domain نهایی staging را نمی‌گیرد؛
-- Caddy data/config volume باید persistent باشد تا certificate state حفظ شود.
+- R2 custom domain در Cloudflare account درست فعال باشد؛
+- CORS فقط Origin دقیق staging frontend را اجازه دهد؛
+- bucket/credential مخصوص staging باشد؛
+- `r2.dev` جای custom domain مورد پذیرش نهایی را نمی‌گیرد؛
+- Caddy data/config persistent باشد.
 
-## Gate E — Server Fast Path
+## Gate F — Server Fast Path
 
 روی VPS:
 
-1. read-only preflight؛
-2. bootstrap فقط در صورت نبود Docker/user/path؛
-3. repo checkout روی exact frozen SHA؛
-4. نصب env files از templateهای ازقبل‌آماده؛
-5. GHCR login فقط در صورت private بودن package؛
-6. pull imageهای prebuilt؛
-7. local tag به `rosta-api:<sha>`, `rosta-api-web:<sha>`, `rosta-frontend:<sha>`;
-8. pull `mysql:8.4`, `redis:7.4-alpine`, `caddy:2-alpine`;
-9. `docker compose ... up --no-build --pull never`;
-10. migration؛
-11. strict acceptance؛
-12. backup/restore/restart/rollback evidence طبق R4B؛
-13. فقط در صورت `accepted: true` ثبت GO.
+1. `preflight-readonly.sh`;
+2. bootstrap فقط اگر Docker/user/path واقعاً وجود ندارند؛
+3. fetch tags؛
+4. verify server-ready tag -> exact SHA؛
+5. verify PS12 ancestry؛
+6. detached checkout روی exact SHA؛
+7. نصب env bundle ازقبل‌ساخته‌شده؛
+8. GHCR login فقط اگر package private است؛
+9. pull prebuilt imageها؛
+10. pull MySQL/Redis/Caddy dependency imageها؛
+11. `docker compose ... up --no-build --pull never`;
+12. forward-only migration؛
+13. strict acceptance؛
+14. backup/restore/restart/rollback/reboot/failure evidence طبق R4B؛
+15. فقط با `accepted: true` ثبت GO.
 
 Server exit marker:
 
 `staging_runtime_accepted=ready`
 
-## دلیل عدم Build روی VPS
+## 1 GiB VPS policy
 
-مسیر committed فعلی `deploy/staging/preflight.sh` برای build کامل حداقل 3 GiB RAM می‌خواهد. VPS آزمایشی 1 GiB نباید با حذف کورکورانه این guard پذیرفته شود. Fast Path با prebuilt image، بار build را از VPS حذف می‌کند؛ ولی runtime هنوز باید memory/OOM gate واقعی را پاس کند.
+Build application image روی VPS ممنوع است. این بار توسط GHCR prebuild حذف می‌شود.
 
-## Firewall note
+اما 1 GiB هنوز فقط زمانی پذیرفته می‌شود که runtime واقعی:
+- OOM/restart loop نداشته باشد؛
+- MySQL/Redis/API/worker/scheduler/SSR/edge healthy بمانند؛
+- restart/reboot acceptance پاس شود.
 
-Docker رسماً هشدار می‌دهد که published container ports می‌توانند رفتار مورد انتظار UFW را دور بزنند. بنابراین فقط تکیه بر `ufw allow/deny` کافی نیست؛ در R4B باید exposed ports و Docker firewall/DOCKER-USER behavior هم بررسی شود. این نکته قبل از production cutover اجباری است.
+اگر runtime پایدار نباشد، اندازه VPS افزایش می‌یابد؛ health/readiness gate ضعیف نمی‌شود.
+
+## Firewall
+
+Docker می‌تواند published container ports را خارج از انتظار ساده UFW expose کند. بنابراین R4B فقط `ufw status` را evidence کافی نمی‌داند؛ listenerها، Docker port mappings و Docker firewall chainها نیز باید audit شوند.
 
 ## Provider safety
 
-در staging:
+در staging تا closure R4B:
 
 - `ROSTA_PAYMENT_ENABLED=false`
 - `ROSTA_REFUND_ENABLED=false`
 - `ROSTA_SMS_ENABLED=false`
 - `VITE_ALLOW_INDEXING=false`
 
-R2 برای acceptance فعال است ولی باید bucket/credentials staging باشد.
+Cloudflare R2 برای media acceptance فعال است ولی فقط با staging bucket/credential.
 
 ## Completion
 
-این Fast Path زمانی آماده تلقی می‌شود که:
+Fast Path فقط وقتی READY است که:
 
+- PR/CI سبز؛
 - Local Gate سبز؛
+- server-ready tag ساخته شده؛
 - prebuilt image workflow سبز؛
-- image identities/digests ثبت؛
-- server env files قبل از SSH آماده؛
+- image digests/manifest ثبت؛
+- server-ready bundle بدون placeholder و verify شده؛
 - DNS/R2 آماده؛
-- one-command server deploy dry-run/contracts locally validated.
+- one-command no-build deploy contract تست شده.
 
 تا آن زمان R4B/PS13 = NOT DONE.
