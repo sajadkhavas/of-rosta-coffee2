@@ -1,0 +1,52 @@
+name: Security Lock Refresh
+
+on:
+  pull_request:
+    paths:
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/security-lock-refresh.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: ${{ github.head_ref == 'ops/rosta-server-entry-fastpath-20260921' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.22
+
+      - name: Regenerate lock from reviewed overrides
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bun install
+          grep -Fq '"sharp": ["sharp@0.35.4"' bun.lock
+          grep -Fq '"js-yaml": ["js-yaml@4.3.2"' bun.lock
+          bun run audit:dependencies
+
+      - name: Commit generated lock
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git diff --check
+          if git diff --quiet -- bun.lock; then
+            echo "bun.lock already reflects the security overrides."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bun.lock
+          git commit -m "fix(security): refresh Bun lock for patched transitive dependencies"
+          git push origin "HEAD:${{ github.head_ref }}"
