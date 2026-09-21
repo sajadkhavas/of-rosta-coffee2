@@ -35,6 +35,7 @@ grep -Fq 'payment_redirect_hosts="$site_domain,$api_domain,sandbox.zarinpal.com"
 grep -Fq 'export ROSTA_IMAGE_TAG="$ROSTA_RELEASE_SHA"' "$FAST_DIR/deploy-prebuilt.sh"
 grep -Fq 'staging_runtime_accepted=ready' "$FAST_DIR/deploy-prebuilt.sh"
 grep -Fq 'server_ready_bundle=valid' "$FAST_DIR/verify-server-bundle.sh"
+grep -Fq 'image_manifest_applied=ready' "$FAST_DIR/apply-image-manifest.sh"
 
 grep -Fq 'packages: write' "$WORKFLOW"
 grep -Fq 'docker login "$REGISTRY"' "$WORKFLOW"
@@ -78,6 +79,19 @@ ROSTA_SERVER_READY_DIR="$tmp_dir" \
     ci@example.invalid \
     >/dev/null
 
+cat > "$tmp_dir/manifest.env" <<EOF
+ROSTA_RELEASE_SHA=$head_sha
+ROSTA_RELEASE_TAG=$tmp_tag
+ROSTA_CONFIG_ID=$(awk -F= '$1=="ROSTA_CONFIG_ID"{print $2}' "$tmp_dir/server-entry.env")
+STAGING_SITE_DOMAIN=staging.rosta.shop
+STAGING_API_DOMAIN=api.staging.rosta.shop
+STAGING_MEDIA_DOMAIN=media.staging.rosta.shop
+ROSTA_API_DIGEST=ghcr.io/sajadkhavas/rosta-api@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+ROSTA_API_WEB_DIGEST=ghcr.io/sajadkhavas/rosta-api-web@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+ROSTA_FRONTEND_DIGEST=ghcr.io/sajadkhavas/rosta-frontend@sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+EOF
+
+"$FAST_DIR/apply-image-manifest.sh" "$tmp_dir/manifest.env" "$tmp_dir" >/dev/null
 "$FAST_DIR/verify-server-bundle.sh" "$tmp_dir" >/dev/null
 
 grep -Fxq "ROSTA_RELEASE_SHA=$head_sha" "$tmp_dir/server-entry.env"
