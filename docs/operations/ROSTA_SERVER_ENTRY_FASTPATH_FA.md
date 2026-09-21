@@ -1,9 +1,9 @@
 # ROSTA — Server Entry Fast Path
 
-Status: PRE-SERVER PREPARATION / NOT DEPLOYED  
-Ops branch: `ops/rosta-server-entry-fastpath-20260921`  
-Frozen application payload: `rosta-pre-server-2026-09-05`  
-Frozen commit: `4a54780d504b91527a86777e7f04368022354686`  
+Status: PRE-SERVER PREPARATION / NOT DEPLOYED
+Ops branch: `ops/rosta-server-entry-fastpath-20260921`
+Frozen application payload: `rosta-pre-server-2026-09-05`
+Frozen commit: `4a54780d504b91527a86777e7f04368022354686`
 Post-PS12 planning ancestry: `0c840c0159b3c79f743d332a0dc51c4a002727f5`
 
 ## هدف
