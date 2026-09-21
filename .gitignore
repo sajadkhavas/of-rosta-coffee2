@@ -13,6 +13,7 @@ lerna-debug.log*
 !.env.example
 !.env.staging.example
 .staging-state/
+.server-ready/
 
 node_modules
 dist
