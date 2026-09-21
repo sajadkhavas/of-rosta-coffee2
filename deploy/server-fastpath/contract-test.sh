@@ -45,7 +45,16 @@ grep -Fq '127.0.0.1:13306:3306' "$FAST_DIR/docker-compose.local-browser.yml"
 grep -Fq '127.0.0.1:16379:6379' "$FAST_DIR/docker-compose.local-browser.yml"
 grep -Fq 'tmpfs:' "$FAST_DIR/docker-compose.local-browser.yml"
 grep -Fq 'rosta-local-browser' "$FAST_DIR/docker-compose.local-browser.yml"
-docker compose -f "$FAST_DIR/docker-compose.local-browser.yml" config --quiet
+grep -Fq 'image: mysql:8.4' "$FAST_DIR/docker-compose.local-browser.yml"
+grep -Fq 'image: redis:7.4-alpine' "$FAST_DIR/docker-compose.local-browser.yml"
+
+# The frontend production image runs `bun run check` inside a minimal build
+# container that intentionally has no Docker CLI. Validate Compose fully when
+# Docker is available (host CI / workstation), while keeping static contract
+# assertions portable inside image builds.
+if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+  docker compose -f "$FAST_DIR/docker-compose.local-browser.yml" config --quiet
+fi
 grep -Fq 'image_manifest_applied=ready' "$FAST_DIR/apply-image-manifest.sh"
 
 grep -Fq 'packages: write' "$WORKFLOW"
