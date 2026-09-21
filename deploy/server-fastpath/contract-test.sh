@@ -54,4 +54,38 @@ if grep -R -E --exclude='contract-test.sh' "$credential_pattern" "$FAST_DIR"   |
   exit 1
 fi
 
+
+tmp_dir="$(mktemp -d)"
+tmp_tag="rosta-server-ready-2099-01-01-ci"
+cleanup() {
+  rm -rf "$tmp_dir"
+  git -C "$ROOT_DIR" tag -d "$tmp_tag" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+head_sha="$(git -C "$ROOT_DIR" rev-parse HEAD)"
+git -C "$ROOT_DIR" tag -f "$tmp_tag" "$head_sha" >/dev/null
+
+S3_ACCESS_KEY_ID=ci_access_key \
+S3_SECRET_ACCESS_KEY=ci_secret_key \
+S3_BUCKET=rosta-ci-bucket \
+S3_ENDPOINT=https://example.r2.cloudflarestorage.com \
+ROSTA_SERVER_READY_DIR="$tmp_dir" \
+  "$FAST_DIR/prepare-server-bundle.sh" \
+    "$head_sha" \
+    "$tmp_tag" \
+    staging.rosta.shop \
+    ci@example.invalid \
+    >/dev/null
+
+"$FAST_DIR/verify-server-bundle.sh" "$tmp_dir" >/dev/null
+
+grep -Fxq "ROSTA_RELEASE_SHA=$head_sha" "$tmp_dir/server-entry.env"
+grep -Fxq "ROSTA_RELEASE_TAG=$tmp_tag" "$tmp_dir/server-entry.env"
+grep -Fxq 'ROSTA_PAYMENT_ENABLED=false' "$tmp_dir/backend.env"
+grep -Fxq 'ROSTA_REFUND_ENABLED=false' "$tmp_dir/backend.env"
+grep -Fxq 'ROSTA_SMS_ENABLED=false' "$tmp_dir/backend.env"
+grep -Fxq 'ROSTA_MEDIA_UPLOADS_ENABLED=true' "$tmp_dir/backend.env"
+grep -Fxq 'VITE_ALLOW_INDEXING=false' "$tmp_dir/frontend.env"
+
 printf 'ROSTA server fast-path contract passed.\n'
