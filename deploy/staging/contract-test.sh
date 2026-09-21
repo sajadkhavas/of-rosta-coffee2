@@ -19,4 +19,13 @@ grep -Fxq 'STAGING_MEDIA_DOMAIN=media.staging.rosta.shop' "$ROOT_DIR/.env.stagin
 ! grep -Fxq 'SESSION_DOMAIN=.rosta.shop' "$ROOT_DIR/backend/.env.staging.example"
 grep -Fxq 'ROSTA_CONTRACT_VERSION=2026-07-26-r5c' "$ROOT_DIR/backend/.env.staging.example"
 
+(
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT_DIR/backend/.env.staging.example"
+  set +a
+  test "$MAIL_FROM_NAME" = "Rosta Staging"
+)
+
+
 printf 'PS1 staging shell contract passed.\n'
