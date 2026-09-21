@@ -4,18 +4,20 @@ set -Eeuo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 FAST_DIR="$ROOT_DIR/deploy/server-fastpath"
 WORKFLOW="$ROOT_DIR/.github/workflows/ps12-prebuilt-images.yml"
-EXPECTED_SHA="4a54780d504b91527a86777e7f04368022354686"
+HISTORICAL_PS12_SHA="4a54780d504b91527a86777e7f04368022354686"
 
 for script in "$FAST_DIR"/*.sh; do
   bash -n "$script"
 done
 
-grep -Fq "EXPECTED_RELEASE_SHA=\"$EXPECTED_SHA\"" "$FAST_DIR/deploy-prebuilt.sh"
-grep -Fq "EXPECTED_RELEASE_SHA=\"$EXPECTED_SHA\"" "$FAST_DIR/prepare-server-bundle.sh"
-grep -Fq "EXPECTED_RELEASE_SHA: $EXPECTED_SHA" "$WORKFLOW"
+grep -Fq "HISTORICAL_PS12_SHA=\"$HISTORICAL_PS12_SHA\"" "$FAST_DIR/deploy-prebuilt.sh"
+grep -Fq "HISTORICAL_PS12_SHA=\"$HISTORICAL_PS12_SHA\"" "$FAST_DIR/prepare-server-bundle.sh"
+grep -Fq "HISTORICAL_PS12_SHA: $HISTORICAL_PS12_SHA" "$WORKFLOW"
 
-grep -Fq 'rosta-pre-server-2026-09-05' "$FAST_DIR/deploy-prebuilt.sh"
-grep -Fq 'rosta-pre-server-2026-09-05' "$WORKFLOW"
+grep -Fq 'release_tag:' "$WORKFLOW"
+grep -Fq 'git merge-base --is-ancestor "$HISTORICAL_PS12_SHA" "$RELEASE_SHA"' "$WORKFLOW"
+grep -Fq 'git rev-list -n 1 "$RELEASE_TAG"' "$WORKFLOW"
+grep -Fq 'rosta-server-ready-' "$WORKFLOW"
 
 grep -Fq -- '--no-build --pull never --wait mysql redis' "$FAST_DIR/deploy-prebuilt.sh"
 grep -Fq -- '--no-build --pull never --wait' "$FAST_DIR/deploy-prebuilt.sh"
@@ -40,9 +42,14 @@ grep -Fq 'docker push "$API_IMAGE"' "$WORKFLOW"
 grep -Fq 'docker push "$API_WEB_IMAGE"' "$WORKFLOW"
 grep -Fq 'docker push "$FRONTEND_IMAGE"' "$WORKFLOW"
 
+# Historical PS12 remains a required ancestor, never the silently substituted
+# deployment identity after a security refresh/local recertification.
+! grep -Fq 'EXPECTED_RELEASE_SHA=' "$FAST_DIR/deploy-prebuilt.sh"
+! grep -Fq 'EXPECTED_RELEASE_SHA=' "$FAST_DIR/prepare-server-bundle.sh"
+! grep -Fq 'EXPECTED_RELEASE_SHA:' "$WORKFLOW"
+
 credential_pattern='(^|[^A-Z_])(ghp_|github_pat_|sk-[A-Za-z0-9]|AKIA[A-Z0-9]{16})'
-if grep -R -E --exclude='contract-test.sh' "$credential_pattern" "$FAST_DIR" \
-  || grep -E "$credential_pattern" "$WORKFLOW"; then
+if grep -R -E --exclude='contract-test.sh' "$credential_pattern" "$FAST_DIR"   || grep -E "$credential_pattern" "$WORKFLOW"; then
   echo "Credential-shaped material found in server fast-path source." >&2
   exit 1
 fi
