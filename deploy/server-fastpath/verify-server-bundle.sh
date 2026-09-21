@@ -52,6 +52,11 @@ test "$APP_URL" = "https://$STAGING_API_DOMAIN"
 test "$S3_PUBLIC_URL" = "https://$STAGING_MEDIA_DOMAIN"
 test "$ROSTA_MEDIA_PUBLIC_BASE_URL" = "https://$STAGING_MEDIA_DOMAIN"
 
+for ref in "$ROSTA_API_REMOTE_IMAGE" "$ROSTA_API_WEB_REMOTE_IMAGE" "$ROSTA_FRONTEND_REMOTE_IMAGE"; do
+  [[ "$ref" =~ ^ghcr\.io/sajadkhavas/[a-z0-9._/-]+@sha256:[0-9a-f]{64}$ ]] \
+    || fail "Application image reference is not an immutable GHCR digest: $ref"
+done
+
 for file in "$DIR/frontend.env" "$DIR/backend.env" "$DIR/server-entry.env"; do
   mode="$(stat -c '%a' "$file")"
   other="${mode: -1}"
