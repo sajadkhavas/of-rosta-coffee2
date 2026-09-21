@@ -73,6 +73,16 @@ The historical PS12 tag is immutable and remains the ancestry anchor. It is **no
 
 این Gate قبل از هر VPS mutation اجباری است.
 
+فرمان اصلی در VSCode/WSL:
+
+`bun run local:accept`
+
+این فرمان دو acceptance مستقل اجرا می‌کند:
+- Browser Acceptance ایزوله با MySQL 8.4 و Redis 7.4 موقت، production SSR، Laravel API، worker، acceptance fixtures و Playwright؛
+- Full Staging Rehearsal با MySQL/Redis/S3-compatible rehearsal، production images، readiness، media checks، backup/restore و image rollback.
+
+هیچ `migrate:fresh` روی دیتابیس توسعه‌ای موجود اجرا نمی‌شود؛ browser acceptance از compose project مستقل `rosta-local-browser` با tmpfs استفاده می‌کند و در پایان آن را پاک می‌کند.
+
 - candidate SHA دقیق و worktree تمیز؛
 - `bun install --frozen-lockfile` بدون تغییر lockfile؛
 - `composer install` فقط از `composer.lock`؛
@@ -87,9 +97,11 @@ The historical PS12 tag is immutable and remains the ancestry anchor. It is **no
 - console/network بدون application error حل‌نشده؛
 - هیچ تغییر ناخواسته در lock/source بعد از اجرای Gate باقی نماند.
 
-Local exit marker:
+Automated Local exit marker:
 
 `local_workstation_accepted=ready`
+
+این marker فقط automated acceptance را اثبات می‌کند. قبل از ساخت `rosta-server-ready-*` هنوز manual UI smoke برای Buyer/Seller/Admin/Cafe-B2B و بررسی console/network اجباری است.
 
 ## Gate B — Create immutable server-ready release identity
 
