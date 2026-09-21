@@ -79,7 +79,7 @@ if command -v git >/dev/null 2>&1   && git -C "$ROOT_DIR" rev-parse --is-inside-
   head_sha="$(git -C "$ROOT_DIR" rev-parse HEAD)"
   git -C "$ROOT_DIR" tag -f "$tmp_tag" "$head_sha" >/dev/null
 
-  S3_ACCESS_KEY_ID=ci_access_key   S3_SECRET_ACCESS_KEY=ci_secret_key   S3_BUCKET=rosta-ci-bucket   S3_ENDPOINT=https://example.r2.cloudflarestorage.com   ROSTA_SERVER_READY_DIR="$tmp_dir"     "$FAST_DIR/prepare-server-bundle.sh"       "$head_sha"       "$tmp_tag"       staging.rosta.shop       ci@example.invalid       >/dev/null
+  S3_ACCESS_KEY_ID=ci_access_key   S3_SECRET_ACCESS_KEY=ci_secret_key   S3_BUCKET=rosta-ci-bucket   S3_ENDPOINT=https://example.r2.cloudflarestorage.com   ROSTA_SERVER_READY_DIR="$tmp_dir"     bash "$FAST_DIR/prepare-server-bundle.sh"       "$head_sha"       "$tmp_tag"       staging.rosta.shop       ci@example.invalid       >/dev/null
 
   cat > "$tmp_dir/manifest.env" <<EOF
 ROSTA_RELEASE_SHA=$head_sha
